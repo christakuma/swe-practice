@@ -384,6 +384,15 @@ scenario:
         their next pull will conflict or silently resurrect the bad commit.
         `git revert` adds a commit that undoes c3 while keeping it in history.
 
+    - id: fix-published
+      label: The fix is on origin, not just on your machine
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/remotes/origin/main", target: HEAD}
+      explanation: |
+        The build is broken for everyone. Until origin/main points at your
+        fix, your teammate's next pull still gets the breakage.
+
     - id: no-force-push
       label: You did not force-update the shared branch
       severity: advisory
@@ -478,6 +487,16 @@ With all of that pinned, identical content produces identical hashes on every
 run and every machine. Note the hashes are still tied to git's **default object
 format**; a future default of SHA-256 would change every SHA at once, which is
 why the lock file below beats hard-coding a literal in a test.
+
+**The clock must span the whole attempt, not just the fixture.** Found by
+actually running this (§6.5): if the pinned dates only cover fixture commits,
+any commit *the user* makes falls back to wall-clock time and the attempt stops
+being reproducible. No assertion depends on a user commit's SHA — they compare
+trees and ancestry — but reproducing a bug report, or storing a golden
+end-state, needs the whole attempt to be deterministic. So the sandbox
+continues the fixture's clock into the attempt, advancing it per command, which
+also keeps `git log` ordering sensible instead of stacking every commit at one
+instant.
 
 **Symbolic aliases.** Even with deterministic hashes, hard-coding SHAs into
 assertions is unreadable and breaks whenever a fixture is edited. A sourced
@@ -592,6 +611,60 @@ SubmitScenario
   → assemble Verdict → derive Outcome
   → persist Attempt, suggest a review Grade, dispose workspace
 ```
+
+### 6.5 Semantics the engine has to pin down
+
+Details that look like implementation trivia but change whether assertions are
+fair. Each was found by building the flagship scenario and running it (§6.6),
+not by thinking about it.
+
+**Revision resolution.** Every `ref:` and `target:` accepts, in this order:
+
+1. `@alias` — a fixture alias, matched as `^@[A-Za-z][A-Za-z0-9_-]*$` and
+   resolved from the alias map **before git ever sees the string**.
+2. Anything git accepts — `HEAD`, `main`, `refs/remotes/origin/main`, `HEAD~1`.
+
+Aliases are resolved first so they can never be confused with git's own `@`
+syntax. Worth stating loudly in the authoring guide: **`@c2` is assertion
+syntax only.** Content authors must not write it in `solution.cmds`, because
+the user cannot type it — they only ever see real revisions.
+
+**A missing ref is a clean failure, never an error.** If a check names
+`refs/remotes/origin/main` and the user deleted the remote, the assertion must
+report `passed: false` with `actual: "<ref does not exist>"`. A traceback in
+the verdict panel teaches nothing, and half the point of these exercises is
+that the repo may be in a state you did not anticipate.
+
+**`worktree_clean` ignores untracked files by default.** No staged changes, no
+unstaged changes, no unmerged paths — but a scratch file the user created while
+poking around does not fail them. Exercises that genuinely care take
+`worktree_clean {include_untracked: true}`.
+
+### 6.6 Validated end to end before writing any code
+
+`content/git/revert-a-pushed-commit/` is authored and was executed by hand
+against real git before Phase 0 began — fixture, both counter-examples and all
+six checks. The results:
+
+| | content-restored | history-preserved | fix-published | advisories |
+|---|---|---|---|---|
+| `solution.cmds` (revert, push) | pass | pass | pass | both pass |
+| `naive-reset-force.cmds` | **pass** | **fail** | pass | force-push flagged |
+| `naive-forgot-push.cmds` | **pass** | pass | **fail** | both pass |
+
+The first column is the whole argument for §1 in one line: **content-restored
+passes for all three.** The trees are byte-identical — `0b2626fa` in every
+case. Any tool grading on file content alone accepts both wrong answers, and a
+tool matching command text would have to guess which of the two dozen correct
+phrasings to accept. Ancestry and ref position are what actually discriminate.
+
+Also confirmed: the fixture produces identical SHAs across runs
+(`c1=d2261fe`, `c2=2b5faf7`, `c3=42dc386`), and every line of all three `.cmds`
+files passes the command policy — so the §5.3 fidelity guarantee holds in
+practice, not just on paper.
+
+The vocabulary in §6.3 expressed all six checks with **no additions needed**,
+which was the main thing this exercise was meant to test.
 
 ---
 
@@ -836,7 +909,10 @@ swe-practice/
 │   │   └── cli/main.py
 │   ├── composition.py
 │   └── config.py
-├── content/{katas,git}/…
+├── content/
+│   ├── _lib/fixture_lib.sh          # commit_as, mkremote, publish, write_file
+│   ├── fixtures.lock                # cross-platform SHA verification
+│   └── {katas,git}/…
 ├── tests/{unit,integration,content,web,e2e,fakes}/
 └── tools/vendor_assets.py
 ```
@@ -1295,3 +1371,29 @@ and 5 sessions to 6 and 9, moving the MVP from ~34 to ~40 sessions.
 The pattern worth noticing: the technical errors were cheap — look up the API,
 fix the line. The expensive ones were architectural, and all three would have
 survived to Phase 11 before doing visible damage.
+
+**2026-09-30 — flagship scenario authored and executed.** Before starting
+Phase 0, `content/git/revert-a-pushed-commit/` was written in full and run by
+hand against real git to test whether the §6.3 assertion vocabulary could
+actually express it. **It could, with no additions** — the main thing this was
+meant to find out. Results in §6.6.
+
+Four things the run surfaced that thinking about it had not:
+
+- **The pinned clock only covered the fixture.** User commits during an attempt
+  fell back to wall-clock time, so attempts were not reproducible. The clock
+  now spans the whole attempt (§6.1).
+- **The plan's own example was missing `fix-published`.** A solution that
+  reverted locally and never pushed would have passed every check while leaving
+  the build broken for the teammate the exercise is about. Fixed in §5.2, and
+  now one of the two counter-examples.
+- **Resolution grammar and failure semantics were unspecified** — what `target:`
+  accepts, and what happens when a named ref does not exist. Both pinned down
+  in §6.5, along with `worktree_clean` ignoring untracked files.
+- **`@c2` is assertion syntax only.** A content author will reach for it in
+  `solution.cmds`, where it cannot work, because the user only ever sees real
+  revisions. Belongs in the authoring guide as an explicit warning.
+
+The general lesson, and the reason this was worth doing before Phase 0: three
+of the four were invisible on paper and obvious within a minute of running the
+thing.
