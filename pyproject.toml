@@ -86,6 +86,10 @@ ignore = [
     "S101",    # asserts are the point
     "PLR2004", # literal expected values are clearer inline
     "SLF001",  # tests may reach into internals
+    # Object builders forward keyword overrides to `dataclasses.replace`, whose
+    # own signature is `**changes: Any`; mypy's dataclass plugin then checks each
+    # override against the real field type, so the Any is narrowed immediately.
+    "ANN401",
 ]
 "tools/**" = ["T20"] # vendoring scripts are allowed to talk
 
