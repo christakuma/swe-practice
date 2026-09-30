@@ -201,6 +201,9 @@ def test_the_walk_actually_found_the_domain() -> None:
     assert {
         "practice.domain",
         "practice.domain.attempt",
+        "practice.domain.checks",
+        "practice.domain.checks.registry",
+        "practice.domain.commands",
         "practice.domain.errors",
         "practice.domain.exercise",
         "practice.domain.ids",
