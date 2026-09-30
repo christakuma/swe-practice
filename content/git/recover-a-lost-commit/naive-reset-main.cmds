@@ -1,0 +1,9 @@
+# Counter-example: right commit, right command, wrong branch. Recovers onto
+# main instead of the feature branch, which both fails to fix the branch and
+# pollutes a branch that was fine. Must fail main-untouched.
+#
+# (Indices shift by one after the switch adds its own reflog entry.)
+
+git reflog
+git switch main
+git reset --hard HEAD@{4}

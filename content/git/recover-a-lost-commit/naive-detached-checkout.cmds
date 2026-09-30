@@ -1,0 +1,7 @@
+# Counter-example: finds the right commit, then checks it out instead of
+# moving the branch. Extremely common. The files come back, which is why it
+# feels like success -- but feature/csv-export never moved, and HEAD is now
+# floating, so the next checkout loses the work a second time.
+
+git reflog
+git checkout HEAD@{3}

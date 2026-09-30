@@ -31,8 +31,10 @@ scenario:
   fixture: fixture.sh
   reference: solution.cmds
   counter_examples:
-    - naive-reset-force.cmds
-    - naive-forgot-push.cmds
+    - file: naive-reset-force.cmds
+      expect_failures: [history-preserved]
+    - file: naive-forgot-push.cmds
+      expect_failures: [fix-published]
   allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
   max_commands: 25
 
@@ -81,7 +83,8 @@ scenario:
     - id: no-force-push
       label: You did not force-update a shared branch
       severity: advisory
-      assert: command_not_used
+      assert: command_used
+      not: true
       with: {pattern: 'push\b.*(--force|--force-with-lease|-f)\b'}
       explanation: |
         A correct revert fast-forwards `origin`, so a plain `git push` is

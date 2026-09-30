@@ -1,0 +1,116 @@
+schema_version: 1
+id: git/recover-a-lost-commit
+kind: git_scenario
+title: Recover work destroyed by reset --hard
+difficulty: medium
+tags: [recovery, reflog, history, branches]
+estimated_minutes: 12
+
+prompt: |
+  You spent the afternoon on `feature/csv-export` — an exporter and its
+  tests, two commits. You meant to rebase the branch onto `main`. You typed
+  `reset` instead, and it took the `--hard`.
+
+  Nothing was ever pushed, so there is no remote copy. You then switched
+  branches a couple of times before noticing, so the reset is not the most
+  recent thing that happened.
+
+  Get `feature/csv-export` back to the work you lost, without disturbing
+  `main`.
+
+  The commits were never garbage collected. Git remembers every position
+  `HEAD` has held, even the ones no branch points at any more.
+
+hints:
+  - "`git log` only shows commits reachable from a ref. Losing the ref does
+     not delete the commits — it just makes them invisible to `log`."
+  - "`git reflog` lists every value `HEAD` has had, newest first, as
+     `HEAD@{0}`, `HEAD@{1}` and so on. Read the descriptions, not just the
+     top entry: the checkouts and the reset are in there too."
+  - "You want the entry recorded when you committed the tests. Confirm it
+     with `git show --stat` before acting on it."
+  - "You are already on the branch, so `git reset --hard <that revision>`
+     moves the branch pointer back onto the recovered tip. Checking the
+     commit out instead would leave the branch exactly where it is now."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  # Each counter-example declares which check it must fail. CI asserts the
+  # named checks fail (others may fail too). Without this, an edit that
+  # shifts a HEAD@{n} index could leave a counter-example failing for an
+  # unrelated reason -- or passing -- and CI would stay green.
+  counter_examples:
+    - file: naive-detached-checkout.cmds
+      expect_failures: [on-a-branch]
+    - file: naive-cherry-pick.cmds
+      expect_failures: [originals-recovered]
+    - file: naive-reset-main.cmds
+      expect_failures: [main-untouched]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: branch-restored
+      label: feature/csv-export points at the commit you lost
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/heads/feature/csv-export", target: "@c3"}
+      explanation: |
+        The branch itself has to move. Bringing the files back into your
+        working directory, or checking the commit out, leaves
+        `feature/csv-export` exactly where the reset left it — so the work is
+        still one careless checkout away from being lost again.
+
+    - id: originals-recovered
+      label: You recovered the original commits rather than rebuilding them
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "@c2", descendant: "refs/heads/feature/csv-export"}
+      explanation: |
+        Cherry-picking or retyping the work gives you identical *files* but
+        brand-new commits, with new hashes and rewritten authorship dates.
+        The originals stay orphaned. Recovery means putting the branch back
+        onto the commits that already exist, which is the entire point of the
+        reflog.
+
+    - id: on-a-branch
+      label: HEAD is attached to a branch, not left detached
+      severity: required
+      assert: head_detached
+      not: true
+      explanation: |
+        A detached HEAD is not a home for recovered work. Commits you make
+        there belong to no branch, so you are back in exactly the situation
+        you just dug yourself out of.
+
+    - id: main-untouched
+      label: main is where it was — you recovered onto the right branch
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        Recovery should not have collateral damage. Resetting `main` onto the
+        feature work fixes nothing and breaks a branch that was fine — and if
+        `main` were shared, you would have just published someone else's
+        problem.
+
+    - id: clean-worktree
+      label: Nothing left staged or half-applied
+      severity: required
+      assert: worktree_clean
+
+    - id: used-the-reflog
+      label: You found the commit with the reflog
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (reflog\b|log\b.*(-g\b|--walk-reflogs\b))'}
+      explanation: |
+        This is the one exercise where the tool *is* the lesson. `git fsck
+        --lost-found` and digging through `.git/objects` also work, but the
+        reflog is the thing to reach for first, and knowing it exists is the
+        difference between a five-minute recovery and a lost afternoon.
+
+    # Deliberately NOT adding a command_count advisory here. A "found it
+    # efficiently" budget counts read-only commands too, so it would punish
+    # exactly the inspection that used-the-reflog rewards. See PLAN 6.5.

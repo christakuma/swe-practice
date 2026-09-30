@@ -1,0 +1,9 @@
+# Counter-example: rebuilds the work instead of recovering it.
+#
+# Cherry-picking the lost range onto the branch produces byte-identical
+# trees, so any content-only check passes. But these are NEW commits -- the
+# originals are still orphaned, and the authorship dates are rewritten.
+# Must fail originals-recovered.
+
+git reflog
+git cherry-pick HEAD@{5}..HEAD@{3}

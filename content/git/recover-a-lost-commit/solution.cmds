@@ -1,0 +1,24 @@
+# Reference solution. Every line is legal user input under the command policy.
+
+# Orient first. Which branch am I on, and what does it think it contains?
+git status --short --branch
+git log --oneline --decorate --all
+ls
+
+# The files are gone and the branch only has the skeleton commit -- but
+# nothing was garbage collected. The reflog is HEAD's own history of every
+# position it has held, including the ones no branch points at any more.
+git reflog
+
+# Read it properly. HEAD@{1} and HEAD@{2} are just the checkouts and the
+# reset; HEAD@{3} is the tip of the work, "Add tests for CSV exporter".
+git show --stat HEAD@{3}
+
+# We are already on feature/csv-export, so move the branch pointer back onto
+# the recovered tip. This is reset --hard used to UNDO a reset --hard.
+git reset --hard HEAD@{3}
+
+# Verify: two commits back, files back, tree clean, main untouched.
+git log --oneline --decorate --all
+ls
+git status --short --branch
