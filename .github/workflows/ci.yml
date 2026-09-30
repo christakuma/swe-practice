@@ -1,0 +1,78 @@
+# ---------------------------------------------------------------------------
+# Windows is in the matrix from Phase 0, not added later. It is the primary dev
+# machine, and path and subprocess bugs are exactly what CI should catch early
+# (docs/PLAN.md §9, §13). A green Linux-only build would prove little about the
+# sandbox work in Phase 3.
+# ---------------------------------------------------------------------------
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # `uv sync --locked` below is the only thing allowed to touch the
+  # environment; every later `uv run` uses it as-is rather than quietly
+  # re-resolving. (UV_FROZEN cannot be used here — uv rejects it alongside
+  # --locked.) Python 3.13 comes from .python-version.
+  UV_NO_SYNC: "1"
+
+jobs:
+  check:
+    name: check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.12.7"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Sync dependencies
+        run: uv sync --locked
+
+      # Git identity and line endings are pinned for the fixtures added from
+      # Phase 3. Doing it now means the first fixture lands on a runner that is
+      # already configured, instead of debugging CRLF SHAs against a green
+      # local machine. Fixture runs scope their own git env (PLAN.md §8.1);
+      # these settings only cover checkout and any ad-hoc repo work.
+      - name: Configure git
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git config --global init.defaultBranch main
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.invalid"
+
+      - name: Lint
+        run: uv run ruff check --output-format=github .
+
+      - name: Format
+        run: uv run ruff format --check .
+
+      - name: Types
+        run: uv run mypy
+
+      # One run over the whole suite, with the domain/application coverage gate
+      # from pyproject. Splitting by marker waits until there is more than one
+      # marker's worth of tests — pytest exits non-zero on an empty selection,
+      # so a per-marker step would fail for the wrong reason today.
+      - name: Tests
+        run: uv run pytest --cov --cov-report=term-missing
