@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 from practice.adapters.content import validate_exercise, validate_library
 from practice.adapters.content.validation import discover, unproven_by_design
 
-from .conftest import a_kata, a_scenario
+from ..conftest import a_kata, a_scenario
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .conftest import WriteExercise
+    from ..conftest import WriteExercise
 
 
 def problems(directory: Path) -> tuple[str, ...]:

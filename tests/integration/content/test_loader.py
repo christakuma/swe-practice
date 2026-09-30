@@ -9,12 +9,12 @@ import pytest
 from practice.adapters.content import ContentError, load_exercise
 from practice.domain.exercise import ExerciseKind, GitScenarioSpec
 
-from .conftest import a_kata, a_scenario
+from ..conftest import a_kata, a_scenario
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .conftest import WriteExercise
+    from ..conftest import WriteExercise
 
 
 def test_a_scenario_directory_becomes_an_exercise(

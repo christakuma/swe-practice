@@ -10,14 +10,14 @@ from practice.adapters.content import ContentError, FilesystemContentRepository
 from practice.domain.exercise import Difficulty, ExerciseFilter, ExerciseKind
 from practice.domain.ids import ExerciseId, tag
 
-from .conftest import a_kata, a_scenario
+from ..conftest import a_kata, a_scenario
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from practice.domain.ports import ContentRepository
 
-    from .conftest import WriteExercise
+    from ..conftest import WriteExercise
 
 
 @pytest.fixture

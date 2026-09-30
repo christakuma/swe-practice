@@ -37,6 +37,12 @@ dev = [
     "types-pyyaml>=6.0",
 ]
 
+# `practice validate` runs in CI and `practice` is the second driving adapter
+# over the same core as the web app (PLAN.md §2). A Typer app is callable, so it
+# is a valid entry point as-is.
+[project.scripts]
+practice = "practice.interface.cli.main:app"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
