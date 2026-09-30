@@ -431,9 +431,13 @@ class TestEventLog:
         """
         attempt = an_attempt()
         attempt.record_command(["git", "log"], OK, at=at(1))
+        snapshot = attempt.events
 
-        assert isinstance(attempt.events, tuple)
-        assert attempt.events is not attempt._events
+        attempt.record_command(["git", "status"], OK, at=at(2))
+
+        assert isinstance(snapshot, tuple)
+        assert len(snapshot) == 1
+        assert len(attempt.events) == 2
 
     def test_the_log_interleaves_every_kind_of_event_in_order(self) -> None:
         attempt = an_attempt()

@@ -96,6 +96,11 @@ ignore = [
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 
+[tool.ruff.lint.isort]
+# `tests` is a package (tests/__init__.py) so that tests/fakes is importable;
+# without this it sorts as third-party.
+known-first-party = ["practice", "tests"]
+
 # --- mypy ------------------------------------------------------------------
 
 [tool.mypy]
@@ -117,6 +122,11 @@ enable_error_code = [
 minversion = "8.0"
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --strict-config --import-mode=importlib"
+
+# The project root, so `tests.fakes` imports from every suite. `importlib` import
+# mode does not touch sys.path, which is the point of it -- this puts back the one
+# entry that is wanted, explicitly, rather than relying on rootdir insertion.
+pythonpath = ["."]
 xfail_strict = true
 filterwarnings = ["error"]
 
