@@ -4,7 +4,7 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** planning. Nothing implemented yet.
+> **Status:** Phase 0 complete — scaffolding, CI and ADRs 0001-0003.
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
 ---
@@ -1314,19 +1314,19 @@ to an interview — being able to say *"here is the record where I rejected stri
 matching, and here is the alternative I would choose if the constraints
 changed"* is worth more than any code sample.
 
-| ADR | Decision |
-|---|---|
-| 0001 | Record architecture decisions |
-| 0002 | Ports and adapters, with the boundary enforced by a test |
-| 0003 | Grade git exercises by repo state, not command text |
-| 0004 | Content as declarative data, validated by schema |
-| 0005 | Sandbox via temp dirs and subprocess, not containers |
-| 0006 | SQLite without an ORM |
-| 0007 | HTMX over a single-page app |
-| 0008 | SM-2 first, FSRS behind a port |
-| 0009 | Ship our own prompts; never redistribute problem text |
-| 0010 | CodeMirror 5 over 6, to avoid an npm build step |
-| 0011 | Reference solutions are command lists, not shell scripts |
+| ADR | Decision | Status |
+|---|---|---|
+| [0001](adr/0001-record-architecture-decisions.md) | Record architecture decisions | accepted |
+| [0002](adr/0002-ports-and-adapters-with-an-enforced-boundary.md) | Ports and adapters, with the boundary enforced by a test | accepted |
+| [0003](adr/0003-grade-git-exercises-by-repo-state.md) | Grade git exercises by repo state, not command text | accepted |
+| 0004 | Content as declarative data, validated by schema | not yet written |
+| 0005 | Sandbox via temp dirs and subprocess, not containers | not yet written |
+| 0006 | SQLite without an ORM | not yet written |
+| 0007 | HTMX over a single-page app | not yet written |
+| 0008 | SM-2 first, FSRS behind a port | not yet written |
+| 0009 | Ship our own prompts; never redistribute problem text | not yet written |
+| 0010 | CodeMirror 5 over 6, to avoid an npm build step | not yet written |
+| 0011 | Reference solutions are command lists, not shell scripts | not yet written |
 
 ---
 
@@ -1484,3 +1484,35 @@ Two scenarios in, the engine design has not needed a single change — every
 finding has been in the content schema or the assertion vocabulary. That is
 the right place for churn to land this early, and a reasonable signal that the
 §3 boundaries are drawn about right.
+
+**2026-09-30 — Phase 0 complete.** Scaffolding, CI on both platforms, and
+ADRs 0001-0003. Exit criterion met: ruff, `ruff format --check`,
+`mypy --strict` and `pytest` all green.
+
+Four things worth keeping, all found by running the thing rather than writing
+it:
+
+- **`UV_FROZEN` cannot be combined with `uv sync --locked`.** uv rejects the
+  pair outright. Both were in the first draft of the workflow, so step one
+  would have failed on every CI run. `UV_NO_SYNC=1` gives the property actually
+  wanted — one explicit sync, and no later `uv run` quietly re-resolving.
+- **`actions/checkout` and `astral-sh/setup-uv` are on v7 and v10**, not the v4
+  and v5 written from memory. Worth a habit: never pin an action major from
+  recall, check the release.
+- **ruff 0.16 formats fenced Python inside Markdown.** `ruff format --check .`
+  wanted to reflow this file's aligned-comment pseudo-Python, which is prose,
+  not code. `extend-exclude = ["*.md"]`.
+- **The coverage gate holds on empty packages.** `domain/` and `application/`
+  were created as empty packages in the scaffold commit so the gate measures
+  the right two directories from the first commit; coverage reports 100% of
+  zero statements and the 90% floor passes. A gate added after the code exists
+  gets its threshold tuned to whatever the code already scores.
+
+Two deliberate deviations from §11 as written, both recorded in the commits:
+the full runtime dependency set from §2 is declared now rather than phase by
+phase, so `uv.lock` is resolved once; and CI runs one pytest invocation instead
+of splitting by marker, because pytest exits non-zero on an empty selection and
+there are no integration or content tests yet. Markers themselves are applied
+by directory in `tests/conftest.py` — a forgotten decorator would silently drop
+a test out of every `-m` selector, which is the one failure mode a marker
+scheme must not have.
