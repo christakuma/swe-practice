@@ -171,7 +171,7 @@ class RepoQuery(Protocol):
     """Read-only git interrogation. The port that makes the check engine pure.
 
     Every assertion depends on this rather than on a git process, which is what
-    lets all 19 of them be unit-tested in milliseconds against an in-memory fake
+    lets all 22 of them be unit-tested in milliseconds against an in-memory fake
     with no git installed and no filesystem touched (PLAN.md §6.2).
 
     Every lookup returns `None` rather than raising when a revision does not

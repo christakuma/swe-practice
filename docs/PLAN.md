@@ -4,8 +4,8 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 1 complete — pure domain, ports, and the enforced
-> architecture boundary.
+> **Status:** Phase 2 complete — pure domain, the content schema and loader,
+> and `practice validate` over three exercises.
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
 ---
@@ -70,6 +70,7 @@ Decided. Rationale in the ADRs listed in §12.
 | Templating | Jinja2 + HTMX | No build step, no npm, all logic stays in Python. |
 | Editor | CodeMirror 5 (vendored) | See §8.2 — CM5 ships single-file JS/CSS, CM6 needs a bundler. |
 | Validation | Pydantic v2 | Content schema + API DTOs. |
+| Content format | YAML via `PyYAML` | Hand-authored exercise files; see ADR 0004 for why not TOML. |
 | Storage | SQLite via stdlib `sqlite3` | Hand-rolled migrations, explicit mappers, no ORM. |
 | Lint / types | `ruff`, `mypy --strict` | Both gate CI. |
 | Tests | `pytest`, `hypothesis` | Property tests on the scheduler. |
@@ -376,9 +377,14 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-references:
-  leetcode: 1        # pointer only; no problem text copied
 ```
+
+There is deliberately **no `references:` field**. The first draft had
+`references: {leetcode: 1}` as a pointer to the problem's origin, and nothing
+consumes it: the schema forbids unknown keys, so a field that is accepted and
+then dropped is worse than one that does not exist yet. Attribution lives in
+prose in `notes.md` until a page actually displays it (§13's rule about
+abstractions earning their keep, applied to data).
 
 ### 5.2 Git scenario file
 
@@ -397,6 +403,8 @@ prompt: |
 scenario:
   fixture: fixture.sh
   reference: solution.cmds
+  # Shown here as it was first drafted. §5.4 supersedes it: the long form
+  # with `expect_failures:` is the only one the schema accepts.
   counter_examples: [naive.cmds]
   allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
   max_commands: 25
@@ -612,7 +620,7 @@ Two implementations:
   single grading pass.
 - `FakeRepoQuery` — an in-memory DAG built from a small literal in the test.
 
-Every one of the ~25 assert types gets full unit coverage against the fake, in
+Every one of the 22 assert types gets full unit coverage against the fake, in
 milliseconds, with no filesystem. Integration tests then verify `GitRepoQuery`
 agrees with real git on a handful of real repos. This is the difference between
 a check engine you can refactor confidently and one you are afraid of.
@@ -629,7 +637,7 @@ paired opposites — `branch_exists`/`branch_absent`,
 `head_detached` had no partner, and authoring the recovery scenario in §6.6
 needed exactly that missing negation. Rather than add a sixth pair, the twins
 are gone: one mechanism, no "does this one have a negative form?" guesswork,
-and ~25 asserts down to 19. The `label:` field carries the human sentence, so
+and 27 asserts down to 22. The `label:` field carries the human sentence, so
 nothing reads worse in practice.
 
 **Refs and shape**
@@ -931,12 +939,12 @@ Layered deliberately, fast at the bottom.
 
 1. **Domain / application unit tests** — pure, no I/O, whole suite in
    milliseconds. Coverage gate: **90% on `domain/` and `application/`.** Because
-   the check functions live in `domain/checks/` (§6.2), the ~25 assertions fall
+   the check functions live in `domain/checks/` (§6.2), the 22 assertions fall
    inside this gate rather than outside it — which was the whole point of
    putting them there.
 2. **Architecture test** — AST-walks `domain/` and `application/`, fails on any
    import from `adapters/` or `interface/`. See §3.
-3. **Check-engine tests** — all ~25 assert types against `FakeRepoQuery`. No git
+3. **Check-engine tests** — all 22 assert types against `FakeRepoQuery`. No git
    required.
 4. **Adapter integration tests** — real git in real temp dirs, real SQLite.
    Marked `@pytest.mark.integration`. Includes a conformance suite asserting
@@ -990,8 +998,8 @@ swe-practice/
 ├── src/practice/
 │   ├── domain/
 │   │   ├── ids.py  exercise.py  attempt.py  verdict.py  review.py
-│   │   ├── ports.py  errors.py
-│   │   ├── checks/          # registry + ~25 PURE assert functions (§6.2)
+│   │   ├── ports.py  errors.py  commands.py
+│   │   ├── checks/          # registry + 22 PURE assert functions (§6.2)
 │   │   │   ├── registry.py  refs.py  trees.py  worktree.py
 │   │   │   └── recovery.py  process.py
 │   │   └── scheduling/sm2.py
@@ -999,7 +1007,7 @@ swe-practice/
 │   │   ├── dto.py  registry.py
 │   │   └── use_cases/*.py
 │   ├── adapters/
-│   │   ├── content/{schema,loader,filesystem}.py
+│   │   ├── content/{schema,loader,validation,filesystem,errors}.py
 │   │   ├── persistence/sqlite/{connection,migrations/,attempts,reviews,mappers}.py
 │   │   ├── sandbox/{workspace,provisioner,command_policy,virtual_commands,env}.py
 │   │   ├── git/{repo_query,fixture_runner,graph}.py
@@ -1031,7 +1039,7 @@ because it makes the git history itself part of the portfolio.
 hours.** That is a real project, not a weekend. Phase 11 roughly doubles it.
 
 Phases 3 and 5 carry the widest error bars — they are the ones with genuine
-unknowns (cross-platform subprocess behaviour, and ~25 assertions against two
+unknowns (cross-platform subprocess behaviour, and 22 assertions against two
 `RepoQuery` implementations). If a phase is going to run over, it is one of
 those two.
 
@@ -1088,14 +1096,17 @@ boundary test demonstrably fails when you deliberately add a bad import.
 - Content integrity test harness (schema + registry coverage)
 - `practice validate` CLI command
 
-**Commits**
-1. `feat(content): add pydantic schema for exercise files`
-2. `feat(content): add filesystem content repository`
-3. `feat(cli): add practice validate command`
-4. `content: add first kata and two git scenarios`
+**Commits** (as shipped; §16 records why the order differs)
+1. `feat(domain): add the assertion registry and command-line policy`
+2. `feat(content): add pydantic schema for exercise files`
+3. `feat(content): add filesystem content repository`
+4. `content(katas): add the two-sum kata`
+5. `feat(cli): add practice validate command`
+6. `test(content): validate every exercise on disk`
+7. `docs: add ADR 0004 and mark phase 2 complete`
 
 **Exit:** `practice validate` passes on all three exercises and fails with a
-clear, located message on a deliberately broken file.
+clear, located message on a deliberately broken file. **Met** — 2026-09-30.
 
 **Sequencing note:** the *schema* half of the content integrity suite lands
 here, but the *replay* half — proving `solution.cmds` passes and `naive.cmds`
@@ -1163,7 +1174,7 @@ failing, with the content test proving stub fails and reference passes.
 ### Phase 5 — Git scenario engine · 9 sessions
 
 The heart of the project, and by a wide margin the longest phase. Two
-`RepoQuery` implementations, ~25 assertions with tests, a conformance suite and
+`RepoQuery` implementations, 22 assertions with tests, a conformance suite and
 two use cases is simply a lot of surface — the earlier 5-session estimate was
 wishful.
 
@@ -1362,7 +1373,7 @@ changed"* is worth more than any code sample.
 | [0001](adr/0001-record-architecture-decisions.md) | Record architecture decisions | accepted |
 | [0002](adr/0002-ports-and-adapters-with-an-enforced-boundary.md) | Ports and adapters, with the boundary enforced by a test | accepted |
 | [0003](adr/0003-grade-git-exercises-by-repo-state.md) | Grade git exercises by repo state, not command text | accepted |
-| 0004 | Content as declarative data, validated by schema | not yet written |
+| [0004](adr/0004-content-as-declarative-data.md) | Content is declarative data, validated by schema | accepted |
 | 0005 | Sandbox via temp dirs and subprocess, not containers | not yet written |
 | 0006 | SQLite without an ORM | not yet written |
 | 0007 | HTMX over a single-page app | not yet written |
@@ -1403,7 +1414,7 @@ Rehearse these; they are the return on the architectural investment.
   land on end-state assertions with advisory checks for craft.
 - **"How do you test something that depends on an external tool?"** The
   `RepoQuery` port: interrogate through a narrow read-only interface, implement
-  it twice (real git, in-memory fake), unit-test all 25 assertions against the
+  it twice (real git, in-memory fake), unit-test all 22 assertions against the
   fake in milliseconds, then run a conformance suite proving the two agree.
 - **"How do you keep an architecture from decaying?"** A test that AST-walks the
   domain and fails the build on an inward-pointing violation. Rules without
@@ -1507,7 +1518,7 @@ all about the vocabulary rather than the engine:
 
 - **Negation was asymmetric.** Five asserts had negative twins; `head_detached`
   had none, and this scenario needed exactly that. Resolved by making `not:`
-  a universal modifier and deleting all six twins — 25 asserts down to 19, and
+  a universal modifier and deleting all six twins — 27 asserts down to 22, and
   one less thing for a content author to guess about. The revert scenario's
   `command_not_used` was migrated to `command_used` + `not: true` so both
   exercises use one mechanism.
@@ -1619,3 +1630,92 @@ never fail the check it claims to — so `GitScenarioSpec` refuses to exist in
 either state. "Hints and notes are non-empty" is a rule about a *good* exercise
 rather than a *representable* one, so it stays in §9 where the plan put it; the
 domain should not refuse to model an exercise someone is halfway through drafting.
+
+**2026-09-30 — Phase 2 complete.** The content schema, the loader, the
+filesystem repository, `practice validate`, the first kata, and the content
+integrity suite. `ruff`, `ruff format --check`, `mypy --strict` and 385 tests
+green, with `domain/` and `application/` at **100%** against the 90% gate. Exit
+criterion checked rather than asserted: `practice validate` passes on all three
+exercises, and on a deliberately broken file reports every problem at once,
+located to the field, exiting 1.
+
+Four findings, and the first is the one to keep:
+
+- **A schema constraint that duplicates a domain invariant makes errors worse,
+  not merely redundant.** `checks` carried a Pydantic `min_length=1` alongside
+  `GitScenarioSpec`'s own "a scenario needs at least one check". A single
+  mistyped assertion then produced *two* errors: the real one, and "Tuple
+  should have at least 1 item after validation, not 0" — because the check that
+  failed validation had been dropped from the list. An author reads the second
+  and goes hunting for a bug that is not there. Removed from all three fields
+  that had it; the domain already held every one of those rules. The general
+  form is worth remembering: duplicated validation does not just cost
+  maintenance, it *generates misinformation*, because the second validator sees
+  the wreckage left by the first.
+- **The plan's own assertion count was wrong, in two directions at once.** §6.3
+  enumerates 22 asserts; the prose said 19, and four other sections said "~25".
+  The "25 down to 19" arithmetic in the September review subtracted six twins
+  from a total the enumerated list never had. Corrected everywhere to 22 — and
+  the registry in `domain/checks/registry.py` is now the single place the
+  vocabulary is written down, so the next such drift is a failing test rather
+  than a number in prose. A count repeated in six places is a count that will be
+  wrong in at least one.
+- **§2's stack table had no YAML parser**, although §5 makes content YAML. This
+  is exactly why Phase 0's "declare the whole dependency set now" pass missed
+  `pyyaml`: it worked from the table, and the table was the thing that was
+  incomplete. A summary used as a source of truth inherits every gap in it.
+- **Content is code and needs running.** Two of the ten kata tests were wrong on
+  first writing, and both were the kind of wrong that ships: one asserted a
+  `ValueError` for "no pair exists" when the prompt promises a pair always does
+  — grading a correct solution against undefined behaviour — and another used
+  `[4, 1, 9]` with a target of 8, a list with no valid pair at all. Neither was
+  visible on the page. Both took seconds to find by running the file.
+
+Also found, and noted for Phase 4: **the `python -I -m pytest` invocation in §7
+cannot import `solution`.** `-I` implies `-P`, which drops the workspace from
+`sys.path`, so `from solution import two_sum` fails before any test runs. The
+workspace `conftest.py` that §7 already lists is what has to put it back — worth
+knowing now rather than debugging it as a mysterious collection error later.
+
+Five deliberate deviations from §5, §10 and §11, all folded back above so the
+plan and the repo do not disagree silently:
+
+- **The commit order in §11 was wrong again**, in the same way Phase 1's was. It
+  opens with the schema, but the schema cannot validate an `assert:` name
+  without the registry, and the registry is domain code — so the vocabulary and
+  the command-line parser land first. A phase plan written outside-in reads
+  naturally and compiles backwards; two for two.
+- **`adapters/content/validation.py` is a fourth module**, not one of the three
+  §10 lists. Loading and auditing are different jobs with different callers:
+  browsing the library must not fail because a draft exercise has an empty
+  `notes.md`, while `practice validate` must say so. It is the same line §4.2
+  draws inside the domain — a correctness hole is a failure, a quality rule is a
+  report.
+- **§5.2's short counter-example form is rejected outright.** §5.4 supersedes it,
+  and accepting `counter_examples: [naive.cmds]` would mean inventing an
+  `expect_failures` the author never wrote — which is the weak contract §5.4
+  exists to replace.
+- **§5.1's `references:` field is not implemented.** Nothing consumes it, and
+  `extra="forbid"` means a field that is accepted and then dropped is worse than
+  one that does not exist. Attribution lives in `notes.md` prose until a page
+  displays it.
+- **`composition.py` is deferred.** There is one adapter to construct; a wiring
+  module with a single line in it is precisely the abstraction §13 says to
+  delete rather than carry. It arrives when there are two things to wire.
+
+One rule was placed, and it is the Phase 2 counterpart to Phase 1's. The content
+suite now requires **every `required` check to carry an explanation**, and it
+found a real gap the hour it was written: `recover-a-lost-commit`'s
+`clean-worktree` had shipped with a label and nothing else. A learner who failed
+it would have been told what was wrong and not why — the exact failure §1 exists
+to reject, in the project's own content. The rule sits in `tests/content/`
+rather than in the schema for the §4.2 reason: an exercise missing an
+explanation is representable, and someone may be halfway through drafting it. It
+is still not shippable.
+
+Finally, `tests/content/test_library.py` carries a tripwire rather than a
+comment. §11 says not to mistake green here for content that works;
+`test_the_unproven_guarantees_are_still_unproven` asserts the *count* of things
+`practice validate` admits it cannot prove, so when the sandbox lands and that
+list shrinks, the build fails and someone has to come back and write the replay
+tests. A note in a plan is not a mechanism.

@@ -25,8 +25,16 @@ an afternoon do not need one.
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | accepted |
 | [0002](0002-ports-and-adapters-with-an-enforced-boundary.md) | Ports and adapters, with the boundary enforced by a test | accepted |
 | [0003](0003-grade-git-exercises-by-repo-state.md) | Grade git exercises by repo state, not command text | accepted |
+| [0004](0004-content-as-declarative-data.md) | Content is declarative data, validated by schema | accepted |
 
-Planned, not yet written (PLAN.md §12): content as declarative data · sandbox
-via temp dirs rather than containers · SQLite without an ORM · HTMX over an SPA ·
-SM-2 first with FSRS behind a port · ship our own prompts · CodeMirror 5 over 6 ·
-reference solutions as command lists.
+Planned, not yet written (PLAN.md §12): sandbox via temp dirs rather than
+containers · SQLite without an ORM · HTMX over an SPA · SM-2 first with FSRS
+behind a port · ship our own prompts · CodeMirror 5 over 6 · reference solutions
+as command lists.
+
+**0011 is overdue.** "Reference solutions are command lists, not shell scripts"
+was decided in the pre-Phase-0 review and is now enforced in code — Phase 2
+validates every reference line against the exercise's own `allowed_commands`.
+The rationale is recorded in PLAN.md §5.3 and §16 rather than here. It should be
+written before Phase 5 replays those lists, which is the point at which the
+decision becomes hard to reverse.

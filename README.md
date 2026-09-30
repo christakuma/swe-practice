@@ -15,10 +15,11 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 1 (domain core) complete — the pure domain, all ten ports, and
-the architecture boundary test. See [docs/PLAN.md](docs/PLAN.md) for the full
-design and the phase plan, and [docs/adr/](docs/adr/) for the decisions and the
-alternatives that were rejected.
+**Status:** Phase 2 (content model and loader) complete — the pure domain, the
+Pydantic content schema, the filesystem repository, and `practice validate` over
+three exercises. See [docs/PLAN.md](docs/PLAN.md) for the full design and the
+phase plan, and [docs/adr/](docs/adr/) for the decisions and the alternatives
+that were rejected.
 
 ## Getting started
 
@@ -40,19 +41,32 @@ uv run pytest --cov --cov-report=term-missing
 ```
 
 Test selection follows the directory layout under `tests/` — markers are applied
-automatically, so `uv run pytest -m unit` gets the fast pure tests and
-`-m integration` gets the ones that touch real git and real SQLite.
+automatically, so `uv run pytest -m unit` gets the fast pure tests,
+`-m integration` gets the ones that touch the filesystem, and `-m content` runs
+the library checks over every exercise on disk.
+
+## Checking the exercise library
+
+```bash
+uv run practice validate
+```
+
+Reports every problem in every exercise in one pass, located to the field, and
+exits non-zero if anything is wrong — so CI depends on it. It also prints what a
+passing run does **not** prove: until the sandbox lands in Phase 3, a git
+scenario is structurally valid and not yet known to be solvable.
 
 ## Layout
 
 ```
 src/practice/
 ├── domain/        pure data and functions; zero I/O
+│   └── checks/    the assertion vocabulary, as pure functions over a port
 ├── application/   use cases over ports
 ├── adapters/      git, sandbox, SQLite, filesystem content
 ├── interface/     FastAPI + HTMX web app, Typer CLI
-└── composition.py the only module that imports across all layers
-content/           exercises as declarative data
+└── config.py      where the exercise library lives
+content/           exercises as declarative data — adding one needs no code
 docs/adr/          architecture decision records
 tests/             unit · integration · content · web · e2e
 ```
