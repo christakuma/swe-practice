@@ -1,0 +1,44 @@
+schema_version: 1
+id: katas/two-sum
+kind: kata
+title: Two Sum
+difficulty: easy
+tags: [arrays, hash-map]
+estimated_minutes: 15
+
+prompt: |
+  You are given a list of integers and a target value. Exactly one pair of
+  distinct positions holds two numbers that add up to the target.
+
+  Return those two positions as a tuple, smaller index first.
+
+  ```
+  two_sum([2, 7, 11, 15], 9)   ->  (0, 1)
+  two_sum([3, 2, 4], 6)        ->  (1, 2)
+  two_sum([3, 3], 6)           ->  (0, 1)
+  ```
+
+  The list is not sorted. It may contain negatives and repeated values, and it
+  may be long enough that comparing every pair is too slow.
+
+hints:
+  - "Write the obvious version first — two nested loops over every pair. It is
+     correct, and having it in front of you makes the next question concrete:
+     what is it recomputing?"
+  - "Standing on any one element, there is exactly one number that would
+     complete the pair. You can name it without searching for it. What is it?"
+  - "You need to answer \"have I already seen 42?\" in constant time. A list
+     cannot do that. A dict from value to index can."
+  - "Build the dict as you scan, not up front. Checking before you insert is
+     what stops an element pairing with itself, and it makes duplicates resolve
+     to the earlier index for free."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
