@@ -71,8 +71,16 @@ jobs:
         run: uv run mypy
 
       # One run over the whole suite, with the domain/application coverage gate
-      # from pyproject. Splitting by marker waits until there is more than one
-      # marker's worth of tests — pytest exits non-zero on an empty selection,
-      # so a per-marker step would fail for the wrong reason today.
+      # from pyproject. Splitting by marker still waits: `web` and `e2e` have no
+      # tests yet and pytest exits non-zero on an empty selection, so those two
+      # steps would fail for the wrong reason.
       - name: Tests
         run: uv run pytest --cov --cov-report=term-missing
+
+      # Redundant with tests/content/, and kept anyway. PLAN.md §5.4 puts this
+      # command in CI, and what it proves that the suite does not is that the
+      # command itself works — its exit code is the contract a content author
+      # relies on locally, and a CLI exercised only through its own library code
+      # can be broken in every way that matters while the tests stay green.
+      - name: Validate content
+        run: uv run practice validate

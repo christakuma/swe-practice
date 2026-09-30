@@ -99,6 +99,13 @@ scenario:
       label: Nothing left staged or half-applied
       severity: required
       assert: worktree_clean
+      explanation: |
+        Recovery is not finished while the files are still in flight. A
+        half-applied `git checkout <sha> -- .` leaves the content in your
+        working directory and the branch pointer where the reset left it —
+        which looks like success until the next `git checkout` throws it all
+        away again. Untracked scratch files are ignored here; staged and
+        unstaged changes are not.
 
     - id: used-the-reflog
       label: You found the commit with the reflog
