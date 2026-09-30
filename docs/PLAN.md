@@ -446,6 +446,21 @@ Pydantic v2 models in `adapters/content/schema.py`, exercised by:
 - Every command in `reference` and `counter_examples` must satisfy the
   exercise's own `allowed_commands` policy — caught at validation time, not at
   grading time.
+- **Every counter-example declares which checks it must fail**, via
+  `expect_failures: [check-id, ...]`:
+
+  ```yaml
+  counter_examples:
+    - file: naive-reset-main.cmds
+      expect_failures: [main-untouched]
+  ```
+
+  "Fails at least one check" is too weak a contract, and §6.6 showed why:
+  counter-examples that reference `HEAD@{n}` depend on reflog indices that
+  shift when a command is added. An edit could silently leave a
+  counter-example failing for an unrelated reason — or passing outright —
+  with CI none the wiser. Naming the expected failure makes that rot a build
+  error. Other checks may also fail; the named ones must.
 
 ---
 
@@ -564,26 +579,47 @@ a check engine you can refactor confidently and one you are afraid of.
 Each `assert:` is a registered pure function
 `(RepoQuery, params, Attempt) -> CheckReport`. v1 vocabulary:
 
+**Negation is a modifier, not a separate assert.** Any check may carry
+`not: true`, which inverts its result. The first draft of this section had
+paired opposites — `branch_exists`/`branch_absent`,
+`worktree_clean`/`worktree_dirty`, `command_used`/`command_not_used` — but
+`head_detached` had no partner, and authoring the recovery scenario in §6.6
+needed exactly that missing negation. Rather than add a sixth pair, the twins
+are gone: one mechanism, no "does this one have a negative form?" guesswork,
+and ~25 asserts down to 19. The `label:` field carries the human sentence, so
+nothing reads worse in practice.
+
 **Refs and shape**
-`ref_points_at` · `branch_exists` · `branch_absent` · `head_detached` ·
-`is_ancestor` · `commit_count` (`equals`/`at_least`/`at_most`) ·
-`commit_subject_matches` · `ref_unchanged {since: fixture}` · `ref_changed` ·
-`linear_history` · `has_merge_commit` · `tag_exists` · `tag_points_at`
+`ref_points_at` · `branch_exists` · `head_detached` · `is_ancestor` ·
+`commit_count` (`equals`/`at_least`/`at_most`) · `commit_subject_matches` ·
+`ref_unchanged {since: fixture}` · `linear_history` · `tag_exists` ·
+`tag_points_at`
 
 **Trees and content**
-`tree_equals` · `file_exists` · `file_absent` · `file_matches` ·
-`file_at_ref_matches`
+`tree_equals` · `file_exists` · `file_matches` · `file_at_ref_matches`
 
 **Worktree and index**
-`worktree_clean` · `worktree_dirty` · `index_staged {paths}` ·
+`worktree_clean {include_untracked?}` · `index_staged {paths}` ·
 `unmerged_paths_empty` · `no_conflict_markers`
 
 **Recovery surfaces**
-`stash_count` · `reflog_contains {ref, pattern}`
+`stash_count` · `reflog_contains {ref, pattern}` †
 
 **Process (advisory — reads the `Attempt` event log, not the repo)**
-`command_used {pattern}` · `command_not_used {pattern}` ·
-`command_count {at_most}`
+`command_used {pattern}` · `command_count {at_most}` †
+
+† **Unproven.** Two exercises in and neither of these has found an honest use.
+`reflog_contains` turns out to be either vacuously true (the fixture put the
+entry there) or a way of grading *how* the user got somewhere, which is the
+thing §1 exists to reject. `command_count` is worse than useless on the
+recovery exercise: a "found it efficiently" budget counts read-only commands,
+so it punishes precisely the inspection that the `used-the-reflog` advisory
+rewards. It would need a `mutating_only: true` filter, which in turn needs a
+maintained list of read-only git subcommands.
+
+Both stay in the vocabulary for now, both are flagged, and per the §13 rule
+about abstractions earning their keep: **if no exercise in Phase 11 needs
+them, they get deleted rather than carried.**
 
 The process assertions are why `Attempt` keeps a full event log. `command_used`
 can reward reaching for the reflog on a "recover a lost commit" exercise;
@@ -663,8 +699,29 @@ Also confirmed: the fixture produces identical SHAs across runs
 files passes the command policy — so the §5.3 fidelity guarantee holds in
 practice, not just on paper.
 
-The vocabulary in §6.3 expressed all six checks with **no additions needed**,
-which was the main thing this exercise was meant to test.
+**Second scenario: `content/git/recover-a-lost-commit/`.** Chosen to exercise
+the assertion families the first one did not touch — `ref_unchanged`, the
+negation case, and recovery. Two commits destroyed by `reset --hard`, with two
+branch switches afterwards so the reset is *not* the top reflog entry and
+`HEAD@{1}` is a trap.
+
+| | branch-restored | originals-recovered | on-a-branch | main-untouched |
+|---|---|---|---|---|
+| `solution.cmds` (reflog, reset onto tip) | pass | pass | pass | pass |
+| `naive-detached-checkout.cmds` | fail | fail | **fail** | pass |
+| `naive-cherry-pick.cmds` | fail | **fail** | pass | pass |
+| `naive-reset-main.cmds` | fail | fail | pass | **fail** |
+
+Each counter-example fails its declared check, and the cherry-pick row repeats
+the revert scenario's lesson in a different key: the files are byte-identical
+and the commit messages match, but the hashes differ (`c2b9c97` vs `a4eeb2e`)
+because the work was *rebuilt* rather than recovered. `originals-recovered` —
+an ancestry assertion — is the only thing that can tell those apart.
+
+**Verdict on the vocabulary.** It expressed all six checks of the first
+scenario and all five of the second with no additions. It needed one
+*structural* change (uniform `not:`, §6.3) and produced two asserts that have
+not yet justified their existence. That is a vocabulary worth building on.
 
 ---
 
@@ -849,8 +906,9 @@ Layered deliberately, fast at the bottom.
      passes an empty stub is a broken test suite);
    - scenarios: the fixture runs clean, `solution.cmds` passes all `required`
      checks **when replayed through the real command policy**, and each
-     `naive.cmds` counter-example **fails at least one** — catching assertions
-     too loose to tell right from wrong;
+     counter-example fails **exactly the checks it declares** in
+     `expect_failures` — catching both assertions too loose to tell right from
+     wrong, and counter-examples that have quietly rotted;
    - at least one `required` check exists, and every reference command is legal
      under the exercise's own `allowed_commands`;
    - hints and notes are non-empty.
@@ -1397,3 +1455,32 @@ Four things the run surfaced that thinking about it had not:
 The general lesson, and the reason this was worth doing before Phase 0: three
 of the four were invisible on paper and obvious within a minute of running the
 thing.
+
+**2026-09-30 — second scenario authored and executed.**
+`content/git/recover-a-lost-commit/` (reflog recovery), chosen specifically to
+hit the assertion families the revert scenario did not. Solution and all three
+counter-examples behave as designed; results in §6.6. Three more findings,
+all about the vocabulary rather than the engine:
+
+- **Negation was asymmetric.** Five asserts had negative twins; `head_detached`
+  had none, and this scenario needed exactly that. Resolved by making `not:`
+  a universal modifier and deleting all six twins — 25 asserts down to 19, and
+  one less thing for a content author to guess about. The revert scenario's
+  `command_not_used` was migrated to `command_used` + `not: true` so both
+  exercises use one mechanism.
+- **`command_count` actively fights this exercise.** An "efficiency" budget
+  counts read-only commands, so it penalises the same inspection the
+  `used-the-reflog` advisory rewards. The check was removed from the exercise
+  rather than shipped, with a comment saying why. Along with `reflog_contains`
+  — which is either vacuous or grades method, not outcome — it is now flagged
+  as unproven and will be deleted if Phase 11 does not need it.
+- **"Counter-example fails at least one check" is too weak a contract.**
+  Counter-examples referring to `HEAD@{n}` depend on reflog indices that shift
+  when a command is added, so an edit could leave one failing for an unrelated
+  reason, or passing outright, with CI green. Counter-examples now declare
+  `expect_failures: [check-id]` (§5.4).
+
+Two scenarios in, the engine design has not needed a single change — every
+finding has been in the content schema or the assertion vocabulary. That is
+the right place for churn to land this early, and a reasonable signal that the
+§3 boundaries are drawn about right.
