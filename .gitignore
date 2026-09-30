@@ -1,0 +1,97 @@
+# ---------------------------------------------------------------------------
+# swe-practice
+#
+# Deliberately committed, despite looking generated — do not add these:
+#   uv.lock                      reproducible dependency resolution
+#   content/fixtures.lock         cross-platform SHA verification (Phase 3)
+#   .../web/static/vendor/**      offline assets; the app must work with no
+#                                 network, so vendored JS/CSS is source
+# ---------------------------------------------------------------------------
+
+# --- Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+MANIFEST
+
+# --- Virtualenvs -----------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+
+# --- Test, type and lint caches -------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+
+# --- Coverage --------------------------------------------------------------
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+nosetests.xml
+
+# --- Runtime state ---------------------------------------------------------
+# Real data lives under platformdirs (user_data_dir / user_cache_dir), outside
+# the repo. These cover a dev override that points storage at the working tree.
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+practice.db*
+
+# Attempt workspaces — throwaway git repos built by fixtures (§8.1).
+# Never committed: they are generated, disposable, and full of loose objects.
+/ws/
+/workspaces/
+
+# --- Scratch ---------------------------------------------------------------
+scratch/
+tmp/
+*.log
+*.bak
+*.orig
+*.rej
+
+# --- Secrets / local config ------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Node ------------------------------------------------------------------
+# Not used in v1 (HTMX + CodeMirror 5 need no build step). Present in case a
+# future CodeMirror 6 + esbuild step arrives; the bundle output stays committed.
+node_modules/
+npm-debug.log*
+.parcel-cache/
+
+# --- Editors and tooling ---------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.claude/settings.local.json
+
+# --- OS --------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

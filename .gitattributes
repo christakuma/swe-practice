@@ -1,0 +1,37 @@
+# ---------------------------------------------------------------------------
+# Line endings are load-bearing in this project — see docs/PLAN.md §8.1.
+#
+# A fixture.sh checked out with CRLF fails in bash on the stray \r, with an
+# error that points nowhere near the real cause. And because fixture commit
+# SHAs must match byte-for-byte across Windows and Linux CI (§6.1), blob
+# content has to be identical on both — which means LF, everywhere, always.
+# ---------------------------------------------------------------------------
+
+# Normalize all text in the repository; check out LF on every platform.
+* text=auto eol=lf
+
+# The two that would actually break. Explicit for the benefit of the next
+# person to read this file.
+*.sh    text eol=lf
+*.cmds  text eol=lf
+
+# Genuinely need CRLF to run on Windows.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Binary — never normalize, never diff.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.db    binary
+*.sqlite3 binary
+
+# Keep vendored and generated files out of diffs and language statistics.
+src/practice/interface/web/static/vendor/** linguist-vendored
+uv.lock -diff linguist-generated
