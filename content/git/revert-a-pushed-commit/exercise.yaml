@@ -1,0 +1,101 @@
+schema_version: 1
+id: git/revert-a-pushed-commit
+kind: git_scenario
+title: Undo a commit that is already on origin
+difficulty: medium
+tags: [history, revert, collaboration, remotes]
+estimated_minutes: 10
+
+prompt: |
+  You pushed the most recent commit to `origin/main` about an hour ago, and a
+  teammate has already pulled it. It renamed `parse_line` to `parse` without
+  updating `build.sh`, so the build is now broken for everyone.
+
+  Get `main` working again — on your machine **and** on `origin` — without
+  rewriting history that other people already have.
+
+  Start by looking around. `git log`, `git status`, and `cat` are available;
+  reading `build.sh` and `parser.py` will tell you exactly what broke.
+
+hints:
+  - "Read `build.sh`, then `parser.py`. What does the build expect to find?"
+  - "Your teammate already has this commit in their clone. What happens to
+     them if it stops being an ancestor of `main`?"
+  - "`git reset` moves a branch pointer, discarding the commit from that
+     branch's history. `git revert` adds a *new* commit that undoes an old
+     one, leaving it reachable. Only one of those is safe here."
+  - "`git revert HEAD`, then `git push origin main` — no force needed,
+     because your fix is a fast-forward."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - naive-reset-force.cmds
+    - naive-forgot-push.cmds
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: content-restored
+      label: The committed tree matches the state before the bad commit
+      severity: required
+      assert: tree_equals
+      with: {ref: HEAD, target: "@c2"}
+      explanation: |
+        HEAD should point at a commit whose tree is byte-identical to c2's, so
+        `build.sh` finds `parse_line` again. Note this is about committed
+        content, not your working directory — clean-worktree covers that
+        separately.
+
+    - id: clean-worktree
+      label: Nothing left staged or half-finished
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        A fix that only exists in your working directory is not a fix. Commit
+        it or discard it, but do not leave `main` in a partial state.
+
+    - id: history-preserved
+      label: The bad commit is still reachable — you did not rewrite published history
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "@c3", descendant: HEAD}
+      explanation: |
+        Your teammate already has c3. If it stops being an ancestor of `main`,
+        their next pull either conflicts or silently reintroduces the bad
+        commit, and anyone who branched off c3 is stranded. `git revert` undoes
+        the change with a new commit and leaves c3 in history, which is what
+        makes it safe for a branch other people have pulled.
+
+    - id: fix-published
+      label: The fix is on origin, not just on your machine
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/remotes/origin/main", target: HEAD}
+      explanation: |
+        The build is broken for everyone, not just for you. Until
+        `origin/main` points at your fix, your teammate's next pull still
+        gets the breakage.
+
+    - id: no-force-push
+      label: You did not force-update a shared branch
+      severity: advisory
+      assert: command_not_used
+      with: {pattern: 'push\b.*(--force|--force-with-lease|-f)\b'}
+      explanation: |
+        A correct revert fast-forwards `origin`, so a plain `git push` is
+        enough. Reaching for `--force` on a shared branch is the habit this
+        exercise exists to break — it is how you silently overwrite work a
+        colleague has already pushed.
+
+    - id: looked-before-leaping
+      label: You inspected the repository before changing it
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|status|diff|reflog)\b'}
+      explanation: |
+        Operational git is mostly reading. Establishing what state you are in
+        before you mutate it is the actual skill being practised here, and the
+        one that separates people who recover from a bad day from people who
+        make it worse.

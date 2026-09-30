@@ -1,0 +1,8 @@
+# Counter-example: right tool, job half done. Reverts correctly but never
+# publishes, so the build is still broken for everyone else.
+#
+# Exercises a different assertion than naive-reset-force: this one must fail
+# fix-published while passing history-preserved.
+
+git log --oneline
+git revert --no-edit HEAD

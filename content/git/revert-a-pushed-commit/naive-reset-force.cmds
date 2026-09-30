@@ -1,0 +1,8 @@
+# Counter-example: the tempting answer. Wind main back, shove it upstream.
+#
+# Produces exactly the right FILES, which is why it is tempting -- and why
+# grading on content alone would pass it. Must fail history-preserved.
+
+git log --oneline
+git reset --hard HEAD~1
+git push --force origin main

@@ -1,0 +1,23 @@
+# Reference solution. One command per line; blank lines and # comments are
+# ignored. Every line is replayed through the real command policy, so this
+# file can only contain things the user is also allowed to type.
+
+# Look before touching anything: where is main, where is origin/main?
+git log --oneline --decorate --all
+git status --short --branch
+
+# Confirm what c3 actually did.
+git show --stat HEAD
+cat build.sh
+cat parser.py
+
+# c3 is already published, so undo it with a NEW commit rather than moving
+# the branch pointer.
+git revert --no-edit HEAD
+
+# Verify: content is back, and c3 is still in history.
+git log --oneline --decorate --all
+cat parser.py
+
+# Publish the fix. A revert nobody can pull is not a fix.
+git push origin main
