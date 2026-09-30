@@ -8,6 +8,15 @@ fails loudly instead of silently taking the default. Silently ignoring a key the
 author clearly meant is the most expensive kind of content bug, because the
 exercise still loads and still grades — just not the way it was written.
 
+**Nothing here restates a rule the domain already holds.** Not only for the
+usual reason — two copies drift — but because a Pydantic constraint that
+duplicates a domain invariant makes error messages *worse*. `checks` carried a
+`min_length=1` alongside `GitScenarioSpec`'s own "a scenario needs at least one
+check": a single mistyped assertion then dropped that check from the tuple and
+reported two errors, the real one and "Tuple should have at least 1 item after
+validation, not 0". An author reads the second and goes looking for a second
+bug that does not exist.
+
 **Domain value objects are constructed inside validators.** `InvalidValueError`
 subclasses `ValueError` precisely so that Pydantic turns it into a validation
 error with the field path attached (PLAN.md §4.1). That is what keeps the rules
@@ -174,7 +183,7 @@ class CounterExampleModel(_Model):
     """
 
     file: _Text
-    expect_failures: Annotated[tuple[_Text, ...], Field(min_length=1)]
+    expect_failures: tuple[_Text, ...]
 
     def to_domain(self) -> CounterExample:
         return CounterExample(
@@ -221,16 +230,6 @@ class _SpecModel(_Model):
     def to_domain(self) -> ExerciseSpec:
         raise NotImplementedError
 
-    @property
-    def referenced_files(self) -> tuple[str, ...]:
-        """Every sibling file this block names, for the "does it exist" check."""
-        raise NotImplementedError
-
-    @property
-    def command_lists(self) -> tuple[str, ...]:
-        """The `.cmds` files whose every line must satisfy the allowlist (§5.4)."""
-        return ()
-
 
 class KataSpecModel(_SpecModel):
     """The `kata:` block. Filenames are relative to the exercise directory."""
@@ -252,18 +251,14 @@ class KataSpecModel(_SpecModel):
             complexity=self.complexity.to_domain() if self.complexity else None,
         )
 
-    @property
-    def referenced_files(self) -> tuple[str, ...]:
-        return (self.stub, self.tests, self.reference)
-
 
 class GitScenarioSpecModel(_SpecModel):
     """The `scenario:` block."""
 
     fixture: _Text
     reference: _Text
-    checks: Annotated[tuple[CheckModel, ...], Field(min_length=1)]
-    allowed_commands: Annotated[frozenset[_Text], Field(min_length=1)]
+    checks: tuple[CheckModel, ...]
+    allowed_commands: frozenset[_Text]
     counter_examples: tuple[CounterExampleModel, ...] = ()
     max_commands: Annotated[int, Field(ge=1)] = 25
     command_timeout_seconds: Annotated[int, Field(ge=1)] = 10
@@ -297,19 +292,6 @@ class GitScenarioSpecModel(_SpecModel):
             max_commands=self.max_commands,
             command_timeout_seconds=self.command_timeout_seconds,
         )
-
-    @property
-    def referenced_files(self) -> tuple[str, ...]:
-        return (
-            self.fixture,
-            self.reference,
-            *(example.file for example in self.counter_examples),
-        )
-
-    @property
-    def command_lists(self) -> tuple[str, ...]:
-        """The files the loader has to check against `allowed_commands` (§5.4)."""
-        return (self.reference, *(example.file for example in self.counter_examples))
 
 
 # --- the file itself -------------------------------------------------------
@@ -357,16 +339,6 @@ class _ExerciseFileBase(_Model):
     def spec(self) -> ExerciseSpec:
         """The validated domain spec, built during validation."""
         return self.spec_model.domain
-
-    @property
-    def referenced_files(self) -> tuple[str, ...]:
-        """Every sibling file the spec names, for the "does it exist" check."""
-        return self.spec_model.referenced_files
-
-    @property
-    def command_lists(self) -> tuple[str, ...]:
-        """The `.cmds` files whose every line must satisfy the allowlist."""
-        return self.spec_model.command_lists
 
     def to_exercise(self, *, notes: str) -> Exercise:
         """Assemble the domain aggregate.

@@ -173,6 +173,18 @@ class KataSpec:
     def kind(self) -> ExerciseKind:
         return ExerciseKind.KATA
 
+    @property
+    def referenced_files(self) -> tuple[str, ...]:
+        """Every sibling file this spec names, relative to the exercise directory.
+
+        Here rather than only in the content adapter because two other callers
+        want the same list for different reasons: validation checks the files
+        exist, and the Phase 3 provisioner copies them into a workspace. A spec
+        that names a file the provisioner does not know to copy is the kind of
+        disagreement one list avoids.
+        """
+        return (self.stub, self.tests, self.reference)
+
 
 @dataclass(frozen=True, slots=True)
 class CounterExample:
@@ -254,6 +266,21 @@ class GitScenarioSpec:
     @property
     def check_ids(self) -> frozenset[str]:
         return frozenset(check.id for check in self.checks)
+
+    @property
+    def referenced_files(self) -> tuple[str, ...]:
+        """Every sibling file this spec names, relative to the exercise directory."""
+        return (self.fixture, *self.command_lists)
+
+    @property
+    def command_lists(self) -> tuple[str, ...]:
+        """The `.cmds` files whose every line must satisfy `allowed_commands`.
+
+        The reference first, then the counter-examples, which is the order a
+        validation report reads best in — the solution is the one an author
+        looks at first when something is wrong.
+        """
+        return (self.reference, *(example.file for example in self.counter_examples))
 
     def check(self, check_id: str) -> CheckSpec:
         """Look a check up by id, for the counter-example replay in CI."""

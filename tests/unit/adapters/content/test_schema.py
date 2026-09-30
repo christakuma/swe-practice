@@ -201,23 +201,6 @@ def test_check_params_survive_as_the_narrow_value_types() -> None:
     }
 
 
-def test_the_file_reports_the_siblings_it_references() -> None:
-    """The loader uses this to check the files exist before anything else does."""
-    parsed = EXERCISE_FILE.validate_python(a_scenario())
-
-    assert set(parsed.referenced_files) == {
-        "fixture.sh",
-        "solution.cmds",
-        "naive.cmds",
-    }
-    assert parsed.command_lists == ("solution.cmds", "naive.cmds")
-
-
-def test_a_kata_has_no_command_lists() -> None:
-    """A kata has no command console, so there is nothing to police (§4.3)."""
-    assert EXERCISE_FILE.validate_python(a_kata()).command_lists == ()
-
-
 # --- the discriminator -----------------------------------------------------
 
 
@@ -386,14 +369,12 @@ def test_a_counter_example_naming_an_unknown_check_is_rejected() -> None:
 
 def test_a_counter_example_must_name_a_check_it_fails() -> None:
     """ "Fails at least one check" is too weak a contract (PLAN.md §5.4)."""
-    assert scenario_with(
+    (location, message) = scenario_with(
         lambda p: p["scenario"]["counter_examples"][0].update(expect_failures=[])
-    ) == [
-        (
-            "scenario.counter_examples.0.expect_failures",
-            "Tuple should have at least 1 item after validation, not 0",
-        )
-    ]
+    )[0]
+
+    assert location == "scenario"
+    assert "must declare at least one check it is expected to fail" in message
 
 
 def test_the_short_form_counter_example_is_not_accepted() -> None:
@@ -428,9 +409,10 @@ def test_a_malformed_check_id_is_located_at_the_check() -> None:
 
 
 def test_a_scenario_with_no_checks_is_rejected() -> None:
-    assert scenario_with(lambda p: p["scenario"].update(checks=[])) == [
-        ("scenario.checks", "Tuple should have at least 1 item after validation, not 0")
-    ]
+    (location, message) = scenario_with(lambda p: p["scenario"].update(checks=[]))[0]
+
+    assert location == "scenario"
+    assert "needs at least one check" in message
 
 
 def test_a_scenario_that_allows_nothing_is_rejected() -> None:
@@ -438,8 +420,24 @@ def test_a_scenario_that_allows_nothing_is_rejected() -> None:
         lambda p: p["scenario"].update(allowed_commands=[])
     )[0]
 
-    assert location == "scenario.allowed_commands"
-    assert "at least 1 item" in message
+    assert location == "scenario"
+    assert "must allow at least one command" in message
+
+
+def test_one_bad_check_reports_one_problem_and_not_a_cascade() -> None:
+    """A `min_length=1` on `checks` alongside the domain's own "needs at least
+    one check" produced a second error saying the list was empty — because the
+    check that failed validation had been dropped from it. An author reads that
+    and goes looking for a bug that is not there.
+    """
+    assert (
+        len(
+            scenario_with(
+                lambda p: p["scenario"]["checks"][0].update({"assert": "nope"})
+            )
+        )
+        == 1
+    )
 
 
 def test_the_allowlist_holds_program_names_not_command_lines() -> None:
