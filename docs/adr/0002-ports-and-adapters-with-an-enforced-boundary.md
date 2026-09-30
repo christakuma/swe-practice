@@ -99,3 +99,41 @@ Order of work worth recording: `domain/` and `application/` were created as empt
 packages in the scaffold commit, before any code, so the coverage gate measures
 the right two directories from the first commit. A gate added after the code
 exists gets its threshold tuned to whatever the code already scores.
+
+## Note — 2026-09-30 (Phase 1)
+
+The boundary test now exists, and two things about building it are worth recording
+because they are the difference between an enforced boundary and a decorative one.
+
+**The detector is tested against deliberate violations.** Fourteen cases build a
+module tree that breaks each rule and assert the walk reports it; seven more
+assert it stays quiet about what the domain legitimately needs. An architecture
+test whose detector is broken passes exactly as happily as one whose architecture
+is sound, and nothing else in the suite can tell the difference.
+
+**Relative imports are resolved to absolute names, not prefix-matched as text.**
+`from ...adapters.git import GitRepoQuery` otherwise reads as a target of
+`adapters.git` and walks straight past a `practice.adapters` prefix check — and a
+relative import is exactly the spelling someone reaching for a shortcut writes.
+Resolution has to know which modules are packages, since a package resolves `.`
+against itself and a module against its parent. The walk covers whole files rather
+than module-level statements, so a deferred import inside a function is caught too.
+
+The test also asserts that the walk **found** the modules it claims to police. A
+wrong root path or a glob that matched nothing would otherwise leave the whole
+file green forever while checking nothing at all.
+
+Scope grew slightly beyond the decision as written: `domain/` is additionally
+checked for imports of I/O modules — `subprocess`, `sqlite3`, `socket`, `os` and
+the rest — because the first consequence listed above is a claim about zero I/O,
+not only about layer direction. `pathlib` is deliberately not on that list:
+`PurePosixPath` is pure, and a content adapter handing the domain a parsed path is
+legitimate.
+
+One consequence landed exactly as predicted: `Clock` and `IdGenerator` got their
+second implementations in `tests/fakes/` in the same phase they were declared, and
+the conformance check is **mypy**, not `isinstance`. Assigning each fake to a
+variable annotated with its port makes `--strict` reject a fake that drifts out of
+shape. `runtime_checkable` plus `isinstance` checks that attribute names exist and
+not that signatures match, so a `FakeClock` whose `now()` took an argument would
+pass it.

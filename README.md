@@ -15,9 +15,10 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 0 (foundations) complete. See [docs/PLAN.md](docs/PLAN.md) for
-the full design and the phase plan, and [docs/adr/](docs/adr/) for the decisions
-and the alternatives that were rejected.
+**Status:** Phase 1 (domain core) complete — the pure domain, all ten ports, and
+the architecture boundary test. See [docs/PLAN.md](docs/PLAN.md) for the full
+design and the phase plan, and [docs/adr/](docs/adr/) for the decisions and the
+alternatives that were rejected.
 
 ## Getting started
 

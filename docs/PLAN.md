@@ -4,7 +4,8 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 0 complete — scaffolding, CI and ADRs 0001-0003.
+> **Status:** Phase 1 complete — pure domain, ports, and the enforced
+> architecture boundary.
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
 ---
@@ -145,18 +146,36 @@ seriousness than any amount of prose.
 
 ## 4. Domain model
 
-### 4.1 Value objects (`domain/ids.py`, `domain/exercise.py`)
+### 4.1 Value objects
 
 ```python
-ExerciseId   # slug, e.g. "git/revert-a-pushed-commit"
-AttemptId    # uuid4
-ExerciseKind = Enum("KATA", "GIT_SCENARIO")        # extensible
-Difficulty   = Enum("INTRO", "EASY", "MEDIUM", "HARD")
-Tag          # NewType(str): "two-pointers", "history-rewrite", ...
-Severity     = Enum("REQUIRED", "ADVISORY")
-Grade        = Enum("AGAIN", "HARD", "GOOD", "EASY")
-Outcome      = Enum("PASS", "PASS_WITH_ADVISORIES", "FAIL")
+# domain/ids.py — identifiers and scalars
+ExerciseId   # exactly "<track>/<slug>", e.g. "git/revert-a-pushed-commit"
+AttemptId    # uuid4; .short is the 8 hex chars the workspace dir uses (§8.1)
+Sha          # git object hash, normalised to lowercase
+Tag          # NewType(str) + a tag() validator: "two-pointers", ...
+
+# each enum sits with the concept it describes, as a StrEnum whose values are
+# the ones in exercise.yaml — so the loader gets Difficulty("medium") for free
+ExerciseKind = "kata" | "git_scenario"                    # exercise.py
+Difficulty   = "intro" | "easy" | "medium" | "hard"       # exercise.py
+Severity     = "required" | "advisory"                    # verdict.py
+Outcome      = "pass" | "pass_with_advisories" | "fail"   # verdict.py
+Grade        = "again" | "hard" | "good" | "easy"         # review.py
+CardState    = "new" | "learning" | "review" | "lapsed"   # review.py
 ```
+
+Every one validates on construction, so an invalid identifier cannot exist
+anywhere downstream. `InvalidValueError` subclasses **both** `DomainError` and
+`ValueError`, which is load-bearing rather than taxonomy: the Phase 2 Pydantic
+schema builds these value objects inside field validators, and Pydantic turns a
+`ValueError` raised there into a validation error with the field path attached.
+Without it, every invariant in the domain would have to be restated in the schema
+layer to get a readable message, and the two copies would drift.
+
+`ExerciseId` is exactly two segments because the id **is** the content path. A
+loader that derives ids from directories and a type that accepts any depth
+disagree the first time someone nests a directory.
 
 ### 4.2 `Exercise` — content aggregate (immutable)
 
@@ -195,20 +214,44 @@ class Attempt:
     policy: AttemptPolicy
     started_at: datetime
     finished_at: datetime | None
+    status: AttemptStatus           # ACTIVE | COMPLETED | ABANDONED
     events: list[AttemptEvent]      # CommandRun | HintRevealed | SolutionSaved
     hints_revealed: int
-    declared_complexity: str | None # self-reported Big-O, katas only
+    declared_complexity: ComplexityClaim | None   # time and space, katas only
     verdict: Verdict | None
 
-    def record_command(self, cmd, result) -> None: ...
-    def reveal_next_hint(self) -> Hint: ...
-    def complete(self, verdict: Verdict) -> None: ...
+    def record_command(self, argv, result, *, at) -> CommandRun: ...
+    def reveal_next_hint(self, *, at) -> Hint: ...
+    def save_solution(self, source, *, at) -> None: ...
+    def declare_complexity(self, claim) -> None: ...
+    def complete(self, verdict, *, at) -> None: ...
+    def abandon(self, *, at) -> None: ...
     def elapsed(self, now) -> timedelta: ...
 ```
 
 Invariants it enforces (each with a unit test): cannot record events after
-completion; cannot complete twice; cannot reveal more hints than the policy
-holds; command count cannot exceed `policy.max_commands`.
+completion **or abandonment**; cannot complete twice; cannot reveal more hints
+than the policy holds; command count cannot exceed `policy.max_commands`;
+`argv[0]` must be in `policy.allowed_commands`; every timestamp is
+timezone-aware and never earlier than the last event.
+
+Timestamps are arguments, not readings, because the domain has no clock — the
+`Clock` port is injected into the use case that drives the aggregate. Naive
+datetimes are rejected rather than normalised: guessing a zone is how an attempt
+ends up with a duration of minus seven hours.
+
+`declared_complexity` holds **both** axes rather than one string, because the
+`ComplexityExpectation` it is compared against has two and one string cannot
+disagree with an expectation on only one of them. `AttemptStatus` is here because
+§8.1 defines the lifecycle as active until submitted *or abandoned*, and the
+workspace lifetime and `practice gc`'s definition of an orphan both hang off that
+flag.
+
+The allowlist is checked here **and** in the Phase 3 sandbox command policy.
+Deliberate duplication with different jobs: the adapter refuses to *execute* a
+disallowed command, the aggregate refuses to *remember* one, so a future
+execution path that forgets the check cannot produce an attempt whose log
+contradicts the exercise's own rules.
 
 **`AttemptPolicy` is not incidental.** The aggregate holds an `ExerciseId`, not
 an `Exercise` — so without the policy copied in at construction it cannot
@@ -265,7 +308,7 @@ class ReviewCard:
 
 | Port | Responsibility |
 |---|---|
-| `ContentRepository` | `list_exercises(filter)`, `get(id)` |
+| `ContentRepository` | `list_exercises(criteria)`, `get(exercise_id)` |
 | `AttemptRepository` | `save`, `get`, `history_for(exercise_id)` |
 | `ReviewRepository` | `get_card`, `save_card`, `due_on(date)` |
 | `SandboxProvisioner` | `provision(exercise) -> Workspace` |
@@ -1516,3 +1559,63 @@ there are no integration or content tests yet. Markers themselves are applied
 by directory in `tests/conftest.py` — a forgotten decorator would silently drop
 a test out of every `-m` selector, which is the one failure mode a marker
 scheme must not have.
+
+**2026-09-30 — Phase 1 complete.** The pure domain, all ten ports, and the
+architecture boundary test. `ruff`, `ruff format --check`, `mypy --strict` and
+191 tests green, with `domain/` at **100%** statement and branch coverage against
+the 90% gate. Exit criterion checked rather than asserted: adding `import
+subprocess` and an adapter import to `domain/ids.py` fails both boundary tests,
+each naming the module and line, and they pass again once reverted.
+
+Four findings, and the first two are the ones worth keeping:
+
+- **§11's commit order for this phase does not compile.** It puts verdict
+  assembly in the same commit as the ports, *after* the `Attempt` aggregate — but
+  `Attempt.complete` takes a `Verdict` and `ports.py` takes an `Attempt`, so the
+  only order that builds is verdict → attempt → ports. Split into three commits
+  accordingly. A phase plan written from the outside in reads naturally and
+  compiles backwards.
+- **A port nothing imports at runtime reads as 0% covered.** Every module reaches
+  `ports.py` through `TYPE_CHECKING`, so its 42 statements were never executed and
+  the gate fell from 100% to 94% the moment the file landed. The fix was not a
+  coverage exclusion: `WorktreeStatus.is_clean` encodes the §6.5
+  "ignore untracked by default" rule and `CommitInfo.is_merge` is what
+  `linear_history` will read, so both wanted real tests anyway. Worth generalising
+  — coverage that ignores a file because nothing imports it is not measuring what
+  it claims to.
+- **`declared_complexity: str | None` cannot do its job.** §7 has the solver
+  declaring time *and* space and the verdict surfacing both against
+  `ComplexityExpectation`, which has two fields. One string cannot disagree with
+  an expectation on only one axis, so it is now a `ComplexityClaim` value object
+  with an `agrees_with` that folds away case and spacing.
+- **Two linters have opinions about domain vocabulary.** bandit's S105 reads
+  `Outcome.PASS = "pass"` as a hardcoded password, and ruff A002 flags any
+  argument named `id` or `filter`. The enum members keep their names with a noqa
+  and a comment — renaming to `PASSED` to appease a substring match would distort
+  the vocabulary — while the *arguments* were renamed (`attempt_id`, `criteria`),
+  since the attributes keep the plan's names either way.
+
+Three deliberate deviations from §4 as written, all now folded back into §4.1,
+§4.3 and §4.6 so the plan and the repo do not disagree silently:
+
+- Enums live with the concept they describe rather than all in `ids.py`, and are
+  `StrEnum` whose values match the YAML — so the loader gets
+  `ExerciseKind("git_scenario")` for free and persistence stores something
+  readable.
+- `domain/review.py` lands now rather than in Phase 9, because `ports.py`
+  declares `ReviewRepository` and `Scheduler` and both need the card to exist. The
+  SM-2 arithmetic does not. The ease floor of 1.3 is enforced on the card and not
+  only inside the scheduler: an invariant that holds because one function is
+  currently the sole writer is not an invariant.
+- `AttemptStatus` and `abandon()` are included, per §8.1's lifecycle, rather than
+  waiting for Phase 6 to retrofit them onto an aggregate whose guards would then
+  have to be reopened.
+
+One invariant was placed deliberately, and the line is worth naming because it
+will come up again in Phase 2. **Correctness holes are domain invariants; quality
+rules are the content suite's job.** A scenario whose checks are all advisory
+passes vacuously, and a counter-example naming a check id that does not exist can
+never fail the check it claims to — so `GitScenarioSpec` refuses to exist in
+either state. "Hints and notes are non-empty" is a rule about a *good* exercise
+rather than a *representable* one, so it stays in §9 where the plan put it; the
+domain should not refuse to model an exercise someone is halfway through drafting.
