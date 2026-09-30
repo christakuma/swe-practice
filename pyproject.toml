@@ -1,0 +1,146 @@
+# ---------------------------------------------------------------------------
+# swe-practice — see docs/PLAN.md for the full design.
+#
+# Stack choices here are the ones fixed in PLAN.md §2; the reasoning lives in
+# docs/adr/. The runtime dependency set is declared in full from Phase 0 so
+# that uv.lock is resolved once and every later phase is a code change only.
+# ---------------------------------------------------------------------------
+
+[project]
+name = "swe-practice"
+version = "0.1.0"
+description = "Offline practice environment for data-structure katas and operational git"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+authors = [{ name = "Chris Sweet" }]
+
+# Nothing here may phone home; a test enforces that for templates and static
+# assets (PLAN.md §2). HTMX and CodeMirror are vendored files, not packages.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "jinja2>=3.1",
+    "pydantic>=2.9",
+    "typer>=0.12",
+    "watchfiles>=0.24",
+    "platformdirs>=4.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "hypothesis>=6.112",
+    "ruff>=0.7",
+    "mypy>=1.13",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/practice"]
+
+# --- ruff ------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+src = ["src", "tests"]
+
+# Ruff formats fenced Python inside Markdown. docs/PLAN.md uses illustrative,
+# aligned-comment pseudo-Python that is prose, not code, and reformatting it
+# would fight the author every time.
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = [
+    "F",     # pyflakes
+    "E", "W",# pycodestyle
+    "I",     # import sorting
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "ANN",   # missing annotations — mypy strict needs them anyway
+    "S",     # bandit; subprocess and temp dirs are load-bearing here (§8.1)
+    "B",     # bugbear
+    "A",     # builtin shadowing
+    "C4",    # comprehensions
+    "DTZ",   # naive datetimes — the clock port is timezone-aware by design
+    "T20",   # no stray print()
+    "ISC", "ICN", "LOG", "G", "PIE", "PT", "Q", "RSE", "RET", "SIM", "SLF",
+    "TC",    # typing-only imports
+    "ARG",   # unused arguments
+    "PTH",   # pathlib over os.path
+    "PL",    # pylint subset
+    "TRY",   # exception antipatterns
+    "RUF",
+]
+ignore = [
+    "TRY003", # long messages at the raise site; readable errors matter more
+    "ISC001", # conflicts with the formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101",    # asserts are the point
+    "PLR2004", # literal expected values are clearer inline
+    "SLF001",  # tests may reach into internals
+]
+"tools/**" = ["T20"] # vendoring scripts are allowed to talk
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["pydantic.BaseModel"]
+
+# --- mypy ------------------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["src", "tests"]
+warn_unreachable = true
+enable_error_code = [
+    "redundant-expr",
+    "truthy-bool",
+    "ignore-without-code",
+    "unused-awaitable",
+    "possibly-undefined",
+]
+
+# --- pytest ----------------------------------------------------------------
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib"
+xfail_strict = true
+filterwarnings = ["error"]
+
+# Applied automatically by directory in tests/conftest.py, so no test can slip
+# out of every selector by being forgotten.
+markers = [
+    "unit: pure, no I/O, milliseconds (tests/unit)",
+    "integration: real git, real SQLite, real temp dirs (tests/integration)",
+    "content: parametrized over every exercise on disk (tests/content)",
+    "web: FastAPI TestClient and fragment assertions (tests/web)",
+    "e2e: one exercise driven end to end through the CLI (tests/e2e)",
+]
+
+# --- coverage --------------------------------------------------------------
+# The gate covers domain/ and application/ only: that is where the correctness
+# critical code lives, including the ~25 check functions (PLAN.md §9).
+
+[tool.coverage.run]
+branch = true
+source = ["src/practice/domain", "src/practice/application"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
+exclude_also = [
+    'if TYPE_CHECKING:',
+    'raise NotImplementedError',
+    '^\s*\.\.\.$',
+    '@(typing\.)?overload',
+]
