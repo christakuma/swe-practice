@@ -22,12 +22,34 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from practice.domain.ids import Sha
+from practice.adapters.persistence import InMemoryAttemptRepository
+from practice.domain.attempt import Attempt, AttemptPolicy
+from practice.domain.exercise import ExerciseFilter, ExerciseKind, KataSpec
+from practice.domain.ids import AttemptId, ExerciseId, Sha
 from practice.domain.ports import CommitInfo, ReflogEntry, WorktreeStatus
-from tests.fakes import FakeClock, SequentialIdGenerator
+from tests.fakes import (
+    FakeClock,
+    FakeContentRepository,
+    FakeProvisioner,
+    FakeWorkspace,
+    SequentialIdGenerator,
+    StubKataRunner,
+    a_kata,
+    a_record,
+    a_run,
+    a_scenario,
+)
 
 if TYPE_CHECKING:
-    from practice.domain.ports import Clock, IdGenerator
+    from practice.adapters.kata import KataRunner
+    from practice.domain.ports import (
+        AttemptRepository,
+        Clock,
+        ContentRepository,
+        IdGenerator,
+        SandboxProvisioner,
+        Workspace,
+    )
 
 C1 = Sha("1" * 40)
 C2 = Sha("2" * 40)
@@ -127,3 +149,106 @@ def test_a_reflog_entry_records_the_position_it_came_from() -> None:
 
     assert entry.index == 3
     assert entry.sha == C1
+
+
+# --- the Phase 4 fakes -----------------------------------------------------
+
+
+def test_the_fake_workspace_satisfies_the_workspace_port() -> None:
+    """Both halves of the trust split, which is what the annotation checks: a
+    fake that implemented `run` and not `run_tool` would no longer be a
+    `Workspace`, and the kata engine would be the thing that found out.
+    """
+    workspace: Workspace = FakeWorkspace({"stub.py": "..."})
+
+    assert workspace.read_file("stub.py") == "..."
+    assert workspace.run(["git", "status"], timeout=1).succeeded
+    assert workspace.run_tool(["python", "-m", "pytest"], timeout=1).succeeded
+
+
+def test_the_fake_workspace_raises_an_oserror_for_a_missing_file() -> None:
+    """Held to the real adapter's behaviour deliberately: `PytestKataRunner`
+    reads a report that may not be there and catches `OSError` to mean "the
+    suite did not run". A `KeyError` would sail straight past that.
+    """
+    with pytest.raises(OSError, match=r"report\.json"):
+        FakeWorkspace().read_file("report.json")
+
+
+def test_the_fake_provisioner_satisfies_the_provisioner_port() -> None:
+    provisioner: SandboxProvisioner = FakeProvisioner()
+    exercise = a_kata()
+    attempt_id = AttemptId.parse("00000001-0000-4000-8000-000000000000")
+
+    provisioned = provisioner.provision(exercise, attempt_id)
+
+    assert provisioner.attach(exercise, attempt_id) is provisioned
+
+
+def test_the_fake_provisioner_returns_none_for_a_workspace_that_is_not_there() -> None:
+    """What the real one does, and what `SubmitSolution` turns into
+    `WorkspaceGoneError`. A fake that raised instead would make that branch
+    untestable and the test that covers it a fiction.
+    """
+    provisioner = FakeProvisioner()
+    exercise = a_kata()
+    attempt_id = AttemptId.parse("00000001-0000-4000-8000-000000000000")
+
+    assert provisioner.attach(exercise, attempt_id) is None
+
+    provisioner.provision(exercise, attempt_id)
+    provisioner.collect(attempt_id)
+
+    assert provisioner.attach(exercise, attempt_id) is None
+
+
+def test_the_fake_content_repository_satisfies_the_content_port() -> None:
+    content: ContentRepository = FakeContentRepository([a_kata(), a_scenario()])
+
+    assert content.get(ExerciseId("katas/two-sum")) is not None
+    assert content.get(ExerciseId("katas/nope")) is None
+    assert [str(exercise.id) for exercise in content.list_exercises()] == [
+        "git/revert-a-pushed-commit",
+        "katas/two-sum",
+    ]
+
+
+def test_the_fake_content_repository_filters_through_the_domain() -> None:
+    """It delegates to `ExerciseFilter.matches` rather than comparing fields
+    itself, so it cannot disagree with the filesystem repository about what a
+    filter means — which is the drift that stops a fake being evidence (§4.2).
+    """
+    content = FakeContentRepository([a_kata(), a_scenario()])
+
+    katas = content.list_exercises(ExerciseFilter(kinds=frozenset({ExerciseKind.KATA})))
+
+    assert [str(exercise.id) for exercise in katas] == ["katas/two-sum"]
+
+
+def test_the_in_memory_attempt_repository_satisfies_the_attempt_port() -> None:
+    """The real adapter, annotated as its port — the other half of the §13 rule,
+    since a port whose only implementation is a fake has not been shown to work.
+    """
+    attempts: AttemptRepository = InMemoryAttemptRepository()
+    exercise = a_kata()
+    attempt = Attempt(
+        attempt_id=AttemptId.parse("00000001-0000-4000-8000-000000000000"),
+        exercise_id=exercise.id,
+        policy=AttemptPolicy.for_exercise(exercise),
+        started_at=FakeClock().now(),
+    )
+
+    attempts.save(attempt)
+
+    assert attempts.get(attempt.id) is not None
+    assert len(attempts.history_for(exercise.id)) == 1
+
+
+def test_the_stub_kata_runner_satisfies_what_the_grader_needs() -> None:
+    runner: KataRunner = StubKataRunner(a_run(a_record("test_one")))
+    exercise = a_kata()
+    assert isinstance(exercise.spec, KataSpec)
+
+    run = runner.run(FakeWorkspace(), exercise.spec, "source")
+
+    assert [record.name for record in run.tests] == ["test_one"]
