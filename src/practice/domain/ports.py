@@ -150,9 +150,20 @@ class Workspace(Protocol):
     there is nothing for a shell to reinterpret (PLAN.md §8.1). Policy — the
     allowlist and the metacharacter rejection — is applied before anything reaches
     here.
+
+    **`run` and `run_tool` are the two halves of the trust split** PLAN.md §8.1
+    rests on, in the one place a grader can see both. `run` is untrusted input:
+    whatever the solver typed, under the exercise's allowlist. `run_tool` is
+    trusted code: an argv a grading engine built for itself — the kata engine's
+    `python -m pytest`, the Phase 5 `git` interrogation — which no allowlist
+    could usefully gate, because the exercise author never wrote it down. A
+    grader that put user input through `run_tool` would have defeated the
+    policy, which is why the split is named here rather than left implicit.
     """
 
     def run(self, argv: Sequence[str], timeout: float) -> CommandResult: ...
+
+    def run_tool(self, argv: Sequence[str], timeout: float) -> CommandResult: ...
 
     def read_file(self, path: str) -> str: ...
 
@@ -162,9 +173,22 @@ class Workspace(Protocol):
 
 
 class SandboxProvisioner(Protocol):
-    """Builds the workspace for an exercise and runs its fixture."""
+    """Builds the workspace for an exercise and runs its fixture.
 
-    def provision(self, exercise: Exercise) -> Workspace: ...
+    `provision` takes the `AttemptId` because the workspace directory is named
+    after the attempt (§8.1). The alternative is for the provisioner to generate
+    identity, which means the `Attempt` aggregate learns its own id from its
+    workspace and the `IdGenerator` port is injected in two places to produce one
+    id (PLAN.md §16).
+
+    `attach` returns `None` rather than raising when there is nothing on disk: an
+    attempt whose workspace has been collected is a normal thing for a caller to
+    decide about, not a fault.
+    """
+
+    def provision(self, exercise: Exercise, attempt_id: AttemptId) -> Workspace: ...
+
+    def attach(self, exercise: Exercise, attempt_id: AttemptId) -> Workspace | None: ...
 
 
 class RepoQuery(Protocol):

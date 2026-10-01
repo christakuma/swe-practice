@@ -262,6 +262,36 @@ class SubprocessWorkspace:
             )
         return _as_command_result(execution)
 
+    def run_tool(self, argv: Sequence[str], timeout: float) -> CommandResult:
+        """Run a trusted tool in the workspace, outside the exercise's allowlist.
+
+        The other half of the trust split from `run` (PLAN.md §8.1), and the
+        reason it is a separate method rather than a flag: `run` is whatever the
+        solver typed and `run_tool` is an argv a grading engine built for
+        itself. The kata engine's `python -m pytest` is the first caller, and
+        no allowlist could gate it — a kata's allowlist is empty by design,
+        because a kata has no command console at all.
+
+        **Never pass user input here.** It receives the same scoped environment
+        and the same output caps as `run`, and nothing else: it is the policy
+        gate that is missing, which is exactly what makes it dangerous to reach
+        for from a route handler.
+
+        The clock is read rather than advanced. A grading pass interrogates the
+        repository and must not move the commit clock while doing it — a
+        `GitRepoQuery` call that consumed a tick would make the dates of a
+        solver's later commits depend on how many times they looked at the
+        verdict.
+        """
+        execution = run_process(
+            argv,
+            cwd=self._layout.repo,
+            environment=with_commit_date(self._environment, self._clock.read()),
+            timeout=timeout,
+            output_limit=self._output_limit,
+        )
+        return _as_command_result(execution)
+
     def read_file(self, path: str) -> str:
         """Read a file from the repository, as the web editor needs to."""
         return self.resolve(path).read_text(encoding="utf-8")

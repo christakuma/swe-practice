@@ -8,11 +8,14 @@ it, or about one of the Windows behaviours PLAN.md §8.1 budgets six sessions fo
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 from practice.adapters.sandbox import CommandRejectedError, WorkspacePathError
+from practice.adapters.sandbox.env import SandboxClock
 from practice.adapters.sandbox.execution import TIMEOUT_EXIT_CODE
 
 if TYPE_CHECKING:
@@ -301,3 +304,76 @@ def test_disposal_clears_the_read_only_bit(workspace: SubprocessWorkspace) -> No
     workspace.dispose()
 
     assert not workspace.root.exists()
+
+
+# --- run_tool: the other half of the trust split ---------------------------
+
+
+def test_a_tool_runs_outside_the_exercise_allowlist(
+    workspace: SubprocessWorkspace,
+) -> None:
+    """`run` is user input under policy; `run_tool` is an argv a grading engine
+    built for itself (PLAN.md §8.1). `python` is on no exercise's allowlist and
+    never will be, which is exactly why the kata engine needs this door.
+    """
+    with pytest.raises(CommandRejectedError):
+        workspace.run([sys.executable, "-c", "print(1)"], timeout=10)
+
+    result = workspace.run_tool([sys.executable, "-c", "print(1)"], timeout=10)
+
+    assert result.succeeded
+    assert result.stdout.strip() == "1"
+
+
+def test_a_tool_runs_in_the_repository(workspace: SubprocessWorkspace) -> None:
+    """Same working directory as `run`, so a tool and a solver command cannot
+    disagree about which directory "here" is.
+    """
+    result = workspace.run_tool(
+        [sys.executable, "-c", "import os; print(os.getcwd())"], timeout=10
+    )
+
+    assert Path(result.stdout.strip()) == workspace.repo.resolve()
+
+
+def test_a_tool_gets_the_same_scoped_environment(
+    workspace: SubprocessWorkspace,
+) -> None:
+    """`HOME` points at the workspace for a tool too. A grading subprocess that
+    could reach the developer's home directory would be a hole in the same
+    isolation the fixture environment exists to provide.
+    """
+    result = workspace.run_tool(
+        [sys.executable, "-c", "import os; print(os.environ['HOME'])"], timeout=10
+    )
+
+    assert Path(result.stdout.strip()) == workspace.root
+
+
+def test_a_tool_does_not_advance_the_commit_clock(
+    workspace: SubprocessWorkspace,
+) -> None:
+    """A grading pass interrogates the repository and must not move the clock
+    while doing it: a `GitRepoQuery` call that consumed a tick would make the
+    dates of a solver's later commits depend on how many times they looked at
+    the verdict.
+    """
+    before = SandboxClock(workspace.layout.clock).read()
+
+    workspace.run_tool([sys.executable, "-c", "pass"], timeout=10)
+
+    assert SandboxClock(workspace.layout.clock).read() == before
+
+
+def test_a_tool_is_still_killed_by_its_timeout(
+    workspace: SubprocessWorkspace,
+) -> None:
+    """It skips the policy gate and nothing else: the output caps and the
+    process-tree kill are the same code `run` goes through.
+    """
+    result = workspace.run_tool(
+        [sys.executable, "-c", "import time; time.sleep(30)"], timeout=1
+    )
+
+    assert result.exit_code == TIMEOUT_EXIT_CODE
+    assert "Timed out" in result.stderr
