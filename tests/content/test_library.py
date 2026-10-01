@@ -364,8 +364,13 @@ def test_the_unproven_guarantees_are_still_unproven() -> None:
     and reference replays are now exercised for real by
     `tests/content/test_fixtures.py`, and what remains unproven is whether a
     replayed solution's end state actually *passes* its checks.
+
+    Phase 4 removed the third — `tests/content/test_katas.py` grades every
+    kata's reference and its stub — which is the tripwire doing its job: the
+    count below had to be lowered by hand, by someone who had just written the
+    tests that earned it. What is left is scenario grading, in Phase 5.
     """
-    assert len(unproven_by_design()) == 3, (
+    assert len(unproven_by_design()) == 2, (
         "a guarantee changed: write the grading tests PLAN.md §9 describes, "
         "then update this count"
     )
