@@ -311,5 +311,22 @@ def test_the_unproven_guarantees_are_stated_rather_than_implied() -> None:
     """
     caveats = unproven_by_design()
 
-    assert any("solution.cmds is not yet replayed" in line for line in caveats)
+    assert any("not yet GRADED" in line for line in caveats)
     assert any("counter-examples" in line for line in caveats)
+
+
+def test_the_caveats_do_not_overclaim_what_phase_3_proved() -> None:
+    """The sandbox landed, so `solution.cmds` IS replayed now — by the content
+    suite and by `practice fixtures`, neither of which is this command.
+
+    The distinction is worth a test because it is the easy one to get wrong in
+    both directions. Dropping the caveat would imply `validate` grades
+    solutions, which it does not and deliberately never will: it runs nothing,
+    so it stays usable on a machine with no git. Leaving the old wording would
+    claim the replay does not happen at all, which stopped being true in Phase
+    3.
+    """
+    caveats = unproven_by_design()
+
+    assert any("replayed through the sandbox" in line for line in caveats)
+    assert not any("is not yet replayed" in line for line in caveats)

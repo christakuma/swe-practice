@@ -19,12 +19,12 @@ a hundred and fifty skip lines at seventy. Partitioning is done defensively, so
 an exercise that will not load lands in neither bucket and is reported by
 `test_it_validates` instead of crashing collection.
 
-**Half of §9's list is not here, and the gap is the point.** Proving that
-`solution.cmds` passes every required check, and that each counter-example fails
-exactly the checks it declares, needs the sandbox (Phase 3) and
-`RunScenarioCommand` (Phase 5). `test_the_unproven_guarantees_are_still_unproven`
-is the tripwire: when those land it fails, and someone has to come back here and
-write the replay tests rather than quietly leaving them undone.
+**Half of §9's list is not here, and the gap is the point.** This file covers
+everything checkable without running anything; `test_fixtures.py` covers what
+needs the sandbox, which is why the two are separate.
+`test_the_unproven_guarantees_are_still_unproven` is the tripwire over the
+remainder: when the Phase 5 engine lands it fails, and someone has to come back
+and write the grading tests rather than quietly leaving them undone.
 """
 
 from __future__ import annotations
@@ -353,14 +353,19 @@ def test_the_repository_loads_the_whole_library() -> None:
 
 
 def test_the_unproven_guarantees_are_still_unproven() -> None:
-    """Fails when the sandbox and the check engine land, which is the point.
+    """Fails when the check engine lands, which is the point.
 
     PLAN.md §11 says not to mistake green here for content that works, and a
     note in a plan is not a mechanism. When `unproven_by_design` shrinks,
-    someone has to come back to this file and write the replay tests rather than
-    leaving a known gap covered by a comment nobody reads.
+    someone has to come back and write the grading tests rather than leaving a
+    known gap covered by a comment nobody reads.
+
+    Phase 3 narrowed the first of the three rather than removing it: fixtures
+    and reference replays are now exercised for real by
+    `tests/content/test_fixtures.py`, and what remains unproven is whether a
+    replayed solution's end state actually *passes* its checks.
     """
     assert len(unproven_by_design()) == 3, (
-        "a guarantee changed: write the replay tests PLAN.md §9 describes, "
+        "a guarantee changed: write the grading tests PLAN.md §9 describes, "
         "then update this count"
     )

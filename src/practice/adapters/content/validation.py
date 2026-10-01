@@ -4,13 +4,18 @@
 a *good* one?" — and the split is the same line PLAN.md §4.2 draws inside the
 domain. A correctness hole is a load failure; a quality rule is a report.
 
-**What is deliberately not here.** PLAN.md §9's content suite has two halves and
-only the first can land in Phase 2. Proving that `solution.cmds` passes every
-required check, and that each counter-example fails exactly the checks it
-declares, needs the sandbox (Phase 3) and `RunScenarioCommand` (Phase 5). Until
-then a scenario is *structurally* validated and **not yet proven solvable**, and
-the phase plan says in as many words not to mistake green here for content that
-works. `unproven_by_design` is that caveat in code, so a passing run says which
+**What is deliberately not here, and what has moved.** PLAN.md §9's content
+suite has two halves and only the first could land in Phase 2. Phase 3 took a
+bite out of the second: `tests/content/test_fixtures.py` now runs every fixture
+and replays every reference command list through the real sandbox, and
+`practice fixtures --check` holds the commit hashes to `content/fixtures.lock`.
+
+This module still does none of that, on purpose. `validate` runs nothing — it is
+the fast, offline audit an author runs while editing, and it has to stay usable
+on a machine with no git. What is left genuinely unproven is *grading*: whether
+a replayed solution's end state passes every required check, and whether each
+counter-example fails exactly the checks it declares, needs the engine in Phase
+5. `unproven_by_design` is that caveat in code, so a passing run says which
 guarantees it is not making.
 
 What this module *can* prove is the thing §5.3 was written for: every line of
@@ -68,8 +73,9 @@ def unproven_by_design() -> tuple[str, ...]:
     """
     return (
         (
-            "solution.cmds is not yet replayed: that needs the sandbox "
-            "(phase 3) and RunScenarioCommand (phase 5)"
+            "solution.cmds is replayed through the sandbox by the content suite "
+            "and `practice fixtures`, but not yet GRADED: whether the end state "
+            "passes every required check needs the engine in phase 5"
         ),
         "counter-examples are not yet proven to fail the checks they declare",
         "kata reference solutions are not yet run against their tests (phase 4)",

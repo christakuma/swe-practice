@@ -65,7 +65,7 @@ def test_it_reports_what_a_passing_run_does_not_prove() -> None:
     _, output = run()
 
     assert "Not proven at this phase:" in output
-    assert "solution.cmds is not yet replayed" in output
+    assert "not yet GRADED" in output
 
 
 def test_the_caveats_can_be_turned_off_for_a_terser_run() -> None:

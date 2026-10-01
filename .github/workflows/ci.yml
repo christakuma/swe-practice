@@ -84,3 +84,13 @@ jobs:
       # can be broken in every way that matters while the tests stay green.
       - name: Validate content
         run: uv run practice validate
+
+      # The Phase 3 exit criterion (PLAN.md §11): the same fixture must produce
+      # byte-identical commit hashes on both runners. Both jobs run every
+      # fixture and compare against the committed content/fixtures.lock, so a
+      # divergence names *which* platform diverged — which hard-coding a hash
+      # in a test could not do. A failure here is one of three things, and the
+      # lock file's own header says which: a fixture was edited, the pinned
+      # environment broke, or git changed how it hashes.
+      - name: Verify fixture determinism
+        run: uv run practice fixtures --check
