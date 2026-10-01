@@ -100,6 +100,10 @@ ignore = [
     "ANN401",
 ]
 "tools/**" = ["T20"] # vendoring scripts are allowed to talk
+# A Typer command's signature *is* its command line: every parameter is an
+# option someone types, so the argument count is a fact about the interface
+# rather than a function that grew too many knobs.
+"src/practice/interface/cli/main.py" = ["PLR0913", "PLR0917"]
 # Kata files are exercise content, not application code: `tests.py` is a real
 # pytest suite and `stub.py` is deliberately unimplemented. They are linted
 # rather than excluded, because a content author reads them as the example of
