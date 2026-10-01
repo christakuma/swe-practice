@@ -1,0 +1,32 @@
+# Fixture determinism, verified rather than asserted.
+#
+# Every git scenario's fixture is run and its commit aliases and refs recorded
+# here. CI runs the same thing on Linux and on Windows and compares against
+# this file, which is what makes "identical hashes on every platform" a checked
+# claim instead of a hopeful one (docs/PLAN.md 6.1, 11).
+#
+# Regenerate with:  uv run practice fixtures --write
+# Check with:       uv run practice fixtures --check
+#
+# A diff here is never noise. One exercise moving means its fixture changed.
+# One platform disagreeing means the pinned environment broke. EVERYTHING
+# moving at once means git changed how it hashes -- most likely a new default
+# object format -- and that is a decision to make, not a build to fix.
+git/recover-a-lost-commit:
+  aliases:
+    c1: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
+    c2: 880e65ca531d278849548d418daa42709eafec8b
+    c3: a4e10aef5dd13f06f5fa8242eea6cdcb97047c1c
+  refs:
+    HEAD: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
+    refs/heads/feature/csv-export: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
+    refs/heads/main: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
+git/revert-a-pushed-commit:
+  aliases:
+    c1: 906e5c939db46ea7fd2ffbb47f8e922e8dc52fe9
+    c2: dc5258712f544cbfe22f227ca575dc73977fa586
+    c3: bab6eca47d367d3e004324e903a6ac75c6f7e861
+  refs:
+    HEAD: bab6eca47d367d3e004324e903a6ac75c6f7e861
+    refs/heads/main: bab6eca47d367d3e004324e903a6ac75c6f7e861
+    refs/remotes/origin/main: bab6eca47d367d3e004324e903a6ac75c6f7e861

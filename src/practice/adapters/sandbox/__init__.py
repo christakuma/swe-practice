@@ -1,6 +1,6 @@
 """The sandbox: a throwaway directory an attempt runs real commands inside.
 
-Six modules, split by what each one knows about:
+Seven modules, split by what each one knows about:
 
 * `env` — the environment a sandboxed process gets, where git is installed, and
   the commit clock that spans the whole attempt. Knows about reproducibility.
@@ -49,6 +49,11 @@ from practice.adapters.sandbox.env import (
     sandbox_environment,
 )
 from practice.adapters.sandbox.execution import Execution, run_process
+from practice.adapters.sandbox.fixture_lock import (
+    LOCK_FILENAME,
+    FixtureFingerprint,
+    fingerprint_library,
+)
 from practice.adapters.sandbox.fixture_runner import (
     FixtureError,
     FixtureResult,
@@ -68,11 +73,13 @@ from practice.adapters.sandbox.workspace import (
 )
 
 __all__ = [
+    "LOCK_FILENAME",
     "VIRTUAL_COMMANDS",
     "CommandPolicy",
     "CommandRejectedError",
     "Execution",
     "FixtureError",
+    "FixtureFingerprint",
     "FixtureResult",
     "SandboxClock",
     "SubprocessSandboxProvisioner",
@@ -84,6 +91,7 @@ __all__ = [
     "WorkspaceRecord",
     "find_bash",
     "find_git",
+    "fingerprint_library",
     "is_virtual",
     "run_fixture",
     "run_process",
