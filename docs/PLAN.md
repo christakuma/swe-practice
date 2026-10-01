@@ -1092,20 +1092,50 @@ needed fixtures that the list placed two commits later. The lists below read as
 a sensible narrative order — foundations, then the interesting part — and
 narrative order is not dependency order. **So check each list against the actual
 imports before committing to it, and reorder rather than reaching for a
-`--no-verify`-shaped workaround.** Verifying it is cheap:
+`--no-verify`-shaped workaround.**
+
+**Verify it in two tiers.** The first draft of this rule ran the whole suite
+against every commit, which is thorough and costs about four minutes per commit
+— half an hour for a seven-commit phase, every time the split is adjusted. That
+is enough friction to make the check something you skip, which is worse than a
+cheaper check you actually run. So:
+
+*Per commit* — lint, format, types, and only the tests that commit touches:
 
 ```bash
 for sha in $(git rev-list --reverse <base>..HEAD); do
-  git checkout --quiet --detach "$sha" && uv run pytest -q --no-cov | tail -1
+  git checkout --quiet --detach "$sha"
+  paths=$(git show --name-only --format= "$sha" | grep '^tests/' | xargs -r dirname | sort -u)
+  uv run ruff check . && uv run ruff format --check . && uv run mypy \
+    && { [ -z "$paths" ] || uv run pytest -q --no-cov $paths | tail -1; }
 done
 ```
 
-One caveat on that loop, which cost an hour to learn: run it in the working tree
-rather than in a `git worktree`. An editable install resolves `practice` to the
-path it was installed from, so a worktree runs the *working tree's* source
-against the *commit's* tests and reports failures that are artifacts of the
-method. The tree must also be clean — an untracked file from a later commit is
-still on disk after `git checkout` and contaminates the run the same way.
+Seconds rather than minutes, and it still catches the defect the rule exists
+for. **`mypy` is what does most of that work**: a commit whose module imports
+something a later commit adds fails the type check in isolation, by name and
+line, without running anything. A targeted `pytest` over that commit's own test
+directories catches the rest — a collection error in a file the commit added.
+
+*Before a push* — the whole suite with the coverage gate, once, over the final
+tree:
+
+```bash
+uv run pytest --cov --cov-report=term-missing
+```
+
+That is also exactly what CI runs on both platforms, so the per-commit tier is
+a bisectability check and the pre-push tier is the correctness one. Neither
+substitutes for the other, and only one of them needs to be fast.
+
+Two caveats on the per-commit loop, both of which cost an hour to learn. Run it
+in the working tree rather than in a `git worktree`: an editable install
+resolves `practice` to the path it was installed from, so a worktree runs the
+*working tree's* source against the *commit's* tests and reports failures that
+are artifacts of the method. (This applies to `pytest`; `ruff` and `mypy` are
+static and are safe in a worktree.) And the tree must be clean — an untracked
+file from a later commit is still on disk after `git checkout` and contaminates
+the run the same way.
 
 **Effort** is in *sessions* ≈ 2–3 focused hours, at entry-level pace.
 **Phases 0–9 (the MVP) total ~40 sessions, so on the order of 100 focused
@@ -2097,6 +2127,35 @@ Six deliberate deviations from the plan as written, all folded back above:
   Two tests, deliberately: an e2e layer that grows becomes the slowest and least
   informative part of the suite, so anything assertable one layer down lives one
   layer down.
+
+**The commit-split check earned its place twice, and then got cheaper.** §11's
+rule — every commit in a list is green on its own — was written after Phase 3,
+and running it over Phase 4's seven commits found two defects that a green
+working tree had hidden completely:
+
+- **Commit 1 imported from commit 2.** Its runner test pulled `check_id_for`
+  out of `grader.py`, which lands a commit later, so commit 1 could not collect
+  its own tests. The familiar shape, and the fix made the test better as well as
+  earlier: a runner test asserting on `TestRecord.name` speaks the runner's own
+  vocabulary, and how a name becomes a check id is the grader's business.
+- **A 108-character docstring line was broken on every commit from three
+  onward, including the tip.** It was introduced while *staging* commit 3, after
+  the last full `ruff check` had already passed — so it was not merely missing
+  from one commit, it was on `main`. The lesson is duller than the first and
+  more generally useful: **a check run before the last edit is a check that did
+  not run.** The per-commit loop covers lint and types as well as tests, which
+  is the only reason it was found before CI found it.
+
+The check itself then changed shape. Running the whole suite against every
+commit costs about four minutes each — half an hour for this phase, repeated
+every time the split is adjusted — and a check with that much friction is one
+that gets skipped, which is strictly worse than a cheaper check that runs. §11
+now describes two tiers: lint, types and that commit's own tests per commit
+(seconds), and the full suite with the coverage gate once before a push, which
+is what CI runs anyway. **`mypy` turns out to do most of the work**, because the
+defect this rule exists to catch — a commit importing something a later commit
+adds — is a type error in isolation, named by module and line, with nothing
+executed. Both of the defects above would have been caught by the cheap tier.
 
 The phase closed at **699 tests**, with `domain/` and `application/` at **100%**
 statement and branch coverage against the 90% gate, and
