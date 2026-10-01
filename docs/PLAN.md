@@ -1036,6 +1036,33 @@ Sequenced so every phase ends with something runnable. Commits follow
 [Conventional Commits](https://www.conventionalcommits.org/) — worth doing
 because it makes the git history itself part of the portfolio.
 
+**Each phase's commit list is a dependency order, and every commit in it has to
+be green on its own.** Not a style preference: a history where commit 3 cannot
+import commit 1 is a history you cannot bisect, cannot review one commit at a
+time, and cannot use as the portfolio artifact this project is partly for.
+
+The rule is here because Phase 3's list broke it and nobody noticed until the
+commits were written. Its commit 1, "workspace provisioning with a scoped git
+environment", needed the fixture runner from its commit 4; two of its test files
+needed fixtures that the list placed two commits later. The lists below read as
+a sensible narrative order — foundations, then the interesting part — and
+narrative order is not dependency order. **So check each list against the actual
+imports before committing to it, and reorder rather than reaching for a
+`--no-verify`-shaped workaround.** Verifying it is cheap:
+
+```bash
+for sha in $(git rev-list --reverse <base>..HEAD); do
+  git checkout --quiet --detach "$sha" && uv run pytest -q --no-cov | tail -1
+done
+```
+
+One caveat on that loop, which cost an hour to learn: run it in the working tree
+rather than in a `git worktree`. An editable install resolves `practice` to the
+path it was installed from, so a worktree runs the *working tree's* source
+against the *commit's* tests and reports failures that are artifacts of the
+method. The tree must also be clean — an untracked file from a later commit is
+still on disk after `git checkout` and contaminates the run the same way.
+
 **Effort** is in *sessions* ≈ 2–3 focused hours, at entry-level pace.
 **Phases 0–9 (the MVP) total ~40 sessions, so on the order of 100 focused
 hours.** That is a real project, not a weekend. Phase 11 roughly doubles it.
@@ -1044,6 +1071,14 @@ Phases 3 and 5 carry the widest error bars — they are the ones with genuine
 unknowns (cross-platform subprocess behaviour, and 22 assertions against two
 `RepoQuery` implementations). If a phase is going to run over, it is one of
 those two.
+
+Phase 3 came in on its six-session estimate, but not where the estimate expected
+it: the Windows papercuts §13 flagged as the high risk each cost minutes rather
+than the forecast hour, because a fifteen-minute spike found them before any
+module existed. The time went instead on semantics nobody had written down, and
+on splitting the work into commits that each stand alone. **Budget for the
+commit split.** It is not free, and on Phase 3 it paid for itself twice by
+finding two ordering defects.
 
 ---
 
@@ -1135,18 +1170,31 @@ an hour to diagnose.
 - Command policy (allowlist + metacharacter rejection)
 - Virtual file commands
 - Fixture runner: deterministic SHAs, `commit_as` alias library, ref snapshot
-- Workspace lifecycle: explicit `dispose()`, plus a filesystem-only
-  `practice gc --dry-run`. The DB-aware orphan definition and resume-or-abandon
+- Workspace lifecycle: explicit `dispose()`, `attach()` to reopen a workspace
+  without re-running its fixture, plus a filesystem-only `practice gc
+  --dry-run`. The DB-aware orphan definition and the resume-or-abandon *prompt*
   from §8.1 need the attempt table, so they land in Phase 6 — until then `gc`
-  only ever reports, never deletes.
+  only ever reports, and `--no-dry-run` is refused with the reason rather than
+  accepted and ignored (§16).
 
-**Commits**
-1. `feat(sandbox): add workspace provisioning with a scoped git environment`
-2. `feat(sandbox): pin git config for cross-platform reproducibility`
-3. `feat(sandbox): add command policy and virtual file commands`
-4. `feat(sandbox): add fixture runner with deterministic shas and aliases`
-5. `feat(sandbox): add attempt lifecycle with resume and safe gc`
-6. `test(sandbox): add cross-platform integration tests`
+**Commits** (as shipped; the planned order was not a dependency order — see the
+rule at the top of this section and §16)
+1. `feat(sandbox): add a scoped git environment and a process executor`
+2. `feat(sandbox): add command policy and virtual file commands`
+3. `feat(sandbox): provision workspaces with a pinned git config and a fixture`
+4. `feat(sandbox): add the fixture lock that pins commit hashes across platforms`
+5. `feat(cli): add practice fixtures and practice gc`
+6. `test(content): run every fixture and replay every reference solution`
+7. `docs: add ADR 0005 and mark phase 3 complete`
+
+The planned list opened with workspace provisioning, which needs the fixture
+runner it placed fourth and the command policy it placed third. What shipped
+runs bottom-up instead: the environment and the executor, then the policy and
+the virtual commands that gate what reaches them, then the workspace and
+provisioner that compose all four. The two halves of the pinned environment —
+the process env and the workspace gitconfig — land with the code that writes
+each, rather than as a separate "pin git config" commit that would have had
+nothing to pin yet.
 
 **Exit:** the same fixture produces **byte-identical commit SHAs** on Windows
 and Linux CI. Prove it by having both jobs write their SHAs and compare against
@@ -1165,13 +1213,20 @@ First end-to-end value. You can solve a kata after this phase.
 - pytest report plugin + subprocess runner with timeouts
 - `KataGrader` mapping test results to `CheckReport`s
 - `StartAttempt`, `SubmitSolution` use cases
+- An in-memory `AttemptRepository`, because `StartAttempt` saves through that
+  port and SQLite is Phase 6. Not scaffolding to be thrown away: it is the
+  second implementation that keeps the port honest under the §13 rule, and the
+  one every application test will use long after SQLite lands.
+- **`composition.py`** — the single wiring point from §3, which has to exist as
+  soon as there is an object graph to build.
 - CLI: `practice solve katas/two-sum`
 
 **Commits**
 1. `feat(kata): add pytest report plugin and sandboxed runner`
 2. `feat(kata): add grader mapping test results to check reports`
-3. `feat(app): add StartAttempt and SubmitSolution use cases`
-4. `feat(cli): solve a kata end to end from the terminal`
+3. `feat(app): add an in-memory attempt repository and the composition root`
+4. `feat(app): add StartAttempt and SubmitSolution use cases`
+5. `feat(cli): solve a kata end to end from the terminal`
 
 **Exit:** a kata solved from the terminal, correctly passing and correctly
 failing, with the content test proving stub fails and reference passes.
@@ -1185,28 +1240,49 @@ The heart of the project, and by a wide margin the longest phase. Two
 two use cases is simply a lot of surface — the earlier 5-session estimate was
 wishful.
 
-- `RepoQuery` port, `GitRepoQuery` adapter, `FakeRepoQuery` fake
+- `GitRepoQuery` adapter and `FakeRepoQuery` fake. The **port** is already
+  there — Phase 1 shipped every protocol in `domain/ports.py`, and
+  `RepoQuery`'s vocabulary types with it — so this phase adds implementations,
+  not the interface.
 - Conformance suite proving the two implementations agree
-- Check registry plus ref and tree assertions (in `domain/checks/`, §6.2)
+- Ref and tree assertions, and the registry **turned into a dispatch table**.
+  `domain/checks/registry.py` already exists as the set of legal `assert:`
+  names, which is what lets the Phase 2 schema reject a typo; this phase makes
+  it `name -> CheckFunction` and keeps `is_registered` working unchanged.
 - Worktree, index, stash, reflog assertions
 - Advisory/process assertions over the attempt event log
+- `ScenarioGrader` behind the `Grader` port, assembling `CheckReport`s into a
+  `Verdict` — the piece the original list skipped between the assertions and
+  the use cases. `SubmitScenario` cannot grade without it, and it is what makes
+  the kind registry in §3 dispatch to something.
 - `RunScenarioCommand`, `SubmitScenario` use cases
-- **Solution replay**: run `solution.cmds` / `naive.cmds` through the real
-  policy, completing the content integrity suite deferred from Phase 2
+- **Graded replay**, which completes the content integrity suite deferred from
+  Phase 2. Phase 3 already replays both through the real policy and asserts they
+  *run*; what is still missing is the oracle — `solution.cmds` must pass every
+  `required` check, and each counter-example must fail **exactly** the checks
+  its `expect_failures` declares. That last word is the whole point: "fails at
+  least one check" would let a counter-example rot into failing for an
+  unrelated reason with CI none the wiser (§5.4).
 - CLI scenario driver
 - **Spike:** whether `rebase -i` is drivable with a non-interactive
   `GIT_SEQUENCE_EDITOR` stand-in. Decide this *before* promising `rebase -i`
   content in Phase 11.
 
-**Commits**
-1. `feat(git): add RepoQuery port with a git adapter and in-memory fake`
+**Commits** (bottom-up: implementations, then assertions over them, then the
+grader that assembles those, then the use cases, then the drivers)
+1. `feat(git): add a git RepoQuery adapter and an in-memory fake`
 2. `test(git): add conformance suite for RepoQuery implementations`
-3. `feat(checks): add registry with ref and tree assertions`
+3. `feat(checks): dispatch the registry, with ref and tree assertions`
 4. `feat(checks): add worktree, stash and reflog assertions`
 5. `feat(checks): add advisory assertions over the command log`
-6. `feat(app): add RunScenarioCommand and SubmitScenario use cases`
-7. `feat(content): replay reference solutions through the command policy`
-8. `feat(cli): solve a git scenario end to end from the terminal`
+6. `feat(checks): assemble check reports into a scenario verdict`
+7. `feat(app): add RunScenarioCommand and SubmitScenario use cases`
+8. `test(content): grade every reference solution and counter-example`
+9. `feat(cli): solve a git scenario end to end from the terminal`
+
+Nine commits against nine sessions is a coincidence, not a plan — the spike
+above is a session that produces no commit, and commits 3–5 are the bulk of the
+22 assertions and will take more than one each.
 
 **Exit:** the revert-a-pushed-commit scenario passes via `revert`, and
 `reset --hard` fails the `history-preserved` check with a useful explanation.
@@ -1219,17 +1295,21 @@ That contrast **is** the product working.
 - SQLite connection (WAL, `foreign_keys=ON`), numbered SQL migration runner
 - `SqliteAttemptRepository` with explicit row↔domain mappers
 - `SqliteReviewRepository`
+- Swap the in-memory repositories for the SQLite ones in `composition.py`,
+  which Phase 4 created. One line per repository if the ports have been
+  respected — and if it is not, that is the finding.
 - **Attempt lifecycle completed:** resume-or-abandon on startup, and `gc`
-  promoted from dry-run to real deletion now that "orphan" can be defined
-  against the attempt table (§8.1)
-- Wire everything through `composition.py`
+  promoted from reporting to real deletion now that "orphan" can be defined
+  against the attempt table (§8.1). `SubprocessSandboxProvisioner.attach`
+  already exists from Phase 3; what is missing is the table that says which
+  workspace is still in use.
 
 **Commits**
 1. `feat(db): add sqlite connection and migration runner`
 2. `feat(db): add attempt repository with explicit mappers`
 3. `feat(db): add review card repository`
-4. `feat(app): add attempt resume and db-aware workspace gc`
-5. `refactor: wire repositories through the composition root`
+4. `refactor: swap the in-memory repositories for sqlite at the root`
+5. `feat(app): add attempt resume and db-aware workspace gc`
 
 **Exit:** attempts survive a restart and can be resumed; migrations apply
 cleanly from empty and are idempotent; `gc` provably never deletes the
@@ -1245,10 +1325,15 @@ workspace of an active attempt.
 - HTMX submit flow with a verdict panel
 
 **Commits**
-1. `feat(web): add FastAPI app, base templates and loopback guard`
-2. `chore(web): vendor htmx and codemirror for offline use`
+1. `chore(web): vendor htmx and codemirror for offline use`
+2. `feat(web): add FastAPI app, base templates and loopback guard`
 3. `feat(web): add browse and kata workbench pages`
 4. `feat(web): add htmx submit flow with verdict panel`
+
+Vendoring comes first because the base template references the vendored files by
+path. The other way round, commit 1 ships a layout whose `<script>` 404s —
+which the offline-asset test would not catch, because it greps for `http://`
+and a broken local path is not a remote one.
 
 **Exit:** a kata solved entirely in the browser with the network disconnected.
 Offline-asset test green.
@@ -1797,3 +1882,49 @@ every finding came from running something. The spike that discovered
 `shutil.rmtree` failing with `WinError 5` on a read-only git object, and WSL's
 `bash.exe` sitting ahead of Git Bash on `PATH`, took fifteen minutes and saved
 the two most likely multi-hour debugging sessions in the phase.
+
+**2026-10-01 — phase plans corrected after phase 3.** Writing phase 3's commits
+exposed a defect in how §11 was written rather than in any one phase: the commit
+lists were *narrative* orders, not dependency orders. Phase 3's opened with
+workspace provisioning, which needs the fixture runner it placed fourth. Two of
+its test files needed fixtures the list placed two commits later. None of that
+was visible until the commits existed and each was checked out and run.
+
+§11 now states the rule — every commit in a list is green on its own — with the
+verification loop and the two traps in it: an editable install makes a
+`git worktree` run the working tree's source against the commit's tests, and an
+untracked file from a later commit survives `git checkout` and contaminates the
+run the same way. Both produced failures that were artifacts of the method, and
+both were initially mistaken for real ones.
+
+Auditing the remaining phases against the same rule found four more problems,
+all of them omissions rather than orderings:
+
+- **Phase 4 cannot ship as listed.** `StartAttempt` saves through the
+  `AttemptRepository` port and the SQLite implementation is Phase 6, and nothing
+  builds the object graph for the CLI. Phase 4 now adds an in-memory repository
+  and `composition.py` — the former not as scaffolding but as the second
+  implementation that keeps the port honest under the §13 rule, and the one the
+  application tests will use permanently.
+- **Phase 5's first and third commits claimed work already done.** The
+  `RepoQuery` *port* shipped in Phase 1 with every other protocol, and
+  `domain/checks/registry.py` shipped in Phase 2 as the set of legal `assert:`
+  names. That phase adds implementations and turns the set into a dispatch
+  table; the commit messages now say so.
+- **Phase 5 had no commit for the scenario grader.** It went straight from the
+  assertions to `SubmitScenario`, which cannot grade without something
+  assembling `CheckReport`s into a `Verdict` behind the `Grader` port. Now
+  commit 6 of nine.
+- **Phase 7 vendored its assets after the templates that reference them**, so
+  its first commit would have shipped a layout whose `<script>` 404s — and the
+  offline-asset test would not have caught it, because it greps for `http://`
+  and a broken local path is not a remote one.
+
+Phase 6's last two commits are also swapped: wiring SQLite in at the root has to
+precede the db-aware `gc`, which is the first thing that needs the attempt table
+to actually be the attempt table.
+
+Phase 5's *ordering* was fine, which is worth recording because the first
+assumption after phase 3 was that it would have the same defect. It does not.
+The lesson generalises less than it looked: the failure was specific to a phase
+whose foundation module sat at the top of its own list.
