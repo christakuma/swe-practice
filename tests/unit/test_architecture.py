@@ -311,3 +311,63 @@ def test_a_violation_reads_as_a_usable_failure_message(fake_tree: Path) -> None:
         "practice.domain.checks.refs:1 imports practice.adapters.git "
         "(inward dependency inverted)"
     )
+
+
+# --- where processes may be started ---------------------------------------
+
+
+#: The only package allowed to start a process. Phase 3's trust split (PLAN.md
+#: §8.1) rests on there being exactly one of these: fixtures get a shell, user
+#: commands get an argv list, and both go through `adapters/sandbox/execution`.
+#: A second `subprocess.run` anywhere would be a third path with neither
+#: property, and the one most likely to be added in a hurry.
+PROCESS_PACKAGE = "practice.adapters.sandbox"
+
+#: Modules that start or signal a process.
+PROCESS_MODULES = frozenset({"subprocess", "signal"})
+
+
+def importers_of(targets: frozenset[str]) -> dict[str, list[str]]:
+    """Every module under `src/practice` that imports one of `targets`."""
+    paths = sorted(PACKAGE_ROOT.rglob("*.py"))
+    packages = frozenset(
+        module_name(path, SOURCE_ROOT) for path in paths if path.name == "__init__.py"
+    )
+    found: dict[str, list[str]] = {}
+    for path in paths:
+        module = module_name(path, SOURCE_ROOT)
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for _, target in imported_modules(tree, module, packages):
+            if target.split(".", 1)[0] in targets:
+                found.setdefault(module, []).append(target)
+    return found
+
+
+def test_only_the_sandbox_starts_a_process() -> None:
+    """One execution path, enforced.
+
+    The trust split is only a split if there is a single place that starts
+    processes. A `subprocess.run` added to, say, the kata runner or a CLI
+    command would bypass the scoped environment, the output caps and the
+    process-tree kill all at once — and would look perfectly reasonable in
+    review.
+    """
+    offenders = {
+        module: targets
+        for module, targets in importers_of(PROCESS_MODULES).items()
+        if not module.startswith(f"{PROCESS_PACKAGE}.") and module != PROCESS_PACKAGE
+    }
+
+    assert offenders == {}, (
+        "processes must be started through adapters/sandbox/execution.py:\n"
+        + "\n".join(
+            f"  - {module} imports {targets}" for module, targets in offenders.items()
+        )
+    )
+
+
+def test_the_sandbox_really_does_start_processes() -> None:
+    """So the rule above cannot pass by there being no process code at all."""
+    importers = importers_of(PROCESS_MODULES)
+
+    assert f"{PROCESS_PACKAGE}.execution" in importers
