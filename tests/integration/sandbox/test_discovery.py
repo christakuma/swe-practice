@@ -1,8 +1,10 @@
-"""Finding git, and building the PATH a fixture needs.
+"""Finding git and the bash it bundles, and building the PATH a fixture needs.
 
 Integration tests: these functions look at the filesystem, which is the whole
-job. The bash half of discovery is tested alongside the fixture runner that
-needs it.
+job. The one that matters most is `test_bash_is_not_wsls_bash` — the bug it
+rules out was found by running `shutil.which("bash")` on the development machine
+and reading the three results it returned, and it would otherwise have surfaced
+as a fixture failing on a path that does not exist.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from practice.adapters.sandbox.env import (
     sandbox_path_entries,
     system_path_entries,
 )
+from practice.adapters.sandbox.fixture_runner import find_bash
 
 
 def test_git_is_found() -> None:
@@ -86,3 +89,42 @@ def test_discovery_is_cached() -> None:
 def test_the_resolved_git_is_absolute() -> None:
     """So `Popen` never has to search a PATH of its own choosing."""
     assert Path(find_git()).is_absolute()
+
+
+# --- bash ------------------------------------------------------------------
+
+
+def test_bash_is_found() -> None:
+    assert find_bash().is_file()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="WSL is a Windows-only trap")
+def test_bash_is_not_wsls_bash() -> None:
+    """`C:\\Windows\\System32\bash.exe` is on every Windows PATH by default.
+
+    It starts a Linux distribution with its own filesystem, where the workspace
+    path does not exist — so a fixture run through it fails with an error that
+    points nowhere near the cause. `shutil.which("bash")` finds it; anchoring on
+    the git installation does not.
+    """
+    bash = find_bash()
+
+    assert bash.parent.name != "System32"
+    assert "WindowsApps" not in str(bash)
+
+
+def test_bash_comes_from_the_same_installation_as_git() -> None:
+    """Two git installations on one machine is normal — a system one and a
+    bundled one. Taking bash from one and git from the other would pair an MSYS
+    runtime with a git it was not built beside.
+    """
+    root = git_install_root()
+    if root is None:
+        pytest.skip("a POSIX prefix install has no bundle to belong to")
+
+    assert root in find_bash().parents
+
+
+def test_bash_discovery_is_cached() -> None:
+    """Resolved once per run; the answer cannot change inside one."""
+    assert find_bash() is find_bash()
