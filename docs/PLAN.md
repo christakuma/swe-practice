@@ -4,9 +4,11 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 3 complete — pure domain, the content schema and loader,
-> and a working sandbox: fixtures run, commands execute under policy, and
-> `content/fixtures.lock` holds commit hashes identical on Windows and Linux.
+> **Status:** Phase 4 complete — on top of the pure domain, the content
+> loader and the sandbox, a kata is now solvable end to end: `practice solve`
+> starts an attempt, runs the hidden suite in an isolated subprocess, and prints
+> a verdict derived from the tests it ran. The composition root and the first
+> two use cases landed with it.
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
 ---
@@ -314,7 +316,7 @@ class ReviewCard:
 | `AttemptRepository` | `save`, `get`, `history_for(exercise_id)` |
 | `ReviewRepository` | `get_card`, `save_card`, `due_on(date)` |
 | `SandboxProvisioner` | `provision(exercise, attempt_id) -> Workspace`, `attach` to resume |
-| `Workspace` | `run(argv, timeout)`, `read_file`, `write_file`, `dispose` |
+| `Workspace` | `run(argv, timeout)`, `run_tool(argv, timeout)`, `read_file`, `write_file`, `dispose` |
 | `RepoQuery` | read-only git interrogation — see §6.2 |
 | `Grader` | `grade(exercise, workspace, attempt) -> Verdict` |
 | `Scheduler` | `next_card(card, grade, today) -> ReviewCard` |
@@ -324,6 +326,15 @@ class ReviewCard:
 `Clock` and `IdGenerator` look like over-engineering until the first test that
 needs a deterministic due date or a stable snapshot. Inject them from day one;
 retrofitting them is miserable.
+
+**`Workspace.run_tool` is the trust split of §8.1, named on the port.** `run` is
+untrusted input — whatever the solver typed, under the exercise's allowlist.
+`run_tool` is trusted code: an argv a grading engine built for itself, which no
+allowlist could usefully gate because the exercise author never wrote it down. A
+kata's allowlist is *empty* by design, so the kata engine's own
+`python -m pytest` has no other way in; putting it on the port rather than
+reaching for the concrete workspace is what keeps `Grader` implementable against
+the protocol (§16, Phase 4).
 
 ---
 
@@ -782,21 +793,53 @@ not yet justified their existence. That is a vocabulary worth building on.
 Simpler, because the oracle is obvious.
 
 1. Workspace receives `solution.py` (your source), `tests.py` (hidden),
-   `conftest.py`, and a **copy of** `practice_report.py`. The plugin file is
-   copied in rather than imported from the app package, because `-p` takes a
-   module name and the module has to be importable from the workspace — copying
-   it is what lets the subprocess stay isolated.
-2. Run with `sys.executable` (the app's own interpreter) in **isolated mode**:
-   `python -I -m pytest tests.py -p practice_report --report-out report.json`.
-   `-I` suppresses user site-packages and `PYTHONPATH`, so a stray environment
-   variable on your machine cannot change how a kata grades.
+   `conftest.py`, `pytest.ini`, and a **copy of** `practice_report.py`. The
+   plugin file is copied in rather than imported from the app package, because
+   the module has to be importable from the workspace — copying it is what lets
+   the subprocess stay isolated.
+2. Run with `sys.executable` (the app's own interpreter) in **isolated mode**.
+   The invocation below is the one that works; the first draft of this section
+   had one that cannot, and every difference was found by running it (§16):
+
+   ```
+   python -I -X utf8 -m pytest tests.py \
+       -c pytest.ini -p no:cacheprovider -q --no-header --color=no \
+       --report-out report.json
+   ```
+
+   - `-I` suppresses user site-packages and `PYTHONPATH`, so a stray
+     environment variable on your machine cannot change how a kata grades.
+   - **The plugin cannot be loaded with `-p`.** `-I` implies `-P`, so the
+     workspace is not on `sys.path` when pytest resolves plugin arguments, and
+     the import fails before collection starts. The copied-in `conftest.py`
+     registers it through `pytest_plugins` instead — by which point pytest has
+     imported the conftest by path — and puts the workspace on `sys.path`
+     explicitly, which is also what lets `tests.py` do `from solution import …`.
+   - **`-X utf8`, not `PYTHONIOENCODING`.** `-I` implies `-E`, which drops every
+     `PYTHON*` variable; the sandbox pins `LC_ALL=C` for git's sake, and under
+     an ASCII locale a non-ASCII character in an assertion message raises inside
+     pytest's own reporting.
+   - **`-c pytest.ini` pins the rootdir.** Otherwise pytest walks *upwards* from
+     the workspace looking for a config file and obeys the `addopts` of any
+     project that happens to be an ancestor of the user cache directory —
+     including this one, whose `addopts` carries `--cov`.
+   - **`--color=no` keeps ANSI escapes out of a verdict.** pytest colours
+     assertion diffs from `TERM` even through a pipe, so without it
+     `assert (0, 0) == (1, 2)` arrives wrapped in escape codes and gets stored
+     in a `CheckReport`. The same problem `color.ui=false` solves for git.
 3. The plugin writes one JSON record per test (nodeid, outcome, message,
-   duration). **Written ourselves rather than pulling in `pytest-json-report`**
-   — it is ~40 lines, removes a dependency, and produces exactly the shape we
-   want.
+   location, duration, docstring). **Written ourselves rather than pulling in
+   `pytest-json-report`** — it is ~40 lines, removes a dependency, and produces
+   exactly the shape we want.
 4. Each test maps to one `CheckReport`, using the test's docstring as the
    human-readable `label` when present.
 5. Timeouts are enforced at the subprocess level, not via `pytest-timeout`.
+6. **A suite that produced no records is one failing check, not none and not
+   all of them.** A collection error or a timeout says nothing about any
+   individual assertion, and `Verdict` refuses to be built empty — so the engine
+   reports a synthesised `suite-ran` check carrying the captured output. Telling
+   a solver that every test failed when the truth is that their file does not
+   import sends them looking in the wrong place.
 
 **Complexity self-reporting.** Before submitting, you declare the time and space
 complexity of your solution. It is stored on the `Attempt` and compared against
@@ -1005,15 +1048,16 @@ swe-practice/
 │   │   │   └── recovery.py  process.py
 │   │   └── scheduling/sm2.py
 │   ├── application/
-│   │   ├── dto.py  registry.py
+│   │   ├── dto.py  registry.py  errors.py
 │   │   └── use_cases/*.py
 │   ├── adapters/
 │   │   ├── content/{schema,loader,validation,filesystem,errors}.py
+│   │   ├── persistence/memory.py        # in-memory attempts; sqlite/ in phase 6
 │   │   ├── persistence/sqlite/{connection,migrations/,attempts,reviews,mappers}.py
 │   │   ├── sandbox/{workspace,provisioner,command_policy,virtual_commands,env}.py
 │   │   │            {execution,fixture_runner,fixture_lock}.py  # §16
 │   │   ├── git/{repo_query,graph}.py   # reads repos; phase 5
-│   │   ├── kata/{pytest_runner,report_plugin}.py
+│   │   ├── kata/{pytest_runner,report_plugin,grader}.py
 │   │   └── clock.py  ids.py
 │   ├── interface/
 │   │   ├── web/{app,security}.py + routes/ templates/ static/
@@ -1221,15 +1265,29 @@ First end-to-end value. You can solve a kata after this phase.
   soon as there is an object graph to build.
 - CLI: `practice solve katas/two-sum`
 
-**Commits**
+**Commits** (as shipped; two deviations from the planned list, both in §16)
 1. `feat(kata): add pytest report plugin and sandboxed runner`
 2. `feat(kata): add grader mapping test results to check reports`
-3. `feat(app): add an in-memory attempt repository and the composition root`
+3. `feat(app): add the grader registry, in-memory attempts and the root`
 4. `feat(app): add StartAttempt and SubmitSolution use cases`
 5. `feat(cli): solve a kata end to end from the terminal`
+6. `test(content): grade every kata's reference solution and its stub`
+7. `docs: mark phase 4 complete`
+
+Commit 3 carries the grader registry as well, because `composition.py` cannot
+assemble `Services` without one — the registry is an edge in the graph the
+wiring module exists to show. Commit 6 is separate because it is the *exit
+criterion* rather than the engine: it shrinks `unproven_by_design`, which trips
+the Phase 2 tripwire in `tests/content/test_library.py` and makes the build fail
+until someone writes the grading tests.
 
 **Exit:** a kata solved from the terminal, correctly passing and correctly
 failing, with the content test proving stub fails and reference passes.
+**Met** — 2026-10-01. `practice solve katas/two-sum --reference --time "O(n)"
+--space "O(n)"` exits 0 with ten green checks; the same command with no source
+grades the shipped stub, prints nine failures and exits 1; a git scenario is
+refused with the phase that lands it. §16 records the five findings and the six
+deviations.
 
 ---
 
@@ -1928,3 +1986,121 @@ Phase 5's *ordering* was fine, which is worth recording because the first
 assumption after phase 3 was that it would have the same defect. It does not.
 The lesson generalises less than it looked: the failure was specific to a phase
 whose foundation module sat at the top of its own list.
+
+**2026-10-01 — Phase 4 built: the kata engine, and the first vertical slice.**
+Three sessions budgeted and three spent, but the split was not the expected one:
+the grading *logic* was a morning and the pytest *invocation* was most of the
+rest. §7 described that invocation in one line, and the line does not work.
+
+Five findings. The first four are all the same finding wearing different hats —
+**an isolated subprocess is isolated from things you wanted** — and all four
+came out of a fifteen-minute spike run before any module existed, which is now
+twice in a row that the spike has been the cheapest part of a phase.
+
+- **`-p practice_report` cannot load the plugin.** §7's invocation fails before
+  collection with `No module named 'practice_report'`, because `-I` implies `-P`
+  and the workspace is therefore not on `sys.path` when pytest resolves plugin
+  arguments. Phase 2 had already spotted the *other* half of this — that
+  `from solution import two_sum` would fail for the same reason — and fixing
+  only that half would have left the plugin unloadable. The copied-in
+  `conftest.py` now registers it through `pytest_plugins`, by which point pytest
+  has imported the conftest by path, and inserts the workspace on `sys.path`
+  explicitly on the way.
+- **pytest colours assertion diffs through a pipe.** The first failure message
+  read back from a real run was
+  `assert (0, 0) == (1, 2)\n At index 0 diff: \x1b[0m\x1b[94m0...` — ANSI
+  escapes, on their way into a `CheckReport` and from there into a verdict panel
+  and a SQLite row. `--color=no`. Exactly the problem `color.ui=false` solves
+  for git in §6.1, which is the tell: output that will be *stored* has to be
+  pinned at the source, not cleaned up at the display.
+- **`-I` implies `-E`, so `PYTHONIOENCODING` is not available.** The sandbox
+  pins `LC_ALL=C` so git speaks one language; under an ASCII locale, a non-ASCII
+  character in an assertion message raises inside pytest's own reporting. The
+  only way to pin encoding through `-E` is the command line: `-X utf8`.
+- **pytest would have found this project's own `pyproject.toml`.** rootdir
+  discovery walks *upwards* from the arguments, so a workspace under any
+  ancestor carrying `[tool.pytest.ini_options]` inherits its `addopts` — in this
+  project `--cov`, plus `filterwarnings = ["error"]`. A grading run that
+  silently obeyed the grader's own config is the kind of thing that works for a
+  year and then does not. An empty `pytest.ini` in the workspace plus `-c` pins
+  both the config and the rootdir.
+- **`TestRecord` and `TestOutcome` broke every test file that imported them.**
+  A `Test`-prefixed class in a module pytest is collecting is a test class, and
+  one with a constructor is a `PytestCollectionWarning` — which this project's
+  `filterwarnings = ["error"]` promotes to a collection *error*. `__test__ =
+  False` is the documented opt-out and is preferred here over renaming: a kata's
+  hidden suite really is a list of tests, and the domain vocabulary should not
+  bend around a prefix convention.
+
+One finding was not about pytest at all, and it is the one worth generalising.
+**`ports.py` still declared `provision(exercise)` and had no `attach`** — both
+contradicting a deviation this very log recorded when Phase 3 shipped. Nothing
+had noticed in a month, because nothing had *called* the provisioner through the
+port: the adapter was always used concretely, so the protocol was never checked
+against anything. A port with no caller is not checked by mypy either, and
+`Protocol`s are structural, so there is no inheritance to complain. The lesson
+is narrower than "keep docs in sync": **a port is only verified at the moment a
+use case depends on it**, which is an argument for writing the use case in the
+same phase as the adapter rather than two phases later.
+
+Three bugs were found by the tests that were written to describe the code, which
+is the ordinary case but worth counting: `label_for` indexed into an empty list
+for a docstring that was only whitespace; `TestRecord.name` took the segment
+after the *last* `::`, which collapses `TestSorting::test_empty` and
+`TestParsing::test_empty` into one check id; and a test asserting that a second
+submission is refused by the aggregate was wrong about *which* guard fires —
+the workspace is disposed on submit, so `attach` returns `None` and the solver
+sees `WorkspaceGoneError` long before `Attempt.complete` gets a chance. That
+last one had been written to accept either exception, which is how it passed
+while describing the wrong mechanism; pinning it to one was the fix.
+
+Six deliberate deviations from the plan as written, all folded back above:
+
+- **`Workspace` grew `run_tool`.** The kata engine needs to run
+  `python -m pytest` in the workspace, and a kata's allowlist is empty by
+  design, so `run` refuses it — correctly. The alternatives were worse: typing
+  `KataGrader.grade` against the concrete `SubprocessWorkspace` breaks the
+  `Grader` protocol outright (parameter types are contravariant, so a narrower
+  one is not a `Grader`), and exposing the workspace's `Path` and environment on
+  the port leaks the filesystem into the domain to do by hand what the adapter
+  already does. `run_tool` names the §8.1 trust split on the port instead:
+  untrusted input through `run`, engine-authored argv through `run_tool`, the
+  same scoped environment and output caps for both.
+- **The in-memory `AttemptRepository` stores and returns deep copies.** The
+  obvious version keeps the caller's object, which makes `save` nearly a no-op —
+  mutate the aggregate afterwards and the change "persists" by accident. Every
+  use case would then pass its tests here and lose data against SQLite in Phase
+  6, where a row is only what the last `save` wrote. Copying is the whole reason
+  this adapter is evidence of anything rather than scaffolding, and two tests
+  assert it in both directions.
+- **`adapters/kata/grader.py` is a third module** where §10 lists two, and the
+  grader takes a `KataRunner` protocol rather than the concrete runner. That
+  protocol is what makes the timeout and collection-error branches
+  millisecond-long unit tests instead of a ten-second wait each, which is §13's
+  two-implementations rule paying out on the day it was written.
+- **`application/errors.py` is a fourth module** where §10 lists three. A
+  `DomainError` means an aggregate refused an operation; these mean the request
+  could not be satisfied — nothing resolves that id, nothing can grade that
+  kind, the workspace is gone. Four narrow types rather than one error with a
+  code, because every driving adapter maps them to something (an exit status, a
+  status code) and a match on a type is checked while a match on a string is
+  not.
+- **`practice solve` does start *and* submit in one process.** A Phase 4
+  constraint rather than a design: the attempt repository is in memory, so an
+  attempt cannot outlive the invocation that created it, and shipping
+  `practice start` / `practice submit` now would mean a `submit` that can never
+  find its attempt. With no `--source`, it grades the exercise's own stub —
+  which makes the first run of the command show the hidden suite working, and is
+  the same property §9 requires of every kata in the library.
+- **`tests/e2e/` opens with the kata half only.** §9 wants one kata and one git
+  scenario driven through the CLI; the scenario half needs the Phase 5 engine.
+  Two tests, deliberately: an e2e layer that grows becomes the slowest and least
+  informative part of the suite, so anything assertable one layer down lives one
+  layer down.
+
+The phase closed at **699 tests**, with `domain/` and `application/` at **100%**
+statement and branch coverage against the 90% gate, and
+`tests/content/test_katas.py` now grading every kata's reference and stub —
+which shrank `unproven_by_design` from three caveats to two and tripped the
+Phase 2 tripwire exactly as designed. What is still unproven is scenario
+grading, which is Phase 5 and is the only thing the list still admits to.

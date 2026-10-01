@@ -71,9 +71,9 @@ jobs:
         run: uv run mypy
 
       # One run over the whole suite, with the domain/application coverage gate
-      # from pyproject. Splitting by marker still waits: `web` and `e2e` have no
-      # tests yet and pytest exits non-zero on an empty selection, so those two
-      # steps would fail for the wrong reason.
+      # from pyproject. Splitting by marker still waits: `web` has no tests yet
+      # and pytest exits non-zero on an empty selection, so that step would fail
+      # for the wrong reason. (`e2e` has had one since Phase 4.)
       - name: Tests
         run: uv run pytest --cov --cov-report=term-missing
 
