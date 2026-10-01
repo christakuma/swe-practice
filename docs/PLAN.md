@@ -4,8 +4,9 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 2 complete — pure domain, the content schema and loader,
-> and `practice validate` over three exercises.
+> **Status:** Phase 3 complete — pure domain, the content schema and loader,
+> and a working sandbox: fixtures run, commands execute under policy, and
+> `content/fixtures.lock` holds commit hashes identical on Windows and Linux.
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
 ---
@@ -312,7 +313,7 @@ class ReviewCard:
 | `ContentRepository` | `list_exercises(criteria)`, `get(exercise_id)` |
 | `AttemptRepository` | `save`, `get`, `history_for(exercise_id)` |
 | `ReviewRepository` | `get_card`, `save_card`, `due_on(date)` |
-| `SandboxProvisioner` | `provision(exercise) -> Workspace` |
+| `SandboxProvisioner` | `provision(exercise, attempt_id) -> Workspace`, `attach` to resume |
 | `Workspace` | `run(argv, timeout)`, `read_file`, `write_file`, `dispose` |
 | `RepoQuery` | read-only git interrogation — see §6.2 |
 | `Grader` | `grade(exercise, workspace, attempt) -> Verdict` |
@@ -1010,7 +1011,8 @@ swe-practice/
 │   │   ├── content/{schema,loader,validation,filesystem,errors}.py
 │   │   ├── persistence/sqlite/{connection,migrations/,attempts,reviews,mappers}.py
 │   │   ├── sandbox/{workspace,provisioner,command_policy,virtual_commands,env}.py
-│   │   ├── git/{repo_query,fixture_runner,graph}.py
+│   │   │            {execution,fixture_runner,fixture_lock}.py  # §16
+│   │   ├── git/{repo_query,graph}.py   # reads repos; phase 5
 │   │   ├── kata/{pytest_runner,report_plugin}.py
 │   │   └── clock.py  ids.py
 │   ├── interface/
@@ -1020,7 +1022,7 @@ swe-practice/
 │   └── config.py
 ├── content/
 │   ├── _lib/fixture_lib.sh          # commit_as, mkremote, publish, write_file
-│   ├── fixtures.lock                # cross-platform SHA verification
+│   ├── fixtures.lock                # cross-platform SHA verification (phase 3)
 │   └── {katas,git}/…
 ├── tests/{unit,integration,content,web,e2e,fakes}/
 └── tools/vendor_assets.py
@@ -1112,7 +1114,10 @@ clear, located message on a deliberately broken file. **Met** — 2026-09-30.
 here, but the *replay* half — proving `solution.cmds` passes and `naive.cmds`
 fails — needs the sandbox (Phase 3) and `RunScenarioCommand` (Phase 5). Until
 then the git scenarios are structurally validated but not yet proven solvable.
-Don't mistake green here for content that works.
+Don't mistake green here for content that works. *Phase 3 took half of this:
+every fixture now runs and every reference list is replayed through the real
+sandbox by `tests/content/test_fixtures.py`. What is still unproven is whether
+the resulting end state passes the checks — which is grading, and is Phase 5.*
 
 ---
 
@@ -1147,7 +1152,9 @@ an hour to diagnose.
 and Linux CI. Prove it by having both jobs write their SHAs and compare against
 a committed `content/fixtures.lock`, **not** by hard-coding a literal SHA in a
 test — that way a git upgrade that changes hashing shows up as an explicit
-lockfile diff you review, rather than a mystery red build.
+lockfile diff you review, rather than a mystery red build. **Met** —
+2026-10-01, via `practice fixtures --check` on both runners. §16 records the
+five findings and the two deviations.
 
 ---
 
@@ -1374,7 +1381,7 @@ changed"* is worth more than any code sample.
 | [0002](adr/0002-ports-and-adapters-with-an-enforced-boundary.md) | Ports and adapters, with the boundary enforced by a test | accepted |
 | [0003](adr/0003-grade-git-exercises-by-repo-state.md) | Grade git exercises by repo state, not command text | accepted |
 | [0004](adr/0004-content-as-declarative-data.md) | Content is declarative data, validated by schema | accepted |
-| 0005 | Sandbox via temp dirs and subprocess, not containers | not yet written |
+| [0005](adr/0005-sandbox-via-temp-dirs-and-subprocess.md) | Sandbox via a scoped directory and subprocess, not containers | accepted |
 | 0006 | SQLite without an ORM | not yet written |
 | 0007 | HTMX over a single-page app | not yet written |
 | 0008 | SM-2 first, FSRS behind a port | not yet written |
@@ -1719,3 +1726,74 @@ comment. §11 says not to mistake green here for content that works;
 `practice validate` admits it cannot prove, so when the sandbox lands and that
 list shrinks, the build fails and someone has to come back and write the replay
 tests. A note in a plan is not a mechanism.
+
+**2026-10-01 — Phase 3 built: the sandbox.** Six sessions budgeted and the
+budget was right, though not quite for the predicted reasons. §13 called
+"Windows subprocess/path bugs" the high risk; the Windows problems were real but
+each cost minutes rather than the forecast hour, because the spike that found
+them ran before any module was written. What actually took the time was the
+semantics nobody had written down.
+
+Five findings, in rough order of how much they changed:
+
+- **`pwd` had to be a virtual command, and the content already said so.** §8.1
+  lists six virtual commands. `content/git/revert-a-pushed-commit` had shipped
+  `pwd` in its `allowed_commands` since before Phase 0, and `pwd` is a shell
+  builtin with no executable behind it on Windows — so a solver typing a command
+  the exercise explicitly permits would have got `command not found`. Found by
+  replaying the exercise's own allowlist, not by reading the plan. The virtual
+  set is now seven, and a test asserts the set and the dispatch table agree.
+- **`rm -rf .` deleted the repository, `.git` and all.** Caught by a test
+  written to assert the opposite, which is the best possible way to find it. The
+  path guard correctly refused anything *outside* the repository and happily
+  accepted the repository itself, leaving an attempt that cannot be graded and a
+  failure that looks like a tool bug. Real `rm` refuses this too; matching it
+  closed the hole.
+- **The clock's constants were defined twice.** `fixture_lib.sh` held its own
+  epoch and step, duplicating `adapters/sandbox/env.py`. Two copies would drift
+  and the symptom would be every hash in `content/fixtures.lock` moving for no
+  visible reason. The provisioner now exports `PRACTICE_EPOCH` and
+  `PRACTICE_STEP` and the library reads them, so Python owns the definition and
+  bash has none.
+- **`gc.auto` had to be pinned, which §6.1's table does not mention.**
+  `recover-a-lost-commit` works by recovering commits no ref points at, and git
+  starts a background garbage collection on its own once enough loose objects
+  accumulate — which is entitled to delete exactly those objects. The exercise
+  would have become unsolvable for reasons nobody could reproduce. `gc.auto=0`
+  plus disabled reflog expiry are now in the pinned config, and a test asserts
+  the recovery fixture really does leave unreachable commits behind.
+- **`fixture_runner` could not live under `adapters/git/`** where §10 drew it.
+  It reaches into the sandbox's environment, executor and workspace, while the
+  provisioner reaches into it — so with both packages re-exporting, they
+  imported each other and Python said so. Moved to `adapters/sandbox/`, which is
+  also the better line: everything that *builds* a repository is the sandbox,
+  and `adapters/git/` is for the half that *reads* one (`GitRepoQuery`, the
+  commit graph) in Phase 5. `fixture_lock` moved with it.
+
+Two deliberate deviations from the plan as written:
+
+- **`SandboxProvisioner.provision` takes the `AttemptId`.** §4.6 sketched
+  `provision(exercise) -> Workspace`, but the workspace directory is named after
+  the attempt (§8.1), so the alternative is for the provisioner to generate
+  identity — which means the `Attempt` learns its own id from its workspace and
+  the `IdGenerator` port is injected twice to produce one id.
+- **`practice gc --no-dry-run` is refused with an explanation** rather than
+  being offered and quietly doing nothing. An orphan is *a workspace with no
+  active attempt row* and there is no attempt table until Phase 6; a flag that
+  looks like it deletes and does not is worse than one that is not there, because
+  the next person to read the output believes the cache was cleared.
+
+One confirmation worth recording. §6.6 reports c2's tree as `0b2626fa` from the
+hand-run done before Phase 0. The provisioner reproduces that exact tree, under
+a *different* pinned identity — tree hashes do not cover the author or committer,
+so it is the one value from that record this code can check independently. The
+commit hashes in §6.6 differ from the committed lock file for the same reason,
+and the lock file is now the authority. `tests/integration/sandbox/
+test_provisioner.py` asserts the tree directly, so the §6.6 record and the
+running code are tied together rather than merely consistent.
+
+The pattern across Phase 3 matches the one from the two authoring sessions:
+every finding came from running something. The spike that discovered
+`shutil.rmtree` failing with `WinError 5` on a read-only git object, and WSL's
+`bash.exe` sitting ahead of Git Bash on `PATH`, took fifteen minutes and saved
+the two most likely multi-hour debugging sessions in the phase.

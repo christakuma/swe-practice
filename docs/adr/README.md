@@ -26,11 +26,11 @@ an afternoon do not need one.
 | [0002](0002-ports-and-adapters-with-an-enforced-boundary.md) | Ports and adapters, with the boundary enforced by a test | accepted |
 | [0003](0003-grade-git-exercises-by-repo-state.md) | Grade git exercises by repo state, not command text | accepted |
 | [0004](0004-content-as-declarative-data.md) | Content is declarative data, validated by schema | accepted |
+| [0005](0005-sandbox-via-temp-dirs-and-subprocess.md) | Sandbox via a scoped directory and subprocess, not containers | accepted |
 
-Planned, not yet written (PLAN.md §12): sandbox via temp dirs rather than
-containers · SQLite without an ORM · HTMX over an SPA · SM-2 first with FSRS
-behind a port · ship our own prompts · CodeMirror 5 over 6 · reference solutions
-as command lists.
+Planned, not yet written (PLAN.md §12): SQLite without an ORM · HTMX over an
+SPA · SM-2 first with FSRS behind a port · ship our own prompts · CodeMirror 5
+over 6 · reference solutions as command lists.
 
 **0011 is overdue.** "Reference solutions are command lists, not shell scripts"
 was decided in the pre-Phase-0 review and is now enforced in code — Phase 2

@@ -15,11 +15,15 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 2 (content model and loader) complete — the pure domain, the
-Pydantic content schema, the filesystem repository, and `practice validate` over
-three exercises. See [docs/PLAN.md](docs/PLAN.md) for the full design and the
-phase plan, and [docs/adr/](docs/adr/) for the decisions and the alternatives
-that were rejected.
+**Status:** Phase 3 (sandbox) complete. On top of the pure domain and the
+content loader, a git scenario now actually runs: a fixture builds a real repo
+in a throwaway workspace under a fully scoped git environment, commands execute
+under the exercise's own allowlist, and `content/fixtures.lock` pins every
+fixture's commit hashes so CI can prove they are identical on Windows and
+Linux. What is left before an exercise can be *graded* is the check engine
+(Phase 5). See [docs/PLAN.md](docs/PLAN.md) for the full design and the phase
+plan, and [docs/adr/](docs/adr/) for the decisions and the alternatives that
+were rejected.
 
 ## Getting started
 
@@ -52,9 +56,28 @@ uv run practice validate
 ```
 
 Reports every problem in every exercise in one pass, located to the field, and
-exits non-zero if anything is wrong — so CI depends on it. It also prints what a
-passing run does **not** prove: until the sandbox lands in Phase 3, a git
-scenario is structurally valid and not yet known to be solvable.
+exits non-zero if anything is wrong — so CI depends on it. It runs nothing, so
+it works on a machine with no git, and it prints what a passing run does **not**
+prove.
+
+```bash
+uv run practice fixtures --check
+```
+
+Runs every fixture and compares the commit hashes it produced against
+`content/fixtures.lock`. CI runs this on Linux *and* Windows, which is how
+cross-platform determinism is tested rather than asserted: a disagreement names
+which platform diverged. After editing a fixture, regenerate with
+`--write` and review the diff.
+
+```bash
+uv run practice gc
+```
+
+Reports the attempt workspaces left on disk. It never deletes anything yet, on
+purpose — an orphan is *a workspace with no active attempt row*, and the attempt
+table lands in Phase 6. Until then "collect orphans" could delete a session you
+have open.
 
 ## Layout
 
@@ -63,13 +86,18 @@ src/practice/
 ├── domain/        pure data and functions; zero I/O
 │   └── checks/    the assertion vocabulary, as pure functions over a port
 ├── application/   use cases over ports
-├── adapters/      git, sandbox, SQLite, filesystem content
+├── adapters/      sandbox (fixtures, policy, workspaces), git, SQLite, content
 ├── interface/     FastAPI + HTMX web app, Typer CLI
-└── config.py      where the exercise library lives
+└── config.py      where the library and the workspaces live
 content/           exercises as declarative data — adding one needs no code
+└── fixtures.lock  commit hashes every fixture must reproduce, on any platform
 docs/adr/          architecture decision records
 tests/             unit · integration · content · web · e2e
 ```
 
 Dependencies point inward, and `tests/unit/test_architecture.py` fails the build
-if that is ever violated — architecture that isn't tested decays.
+if that is ever violated — architecture that isn't tested decays. The same suite
+enforces one more rule from Phase 3: only `adapters/sandbox` may import
+`subprocess`. The trust split the sandbox rests on — **fixtures are trusted
+code, user commands are untrusted input** — is only a split if there is exactly
+one place that starts a process.
