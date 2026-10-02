@@ -67,6 +67,7 @@ from practice.application.errors import ApplicationError
 from practice.composition import build_services
 from practice.config import (
     CONTENT_ROOT_ENV,
+    DATABASE_PATH_ENV,
     WORKSPACE_ROOT_ENV,
     content_root,
     workspace_root,
@@ -399,6 +400,14 @@ def solve(
             help="Where to provision the attempt. Defaults to the user cache.",
         ),
     ] = None,
+    db: Annotated[
+        Path | None,
+        typer.Option(
+            "--database",
+            envvar=DATABASE_PATH_ENV,
+            help="The attempt database. Defaults to the user data directory.",
+        ),
+    ] = None,
 ) -> None:
     """Solve an exercise from the terminal: grade an answer and print the verdict.
 
@@ -440,6 +449,7 @@ def solve(
     services = build_services(
         content=library,
         workspaces=workspaces.resolve() if workspaces is not None else None,
+        database=db.resolve() if db is not None else None,
     )
 
     try:

@@ -377,3 +377,38 @@ def test_the_sandbox_really_does_start_processes() -> None:
     importers = importers_of(PROCESS_MODULES)
 
     assert f"{PROCESS_PACKAGE}.execution" in importers
+
+
+# --- where SQL may be spoken ----------------------------------------------
+
+
+#: The only package allowed to talk to SQLite. Same shape of rule as the process
+#: one above and the same argument for it: the schema, the migrations, the
+#: transaction boundary and the mapping all live behind the repository ports, and
+#: a `sqlite3.connect` anywhere else is a second set of all four. The one most
+#: likely to be added in a hurry is a web route that wants one number.
+STORAGE_PACKAGE = "practice.adapters.persistence"
+
+STORAGE_MODULES = frozenset({"sqlite3"})
+
+
+def test_only_the_persistence_adapter_speaks_sqlite() -> None:
+    offenders = {
+        module: targets
+        for module, targets in importers_of(STORAGE_MODULES).items()
+        if not module.startswith(f"{STORAGE_PACKAGE}.") and module != STORAGE_PACKAGE
+    }
+
+    assert offenders == {}, (
+        "SQLite is reached through the repository ports, not directly:\n"
+        + "\n".join(
+            f"  - {module} imports {targets}" for module, targets in offenders.items()
+        )
+    )
+
+
+def test_the_persistence_adapter_really_does_speak_sqlite() -> None:
+    """So the rule above cannot pass by there being no database code at all."""
+    importers = importers_of(STORAGE_MODULES)
+
+    assert f"{STORAGE_PACKAGE}.sqlite.connection" in importers

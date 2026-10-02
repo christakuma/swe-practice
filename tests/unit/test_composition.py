@@ -6,9 +6,10 @@ the type check, and nothing else would catch it because an adapter never
 subclasses its port.
 
 What the asserts add is the part a type checker cannot see: that building the
-graph writes nothing to disk, that the kata grader is registered and the
-scenario grader deliberately is not, and that the overrides the test suite
-depends on actually reach the adapters they are meant to configure.
+graph writes nothing to disk — including no database, which is why `Database`
+connects lazily — that every exercise kind has a grader, and that the overrides
+the test suite depends on actually reach the adapters they are meant to
+configure.
 
 A unit test rather than an integration one, because nothing here runs: every
 adapter stores the paths it was given and reads them when it is used.
@@ -16,18 +17,28 @@ adapter stores the paths it was given and reads them when it is used.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
+from practice.adapters.persistence import (
+    InMemoryAttemptRepository,
+    SqliteAttemptRepository,
+    SqliteReviewRepository,
+)
 from practice.adapters.sandbox import SubprocessSandboxProvisioner
 from practice.application.use_cases import StartAttempt, SubmitSolution
 from practice.composition import Services, build_services
-from practice.config import content_root
+from practice.config import content_root, database_path
 from practice.domain.exercise import ExerciseKind
-from practice.domain.ids import ExerciseId
+from practice.domain.ids import AttemptId, ExerciseId
+from practice.domain.review import ReviewCard
 from tests.fakes import FakeClock
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+TWO_SUM = ExerciseId("katas/two-sum")
 
 
 def test_the_real_graph_satisfies_every_port() -> None:
@@ -42,15 +53,81 @@ def test_the_real_graph_satisfies_every_port() -> None:
 
 
 def test_building_the_graph_writes_nothing_to_disk(tmp_path: Path) -> None:
-    """Building must not create the cache directory as a side effect, or
-    `practice validate` would leave one behind on a machine that has never run
-    an attempt.
+    """Building must create neither the cache directory nor the database, or
+    `practice validate` would leave both behind on a machine that has never run an
+    attempt.
+
+    The database half is the Phase 6 addition, and it is the reason `Database`
+    stores a path and connects on first use rather than in its constructor.
     """
     workspaces = tmp_path / "ws"
+    storage = tmp_path / "state" / "practice.db"
 
-    build_services(workspaces=workspaces)
+    build_services(workspaces=workspaces, database=storage)
 
     assert not workspaces.exists()
+    assert not storage.exists()
+    assert not storage.parent.exists()
+
+
+def test_the_repositories_are_the_sqlite_ones(tmp_path: Path) -> None:
+    """The Phase 6 swap, asserted at the only place that decides it.
+
+    Narrowed to the concrete classes deliberately: everywhere else in the system
+    these are `AttemptRepository` and `ReviewRepository` and nothing may know
+    otherwise, which is exactly why the one module that *does* know should be held
+    to it.
+    """
+    services = build_services(database=tmp_path / "practice.db")
+
+    assert isinstance(services.attempts, SqliteAttemptRepository)
+    assert isinstance(services.reviews, SqliteReviewRepository)
+
+
+def test_both_repositories_share_one_database(tmp_path: Path) -> None:
+    """One file, so a future use case that reads an attempt and writes its review
+    card does it in one place. Asserted through behaviour rather than identity: the
+    `Database` is not a field on `Services`, so the only way to ask is to write
+    through one repository and read through the other's file.
+    """
+    storage = tmp_path / "practice.db"
+
+    services = build_services(database=storage)
+    services.reviews.save_card(ReviewCard.new(TWO_SUM, date(2026, 10, 2)))
+
+    assert storage.is_file()
+    # Reading an attempt out of the same file the card was written to: if the two
+    # repositories had their own `Database`, the second one would be migrating a
+    # file that does not exist yet rather than reading this one.
+    assert services.attempts.get(AttemptId.parse(str(uuid4()))) is None
+
+
+def test_an_attempt_store_override_keeps_the_database_out_of_it(
+    tmp_path: Path,
+) -> None:
+    """The escape hatch an application test uses: the real use cases over the
+    in-memory store, with nothing on disk at all.
+    """
+    storage = tmp_path / "practice.db"
+
+    services = build_services(database=storage, attempts=InMemoryAttemptRepository())
+
+    assert isinstance(services.attempts, InMemoryAttemptRepository)
+    assert services.start_attempt.attempts is services.attempts
+
+
+def test_the_database_path_override_reaches_the_repositories(tmp_path: Path) -> None:
+    """And the default is `config.database_path()`, which the test suite has
+    already pointed somewhere disposable for every test (tests/conftest.py).
+    """
+    storage = tmp_path / "elsewhere.db"
+
+    build_services(database=storage).reviews.save_card(
+        ReviewCard.new(TWO_SUM, date(2026, 10, 2))
+    )
+
+    assert storage.is_file()
+    assert not database_path().exists()
 
 
 def test_every_exercise_kind_has_a_grader() -> None:

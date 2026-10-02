@@ -20,9 +20,24 @@ satisfies the port it is being passed as — an adapter never subclasses its por
 protocols is also what lets a test build a `Services` out of fakes and drive the
 real use cases with it.
 
-The two `*_root` arguments exist because the test suite needs to point at a
-disposable library and a disposable workspace root. Everything else comes from
-`config`, which is the module that knows where things live on this machine.
+It is also why the `Database` is *not* a field. It is machinery rather than a
+dependency any use case has — the two repositories hold it, nothing else asks it
+anything — and putting a concrete class on a dataclass of protocols would make
+"these are all ports" the kind of claim with one exception in it. A caller that
+wants to tell someone where the database is asks `config.database_path()`, which
+is the question it is actually asking.
+
+The three path arguments exist because the test suite needs to point at a
+disposable library, a disposable workspace root and a disposable database.
+Everything else comes from `config`, which is the module that knows where things
+live on this machine.
+
+**Phase 6's swap was one line per repository, which was the thing being tested.**
+PLAN.md §11 put it this way: if the ports have been respected, exchanging the
+in-memory stores for SQLite ones is a change to this file and nothing else — and
+if it is not, that is the finding. It was. No use case, no grader and no CLI
+command changed, because none of them had ever held anything but an
+`AttemptRepository`.
 """
 
 from __future__ import annotations
@@ -35,7 +50,11 @@ from practice.adapters.content import FilesystemContentRepository
 from practice.adapters.git import ScenarioGrader
 from practice.adapters.ids import Uuid4IdGenerator
 from practice.adapters.kata import KataGrader, PytestKataRunner
-from practice.adapters.persistence import InMemoryAttemptRepository
+from practice.adapters.persistence import (
+    Database,
+    SqliteAttemptRepository,
+    SqliteReviewRepository,
+)
 from practice.adapters.sandbox import SubprocessSandboxProvisioner
 from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
@@ -44,7 +63,7 @@ from practice.application.use_cases import (
     SubmitScenario,
     SubmitSolution,
 )
-from practice.config import content_root, workspace_root
+from practice.config import content_root, database_path, workspace_root
 from practice.domain.exercise import ExerciseKind
 
 if TYPE_CHECKING:
@@ -56,6 +75,7 @@ if TYPE_CHECKING:
         ContentRepository,
         Grader,
         IdGenerator,
+        ReviewRepository,
         SandboxProvisioner,
     )
 
@@ -74,6 +94,7 @@ class Services:
 
     content: ContentRepository
     attempts: AttemptRepository
+    reviews: ReviewRepository
     provisioner: SandboxProvisioner
     graders: GraderRegistry
     clock: Clock
@@ -130,25 +151,35 @@ def build_services(
     *,
     content: Path | None = None,
     workspaces: Path | None = None,
+    database: Path | None = None,
     clock: Clock | None = None,
     attempts: AttemptRepository | None = None,
 ) -> Services:
     """Build the real object graph.
 
-    Nothing here *writes* to the disk: every adapter stores the paths it was
-    given and reads them when it is used. That is deliberate — building the
-    graph must not create a cache directory as a side effect, or `practice
-    validate` would leave one behind on a machine that has never run an
-    attempt.
+    Nothing here *writes* to the disk, and as of Phase 6 that claim covers a
+    database as well as a cache directory: `Database` stores a path and connects
+    on first use, so building the graph for `practice validate` — which never
+    reads a row — leaves nothing behind on a machine that has never run an
+    attempt. `test_building_the_graph_writes_nothing_to_disk` is that claim.
 
     One read does happen: `PytestKataRunner` loads the plugin source that ships
     beside it, so a package missing that file fails here with a message about a
     missing file rather than three minutes later in the middle of grading.
+
+    `attempts` overrides the store outright rather than the path, which is the
+    escape hatch for a caller that wants no database at all — an application test
+    driving the real use cases over the in-memory store. The path override is for
+    a caller that wants a *disposable* one.
     """
     library = content if content is not None else content_root()
+    storage = Database(database if database is not None else database_path())
     return Services(
         content=FilesystemContentRepository(library),
-        attempts=attempts if attempts is not None else InMemoryAttemptRepository(),
+        attempts=(
+            attempts if attempts is not None else SqliteAttemptRepository(storage)
+        ),
+        reviews=SqliteReviewRepository(storage),
         provisioner=SubprocessSandboxProvisioner(
             content_root=library,
             workspace_root=workspaces if workspaces is not None else workspace_root(),
