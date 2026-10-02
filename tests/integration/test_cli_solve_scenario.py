@@ -139,14 +139,16 @@ def test_it_names_the_file_it_graded(workspaces: Path) -> None:
 
 
 def test_a_scenario_with_no_answer_says_what_to_pass(workspaces: Path) -> None:
-    """There is no interactive console yet, and the refusal says so rather than
-    leaving someone to guess that `solve` needs a flag they did not read about.
+    """`solve` is not the console, and the refusal says where the console is
+    rather than leaving someone to guess that it needs a flag they did not read
+    about. As of Phase 8 that pointer is `practice serve`.
     """
     code, output = solve(workspaces, REVERT)
 
     assert code == 2
     assert "--commands" in output
     assert "--reference" in output
+    assert "practice serve" in output
 
 
 def test_a_kata_refuses_the_scenario_flag(workspaces: Path) -> None:

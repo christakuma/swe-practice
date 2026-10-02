@@ -57,19 +57,21 @@ def test_the_editor_mode_comes_from_the_exercise(
     assert 'mode: "python"' in body
 
 
-def test_a_git_scenario_gets_no_editor_and_says_what_is_missing(
+def test_a_git_scenario_gets_a_console_rather_than_an_editor(
     client: TestClient, wiring: Wiring
 ) -> None:
-    """The console is phase 8, and the page says so rather than rendering an
-    editor over a repository it cannot edit.
+    """One page, two right-hand panels, and the branch is in the template.
+
+    The console's own behaviour is `tests/web/test_console.py`; what this asserts
+    is the dispatch -- and that no editor machinery is loaded for a page that has
+    no editor on it.
     """
     started = wiring.services.start_attempt(SCENARIO)
 
     body = client.get(f"/attempt/{started.attempt.id}").text
 
     assert "codemirror.min.js" not in body
-    assert "phase 8" in body
-    assert f"practice resume {started.attempt.id}" in body
+    assert 'id="console-log"' in body
 
 
 def test_a_finished_attempt_shows_its_verdict_instead_of_an_editor(

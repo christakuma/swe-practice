@@ -29,7 +29,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from practice.interface.web.routes import attempt, browse, dashboard
+from practice.interface.web.routes import attempt, browse, console, dashboard
 from practice.interface.web.security import SameOriginMiddleware
 from practice.interface.web.vendor import static_root
 
@@ -78,4 +78,9 @@ def create_app(services: Services) -> FastAPI:
     app.include_router(dashboard.build_router(services, templates))
     app.include_router(browse.build_router(services, templates))
     app.include_router(attempt.build_router(services, templates))
+    # After `attempt`, which owns the page these endpoints drive. Order is not
+    # load-bearing -- no two routers declare the same path -- but reading the
+    # list top to bottom should follow a visitor: dashboard, browse, workbench,
+    # and then the console inside it.
+    app.include_router(console.build_router(services, templates))
     return app

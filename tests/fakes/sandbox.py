@@ -6,7 +6,8 @@ handling, and proving they get those right should not cost a git process and a
 temp directory per case.
 
 **They are not merely stubs — they keep the ports honest.** `FakeWorkspace`
-records every `run_tool` call and refuses to pretend it was disposed twice;
+records every `run` and `run_tool` call and refuses to pretend it was disposed
+twice;
 `FakeProvisioner` refuses to provision over an existing workspace and returns
 `None` from `attach` when there is nothing there, which is exactly what
 `SubprocessSandboxProvisioner` does. Where a fake is allowed to differ from the
@@ -50,13 +51,19 @@ class FakeWorkspace:
         self.commands: list[tuple[str, ...]] = []
         self.tools: list[tuple[str, ...]] = []
         self.disposed = False
+        #: What `run` answers. Settable because a console transcript is mostly
+        #: *output*, and the cases worth asserting on -- a conflict on stderr, a
+        #: non-zero exit, capped output -- are differences in the result rather
+        #: than in the argv. A fake that could only succeed silently would make
+        #: every one of them untestable without a real git.
+        self.result = CommandResult(exit_code=0)
         self._aliases: dict[str, Sha] = dict(aliases or {})
         self._snapshot: dict[str, Sha] = dict(snapshot or {})
 
     def run(self, argv: Sequence[str], timeout: float) -> CommandResult:
         del timeout
         self.commands.append(tuple(argv))
-        return CommandResult(exit_code=0)
+        return self.result
 
     def run_tool(self, argv: Sequence[str], timeout: float) -> CommandResult:
         del timeout

@@ -1,10 +1,16 @@
-"""`/attempt/{id}` — the workbench, and the submission that closes it.
+"""`/attempt/{id}` — the workbench, and the kata submission that closes it.
 
-Two routes and one page: the prompt on the left, the editor on the right for a
-kata, and the verdict in place of the editor once the attempt is graded. The git
-scenario half of this page — a command console, a repo state panel and a commit
-graph — is Phase 8, and the page says so rather than rendering an editor over a
-repository.
+Two routes and one page: the prompt on the left, and on the right either a kata
+editor, a git scenario console (`routes/console.py`, whose endpoints drive it) or
+the verdict, once the attempt is graded. **One page for both exercise kinds**, with
+the branch in the template rather than in the URL: an attempt is an attempt, the
+prompt, the hints, the id and the lifecycle are identical, and splitting the route
+would have duplicated `OpenWorkbench`'s four error paths for the sake of a layout
+difference.
+
+This module keeps the kata submission because that is the one that carries a body
+-- the editor's source and a complexity claim. A scenario sends nothing, which is
+the argument `routes/console.py` makes for its own submit route.
 
 **The submission returns HTML, not JSON**, which is PLAN.md §8.4's rule and the
 whole shape of the HTMX bet (ADR 0007): the server renders the fragment and the
@@ -44,6 +50,7 @@ from practice.domain.errors import DomainError
 from practice.domain.exercise import KataSpec
 from practice.domain.ids import AttemptId
 from practice.interface.web.errors import render_problem
+from practice.interface.web.routes.console import COMMAND_URL, SCENARIO_SUBMIT_URL
 
 if TYPE_CHECKING:
     from fastapi.templating import Jinja2Templates
@@ -88,6 +95,11 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # and a vendored mode file -- which is the whole claim of §15 Q3.
                 "editor_mode": spec.language if isinstance(spec, KataSpec) else None,
                 "submit_url": SUBMIT_URL.format(attempt_id=parsed),
+                # Both console endpoints, formatted here for the same reason the
+                # kata's is: the page builds every URL it posts to from the
+                # constant the route is declared with, so the two cannot drift.
+                "command_url": COMMAND_URL.format(attempt_id=parsed),
+                "scenario_submit_url": SCENARIO_SUBMIT_URL.format(attempt_id=parsed),
             },
         )
 

@@ -375,6 +375,127 @@ button[disabled] {
   color: var(--fail);
 }
 
+/* --- the git scenario console ------------------------------------------- */
+
+/*
+ * A transcript, styled as one: monospace throughout, each entry marked at its
+ * left edge by what it did, and no card chrome between the entries. The thing
+ * being read is a sequence, and a border per entry would cut the sequence into
+ * boxes -- which is exactly the reading a transcript has to not invite.
+ *
+ * The scroll lives on the list rather than on the page, so the input and the
+ * submit button stay where they were put. htmx scrolls it to the bottom through
+ * the `scroll:` swap modifier, which is why nothing here fights it.
+ */
+.console {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.console:empty::after {
+  content: "Nothing run yet. `git log` and `git status` are a good first look.";
+  color: var(--ink-dim);
+  font-family: var(--sans);
+}
+
+.console .entry {
+  border-left: 2px solid var(--line);
+  padding: 0.1rem 0 0.1rem 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.console .entry:last-child {
+  margin-bottom: 0;
+}
+
+.console .entry.ok {
+  border-left-color: var(--pass);
+}
+
+.console .entry.bad {
+  border-left-color: var(--note);
+}
+
+/* A refused command is a different thing from a failed one, and the colour says
+   so: `git revert` hitting a conflict is often the instructive moment, while a
+   shell metacharacter is a line that never ran at all. */
+.console .entry.refused {
+  border-left-color: var(--fail);
+}
+
+.console .line {
+  margin: 0;
+  color: var(--ink);
+}
+
+.console .entry.refused .problem {
+  border-left: 0;
+  padding-left: 0;
+  margin: 0.15rem 0 0;
+  font-family: var(--sans);
+}
+
+.console pre {
+  margin: 0.15rem 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--ink-dim);
+}
+
+.console pre.err {
+  color: var(--ink-dim);
+  font-style: italic;
+}
+
+.console .meta {
+  margin: 0.15rem 0 0;
+}
+
+.sigil {
+  color: var(--accent);
+  user-select: none;
+}
+
+.console-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.console-form input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--ink);
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.3rem 0.45rem;
+}
+
+.console-status {
+  margin-top: 0.4rem;
+}
+
+.submit-scenario {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
 /* --- CodeMirror overrides ----------------------------------------------- */
 
 /*

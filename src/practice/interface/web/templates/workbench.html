@@ -66,19 +66,7 @@
       <div id="verdict"></div>
 
     {% else %}
-      <h2>Console</h2>
-      <p class="empty">
-        A git scenario is solved by running commands against the repository this
-        attempt has already provisioned, and the console that does it — with the
-        repo state panel and the commit graph beside it — is phase 8. Until then
-        the same attempt is reachable from the terminal:
-      </p>
-      <pre>practice resume {{ attempt.id }} --commands FILE
-practice submit {{ attempt.id }}</pre>
-      <p class="meta">
-        {{ attempt.command_count }} of {{ attempt.policy.max_commands }}
-        commands used.
-      </p>
+      {% include "partials/console.html" %}
     {% endif %}
   </section>
 </div>

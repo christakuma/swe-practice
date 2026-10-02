@@ -1114,7 +1114,7 @@ def _solve_scenario(
         typer.secho(
             f"{started.exercise.id} is a git scenario: pass --commands FILE with "
             f"the commands to run, or --reference to replay the exercise's own "
-            f"solution. There is no interactive console yet (phase 8).",
+            f"solution. For an interactive console, run `practice serve`.",
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=2)

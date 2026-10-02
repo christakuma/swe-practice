@@ -1,0 +1,16 @@
+{#
+  What one command's POST returns: the entry to append, plus what it changed.
+
+  **This file is the §8.4 contract in its smallest form.** One response renders the
+  appended command output *and* re-renders the part of the page that command moved.
+  htmx lifts any top-level element carrying `hx-swap-oob` out of the response and
+  swaps it by id, so the entry lands in the transcript and the budget line updates
+  — from one request, with no client-side model of either.
+
+  Out-of-band swaps are also the reason this is a wrapper rather than the entry
+  template growing a flag: htmx only honours `hx-swap-oob` on a *top-level* element
+  of the response, so whatever is swapped out of band has to be a sibling of the
+  thing being appended, not nested inside it.
+#}
+{% include "partials/console-command.html" %}
+{% include "partials/console-status.html" %}

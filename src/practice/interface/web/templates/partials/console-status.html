@@ -1,0 +1,28 @@
+{#
+  What the attempt has spent, and what that leaves.
+
+  Included from two places with one difference, which is why `oob` is a flag in
+  the context rather than two near-identical files: the workbench renders it
+  inline, and a command response re-renders it with `hx-swap-oob` so htmx replaces
+  the copy already on the page. The id has to be here either way — it is what the
+  out-of-band swap matches on.
+
+  The flag arrives from the route rather than from a `with` block wrapped around
+  the include, and that is not a style choice: a `with` block opens a new frame,
+  and an include inside one does not reliably see what that frame set. A macro
+  would also work, and would cost a file holding one macro.
+
+  **The budget is shown rather than enforced in the browser.** An input that
+  disabled itself at zero would be a second opinion about the limit, held by the
+  one layer that cannot be trusted with it; the limit is `AttemptPolicy`'s, checked
+  by the use case before a process starts and again by the aggregate before the
+  command is remembered (PLAN.md §4.3). What a solver gets at zero is the refusal,
+  in the transcript, saying what the limit was — which is both the honest answer
+  and the one that appears where they are looking.
+#}
+<p class="meta console-status" id="console-status"{% if oob is defined and oob %} hx-swap-oob="true"{% endif %}>
+  {{ attempt.command_count }} of {{ attempt.policy.max_commands }} commands used
+  {%- if attempt.remaining_commands <= 0 %}
+    · none left, so submit what you have
+  {%- endif %}
+</p>

@@ -1,0 +1,70 @@
+{#
+  The git scenario console: the transcript, the prompt, and the submission.
+
+  **The transcript is rendered from the attempt's own log**, so what is on screen
+  after a reload is what the repository was actually driven by — including commands
+  run from `practice resume <id> --commands` in a terminal yesterday. The browser
+  holds no history of its own, which is what makes "an attempt outlives the process
+  that started it" (Phase 6) visible rather than merely true.
+
+  **`autocomplete="off"` on the input**, and not for tidiness: autocomplete on a
+  field whose history contains `git reset --hard` offers suggestions ordered by
+  what you have typed before rather than by what is right for the repository in
+  front of you — and this one is a repository that is already broken.
+
+  **`scroll:#console-log:bottom` rather than a script.** htmx's own swap modifier
+  does what an `afterRequest` listener would, and the listener that is here is the
+  one it has no modifier for: clearing the input, but only on a request that
+  actually reached the server, so a failed POST leaves the line to retry.
+#}
+<h2>Console</h2>
+
+<p class="meta">
+  Commands run in the repository this attempt provisioned. There is no shell, so
+  <code>&gt;</code> and <code>|</code> are refused with a pointer to the virtual
+  <code>write</code>. Allowed here:
+  {% for program in attempt.policy.allowed_commands|sort %}<code>{{ program }}</code>{% if not loop.last %} {% endif %}{% endfor %}.
+</p>
+
+{#
+  `ol`, not `div`: a transcript is an ordered sequence and the order carries the
+  meaning. It is appended to with `hx-swap="beforeend"`, which is why the list
+  element rather than the section around it carries the id.
+#}
+<ol class="console" id="console-log">
+  {% for command in attempt.commands %}
+    {% include "partials/console-command.html" %}
+  {% endfor %}
+</ol>
+
+<form class="console-form"
+      hx-post="{{ command_url }}"
+      hx-target="#console-log"
+      hx-swap="beforeend scroll:#console-log:bottom"
+      hx-disabled-elt="find button"
+      hx-on::after-request="if (event.detail.successful) this.reset()">
+  <span class="sigil">$</span>
+  <input name="line" autocomplete="off" spellcheck="false" placeholder="git status">
+  <button type="submit">Run</button>
+</form>
+
+{% include "partials/console-status.html" %}
+
+{#
+  Submit is its own form and its own route, because it sends nothing: the thing
+  being graded is the repository on disk. `hx-confirm` because this is the only
+  irreversible control on the page — submission completes the attempt and disposes
+  of the workspace (PLAN.md §8.1), and the aggregate refuses a second one, so the
+  mis-click has no undo.
+#}
+<form class="submit-scenario"
+      hx-post="{{ scenario_submit_url }}"
+      hx-target="#verdict"
+      hx-swap="innerHTML"
+      hx-disabled-elt="find button"
+      hx-confirm="Grade the repository as it stands now? This finishes the attempt.">
+  <button type="submit">Submit for grading</button>
+  <span class="meta">graded on the repository, not on what you typed</span>
+</form>
+
+<div id="verdict"></div>

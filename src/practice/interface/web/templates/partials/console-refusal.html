@@ -1,0 +1,17 @@
+{#
+  A command that never ran, as a transcript entry.
+
+  The line is echoed above the reason, which is what makes the domain's messages
+  read correctly: `parse_command_line` raises sentence fragments — "is not a
+  command", "contains a shell metacharacter" — because its other caller prefixes
+  them with the file and line number they came from. Here the prefix is the line
+  itself, printed the way a shell would print it.
+
+  No budget swap, unlike `console-command.html`. A refused command did not run, so
+  nothing it could have spent has been spent — including the one refusal that is
+  *about* the budget, where the number already on the page is the right one.
+#}
+<li class="entry refused">
+  <p class="line"><span class="sigil">$</span> {{ line }}</p>
+  <p class="problem">{{ detail }}</p>
+</li>

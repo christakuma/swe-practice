@@ -1,0 +1,30 @@
+{#
+  One command that ran, as a transcript entry.
+
+  Included from two places and that is the point: the workbench loops over
+  `attempt.commands` with it on page load, and `console-response.html` renders it
+  for the one command a POST just ran. A reload therefore shows exactly what the
+  appends showed, for the same reason `partials/verdict.html` is shared between the
+  page and the submission response — it is the same file, not two written to match.
+
+  **The two streams are shown separately, and failure is read from the exit code.**
+  `git` puts perfectly ordinary progress on stderr — "Switched to branch 'main'" —
+  so colouring stderr as failure would teach something false. What distinguishes a
+  command that failed is its status, which is what the entry's class comes from.
+
+  Autoescaping is load-bearing here rather than hygiene: this is captured output
+  from a process the solver chose to run, so untrusted text reaches a template on
+  the normal path and not the exotic one (`app.py` makes the same point about a
+  verdict's `actual`).
+#}
+<li class="entry {{ 'ok' if command.result.succeeded else 'bad' }}">
+  <p class="line"><span class="sigil">$</span> {{ command.command_line }}</p>
+  {% if command.result.stdout %}<pre class="out">{{ command.result.stdout }}</pre>{% endif %}
+  {% if command.result.stderr %}<pre class="err">{{ command.result.stderr }}</pre>{% endif %}
+  {% if not command.result.succeeded or command.result.truncated %}
+    <p class="meta">
+      exit {{ command.result.exit_code }}
+      {%- if command.result.truncated %} · output truncated by the sandbox{% endif %}
+    </p>
+  {% endif %}
+</li>
