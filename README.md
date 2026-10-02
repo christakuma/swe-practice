@@ -15,16 +15,34 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 4 (kata engine) complete — **a kata is solvable from the
-terminal.** `practice solve` starts an attempt, provisions a workspace, runs the
-exercise's hidden test suite in a pinned, isolated subprocess, and prints a
-verdict in which each test is one check and each check is labelled with the
-sentence its author wrote. Underneath it: the composition root, the first two
-use cases, and an attempt aggregate that enforces its own lifecycle.
+**Status:** Phase 5 (git scenario engine) complete — **the core bet works.**
+Both exercise kinds are solvable from the terminal, and a git scenario is graded
+on what your commands actually did:
 
-Git scenarios still cannot be graded — a fixture builds a real repo and real
-commands run against it, but the assertion engine that inspects the end state is
-Phase 5, and asking for one says so rather than guessing. See
+```
+$ practice solve git/revert-a-pushed-commit -c my-attempt.cmds
+  ok   $ git reset --hard HEAD~1
+         HEAD is now at dc52587 Add CSV line parser
+  ok   $ git push --force origin main
+  ...
+  ok   The committed tree matches the state before the bad commit
+  FAIL The bad commit is still reachable — you did not rewrite published history
+         expected @c3 (bab6eca) reachable from HEAD (dc52587), got not reachable
+         Your teammate already has c3. If it stops being an ancestor of `main`,
+         their next pull either conflicts or silently reintroduces the bad commit.
+  note You did not force-update a shared branch
+```
+
+That is the whole argument in one verdict. The **content check passes** — the
+files are byte-identical to what a correct `git revert` produces — and the
+ancestry check is what tells the two apart. A tool grading on file content
+accepts this answer; a tool matching command text would have to guess which of
+two dozen correct phrasings to allow.
+
+Underneath it: 22 pure assertion functions over a read-only port, implemented
+twice (real git, in-memory fake) and proved to agree by a conformance suite, and
+a content suite that grades every reference solution in the library and holds
+every counter-example to exactly the checks it declares. See
 [docs/PLAN.md](docs/PLAN.md) for the full design and the phase plan, and
 [docs/adr/](docs/adr/) for the decisions and the alternatives that were
 rejected.
@@ -77,6 +95,35 @@ and submit are one command on purpose at this phase: attempts live in memory
 until the SQLite store lands in Phase 6, so an attempt cannot outlive the
 process that created it.
 
+## Solving a git scenario
+
+```bash
+uv run practice solve git/revert-a-pushed-commit --commands my-attempt.cmds
+```
+
+A `.cmds` file is one command per line, `#` comments and blanks ignored — the
+same format the library's own reference solutions use. Every line goes through
+the real command policy: parsed into an argv, checked against the exercise's
+`allowed_commands`, and run with **no shell**, so `echo x > f` is refused with a
+pointer to the virtual `write` instead of silently not redirecting. Each command
+is echoed with what it printed before the next one runs, so a replay reads as a
+transcript rather than a wall of output and a verdict.
+
+```bash
+uv run practice solve git/revert-a-pushed-commit --reference
+```
+
+Replays the exercise's own solution, which is also exactly how CI grades it —
+through the same use cases, the same policy and the same budget a solver gets.
+If the rules a reference answer is validated against were not the rules a solver
+is held to, a green build would mean a solution exists rather than a solution
+exists *within the rules*, and a scenario could ship unsolvable
+([ADR 0011](docs/adr/0011-reference-solutions-are-command-lists.md)).
+
+There is no interactive console yet. A scenario is solved in one process for the
+same reason a kata is — attempts are in memory until Phase 6 — and the
+console belongs in the web workbench anyway (Phase 8).
+
 ## Checking the exercise library
 
 ```bash
@@ -112,9 +159,13 @@ have open.
 ```
 src/practice/
 ├── domain/        pure data and functions; zero I/O
-│   └── checks/    the assertion vocabulary, as pure functions over a port
+│   └── checks/    the 22 assertions, as pure functions over a read-only port
 ├── application/   use cases over ports, and the exercise-kind registry
-├── adapters/      sandbox, kata engine, content, in-memory attempts
+├── adapters/
+│   ├── sandbox/   builds a repository and runs commands in it
+│   ├── git/       reads one back: GitRepoQuery, ScenarioGrader
+│   ├── kata/      the pytest runner and its grader
+│   └── content/   the exercise library on disk
 ├── interface/     FastAPI + HTMX web app, Typer CLI
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library and the workspaces live
@@ -130,3 +181,12 @@ enforces one more rule from Phase 3: only `adapters/sandbox` may import
 `subprocess`. The trust split the sandbox rests on — **fixtures are trusted
 code, user commands are untrusted input** — is only a split if there is exactly
 one place that starts a process.
+
+The assertion functions are in `domain/checks/` rather than under `adapters/`
+for the same kind of reason. They are pure functions over a `RepoQuery` port and
+never shell out, so putting them inside the layer the coverage gate and the
+architecture test police makes "testable with no git installed" a structural
+fact rather than a happy accident. All 22 are unit-tested against an in-memory
+fake in milliseconds; a conformance suite then proves that fake answers the same
+questions real git does, which is the only thing that makes the fast tests
+evidence about anything.

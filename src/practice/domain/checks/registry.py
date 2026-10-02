@@ -107,7 +107,7 @@ _PROCESS: Final[Mapping[str, CheckFunction]] = {
     "command_used": process.command_used,
 }
 
-#: Name to function. Every assertion in the vocabulary, as of this commit.
+#: Name to function: the whole vocabulary, grouped by what each family reads.
 CHECKS: Final[Mapping[str, CheckFunction]] = MappingProxyType(
     {
         **_REFS_AND_SHAPE,

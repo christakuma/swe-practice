@@ -27,14 +27,12 @@ an afternoon do not need one.
 | [0003](0003-grade-git-exercises-by-repo-state.md) | Grade git exercises by repo state, not command text | accepted |
 | [0004](0004-content-as-declarative-data.md) | Content is declarative data, validated by schema | accepted |
 | [0005](0005-sandbox-via-temp-dirs-and-subprocess.md) | Sandbox via a scoped directory and subprocess, not containers | accepted |
+| [0011](0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
+
+0011 is out of sequence because the number was reserved for it in PLAN.md §12
+before the decision was written up, and numbers are never reused. 0006–0010 are
+the ones still to come.
 
 Planned, not yet written (PLAN.md §12): SQLite without an ORM · HTMX over an
 SPA · SM-2 first with FSRS behind a port · ship our own prompts · CodeMirror 5
-over 6 · reference solutions as command lists.
-
-**0011 is overdue.** "Reference solutions are command lists, not shell scripts"
-was decided in the pre-Phase-0 review and is now enforced in code — Phase 2
-validates every reference line against the exercise's own `allowed_commands`.
-The rationale is recorded in PLAN.md §5.3 and §16 rather than here. It should be
-written before Phase 5 replays those lists, which is the point at which the
-decision becomes hard to reverse.
+over 6.

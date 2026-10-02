@@ -4,11 +4,14 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 4 complete — on top of the pure domain, the content
-> loader and the sandbox, a kata is now solvable end to end: `practice solve`
-> starts an attempt, runs the hidden suite in an isolated subprocess, and prints
-> a verdict derived from the tests it ran. The composition root and the first
-> two use cases landed with it.
+> **Status:** Phase 5 complete — **the core bet works.** A git scenario is
+> graded end to end: `practice solve git/revert-a-pushed-commit --reference`
+> passes, and the same exercise replayed with `reset --hard` fails
+> `history-preserved` while passing `content-restored`, because the trees are
+> identical and the ancestry is not. Two `RepoQuery` implementations proved to
+> agree, 22 pure assertions, a scenario grader, two more use cases, and a content
+> suite that grades every reference solution and holds every counter-example to
+> the checks it declares.
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
 ---
@@ -684,6 +687,15 @@ Both stay in the vocabulary for now, both are flagged, and per the §13 rule
 about abstractions earning their keep: **if no exercise in Phase 11 needs
 them, they get deleted rather than carried.**
 
+**Phase 5 turned both flags into tests**, so the evidence survives to the review
+rather than depending on someone remembering this paragraph.
+`test_it_is_vacuously_true_where_the_fixture_made_the_entry` asserts that an
+attempt which ran *no commands at all* passes `reflog_contains {pattern: "^reset:"}`
+on the recovery exercise. `test_it_counts_read_only_commands_which_is_why_it_is_on_probation`
+runs that exercise's own reference solution past a five-command budget: it fails,
+while `used-the-reflog` passes on the same attempt. Two checks pulling in opposite
+directions on one correct answer is the argument, and it is now in the suite.
+
 The process assertions are why `Attempt` keeps a full event log. `command_used`
 can reward reaching for the reflog on a "recover a lost commit" exercise;
 `command_not_used` can flag a force-push that technically produced the right
@@ -1128,14 +1140,38 @@ That is also exactly what CI runs on both platforms, so the per-commit tier is
 a bisectability check and the pre-push tier is the correctness one. Neither
 substitutes for the other, and only one of them needs to be fast.
 
-Two caveats on the per-commit loop, both of which cost an hour to learn. Run it
-in the working tree rather than in a `git worktree`: an editable install
-resolves `practice` to the path it was installed from, so a worktree runs the
-*working tree's* source against the *commit's* tests and reports failures that
-are artifacts of the method. (This applies to `pytest`; `ruff` and `mypy` are
-static and are safe in a worktree.) And the tree must be clean — an untracked
-file from a later commit is still on disk after `git checkout` and contaminates
-the run the same way.
+Three caveats on the per-commit loop. Run it in the working tree rather than in a
+`git worktree`: an editable install resolves `practice` to the path it was
+installed from, so a worktree runs the *working tree's* source against the
+*commit's* tests and reports failures that are artifacts of the method. (This
+applies to `pytest`; `ruff` and `mypy` are static and are safe in a worktree.) And
+the tree must be clean — an untracked file from a later commit is still on disk
+after `git checkout` and contaminates the run the same way.
+
+The third was found in Phase 5 and is the one that changes how the output should
+be read. **The commit the loop blames is not necessarily the commit at fault.**
+`paths` is derived from the test directories a commit *touches*, so a commit that
+breaks a test somewhere it did not touch passes its own check in silence, and the
+failure surfaces on the next commit that happens to touch that directory. Phase
+5's commit 7 changed an error message and broke an integration test two
+directories away; the loop reported it against commits 8 and 9. `mypy` cannot
+help — the break was a string assertion, not a type.
+
+So when the cheap tier goes red, **re-run the failing files across the whole
+range** before amending anything:
+
+```bash
+for sha in $(git rev-list --reverse <base>..HEAD); do
+  git checkout --quiet --detach "$sha"
+  echo "$(git log --format='%h %s' -1)"
+  uv run pytest -q --no-cov <the files that failed> 2>&1 | tail -1
+done
+```
+
+That is seconds per commit and it is what attributes the defect. Widening `paths`
+instead — running every suite a changed *source* module could reach — is the
+obvious alternative and the wrong one: working out which suites a module reaches
+is the problem the pre-push tier already solves by running all of them.
 
 **Effort** is in *sessions* ≈ 2–3 focused hours, at entry-level pace.
 **Phases 0–9 (the MVP) total ~40 sessions, so on the order of 100 focused
@@ -1376,6 +1412,23 @@ above is a session that produces no commit, and commits 3–5 are the bulk of th
 `reset --hard` fails the `history-preserved` check with a useful explanation.
 That contrast **is** the product working.
 
+**Met** — 2026-10-01. Both halves, from a terminal:
+
+```
+practice solve git/revert-a-pushed-commit --reference            -> PASS, exit 0
+practice solve git/revert-a-pushed-commit -c naive-reset-force.cmds
+    ok   The committed tree matches the state before the bad commit
+    FAIL The bad commit is still reachable — you did not rewrite published history
+         expected @c3 (bab6eca) reachable from HEAD (dc52587), got not reachable
+         Your teammate already has c3. If it stops being an ancestor of `main`, ...
+    note You did not force-update a shared branch
+                                                                 -> FAIL, exit 1
+```
+
+Three answers, one tree. The content check passes for all of them, the ancestry
+check is what discriminates, and the force-push is flagged without failing the
+attempt. §16 records what the phase found.
+
 ---
 
 ### Phase 6 — Persistence · 3 sessions
@@ -1560,7 +1613,7 @@ changed"* is worth more than any code sample.
 | 0008 | SM-2 first, FSRS behind a port | not yet written |
 | 0009 | Ship our own prompts; never redistribute problem text | not yet written |
 | 0010 | CodeMirror 5 over 6, to avoid an npm build step | not yet written |
-| 0011 | Reference solutions are command lists, not shell scripts | not yet written |
+| [0011](adr/0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
 
 ---
 
@@ -1623,10 +1676,40 @@ Not blockers — decide when the phase arrives.
    embedded quotes — which means the CodeMirror pane is probably *required*
    here, not optional. Decide in Phase 8; the alternative is a
    `resolve <path>` affordance that opens the conflicted file in the editor.
-2. **Interactive rebase** needs `GIT_SEQUENCE_EDITOR`, which §8.1 pins to
-   `false` so nothing hangs. Driving it non-interactively means swapping in a
-   stand-in that applies a scripted todo-list. Spiked in Phase 5, explicitly
-   *before* any `rebase -i` content is promised in Phase 11.
+2. **Interactive rebase — spiked in Phase 5. Answer: drivable, and deferred
+   past the MVP.** The spike ran against a real provisioned workspace rather than
+   reasoning about git, and found four things, two of which the question did not
+   anticipate.
+
+   - **`GIT_SEQUENCE_EDITOR` beats `git -c sequence.editor=…`.** A solver cannot
+     override the pinned `false` from their own command line; whatever drives
+     `rebase -i` has to come from the sandbox.
+   - **One stand-in is not enough.** With `GIT_SEQUENCE_EDITOR='sed -i
+     2s/^pick/squash/'` the todo list *is* rewritten and the rebase starts —
+     `Rebasing (2/2)` — and then dies, because `squash` opens a **commit message**
+     editor and `GIT_EDITOR` is also `false`:
+     `Please supply the message using either -m or -F option`. Both editors need
+     replacing, not one. §8.1 and this question named only the first.
+   - **The engine already reads a mid-rebase stop correctly.** `head_ref()`
+     returns `None`, `status()` shows the staged half-applied change,
+     `.git/rebase-merge` exists. So the state is gradable — but nothing in the 22
+     can *say* "a rebase is in progress", and `head_detached` firing is
+     technically true and the wrong sentence. An `edit`-plan exercise would need a
+     `rebase_in_progress` assertion.
+   - **The solver has to choose the plan, or the exercise grades nothing.** If the
+     sandbox's stand-in picks `squash`, the exercise is "type one command and the
+     tool rewrites history for you". The mechanism that keeps the choice with the
+     solver: a sequence editor of `cp <their file>`, since git appends the real
+     todo path as the editor's last argument. They write the plan with the virtual
+     `write` command and run `git rebase -i HEAD~3` as normal.
+
+   **Decision: no `rebase -i` content in the MVP, and the mechanism is recorded so
+   Phase 11 is not guessing.** The cost is three sandbox changes, one new
+   assertion, and a new authoring affordance (a plan file), for one family of
+   exercises — and `write` taking its content as a single argv element makes a
+   multi-line todo awkward in exactly the way open question 1 describes. If the
+   CodeMirror pane lands in Phase 8 and solves that, both questions get easier at
+   once, which is the right order to take them in.
 3. **Kata languages beyond Python.** The runner is already behind a port, so
    adding TypeScript means a `vitest` adapter. Worth it only if you interview
    in TS.
@@ -2163,3 +2246,136 @@ statement and branch coverage against the 90% gate, and
 which shrank `unproven_by_design` from three caveats to two and tripped the
 Phase 2 tripwire exactly as designed. What is still unproven is scenario
 grading, which is Phase 5 and is the only thing the list still admits to.
+
+**2026-10-01 — Phase 5 built: the git scenario engine.** Nine sessions budgeted,
+nine commits plus the spike and the overdue ADR. The longest phase in the plan,
+and the one carrying the widest error bars, came in on its revised estimate — the
+earlier five-session figure would not have.
+
+**The headline result is that the implementation agrees with the hand-run oracle,
+row for row.** §6.6 recorded eleven rows across two scenarios, executed by hand
+against real git before Phase 0 began. The engine reproduces every one of them,
+including `naive-reset-force` failing only `history-preserved` while tripping the
+`no-force-push` advisory. The vocabulary designed on paper, validated by hand and
+then implemented needed **no changes** — which is the single most reassuring thing
+to come out of the phase, because it is the thing that could not be checked until
+now.
+
+**The port was not complete, and building the engine found three gaps.** Phase 1
+shipped every protocol in `domain/ports.py` and the phase plan said so in as many
+words: "the **port** is already there … so this phase adds implementations, not
+the interface." Three methods were missing, and each was invisible until an
+assertion needed it:
+
+- **`RepoQuery.head_ref()`.** `head_detached` cannot be answered without it.
+  `rev_parse("HEAD")` returns a hash whether HEAD is attached or not, and "no
+  branch points at this commit" is a different question with a different answer —
+  a detached HEAD sitting exactly on a branch tip is still detached, which is the
+  state `naive-detached-checkout.cmds` ends in and the whole reason that
+  counter-example exists.
+- **`RepoQuery.worktree_file()`.** `file_exists` and `file_matches` are only
+  distinct from `file_at_ref_matches` if they read the *working tree*, and without
+  it nothing could grade a state that has not been committed — which is exactly
+  what a merge-conflict exercise ends in (§15, question 1).
+- **`Workspace.aliases()` and `.snapshot()`.** A `RepoQuery` is built *over* a
+  `Workspace` and `Grader.grade` is handed the port, so the alias map and the ref
+  snapshot have to be reachable through it. They live outside the repository on
+  purpose (§6.1), so `read_file` — which confines itself to the repository —
+  cannot reach them.
+
+The pattern is worth naming, because it will recur: **a port designed from the
+consumer's description is a port with holes in it.** All three gaps were in
+questions nobody had written down as questions, not in types anyone got wrong.
+
+**Two Windows findings, both from running it.** A literal NUL in a `--format`
+argument is rejected by `CreateProcess` outright, as a `ValueError: embedded null
+character` raised from inside `subprocess` before git starts — so the separator is
+asked for as git's own `%x00` escape, which expands in git's *output*. And
+porcelain v2 puts a rename's path one field later than an ordinary change's, which
+fails silently: the path parses as `R100 renamed.py` and every assertion about it
+fails in a way that looks like the solver's fault.
+
+**The conformance suite earned its keep on its first run.** `FakeRepoQuery` is
+loaded from a real repository's raw data and then both implementations are asked
+the questions neither was given the answer to — `rev_parse` over fourteen
+spellings, `tree_sha`, `subject`, `is_ancestor` over every ordered pair of
+commits, reachability, which commits are merges. 675 comparisons across two
+scenarios in six states each. It immediately caught the fake being loaded from
+`log --all`, which walks refs — and the entire premise of `recover-a-lost-commit`
+is two commits no ref points at any more. `rev_parse("HEAD@{3}")` agreed, because
+a reflog entry carries its own hash, and then the fake had no commit object to
+answer `tree_sha` or `subject` from. Eight failures in one state of one scenario,
+and exactly the class of gap a fake quietly carries when nothing compares it to
+the real thing.
+
+**The graded replay found a content defect, which is what it is for.**
+`recover-a-lost-commit` declared one `expect_failures` entry per counter-example
+where its own §6.6 table records three, two and three — and its yaml comment said
+"others may fail too", contradicting the `exactly` this plan specifies twice. The
+plan is right and the content was under-declared, so the content is fixed. Worth
+being clear about *why* exactly rather than at least, since both catch the rot the
+original rationale describes: equality makes `expect_failures` a complete,
+reviewable statement of what a wrong answer gets wrong, and its cost — adding a
+required check breaks every counter-example that happens to fail it — is the
+feature.
+
+**Two things the plan's §6.3 placement got wrong, both small.**
+`no_conflict_markers` is filed under "worktree and index" and lives in `trees.py`:
+it reads file content rather than status, so it shares the blob read with
+`file_matches` and would share nothing with the status assertions. And §10's
+`adapters/git/graph.py` does not exist — ancestry is `git merge-base
+--is-ancestor`, and the only code that walks a commit graph by hand is the test
+fake. A module to hold one function nothing calls is the abstraction §13 says to
+delete rather than carry.
+
+**One defect in Phase 4's code, surfaced by Phase 5's tests.** Submission disposes
+of the workspace, so a second submission — or a stale browser tab sending one more
+command — reached `attach`, found nothing, and was told the workspace was gone and
+to *abandon the attempt and start again*, about an attempt that had just been
+graded successfully. `Attempt.complete` refuses the second call with the right
+message and was simply never reached. Phase 4 pinned the old behaviour in a test
+whose docstring said both refusals were correct; the ordering it pinned was right
+and what that ordering produced was not. All three use cases check the status
+themselves now.
+
+**The shape that carried the phase: assertions return a result, not a report.**
+Each of the 22 says what it expected, what it found, and whether those agree — and
+nothing about the exercise. One dispatcher applies `not:`, carries the author's
+label and severity across, and turns a malformed `with:` mapping into a failing
+check rather than a traceback. §6.3 made `not:` a uniform modifier instead of six
+paired opposites; a function that built its own report would have had to invert its
+own verdict *and* rewrite its own `expected` string, which is 22 chances to get it
+wrong and one of them reporting a failure as a pass.
+
+**The commit split found two red commits, and the loop pointed at the wrong ones.**
+Commits 7, 8 and 9 all failed in isolation on the same three tests. The cause was
+one commit: commit 7 emptied the kind registry's `_PENDING` map and registered the
+scenario grader, which changed a refusal message that
+`tests/integration/test_cli_solve.py` asserted on, and changed
+`unproven_by_design`'s caveats in commit 8 the same way. Neither commit touched
+`tests/integration/`, so the cheap tier — whose `paths` come from the test
+directories a commit *touches* — ran neither of those files and reported both
+commits clean. The blame landed on commits 8 and 9, which did touch them.
+
+`mypy` could not help, because the break was a string assertion rather than a type.
+Attributing it took one pass of the failing files over the whole range, which is
+seconds per commit; §11 now carries that as the third caveat on the loop, with the
+loop to use. All three commits were amended so each is green on its own, and the
+test that moved changed **three times** across the phase — naming Phase 5, then the
+kata path having no stub, then the flag the exercise takes — because the behaviour
+it pins genuinely changed three times. That history is left visible rather than
+flattened.
+
+The general lesson is the same one Phase 4 recorded in a different key: **a check
+scoped to what a commit touched cannot see what a commit broke.** The cheap tier is
+a bisectability check for collection and type errors and an attribution *hint* for
+anything else, and the pre-push tier is still the one that decides.
+
+The phase closed at **1,669 tests** — 970 more than Phase 4, two thirds of them the
+conformance suite's comparisons — with `domain/` and `application/` back at **100%**
+statement and branch coverage against the 90% gate. The §9 content suite is
+complete, and `unproven_by_design` is down from two phase-shaped caveats to two
+permanent ones: this command runs nothing by design, and nothing can tell you
+whether a check's prose is true of the assertion it is attached to. **Every caveat
+the tool has ever printed has now been retired rather than deferred**, which is the
+first time that has been true.
