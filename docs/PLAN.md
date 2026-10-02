@@ -1443,7 +1443,7 @@ attempt. §16 records what the phase found.
 
 ---
 
-### Phase 6 — Persistence · 3 sessions
+### Phase 6 — Persistence · 3 sessions — **complete**
 
 - SQLite connection (WAL, `foreign_keys=ON`), numbered SQL migration runner
 - `SqliteAttemptRepository` with explicit row↔domain mappers
