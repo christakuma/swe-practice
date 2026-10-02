@@ -15,9 +15,10 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 5 (git scenario engine) complete — **the core bet works.**
-Both exercise kinds are solvable from the terminal, and a git scenario is graded
-on what your commands actually did:
+**Status:** Phase 6 (persistence) complete — **the core bet works, and a
+session survives the terminal it was opened in.** Both exercise kinds are
+solvable from the terminal, and a git scenario is graded on what your commands
+actually did:
 
 ```
 $ practice solve git/revert-a-pushed-commit -c my-attempt.cmds
@@ -90,10 +91,11 @@ grades nothing, and `tests/content/test_katas.py` holds every kata in the
 library to both halves of that.
 
 It exits 0 on a pass (advisories included — the goal was met either way), 1 when
-a required check fails, and 2 when the attempt could not be run at all. Start
-and submit are one command on purpose at this phase: attempts live in memory
-until the SQLite store lands in Phase 6, so an attempt cannot outlive the
-process that created it.
+a required check fails, and 2 when the attempt could not be run at all.
+
+`solve` does the whole thing in one invocation, which is the right shape for one
+answer at a time and is how CI grades every reference solution in the library. To
+spread an attempt over several commands, see **Working on an attempt** below.
 
 ## Solving a git scenario
 
@@ -120,9 +122,52 @@ is held to, a green build would mean a solution exists rather than a solution
 exists *within the rules*, and a scenario could ship unsolvable
 ([ADR 0011](docs/adr/0011-reference-solutions-are-command-lists.md)).
 
-There is no interactive console yet. A scenario is solved in one process for the
-same reason a kata is — attempts are in memory until Phase 6 — and the
-console belongs in the web workbench anyway (Phase 8).
+There is still no interactive console: a `.cmds` file is not a REPL, and the
+console belongs in the web workbench (Phase 8). What Phase 6 adds is the thing
+underneath one — an attempt that several processes can take turns at.
+
+## Working on an attempt
+
+An attempt outlives the process that started it, so it can be opened, worked on
+and graded by different invocations:
+
+```bash
+uv run practice start git/revert-a-pushed-commit
+uv run practice resume <id> --commands look-around.cmds
+uv run practice resume <id> --commands the-fix.cmds
+uv run practice submit <id>
+```
+
+Four processes, one repository, one event log and one budget — ten commands
+yesterday and five today is fifteen of twenty-five. The budget belongs to the
+attempt, not the invocation, which is what makes this a resumption rather than a
+second go.
+
+```bash
+uv run practice attempts
+uv run practice attempts --exercise git/revert-a-pushed-commit
+uv run practice abandon <id>
+```
+
+`attempts` lists what is still open, oldest first, and says of each whether it
+**can** be resumed — one whose workspace has been collected cannot, and the only
+thing left is to abandon it. That listing plus `resume` and `abandon` is the
+resume-or-abandon rule of [PLAN.md §8.1](docs/PLAN.md) in the form a terminal can
+have it: an interrupted session is neither silently lost nor silently
+resurrected. An interactive prompt on startup would be the literal reading and
+the wrong one — it would block `practice solve` in CI.
+
+Abandoning deletes the workspace and keeps the attempt, marked, with its whole
+log. It is also the only way out of an exercise that was renamed or deleted from
+the library while an attempt at it was open: that attempt can never be graded, so
+`resume` refuses it and `abandon` does not.
+
+Attempts and review cards live in one SQLite file under the user *data*
+directory, not the cache — a workspace is rebuildable from a fixture and a
+history is not ([ADR 0006](docs/adr/0006-sqlite-without-an-orm.md)). The schema
+is hand-written SQL in numbered migration files, applied on first use; the
+mappers are hand-written in both directions, and the round trip is unit-tested
+against a plain dict with no database in the test.
 
 ## Checking the exercise library
 
@@ -149,10 +194,18 @@ which platform diverged. After editing a fixture, regenerate with
 uv run practice gc
 ```
 
-Reports the attempt workspaces left on disk. It never deletes anything yet, on
-purpose — an orphan is *a workspace with no active attempt row*, and the attempt
-table lands in Phase 6. Until then "collect orphans" could delete a session you
-have open.
+Reports the attempt workspaces left on disk, and with `--no-dry-run` collects the
+orphans. An orphan is defined precisely: *a workspace directory with no
+corresponding `active` attempt row* — which is a question that could not be asked
+before the attempt table existed, and is why this command spent three phases
+reporting and never deleting.
+
+The rule is decided on the directory name, which is the attempt's short id. That
+matters: the leftover most worth collecting is an interrupted provision whose
+metadata was never written, and a rule that joined on metadata could neither
+explain it nor collect it. A workspace that *is* in use is never deleted, with or
+without the flag, and there is no force option — the way to get rid of one is
+`practice abandon`.
 
 ## Layout
 
@@ -162,13 +215,14 @@ src/practice/
 │   └── checks/    the 22 assertions, as pure functions over a read-only port
 ├── application/   use cases over ports, and the exercise-kind registry
 ├── adapters/
-│   ├── sandbox/   builds a repository and runs commands in it
-│   ├── git/       reads one back: GitRepoQuery, ScenarioGrader
-│   ├── kata/      the pytest runner and its grader
-│   └── content/   the exercise library on disk
+│   ├── sandbox/     builds a repository and runs commands in it
+│   ├── git/         reads one back: GitRepoQuery, ScenarioGrader
+│   ├── kata/        the pytest runner and its grader
+│   ├── content/     the exercise library on disk
+│   └── persistence/ in-memory stores, and sqlite/ behind the same ports
 ├── interface/     FastAPI + HTMX web app, Typer CLI
 ├── composition.py the single wiring point; the only cross-layer import
-└── config.py      where the library and the workspaces live
+└── config.py      where the library, the workspaces and the database live
 content/           exercises as declarative data — adding one needs no code
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform
 docs/adr/          architecture decision records
@@ -177,10 +231,14 @@ tests/             unit · integration · content · web · e2e
 
 Dependencies point inward, and `tests/unit/test_architecture.py` fails the build
 if that is ever violated — architecture that isn't tested decays. The same suite
-enforces one more rule from Phase 3: only `adapters/sandbox` may import
-`subprocess`. The trust split the sandbox rests on — **fixtures are trusted
-code, user commands are untrusted input** — is only a split if there is exactly
-one place that starts a process.
+enforces two narrower rules: only `adapters/sandbox` may import `subprocess`, and
+only `adapters/persistence` may import `sqlite3`. The trust split the sandbox
+rests on — **fixtures are trusted code, user commands are untrusted input** — is
+only a split if there is exactly one place that starts a process; and the schema,
+the migrations, the transaction boundary and the mapping are only behind the
+repository ports if there is exactly one place that speaks SQL. Each rule is
+paired with a test that the package really does import the module, so neither can
+pass by there being no code at all.
 
 The assertion functions are in `domain/checks/` rather than under `adapters/`
 for the same kind of reason. They are pure functions over a `RepoQuery` port and

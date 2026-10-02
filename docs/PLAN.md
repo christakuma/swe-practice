@@ -4,14 +4,17 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 5 complete — **the core bet works.** A git scenario is
-> graded end to end: `practice solve git/revert-a-pushed-commit --reference`
-> passes, and the same exercise replayed with `reset --hard` fails
-> `history-preserved` while passing `content-restored`, because the trees are
-> identical and the ancestry is not. Two `RepoQuery` implementations proved to
-> agree, 22 pure assertions, a scenario grader, two more use cases, and a content
-> suite that grades every reference solution and holds every counter-example to
-> the checks it declares.
+> **Status:** Phase 6 complete — **the core bet works, and an attempt survives
+> the process that started it.** A git scenario is graded end to end: `practice
+> solve git/revert-a-pushed-commit --reference` passes, and the same exercise
+> replayed with `reset --hard` fails `history-preserved` while passing
+> `content-restored`, because the trees are identical and the ancestry is not. Two
+> `RepoQuery` implementations proved to agree, 22 pure assertions, a scenario
+> grader, and a content suite that grades every reference solution and holds every
+> counter-example to the checks it declares. On top of that, an attempt now lives
+> in SQLite: `start`, `resume`, `resume`, `submit` is four processes sharing one
+> repository, one event log and one budget, and `practice gc` can finally say
+> which workspace is an orphan.
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
 ---
@@ -1173,6 +1176,15 @@ instead — running every suite a changed *source* module could reach — is the
 obvious alternative and the wrong one: working out which suites a module reaches
 is the problem the pre-push tier already solves by running all of them.
 
+**The shape it misses is always the same one**, now that it has happened in two
+consecutive phases: a test asserting on a *string* — an error message, a refusal, a
+caveat — in a directory the commit did not touch. Phase 5's commit 7 changed an
+error message; Phase 6's commit 5 turned a `gc` refusal into a collection and left
+a test matching the literal `"phase 6"`. `mypy` cannot see either, because neither
+is a type. So: **after changing any user-facing string, grep for it** before
+trusting a green cheap tier. One `grep -rn` is cheaper than either the full suite or
+the attribution loop, and it is the only check that covers this case directly.
+
 **Effort** is in *sessions* ≈ 2–3 focused hours, at entry-level pace.
 **Phases 0–9 (the MVP) total ~40 sessions, so on the order of 100 focused
 hours.** That is a real project, not a weekend. Phase 11 roughly doubles it.
@@ -1451,10 +1463,20 @@ attempt. §16 records what the phase found.
 3. `feat(db): add review card repository`
 4. `refactor: swap the in-memory repositories for sqlite at the root`
 5. `feat(app): add attempt resume and db-aware workspace gc`
+6. `docs: add ADR 0006 and mark phase 6 complete`
 
 **Exit:** attempts survive a restart and can be resumed; migrations apply
 cleanly from empty and are idempotent; `gc` provably never deletes the
-workspace of an active attempt.
+workspace of an active attempt. **All three met** — the first by four `practice`
+invocations sharing one attempt in `tests/e2e/test_resume_an_attempt.py`, the
+second by applying the shipped migrations to an empty file and then to itself,
+and the third by `test_gc_never_collects_the_workspace_of_an_active_attempt`
+asking for the delete and getting none.
+
+The commit list needed one addition that is recorded in §16 rather than edited
+away: **`practice start`**, without which the other lifecycle commands have no
+reachable state to act on. `solve` starts and submits in one process, so nothing
+it does leaves an attempt open.
 
 ---
 
@@ -1608,7 +1630,7 @@ changed"* is worth more than any code sample.
 | [0003](adr/0003-grade-git-exercises-by-repo-state.md) | Grade git exercises by repo state, not command text | accepted |
 | [0004](adr/0004-content-as-declarative-data.md) | Content is declarative data, validated by schema | accepted |
 | [0005](adr/0005-sandbox-via-temp-dirs-and-subprocess.md) | Sandbox via a scoped directory and subprocess, not containers | accepted |
-| 0006 | SQLite without an ORM | not yet written |
+| [0006](adr/0006-sqlite-without-an-orm.md) | SQLite with hand-written SQL and explicit mappers, not an ORM | accepted |
 | 0007 | HTMX over a single-page app | not yet written |
 | 0008 | SM-2 first, FSRS behind a port | not yet written |
 | 0009 | Ship our own prompts; never redistribute problem text | not yet written |
@@ -2379,3 +2401,102 @@ permanent ones: this command runs nothing by design, and nothing can tell you
 whether a check's prose is true of the assertion it is attached to. **Every caveat
 the tool has ever printed has now been retired rather than deferred**, which is the
 first time that has been true.
+
+
+**2026-10-02 — Phase 6 built: persistence, and the attempt lifecycle completed.**
+Three sessions budgeted, six commits. The phase that was supposed to be a test of
+the previous five, and was.
+
+**The swap really was one line per repository.** §11 set commit 4 up as the check:
+*"one line per repository if the ports have been respected — and if it is not, that
+is the finding."* `composition.py` changed; no use case, no grader and no CLI
+command did, because none of them had ever held anything but an `AttemptRepository`.
+That is the only evidence the ports of Phases 1–5 were real rather than decorative,
+and it is worth recording that the evidence arrived five phases after the decision.
+
+**Four findings, in descending order of how much they changed.**
+
+- **Reconstitution is not replay, and the aggregate needed a door for it.** The
+  elegant-looking way to rebuild an `Attempt` is through its own public API —
+  construct, `record_command` per stored command, `complete`. It is wrong twice. It
+  re-checks *today's* policy against *last month's* attempt, so an exercise edited
+  down from twenty-five commands to ten would make old attempts unloadable; and it
+  re-runs invariants that were already satisfied, so the aggregate could refuse to
+  load a row it had itself produced. `Attempt.restore` bypasses the behavioural
+  guards and enforces only what a *row* can be wrong about: naive or out-of-order
+  timestamps, and the three pairings between status, finish time and verdict. The
+  same rules appear again as CHECK constraints in the schema, which is the
+  deliberate duplication `Attempt` and the sandbox already document, with a third
+  job added — the aggregate refuses to *reach* an impossible state, the schema
+  refuses to *store* one, `restore` refuses to *load* one. Recorded in ADR 0006,
+  because it is the one place persistence reached into the domain.
+
+- **`practice start` was missing from the commit list, and the phase does not work
+  without it.** Writing `attempts`, `resume`, `submit` and `abandon` made it
+  obvious: `solve` starts and submits in one process, so nothing in the shipped CLI
+  ever leaves an attempt open, and all four new commands had no reachable state to
+  act on. The exit criterion — *attempts survive a restart and can be resumed* —
+  was literally untypeable. §11's rule about checking a commit list against the
+  actual imports has a sibling: **check it against the states the commands can
+  reach.** A list can be in dependency order and still describe a product with no
+  way into the state it adds.
+
+- **Two SQLite behaviours that reading would not have settled.** `PRAGMA
+  journal_mode=WAL` cannot execute inside a transaction, so `autocommit=False` —
+  which opens one before the first statement — makes the WAL pragma fail on a fresh
+  database. The connection is therefore opened in full autocommit and the
+  transaction is `BEGIN IMMEDIATE`/`COMMIT` issued as SQL. The second: inside an
+  open transaction, `executescript` does **not** commit it, so each migration is
+  atomic and a failing one leaves no DDL behind — but that differs between the
+  driver's two transaction modes, which is why there is a test pinning it rather
+  than a comment asserting it.
+
+- **The orphan rule has to be decided on the directory name.** PLAN.md §8.1 defines
+  an orphan as a workspace with no corresponding `active` attempt row, and the
+  obvious join is on the `attempt_id` in the workspace's own metadata. That gets
+  the most interesting case backwards. The leftover most worth collecting is an
+  interrupted provision, whose metadata was never written: it has no `attempt_id`,
+  so a metadata join classifies it as belonging to nothing *and* cannot address it
+  for deletion. Deciding on the directory name — which *is* the attempt's short id
+  — makes the undescribed workspace and the completed attempt's workspace the same
+  case, which is what they are. `SandboxProvisioner.discard` is keyed the same way,
+  and that turned out to matter for a second reason: `AbandonAttempt` cannot
+  `attach` to dispose of a workspace when the exercise has been deleted from the
+  library, and that is precisely the case abandoning exists for.
+
+**Two things were added beyond the plan's list, both small and both argued for in
+the commits.** `InMemoryReviewRepository`, because `ReviewRepository` had been
+declared since Phase 1 with *no* implementation, which under §13 is the weakest
+position a port can be in; and a second architecture rule, that only
+`adapters/persistence` may import `sqlite3`, in the same shape as the Phase 3 rule
+about `subprocess` and with the same paired test that the package really does
+import it.
+
+**One thing was deliberately not built.** A review *log* — every grade ever given
+with the interval it produced — is what would let Phase 9's scheduler be evaluated
+against its own history rather than only property-tested. It is also a table
+nothing in the MVP reads, so a card is replaced and the `reps`/`lapses` counters
+are what survives. The asymmetry to remember if that is revisited: the counters are
+derivable from a log and the log is not derivable from the counters.
+
+**The per-commit tier earned its keep again, and its known caveat bit again.** On
+the useful side: commit 5 renamed `FakeProvisioner.workspaces` from a dict to the
+port's own method, and `mypy` located every one of the nine call sites across three
+test files by name and line with nothing executed — tedious, not risky, and exactly
+where a type checker is worth most. On the other side, the Phase 5 caveat repeated
+itself almost exactly. Commit 5 changed `gc --no-dry-run` from a refusal into a
+collection; two tests in `tests/integration/test_cli_sandbox.py` asserted the old
+refusal, including one matching the string `"phase 6"`; and commit 5 touches no file
+in that directory, so the cheap tier never ran them. **The pre-push run is what
+found it, which is the division of labour §11 describes working as described** —
+but it is now the second phase in a row where the thing the cheap tier missed was a
+*string* assertion in a directory the commit did not touch, and that is a pattern
+rather than an accident. The commit was amended so it is green on its own.
+
+The phase closed at **1,862 tests** — 193 more than Phase 5 — with `domain/` and
+`application/` at **100%** statement and branch coverage against the 90% gate, on
+1,315 statements and 250 branches. Four phases were
+blocked on this one: `practice gc` could not define an orphan, §8.1's
+resume-or-abandon promise could not be kept, Phase 8's workbench needs an attempt
+to survive an HTTP request, and Phase 9's spaced repetition is meaningless if
+nothing is remembered between runs. None of them is blocked now.
