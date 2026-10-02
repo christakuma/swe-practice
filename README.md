@@ -15,10 +15,10 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 6 (persistence) complete — **the core bet works, and a
-session survives the terminal it was opened in.** Both exercise kinds are
-solvable from the terminal, and a git scenario is graded on what your commands
-actually did:
+**Status:** Phase 7 (web shell and kata workbench) complete — **the core bet
+works, a session survives the terminal it was opened in, and a kata is now solved
+in a browser.** Both exercise kinds are solvable from the terminal, and a git
+scenario is graded on what your commands actually did:
 
 ```
 $ practice solve git/revert-a-pushed-commit -c my-attempt.cmds
@@ -50,11 +50,20 @@ rejected.
 
 ## Getting started
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.13.
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.13. Nothing else — no npm,
+no bundler, no network.
 
 ```bash
 uv sync
+uv run practice serve
 ```
+
+That opens the web app on `http://127.0.0.1:8765`: browse the library, start an
+attempt, write a solution in the editor and read the verdict. Everything it
+serves comes off the disk, so it works with the wifi off.
+
+The terminal is a second adapter over the same use cases, documented below. It is
+not a fallback — it is the proof that the core is not secretly coupled to HTTP.
 
 ## Checks
 
@@ -71,6 +80,49 @@ Test selection follows the directory layout under `tests/` — markers are appli
 automatically, so `uv run pytest -m unit` gets the fast pure tests,
 `-m integration` gets the ones that touch the filesystem, and `-m content` runs
 the library checks over every exercise on disk.
+
+## The web app
+
+```bash
+uv run practice serve
+```
+
+`/browse` filters the library by kind, difficulty and tag, and starts an attempt;
+`/attempt/{id}` is the workbench — the prompt beside a CodeMirror editor seeded
+from the exercise's stub, and a verdict panel that the submission swaps in without
+a page reload. An attempt already open shows **Resume** instead of **Start**,
+because a second one would split one piece of work across two budgets.
+
+Submissions return **HTML, not JSON**. There is no API — `openapi_url=None` — and
+the fragment a submission renders is the same template the page uses when it loads
+an attempt that was graded last week, so a reload cannot disagree with what you
+were just shown ([ADR 0007](docs/adr/0007-htmx-over-a-single-page-app.md)).
+
+**Offline is enforced, not promised.** htmx and CodeMirror 5 are committed files
+pinned by SHA-256; one test greps every template and stylesheet of ours for a
+remote reference, a second checks those four files against their hashes, and a
+third asserts that every file under `static/` is covered by one of the two —
+because the failure mode of a split rule is a category that falls between the
+halves. CodeMirror **5** and not 6 is a real tradeoff, recorded in
+[ADR 0010](docs/adr/0010-codemirror-5-over-6.md): a maintenance-mode dependency,
+accepted to keep an npm toolchain out of a Python project for one widget.
+
+### Why localhost is not automatically safe
+
+The server runs `git` and `pytest` on request, so it has two and a half guards on
+it. It **binds to loopback only**, with the check inside the argument to
+`uvicorn.run` so it cannot be dropped while rebasing. It **refuses any mutating
+request that cannot prove it came from its own page** — because binding to
+localhost does nothing to stop a malicious site in your browser from POSTing to
+`http://127.0.0.1:8765`; a request carrying neither `Origin` nor `Sec-Fetch-Site`
+is refused too, rather than waved through as "probably not a browser".
+
+The half is a **`Host` allowlist**, and it is there because the first two do not
+cover DNS rebinding. If `evil.example` resolves to `127.0.0.1`, the browser sends
+`Origin: http://evil.example` to a request whose own `Host` is `evil.example` —
+they *agree* — and reports `Sec-Fetch-Site: same-origin`, truthfully. Both guards
+pass. Only the hostname gives it away, which is also why that check covers reads:
+a rebound page that can read the HTML can read an attempt's transcript out of it.
 
 ## Solving a kata
 
@@ -123,8 +175,10 @@ exists *within the rules*, and a scenario could ship unsolvable
 ([ADR 0011](docs/adr/0011-reference-solutions-are-command-lists.md)).
 
 There is still no interactive console: a `.cmds` file is not a REPL, and the
-console belongs in the web workbench (Phase 8). What Phase 6 adds is the thing
-underneath one — an attempt that several processes can take turns at.
+console belongs in the web workbench, which is Phase 8. The workbench page already
+exists and says so, with the two commands that drive the same attempt from a
+terminal — what is missing is the console, the repo state panel and the commit
+graph, not the attempt underneath them.
 
 ## Working on an attempt
 
@@ -220,14 +274,22 @@ src/practice/
 │   ├── kata/        the pytest runner and its grader
 │   ├── content/     the exercise library on disk
 │   └── persistence/ in-memory stores, and sqlite/ behind the same ports
-├── interface/     FastAPI + HTMX web app, Typer CLI
+├── interface/
+│   ├── web/         FastAPI + Jinja2 + HTMX; routes, templates, vendored assets
+│   └── cli/         Typer: the second driving adapter over the same use cases
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
 content/           exercises as declarative data — adding one needs no code
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform
+tools/             the one module that opens a socket, deliberately outside the wheel
 docs/adr/          architecture decision records
 tests/             unit · integration · content · web · e2e
 ```
+
+`tools/vendor_assets.py` downloads the pinned assets and is **not** part of the
+package: the wheel is built from `src/practice` alone, so nothing a user installs
+can reach the internet even by accident. That is the offline claim expressed in
+the build rather than in prose.
 
 Dependencies point inward, and `tests/unit/test_architecture.py` fails the build
 if that is ever violated — architecture that isn't tested decays. The same suite

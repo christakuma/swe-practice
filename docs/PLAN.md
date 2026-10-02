@@ -4,17 +4,19 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 6 complete — **the core bet works, and an attempt survives
-> the process that started it.** A git scenario is graded end to end: `practice
-> solve git/revert-a-pushed-commit --reference` passes, and the same exercise
-> replayed with `reset --hard` fails `history-preserved` while passing
-> `content-restored`, because the trees are identical and the ancestry is not. Two
-> `RepoQuery` implementations proved to agree, 22 pure assertions, a scenario
-> grader, and a content suite that grades every reference solution and holds every
-> counter-example to the checks it declares. On top of that, an attempt now lives
-> in SQLite: `start`, `resume`, `resume`, `submit` is four processes sharing one
-> repository, one event log and one budget, and `practice gc` can finally say
-> which workspace is an orphan.
+> **Status:** Phase 7 complete — **the core bet works, an attempt survives the
+> process that started it, and a kata is now solved in a browser.** A git scenario
+> is graded end to end: `practice solve git/revert-a-pushed-commit --reference`
+> passes, and the same exercise replayed with `reset --hard` fails
+> `history-preserved` while passing `content-restored`, because the trees are
+> identical and the ancestry is not. Two `RepoQuery` implementations proved to
+> agree, 22 pure assertions, a scenario grader, and a content suite that grades
+> every reference solution and holds every counter-example to the checks it
+> declares. An attempt lives in SQLite: `start`, `resume`, `resume`, `submit` is
+> four processes sharing one repository, one event log and one budget. And
+> `practice serve` now puts the same use cases behind HTMX — browse, start, edit
+> in CodeMirror, submit, read the verdict — with every asset served from disk and
+> a server that refuses any request it cannot prove came from its own page.
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
 ---
@@ -954,21 +956,49 @@ Offline means **vendoring everything**. No CDN links, at all.
   current.
 - `tools/vendor_assets.py` downloads pinned versions and verifies recorded
   SHA-256 hashes. Run once; output is committed.
-- **Enforced by test:** `tests/web/test_offline.py` greps every template and
-  static file for `http://`, `https://`, and `//cdn`, and fails the build on a
-  hit. Exactly the kind of rule that silently rots without a test.
+- **Enforced by test, in two halves.** `tests/web/test_offline.py` greps every
+  template and static file **of ours** for `http://`, `https://` and `//cdn`;
+  `tests/web/test_vendored_assets.py` checks the four third-party files against
+  the SHA-256 recorded for each. The split is forced rather than chosen: a
+  minified library carries its own licence URL in a banner comment, so grepping
+  it would either condemn an asset that fetches nothing or be weakened until it
+  caught nothing. The hash is the stronger claim anyway — the grep says *this
+  file names no remote host*, the hash says *this file is the one that was
+  reviewed*. A third test asserts every file under `static/` falls into one of
+  the two sets, because the failure mode of a split rule is a category that
+  appears between the halves and is checked by neither.
+- `.gitattributes` marks the vendor directory `-text`, the one exception to the
+  repo-wide LF rule. The hashes are over the downloaded bytes; normalisation on a
+  Windows checkout would make the verification pass on one platform and fail on
+  the other — the same trap `content/fixtures.lock` exists to catch.
 
 ### 8.3 Web security on localhost
 
-The server executes arbitrary code by design. Two guards, both small:
+The server executes arbitrary code by design. **Two and a half guards**, all
+small — the half was added in Phase 7, after writing the other two:
 
 1. **Loopback binding.** Startup asserts the host is `127.0.0.1`, with a test
-   that fails if a future change binds `0.0.0.0`.
+   that fails if a future change binds `0.0.0.0`. The check lives *inside* the
+   argument to `uvicorn.run`, so it cannot be deleted while rebasing.
 2. **Cross-origin guard.** Binding to localhost does *not* stop a malicious
    website in your browser from POSTing to `http://127.0.0.1:8765`. Middleware
    rejects mutating requests whose `Origin` is not our own and whose
    `Sec-Fetch-Site` is not `same-origin`. Cheap, effective, and a good thing to
    be able to explain — most people assume localhost is automatically safe.
+
+   A request that proves *nothing* — neither header present — is refused too.
+   The lenient reading, "that's a non-browser client, so allow it", is what most
+   localhost tools ship and it hands the whole guard to any browser that omits
+   the header. The strict rule costs a browser nothing and costs `curl -X POST`
+   one header; there is a CLI over the same use cases that needs no server.
+3. **A loopback `Host`** — the half, and the one the pair above does not cover.
+   Under **DNS rebinding**, `evil.example` resolves to 127.0.0.1, so a page
+   served from it sends `Origin: http://evil.example` to a request whose own
+   `Host` is `evil.example` — the two *agree* — and the browser reports
+   `Sec-Fetch-Site: same-origin`, truthfully. Both named guards pass. Comparing
+   `Host` against the loopback names is the only thing that sees it, and it has
+   to apply to **reads as well as writes**: a rebound page that can read our HTML
+   can read an attempt's transcript out of it.
 
 ### 8.4 Pages
 
@@ -1075,7 +1105,10 @@ swe-practice/
 │   │   ├── kata/{pytest_runner,report_plugin,grader}.py
 │   │   └── clock.py  ids.py
 │   ├── interface/
-│   │   ├── web/{app,security}.py + routes/ templates/ static/
+│   │   ├── web/{app,security,errors,vendor}.py  # vendor.py: the asset manifest
+│   │   │   ├── routes/{dashboard,browse,attempt}.py
+│   │   │   ├── templates/*.html + partials/{verdict,refusal}.html
+│   │   │   └── static/app.css + vendor/   # htmx + CodeMirror 5, hash-pinned
 │   │   └── cli/main.py
 │   ├── composition.py
 │   └── config.py
@@ -1480,7 +1513,7 @@ it does leaves an attempt open.
 
 ---
 
-### Phase 7 — Web shell and kata workbench · 4 sessions
+### Phase 7 — Web shell and kata workbench · 4 sessions — **complete**
 
 - FastAPI app, base templates, loopback assertion, cross-origin middleware
 - Vendored htmx + CodeMirror with a hash-pinned fetch script
@@ -1492,6 +1525,7 @@ it does leaves an attempt open.
 2. `feat(web): add FastAPI app, base templates and loopback guard`
 3. `feat(web): add browse and kata workbench pages`
 4. `feat(web): add htmx submit flow with verdict panel`
+5. `docs: add ADRs 0007 and 0010 and mark phase 7 complete`
 
 Vendoring comes first because the base template references the vendored files by
 path. The other way round, commit 1 ships a layout whose `<script>` 404s —
@@ -1499,7 +1533,17 @@ which the offline-asset test would not catch, because it greps for `http://`
 and a broken local path is not a remote one.
 
 **Exit:** a kata solved entirely in the browser with the network disconnected.
-Offline-asset test green.
+Offline-asset test green. **Both met** — the first by
+`tests/e2e/test_solve_a_kata_in_the_browser.py`, which browses, starts, submits a
+near-miss, reads the verdict, fixes it and passes, over real adapters and a real
+pytest run; the second by `tests/web/test_offline.py`, which greps every template
+and stylesheet of ours for a remote reference, asserts the walk found something,
+and asserts that every file under `static/` is covered by either that grep or the
+SHA-256 pinning in `tests/web/test_vendored_assets.py`.
+
+The commit list needed one addition, recorded in §16 rather than edited away:
+**`practice serve`**, without which the exit criterion is untypeable. The same
+omission Phase 6 found with `practice start`, in the same shape.
 
 ---
 
@@ -1631,10 +1675,10 @@ changed"* is worth more than any code sample.
 | [0004](adr/0004-content-as-declarative-data.md) | Content is declarative data, validated by schema | accepted |
 | [0005](adr/0005-sandbox-via-temp-dirs-and-subprocess.md) | Sandbox via a scoped directory and subprocess, not containers | accepted |
 | [0006](adr/0006-sqlite-without-an-orm.md) | SQLite with hand-written SQL and explicit mappers, not an ORM | accepted |
-| 0007 | HTMX over a single-page app | not yet written |
+| [0007](adr/0007-htmx-over-a-single-page-app.md) | HTMX and server-rendered fragments, not a single-page app | accepted |
 | 0008 | SM-2 first, FSRS behind a port | not yet written |
 | 0009 | Ship our own prompts; never redistribute problem text | not yet written |
-| 0010 | CodeMirror 5 over 6, to avoid an npm build step | not yet written |
+| [0010](adr/0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | accepted |
 | [0011](adr/0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
 
 ---
@@ -1685,6 +1729,11 @@ Rehearse these; they are the return on the architectural investment.
 - **A security detail most people miss:** binding to localhost does not protect
   you from a malicious website POSTing to your dev server. Origin and
   `Sec-Fetch-Site` validation, on a tool that executes arbitrary code by design.
+  The better half of the answer is what those two *still* miss: under DNS
+  rebinding both headers are `same-origin` and both are telling the truth, so a
+  `Host` allowlist is the third guard — and the fact that it has to cover reads
+  as well as writes is the part that shows you have thought about it rather than
+  copied it.
 
 ---
 
@@ -1698,6 +1747,12 @@ Not blockers — decide when the phase arrives.
    embedded quotes — which means the CodeMirror pane is probably *required*
    here, not optional. Decide in Phase 8; the alternative is a
    `resolve <path>` affordance that opens the conflicted file in the editor.
+
+   **Half-answered by Phase 7: the pane exists.** CodeMirror is vendored, wired
+   over a textarea and reading its language from the exercise
+   ([ADR 0010](adr/0010-codemirror-5-over-6.md)), so what is left is the
+   affordance rather than the widget — which is the cheaper half. The same is
+   true of question 2's plan file.
 2. **Interactive rebase — spiked in Phase 5. Answer: drivable, and deferred
    past the MVP.** The spike ran against a real provisioned workspace rather than
    reasoning about git, and found four things, two of which the question did not
@@ -1730,8 +1785,9 @@ Not blockers — decide when the phase arrives.
    assertion, and a new authoring affordance (a plan file), for one family of
    exercises — and `write` taking its content as a single argv element makes a
    multi-line todo awkward in exactly the way open question 1 describes. If the
-   CodeMirror pane lands in Phase 8 and solves that, both questions get easier at
-   once, which is the right order to take them in.
+   CodeMirror pane solves that, both questions get easier at once, which is the
+   right order to take them in. **The pane landed in Phase 7**, one phase earlier
+   than this paragraph assumed, so that discount is already available.
 3. **Kata languages beyond Python.** The runner is already behind a port, so
    adding TypeScript means a `vitest` adapter. Worth it only if you interview
    in TS.
@@ -2500,3 +2556,108 @@ blocked on this one: `practice gc` could not define an orphan, §8.1's
 resume-or-abandon promise could not be kept, Phase 8's workbench needs an attempt
 to survive an HTTP request, and Phase 9's spaced repetition is meaningless if
 nothing is remembered between runs. None of them is blocked now.
+
+
+**2026-10-02 — Phase 7 built: the web shell and the kata workbench.** Four
+sessions budgeted, five commits. The phase where the second driving adapter
+finally exists, and the §2 claim it was built to test — *if the core were secretly
+coupled to HTTP, a second driving adapter wouldn't work* — holds in the direction
+nobody had checked. **No use case changed, no grader changed, no adapter changed.**
+What the web app added to the layers below it is one use case and one DTO, and
+both exist for a reason the CLI genuinely does not have.
+
+**That one addition is the finding worth keeping: a URL outlives the state it was
+created for.** `practice submit` grades an attempt, prints a verdict and is done
+with it, so nothing in six phases ever needed to *re-read* a finished attempt.
+`/attempt/{id}` is a tab somebody left open across that submission, a bookmark, a
+link from the dashboard — and it has to render either way. `ResumeAttempt` refuses
+a finished attempt, correctly, because resuming one is not a thing that can
+happen; bending it to cover this would have made it two use cases wearing one
+name. `OpenWorkbench` is the second, and it differs from its neighbour in exactly
+one case. The general form, which generalises past this project: **a request/response
+adapter asks for reads that a command-line adapter never does, because a command
+is over when it prints and a URL is not.**
+
+**The §8.3 security pair does not cover DNS rebinding, and the reason is the
+opposite of obvious.** The plan names two guards — bind to loopback, and reject a
+mutating request whose `Origin` is not ours and whose `Sec-Fetch-Site` is not
+`same-origin`. If `evil.example` resolves to 127.0.0.1, a page served from it
+sends `Origin: http://evil.example` to a request whose own `Host` is
+`evil.example`, so the two *agree*; and the browser reports
+`Sec-Fetch-Site: same-origin`, truthfully, because as far as it is concerned they
+are one origin. **Both named guards pass.** A `Host` allowlist is three lines and
+is the only thing that sees it, which is also why it has to apply to reads: a
+rebound page that can read our HTML can read an attempt's transcript out of it.
+§8.3 and §14 both now say *two and a half guards*.
+
+The related decision, recorded because the lenient version is what most localhost
+tools ship: **a request that proves nothing is refused, including one that says
+nothing at all.** Treating "no `Origin` and no `Sec-Fetch-Site`" as "not a
+browser, so allow it" hands the entire guard to any browser that omits the header.
+Browsers have sent `Origin` on every non-GET fetch for years, so strictness costs
+a browser nothing; what it costs is `curl -X POST` one header, and there is a CLI
+over the same use cases that needs no server at all.
+
+**Five things found by running it, which is five for five across the phases that
+have kept count.**
+
+- **Starlette's `url_for` renders an *absolute* URL.** A layout written the
+  documented way serves `http://127.0.0.1/static/app.css` on every page. The
+  offline grep flagged it on its first run — it cannot tell that `http://` from a
+  CDN's — and the deeper problem is that a page hardcoding the host it happened to
+  be rendered for stops working the moment it is saved or opened under the other
+  loopback spelling. The static prefix is a Jinja global and the links are
+  root-relative.
+- **`httpx2`, not `httpx`.** Starlette's `TestClient` warns on the latter, and
+  this project's `filterwarnings = ["error"]` turns that warning into a
+  *collection* error. The obvious dependency is the broken one here, which is
+  exactly the sort of thing a lockfile comment is for.
+- **`python-multipart` is a runtime dependency**, not a test one: FastAPI raises at
+  request time without it, and the browse page starts an attempt with a form. Found
+  by a test suite that went from green to 49 errors on one route being added — and
+  worth noting that the failure was *not* at import time, so nothing static saw it.
+- **`height: auto` plus `min-height` is wrong for CodeMirror.** It looks right
+  until a short stub loads: the widget sizes to its eight lines, the min-height
+  leaves empty panel underneath, and the horizontal scrollbar is drawn at the
+  content edge above the dead space. A fixed height with the widget's own scrolling
+  is what that wanted.
+- **Grading needs an in-flight state.** It starts a pytest subprocess and takes a
+  second or two, and a button that does not change reads as a button that did
+  nothing — so the second click it invites gets refused by the aggregate, and the
+  reward for impatience is an error message. The button disables itself and says
+  `Grading…`.
+
+**The vendoring rule had to be split in two, which the plan did not anticipate.**
+§8.2 says the offline test greps every template and static file for `http://`. It
+cannot: a minified library carries its own licence URL in a banner comment, so
+grepping the vendored files would either condemn an asset that fetches nothing or
+be weakened until it caught nothing. So **our files are grepped and theirs are
+pinned by SHA-256** — and a third test asserts that every file under `static/`
+falls into one of the two sets, because the failure mode of a split rule is a
+category that appears between the halves and is checked by neither. The hash is
+the stronger claim in any case: the grep says *this file names no remote host*,
+and the hash says *this file is the one that was reviewed*. `.gitattributes` gained
+`-text` on that directory for the same reason, and it is the one exception to the
+LF rule above it — `text=auto` would normalize the bytes on a Windows checkout and
+the verification would then pass on Linux and fail on Windows.
+
+**One deliberate limitation, stated rather than hidden.** The workbench has no
+draft persistence: closing the tab loses the editor buffer, because the only
+`SolutionSaved` event is the one a submission writes. Adding an autosave endpoint
+would put a write on a page load's sibling path, and the event log is read by the
+§6.3 process assertions — so it is a decision about what counts as something the
+solver *did*, not a missing feature to slip in. Phase 8 reopens it alongside hint
+reveal, which has the same shape.
+
+**The commit split was clean this time, and the known caveat did not fire.** All
+four commits passed the cheap tier on their own, and the pre-push run found
+nothing the cheap tier had missed — the first phase since the rule was written
+where that is true. The reason is visible rather than lucky: this phase changed no
+existing user-facing string. Every new message is in a file that did not exist
+before, so the one shape the cheap tier cannot see had nothing to see.
+
+The phase closed at **1,973 tests** — 111 more than Phase 6 — with `domain/` and
+`application/` at **100%** statement and branch coverage against the 90% gate, on
+1,364 statements and 258 branches. `practice validate` and `practice fixtures
+--check` are unchanged and green, and `unproven_by_design` still names the same two
+permanent caveats.
