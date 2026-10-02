@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+from practice.domain.checks import registry
 from practice.domain.checks.evaluation import (
     MISSING,
     CheckResult,
@@ -22,7 +23,7 @@ from practice.domain.checks.evaluation import (
 from practice.domain.ids import Sha
 from practice.domain.verdict import Severity
 from tests.fakes import a_repo
-from tests.unit.domain.checks.helpers import run
+from tests.unit.domain.checks.helpers import an_attempt, run, spec
 
 
 class TestNegation:
@@ -132,17 +133,31 @@ class TestAMisconfiguredCheck:
         assert report.is_blocking is False
 
 
-class TestAnAssertionThatHasNotLandedYet:
-    def test_it_reports_rather_than_raising(self) -> None:
-        """A within-phase scaffold: the schema accepts the whole vocabulary while
-        the table holds however much of it is implemented. Gone by the end of
-        Phase 5, and worth a test until then — the alternative is a `KeyError`
-        in front of a solver.
+class TestTheTableCoversTheVocabulary:
+    def test_every_registered_name_can_actually_be_dispatched(self) -> None:
+        """The hole Phase 2's registry was built to close, from the other side.
+
+        Phase 2 made an unregistered `assert:` a validation failure, so a typo could
+        not silently drop a check from an exercise. The mirror of that is a name
+        that validates and then cannot run, which would do exactly the same damage
+        one layer down -- and during this phase the two sets were briefly different
+        on purpose, while the functions landed a family at a time.
         """
-        report = run(a_repo().build(), "command_used", pattern="push")
+        assert set(registry.ASSERTIONS) == set(registry.CHECKS)
+
+    def test_a_name_with_no_function_reports_rather_than_raising(self) -> None:
+        """Unreachable through the schema, which rejects an unregistered name before
+        a `CheckSpec` exists. Worth a test anyway: it is the branch that catches a
+        name added to `ASSERTIONS` without a function, and a `KeyError` in front of
+        a solver is the one outcome this module exists to prevent.
+        """
+        repo = a_repo()
+        (first,) = repo.chain("one")
+        repo.branch("main", first)
+
+        report = registry.evaluate(spec("head_detached"), repo.build(), an_attempt())
 
         assert report.passed is False
-        assert "not implemented yet" in (report.actual or "")
 
 
 class TestResolve:

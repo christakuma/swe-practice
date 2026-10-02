@@ -203,6 +203,7 @@ def test_the_walk_actually_found_the_domain() -> None:
         "practice.domain.attempt",
         "practice.domain.checks",
         "practice.domain.checks.evaluation",
+        "practice.domain.checks.process",
         "practice.domain.checks.recovery",
         "practice.domain.checks.refs",
         "practice.domain.checks.registry",

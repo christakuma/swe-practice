@@ -40,7 +40,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
-from practice.domain.checks import recovery, refs, trees, worktree
+from practice.domain.checks import process, recovery, refs, trees, worktree
 from practice.domain.checks.evaluation import CheckContext, CheckSpecError, Params
 from practice.domain.verdict import CheckReport
 
@@ -99,37 +99,32 @@ _RECOVERY: Final[Mapping[str, CheckFunction]] = {
     "stash_count": recovery.stash_count,
 }
 
-#: Assertions whose name is legal and whose function has not landed yet. A
-#: within-phase scaffold, not a design: it exists so that each commit of Phase 5
-#: stands alone and is green, while the schema keeps rejecting a typo against the
-#: *whole* vocabulary rather than against however much of it is implemented. It is
-#: empty by the end of the phase and this constant goes with it.
-_PENDING: Final[Mapping[str, str]] = MappingProxyType(
-    {
-        "command_count": "process assertions land next",
-        "command_used": "process assertions land next",
-    }
-)
+#: Read the `Attempt` event log rather than the repository, which is why the
+#: aggregate keeps every command instead of just a final state (PLAN.md §4.3).
+#: Advisory by convention: they grade craft, not correctness.
+_PROCESS: Final[Mapping[str, CheckFunction]] = {
+    "command_count": process.command_count,
+    "command_used": process.command_used,
+}
 
-#: Name to function, for everything that can be evaluated today.
+#: Name to function. Every assertion in the vocabulary, as of this commit.
 CHECKS: Final[Mapping[str, CheckFunction]] = MappingProxyType(
     {
         **_REFS_AND_SHAPE,
         **_TREES_AND_CONTENT,
         **_WORKTREE_AND_INDEX,
         **_RECOVERY,
+        **_PROCESS,
     }
 )
 
-#: Read the `Attempt` event log rather than the repository, which is why the
-#: aggregate keeps every command instead of just a final state (PLAN.md §4.3).
-#: Advisory by convention: they grade craft, not correctness.
-PROCESS_ASSERTIONS: Final = frozenset({"command_count", "command_used"})
+PROCESS_ASSERTIONS: Final = frozenset(_PROCESS)
 
-#: Every legal value of an `assert:` key — the table plus whatever is still
-#: pending. The union rather than the table, so the schema rejects a typo against
-#: the vocabulary the plan describes and not against this phase's progress.
-ASSERTIONS: Final = frozenset(CHECKS) | frozenset(_PENDING)
+#: Every legal value of an `assert:` key, which is now exactly what can be
+#: dispatched. The two were briefly different while Phase 5 landed the functions a
+#: family at a time, so that each commit stood alone while the schema kept
+#: rejecting a typo against the *whole* vocabulary. That scaffold is gone.
+ASSERTIONS: Final = frozenset(CHECKS)
 
 #: Everything that interrogates the repository through `RepoQuery`.
 CONTENT_ASSERTIONS: Final = ASSERTIONS - PROCESS_ASSERTIONS
@@ -157,25 +152,26 @@ def is_registered(name: str) -> bool:
 def evaluate(spec: CheckSpec, query: RepoQuery, attempt: Attempt) -> CheckReport:
     """Run one check and report it in the author's words.
 
-    Three things can go wrong and all three produce a failing report rather than an
+    Two things can go wrong and both produce a failing report rather than an
     exception, because the reader of a verdict is a solver:
 
-    * the assertion is registered but not yet dispatchable (a Phase 5 scaffold);
     * the `with:` mapping cannot be evaluated as written, which is an authoring bug
       that CI's graded replay turns into a build failure;
     * the repository is in a state the check did not expect, which is not an error
       at all — it is the failure the check exists to report (§6.5).
 
-    A fourth thing cannot go wrong: an unregistered name never reaches here,
-    because the content schema refuses to build a `CheckSpec` holding one.
+    A third cannot: an unregistered name never reaches here, because the content
+    schema refuses to build a `CheckSpec` holding one. The guard below is for the
+    one way that could still happen — a name added to `ASSERTIONS` without a
+    function — and it reports rather than raising for the same reason as the rest.
     """
     function = CHECKS.get(spec.assertion)
-    if function is None:
+    if function is None:  # pragma: no cover - the schema rejects the name first
         return CheckReport.from_spec(
             spec,
             passed=False,
             expected=f"the {spec.assertion} assertion",
-            actual=f"<not implemented yet: {_pending_reason(spec.assertion)}>",
+            actual="<no function is registered for it>",
         )
 
     context = CheckContext(
@@ -229,7 +225,3 @@ def suggest(name: str, *, limit: int = 3) -> tuple[str, ...]:
             scored.append((-overlap, candidate))
 
     return tuple(candidate for _, candidate in sorted(scored)[:limit])
-
-
-def _pending_reason(name: str) -> str:
-    return _PENDING.get(name, "no function is registered for it")
