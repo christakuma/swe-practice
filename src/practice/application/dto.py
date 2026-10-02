@@ -30,6 +30,7 @@ __all__ = [
     "RanCommand",
     "StartedAttempt",
     "Submission",
+    "Workbench",
     "WorkspaceState",
 ]
 
@@ -140,6 +141,46 @@ class Abandoned:
 
     attempt: Attempt
     exercise: Exercise | None
+
+
+@dataclass(frozen=True, slots=True)
+class Workbench:
+    """One attempt, rendered -- in whatever state it is in.
+
+    The DTO a *page* needs rather than one a command does, and the difference is
+    the whole reason it exists: `StartedAttempt` describes a live session and
+    `Submission` describes a graded one, and a URL has to render either. A tab
+    left open across a submission asks for the same id and must get a verdict
+    rather than an error.
+
+    `workspace` is `None` once the attempt is finished, because submission
+    disposes of it -- that is the expected state, not the broken one. For an
+    attempt still `ACTIVE`, a missing workspace is `WorkspaceGoneError` and never
+    reaches here.
+
+    `editor_source` is `None` for a git scenario, whose surface is a console and
+    not an editor, and for a finished kata, which has a verdict to show instead.
+    Two different reasons and one value, which is the honest encoding: the
+    question the template asks is "is there an editor on this page".
+    """
+
+    attempt: Attempt
+    exercise: Exercise
+    workspace: Workspace | None
+    editor_source: str | None = None
+
+    @property
+    def is_active(self) -> bool:
+        return self.attempt.is_active
+
+    @property
+    def verdict(self) -> Verdict | None:
+        """The attempt's own, which is `None` until it has one."""
+        return self.attempt.verdict
+
+    @property
+    def has_editor(self) -> bool:
+        return self.editor_source is not None
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block main %}
+<h1>Browse</h1>
+
+{#
+  A plain GET form. No HTMX here on purpose: filtering changes what the page *is*,
+  so it should change the URL — a filtered list you cannot bookmark, share or
+  reload is worse than one that costs a full page render on a local server.
+#}
+<form class="filters" method="get" action="/browse">
+  <label>
+    Kind
+    <select name="kind">
+      <option value="">any</option>
+      {% for value in all_kinds %}
+        <option value="{{ value.value }}" {{ 'selected' if value in selected.kinds }}>
+          {{ value.value.replace('_', ' ') }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>
+    Difficulty
+    <select name="difficulty">
+      <option value="">any</option>
+      {% for value in all_difficulties %}
+        <option value="{{ value.value }}" {{ 'selected' if value in selected.difficulties }}>
+          {{ value.value }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>
+    Tag
+    <select name="tags">
+      <option value="">any</option>
+      {% for value in all_tags %}
+        <option value="{{ value }}" {{ 'selected' if value in selected.tags }}>{{ value }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <button type="submit">Filter</button>
+  <a href="/browse">Clear</a>
+</form>
+
+{% if exercises %}
+  <ul class="library">
+    {% for exercise in exercises %}
+      {% set open = open_by_exercise.get(exercise.id) %}
+      <li>
+        <span class="title">{{ exercise.title }}</span>
+        {#
+          Resume rather than Start when an attempt is already open at this
+          exercise. Not cosmetic: starting a second one would provision a second
+          workspace and split the budget across two attempts that look like one
+          piece of work, and `practice attempts` would then list both.
+        #}
+        {% if open %}
+          <a href="/attempt/{{ open.attempt.id }}">Resume</a>
+        {% else %}
+          <form method="post" action="/attempt">
+            <input type="hidden" name="exercise_id" value="{{ exercise.id }}">
+            <button type="submit">Start</button>
+          </form>
+        {% endif %}
+        <span class="tags">
+          <span class="chip">{{ exercise.kind.value.replace('_', ' ') }}</span>
+          <span class="chip">{{ exercise.difficulty.value }}</span>
+          <span class="chip">~{{ exercise.estimated_minutes }} min</span>
+          {% for one in exercise.tags %}<span class="tag">{{ one }}</span>{% endfor %}
+        </span>
+        <span class="meta">{{ exercise.id }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="empty">
+    Nothing matches. <a href="/browse">Clear the filters</a> to see the whole
+    library.
+  </p>
+{% endif %}
+{% endblock %}

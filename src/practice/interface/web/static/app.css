@@ -236,9 +236,15 @@ button[disabled] {
 
 /* --- the workbench ------------------------------------------------------ */
 
+/*
+ * The prompt column is sized to the content, not to a round number: a kata
+ * prompt is authored as block text with worked examples lined up in it, and the
+ * widest of those (`two_sum([2, 7, 11, 15], 9)   ->  (0, 1)`) is what decides
+ * how narrow this can get before the lesson stops lining up.
+ */
 .workbench {
   display: grid;
-  grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 28rem) minmax(0, 1fr);
   gap: 1.25rem;
   align-items: start;
 }
@@ -267,6 +273,10 @@ button[disabled] {
 .prompt pre {
   padding: 0.6rem 0.7rem;
   overflow-x: auto;
+  /* Prose wraps, the examples keep their own line breaks and leading spaces.
+     `pre` alone clips a paragraph off the right edge of the panel; `pre-wrap`
+     is the one value that does both halves of what a prompt needs. */
+  white-space: pre-wrap;
 }
 
 .editor-actions {

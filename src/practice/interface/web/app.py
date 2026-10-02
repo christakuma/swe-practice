@@ -29,7 +29,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from practice.interface.web.routes import dashboard
+from practice.interface.web.routes import attempt, browse, dashboard
 from practice.interface.web.security import SameOriginMiddleware
 from practice.interface.web.vendor import static_root
 
@@ -76,4 +76,6 @@ def create_app(services: Services) -> FastAPI:
     templates = Jinja2Templates(directory=templates_root())
     templates.env.globals["static"] = STATIC_URL
     app.include_router(dashboard.build_router(services, templates))
+    app.include_router(browse.build_router(services, templates))
+    app.include_router(attempt.build_router(services, templates))
     return app

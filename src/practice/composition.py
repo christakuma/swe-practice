@@ -61,6 +61,7 @@ from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
     ListOpenAttempts,
+    OpenWorkbench,
     ResumeAttempt,
     RunScenarioCommand,
     StartAttempt,
@@ -164,6 +165,20 @@ class Services:
     def resume_attempt(self) -> ResumeAttempt:
         """No clock: resuming is a read, and nothing about the attempt changes."""
         return ResumeAttempt(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+        )
+
+    @property
+    def open_workbench(self) -> OpenWorkbench:
+        """No clock and no graders: loading a page for display changes nothing.
+
+        The same three ports as `resume_attempt`, which is the honest signal that
+        the two are near neighbours -- they differ in what they do with a *finished*
+        attempt, not in what they need to find one.
+        """
+        return OpenWorkbench(
             content=self.content,
             attempts=self.attempts,
             provisioner=self.provisioner,

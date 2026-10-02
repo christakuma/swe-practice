@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{#
+  A refusal, inside the normal layout rather than on a bare page. A refusal is a
+  place somebody needs to navigate away from, and a page without the header has
+  taken the navigation away at the moment it is most wanted.
+
+  The detail is whatever the application error already said. Those messages are
+  written to be read -- "abandon it and start again" -- so there is nothing for
+  this page to add and a rephrasing here would be a second, worse copy.
+#}
+{% block main %}
+<h1>{{ problem }}</h1>
+
+<p class="problem">{{ detail }}</p>
+
+<p><a href="/browse">Browse the library</a> · <a href="/">Dashboard</a></p>
+{% endblock %}

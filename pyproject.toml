@@ -25,6 +25,10 @@ dependencies = [
     "watchfiles>=0.24",
     "platformdirs>=4.3",
     "pyyaml>=6.0",
+    # FastAPI parses an HTML form body through this, and the browse page starts an
+    # attempt with one. A runtime dependency rather than a test one for that
+    # reason, and it parses bytes it is handed -- there is no client in it.
+    "python-multipart>=0.0.20",
 ]
 
 [dependency-groups]

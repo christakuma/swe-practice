@@ -23,6 +23,7 @@ from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
     ListOpenAttempts,
+    OpenWorkbench,
     ResumeAttempt,
     RunScenarioCommand,
     StartAttempt,
@@ -65,6 +66,7 @@ __all__ = [
     "a_submit_solution",
     "an_abandon_attempt",
     "an_environment",
+    "an_open_workbench",
 ]
 
 
@@ -302,6 +304,15 @@ def an_abandon_attempt(world: World) -> AbandonAttempt:
 
 def a_list_open_attempts(world: World) -> ListOpenAttempts:
     return ListOpenAttempts(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+    )
+
+
+def an_open_workbench(world: World) -> OpenWorkbench:
+    """The same three ports as `a_resume_attempt`: loading a page writes nothing."""
+    return OpenWorkbench(
         content=world.content,
         attempts=world.attempts,
         provisioner=world.provisioner,

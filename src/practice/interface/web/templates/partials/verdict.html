@@ -1,0 +1,51 @@
+{#
+  One verdict: every check, then the outcome.
+
+  **A partial, included by the workbench page and returned on its own as the HTMX
+  response to a submission.** One template for both, which is the property that
+  makes the two agree: a reload of a graded attempt shows the same thing the
+  submission showed, because it is the same file rather than two that were written
+  to match.
+
+  In the order the verdict holds them, which for a kata is the order the hidden
+  suite declared its tests — so two runs of the same solution read the same way
+  down the page. The CLI's `_report_verdict` makes the same choice for the same
+  reason, and this is the one piece of presentation deliberately duplicated
+  between the two adapters: `dto.py` carries domain objects rather than display
+  strings precisely so neither of them owns the other's formatting.
+
+  What is repeated under the outcome is whatever has to change next: the failures
+  when there are any, the advisories when there are not. The outcome is where
+  someone stops reading, and listing advisories under a FAIL would bury the thing
+  that actually failed.
+#}
+{% set verdict = verdict if verdict is defined else workbench.verdict %}
+{% if verdict %}
+  <ul class="checks">
+    {% for report in verdict.reports %}
+      <li class="check {{ 'passed' if report.passed else ('failed' if report.is_required else 'advisory') }}">
+        <span class="label">{{ report.label }}</span>
+        {% if not report.passed and report.expected and report.actual %}
+          <span class="detail">expected {{ report.expected }}, got {{ report.actual }}</span>
+        {% endif %}
+        {% if not report.passed and report.explanation %}
+          <span class="why">{{ report.explanation }}</span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+
+  <p class="outcome {{ verdict.outcome.value }}">
+    {{ verdict.outcome.value.replace('_', ' ') }}
+  </p>
+
+  <ul class="checks">
+    {% for report in (verdict.advisories if verdict.passed else verdict.failures) %}
+      <li class="check {{ 'advisory' if verdict.passed else 'failed' }}">
+        <span class="label">{{ report.label }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="empty">This attempt has no verdict.</p>
+{% endif %}

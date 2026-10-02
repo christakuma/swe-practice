@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% set attempt = workbench.attempt %}
+{% set exercise = workbench.exercise %}
+
+{% block main %}
+<h1>{{ exercise.title }}</h1>
+<p class="meta">
+  {{ exercise.id }} · {{ exercise.difficulty.value }} ·
+  ~{{ exercise.estimated_minutes }} min ·
+  attempt {{ attempt.id.short }}
+</p>
+
+<div class="workbench">
+  <section class="panel prompt">
+    <h2>Prompt</h2>
+    {#
+      `pre`, not a markdown renderer. The prompt is authored as YAML block text
+      with worked examples lined up inside it (see content/katas/two-sum), so the
+      one thing it needs is for its own whitespace to survive. A markdown pass
+      would add a dependency in order to reflow text that is already shaped.
+    #}
+    <pre>{{ exercise.prompt }}</pre>
+
+    {% if exercise.hints %}
+      <p class="meta">
+        {{ exercise.hint_count }} hint{{ '' if exercise.hint_count == 1 else 's' }}
+        available. Revealing them one at a time is phase 8: the attempt records
+        every reveal, and a page that printed them all at once would make that
+        record describe something nobody did.
+      </p>
+    {% endif %}
+  </section>
+
+  <section class="panel" id="work">
+    {% if not workbench.is_active %}
+      {#
+        Finished. The verdict is what there is left to show, and the editor is
+        gone with the workspace that ran it — submission disposes of it, which is
+        why `workbench.workspace` is None here rather than an error.
+      #}
+      <h2>Verdict</h2>
+      {% include "partials/verdict.html" %}
+      <p><a href="/browse">Try another exercise</a></p>
+
+    {% elif is_kata %}
+      <h2>Your solution</h2>
+      <form id="solution-form">
+        <textarea id="source" name="source" spellcheck="false"
+                  rows="20">{{ workbench.editor_source or '' }}</textarea>
+      </form>
+      <div id="verdict"></div>
+
+    {% else %}
+      <h2>Console</h2>
+      <p class="empty">
+        A git scenario is solved by running commands against the repository this
+        attempt has already provisioned, and the console that does it — with the
+        repo state panel and the commit graph beside it — is phase 8. Until then
+        the same attempt is reachable from the terminal:
+      </p>
+      <pre>practice resume {{ attempt.id }} --commands FILE
+practice submit {{ attempt.id }}</pre>
+      <p class="meta">
+        {{ attempt.command_count }} of {{ attempt.policy.max_commands }}
+        commands used.
+      </p>
+    {% endif %}
+  </section>
+</div>
+
+{% if workbench.is_active and is_kata %}
+  <script src="{{ static }}/vendor/codemirror.min.js"></script>
+  <script src="{{ static }}/vendor/codemirror-python.min.js"></script>
+  <script>
+    // CodeMirror replaces the textarea with its own document, so the element the
+    // form would serialise stops tracking what is on screen. Everything that
+    // reads the solution reads `editor` instead -- which is why this handle is
+    // hung on `window` rather than kept in the closure.
+    window.practiceEditor = CodeMirror.fromTextArea(
+      document.getElementById("source"),
+      {
+        mode: {{ editor_mode | tojson }},
+        lineNumbers: true,
+        indentUnit: 4,
+        viewportMargin: Infinity
+      }
+    );
+  </script>
+{% endif %}
+{% endblock %}

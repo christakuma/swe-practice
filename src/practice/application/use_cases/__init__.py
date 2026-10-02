@@ -5,7 +5,7 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Eight of them, in two groups.
+Nine of them, in three groups.
 
 **Four about solving**, two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
@@ -25,12 +25,21 @@ Notice that none of the four is kind-specific. The lifecycle of an attempt is th
 same whether it is a kata or a git scenario, and the only use cases that have ever
 had to care about the difference are the ones that grade.
 
+**One about display**, added in Phase 7 with the web app. `OpenWorkbench` loads an
+attempt for a *page* rather than for a session, which is a question the CLI never
+had to ask: `practice submit` prints a verdict and the attempt is done with, while
+`/attempt/{id}` is a tab someone left open across that submission and has to render
+either way. `ResumeAttempt` refuses a finished attempt, correctly -- resuming one is
+not a thing that can happen -- so bending it to cover this would have made it two
+use cases wearing one name.
+
 `GradeReview` joins these in Phase 9.
 """
 
 from practice.application.use_cases.abandon_attempt import AbandonAttempt
 from practice.application.use_cases.collect_workspaces import CollectWorkspaces
 from practice.application.use_cases.list_open_attempts import ListOpenAttempts
+from practice.application.use_cases.open_workbench import OpenWorkbench
 from practice.application.use_cases.resume_attempt import ResumeAttempt
 from practice.application.use_cases.run_scenario_command import RunScenarioCommand
 from practice.application.use_cases.start_attempt import StartAttempt
@@ -41,6 +50,7 @@ __all__ = [
     "AbandonAttempt",
     "CollectWorkspaces",
     "ListOpenAttempts",
+    "OpenWorkbench",
     "ResumeAttempt",
     "RunScenarioCommand",
     "StartAttempt",
