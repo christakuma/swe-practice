@@ -19,7 +19,12 @@ from typing import TYPE_CHECKING
 
 from practice.adapters.persistence import InMemoryAttemptRepository
 from practice.application.registry import GraderRegistry
-from practice.application.use_cases import StartAttempt, SubmitSolution
+from practice.application.use_cases import (
+    RunScenarioCommand,
+    StartAttempt,
+    SubmitScenario,
+    SubmitSolution,
+)
 from practice.domain.attempt import SolutionSaved
 from practice.domain.exercise import ExerciseKind
 from practice.domain.verdict import CheckReport, Severity, Verdict
@@ -45,7 +50,9 @@ __all__ = [
     "RecordingGrader",
     "World",
     "a_passing_verdict",
+    "a_run_scenario_command",
     "a_start_attempt",
+    "a_submit_scenario",
     "a_submit_solution",
     "an_environment",
 ]
@@ -151,6 +158,13 @@ class World:
     clock: FakeClock
     ids: SequentialIdGenerator
     grader: Grader = field(default_factory=RecordingGrader)
+    scenario_grader: Grader = field(default_factory=RecordingGrader)
+
+    @property
+    def scenario_recorder(self) -> RecordingGrader:
+        """The scenario grader as the recording one. See `recorder`."""
+        assert isinstance(self.scenario_grader, RecordingGrader)
+        return self.scenario_grader
 
     @property
     def recorder(self) -> RecordingGrader:
@@ -168,19 +182,34 @@ def an_environment(
     *,
     complexity: ComplexityExpectation | None = None,
     grader: Grader | None = None,
+    scenario_grader: Grader | None = None,
 ) -> World:
-    """A world holding the two shipped exercise kinds and a kata grader."""
+    """A world holding the two shipped exercise kinds and a grader for each.
+
+    Both are registered, matching what the composition root does as of Phase 5. A
+    test that wants a *missing* grader builds the registry it wants and passes it to
+    the use-case builder, which is the honest way to express that -- a shared
+    environment quietly short of one grader would make every test in the file depend
+    on which half was missing.
+    """
     kata_grader = grader if grader is not None else RecordingGrader()
+    git_grader = scenario_grader if scenario_grader is not None else RecordingGrader()
     return World(
         content=FakeContentRepository(
             [a_kata(complexity=complexity), a_scenario()],
         ),
         attempts=InMemoryAttemptRepository(),
         provisioner=FakeProvisioner(),
-        graders=GraderRegistry(graders={ExerciseKind.KATA: kata_grader}),
+        graders=GraderRegistry(
+            graders={
+                ExerciseKind.KATA: kata_grader,
+                ExerciseKind.GIT_SCENARIO: git_grader,
+            }
+        ),
         clock=FakeClock(),
         ids=SequentialIdGenerator(start=0),
         grader=kata_grader,
+        scenario_grader=git_grader,
     )
 
 
@@ -203,6 +232,28 @@ def a_submit_solution(world: World) -> SubmitSolution:
         attempts=world.attempts,
         provisioner=world.provisioner,
         graders=world.graders,
+        clock=world.clock,
+    )
+
+
+def a_run_scenario_command(world: World) -> RunScenarioCommand:
+    """No grader registry: running a command does not grade anything."""
+    return RunScenarioCommand(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        clock=world.clock,
+    )
+
+
+def a_submit_scenario(
+    world: World, *, graders: GraderRegistry | None = None
+) -> SubmitScenario:
+    return SubmitScenario(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        graders=graders if graders is not None else world.graders,
         clock=world.clock,
     )
 

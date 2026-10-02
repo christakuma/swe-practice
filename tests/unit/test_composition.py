@@ -53,14 +53,14 @@ def test_building_the_graph_writes_nothing_to_disk(tmp_path: Path) -> None:
     assert not workspaces.exists()
 
 
-def test_only_the_kata_kind_has_a_grader() -> None:
-    """`GIT_SCENARIO` is absent rather than stubbed. A placeholder would be
-    something an attempt could be completed against, and a kata-shaped verdict
-    for a git scenario is worse than no verdict (Phase 5).
+def test_every_exercise_kind_has_a_grader() -> None:
+    """As of Phase 5, both of them. Asserted against the enum rather than against a
+    literal pair, so adding a third kind without a grader fails here -- which is the
+    one place that can notice before a solver does.
     """
     graders = build_services().graders
 
-    assert set(graders.graders) == {ExerciseKind.KATA}
+    assert set(graders.graders) == set(ExerciseKind)
 
 
 def test_the_content_root_override_reaches_both_adapters() -> None:

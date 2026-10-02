@@ -4,13 +4,14 @@ Manual dependency injection, no framework, no decorators, no magic — you can
 read the whole object graph in one file, which is the property PLAN.md §3 claims
 and this file either keeps or breaks.
 
-**Why it arrives now and not in Phase 0.** A wiring module with one adapter in
+**Why it arrives in Phase 4 and not Phase 0.** A wiring module with one adapter in
 it is the abstraction §13 says to delete rather than carry, so Phase 2
-deliberately did without one. Phase 4 is the first time there is a graph: a
+deliberately did without one. Phase 4 was the first time there was a graph: a
 content repository, a provisioner, an attempt store, a runner behind a grader
 behind a registry, a clock and an id generator, assembled into two use cases.
 Six objects with four edges between them is exactly when a reader benefits from
-one place that shows the shape.
+one place that shows the shape. Phase 5 adds a second grader and two more use
+cases to it and changes nothing else, which is the return on having written it.
 
 **`Services` holds ports, not implementations.** The annotations are the port
 protocols, so mypy checks at the only place it can that each adapter still
@@ -31,12 +32,18 @@ from typing import TYPE_CHECKING
 
 from practice.adapters.clock import SystemClock
 from practice.adapters.content import FilesystemContentRepository
+from practice.adapters.git import ScenarioGrader
 from practice.adapters.ids import Uuid4IdGenerator
 from practice.adapters.kata import KataGrader, PytestKataRunner
 from practice.adapters.persistence import InMemoryAttemptRepository
 from practice.adapters.sandbox import SubprocessSandboxProvisioner
 from practice.application.registry import GraderRegistry
-from practice.application.use_cases import StartAttempt, SubmitSolution
+from practice.application.use_cases import (
+    RunScenarioCommand,
+    StartAttempt,
+    SubmitScenario,
+    SubmitSolution,
+)
 from practice.config import content_root, workspace_root
 from practice.domain.exercise import ExerciseKind
 
@@ -93,6 +100,31 @@ class Services:
             clock=self.clock,
         )
 
+    @property
+    def run_scenario_command(self) -> RunScenarioCommand:
+        """No grader registry: running a command does not grade anything.
+
+        Worth noticing rather than tidying into symmetry. It is the one use case
+        that neither needs a grader nor completes an attempt, which is also why it
+        is the only one that can be called twenty times in a row.
+        """
+        return RunScenarioCommand(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            clock=self.clock,
+        )
+
+    @property
+    def submit_scenario(self) -> SubmitScenario:
+        return SubmitScenario(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            graders=self.graders,
+            clock=self.clock,
+        )
+
 
 def build_services(
     *,
@@ -129,14 +161,16 @@ def build_services(
 
 
 def build_graders() -> GraderRegistry:
-    """One grader per exercise kind that has one.
+    """One grader per exercise kind, and as of Phase 5 that is both of them.
 
-    `ExerciseKind.GIT_SCENARIO` is absent rather than mapped to a stub, which is
-    what makes the registry's refusal honest: a placeholder grader would be
-    something an attempt could be completed against, and a kata-shaped verdict
-    for a git scenario is worse than no verdict at all (Phase 5).
+    Each is constructed with its own collaborator rather than reaching for one:
+    `KataGrader` takes the pytest runner, `ScenarioGrader` takes the `RepoQuery`
+    factory it defaults to. That is what keeps both unit-testable against a double
+    -- and what makes this function the only place that decides which real
+    collaborator each one gets.
     """
     graders: dict[ExerciseKind, Grader] = {
-        ExerciseKind.KATA: KataGrader(PytestKataRunner())
+        ExerciseKind.KATA: KataGrader(PytestKataRunner()),
+        ExerciseKind.GIT_SCENARIO: ScenarioGrader(),
     }
     return GraderRegistry(graders=graders)

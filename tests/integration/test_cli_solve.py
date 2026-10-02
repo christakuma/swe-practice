@@ -138,13 +138,20 @@ def test_a_failure_repeats_what_has_to_change_under_the_outcome(
 # --- what it refuses -------------------------------------------------------
 
 
-def test_a_git_scenario_is_refused_with_the_phase_that_lands_it(
-    workspaces: Path,
-) -> None:
+def test_a_git_scenario_is_refused_by_the_kata_path(workspaces: Path) -> None:
+    """`solve` with no answer flag falls back to the exercise's own stub, and a git
+    scenario does not have one.
+
+    This test used to assert that the refusal named Phase 5 as the thing which would
+    make git scenarios gradable. A scenario grader is registered as of this commit,
+    so the attempt now *starts* — and the refusal moves to the point where a
+    kata-shaped invocation asks for a stub that is not there. The scenario driver,
+    and the refusal that tells someone to pass `--commands`, lands two commits later.
+    """
     code, output = solve(workspaces, SCENARIO)
 
     assert code == 2
-    assert "phase 5" in output
+    assert "no stub" in output
 
 
 def test_an_unknown_exercise_is_refused(workspaces: Path) -> None:

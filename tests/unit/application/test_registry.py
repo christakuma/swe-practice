@@ -1,9 +1,15 @@
 """Which grader runs which kind, and what happens when none does.
 
-The interesting case is the missing one. A registry with an entry for every kind
-would be a dict with a lookup; what makes this worth testing is that
-`git_scenario` has no grader until Phase 5, and the refusal has to name the gap
-rather than fail with an `AttributeError` somewhere downstream.
+The interesting case is still the missing one, even though both shipped kinds now
+have a grader. A registry with an entry for everything is a dict with a lookup;
+what makes this worth testing is the day a third kind is added -- SQL exercises are
+parked in Phase 13 -- and the refusal has to name the gap rather than fail with an
+`AttributeError` somewhere downstream, or worse, provision a workspace and run a
+fixture before discovering it.
+
+So these cases deliberately build registries that are *missing* something, rather
+than asserting against whatever `build_graders` currently returns. That is also why
+they kept working across Phase 5, which registered the half they used to be about.
 """
 
 from __future__ import annotations
@@ -40,21 +46,21 @@ def test_it_returns_the_grader_for_a_registered_kind() -> None:
     assert registry.supports(a_kata())
 
 
-def test_it_refuses_a_kind_nothing_can_grade_and_names_the_phase() -> None:
-    """The refusal is the feature: a solver asking for a git scenario today
-    should be told that the engine lands in Phase 5, not handed a traceback or,
-    worse, a kata-shaped verdict.
+def test_it_refuses_a_kind_nothing_can_grade_and_says_what_it_does_have() -> None:
+    """The refusal is the feature. A kind with no grader has to produce a readable
+    message naming what *is* registered, so whoever reads it can tell "not built
+    yet" from "wired up wrong".
     """
     registry = a_registry()
 
     assert not registry.supports(a_scenario())
-    with pytest.raises(UnsupportedExerciseKindError, match="phase 5"):
+    with pytest.raises(UnsupportedExerciseKindError, match="registered for kata"):
         registry.for_exercise(a_scenario())
 
 
-def test_an_empty_registry_says_what_it_does_have() -> None:
-    """The fallback message, for a kind with no phase note — which is what a
-    third exercise kind would be on the day it is added.
+def test_an_empty_registry_says_so_rather_than_naming_nothing() -> None:
+    """The degenerate case, which is what a misconfigured composition root looks
+    like from here.
     """
     registry = GraderRegistry(graders={})
 

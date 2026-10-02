@@ -18,12 +18,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from practice.domain.attempt import Attempt
+    from practice.domain.attempt import Attempt, CommandRun
     from practice.domain.exercise import Exercise
     from practice.domain.ports import Workspace
     from practice.domain.verdict import Outcome, Verdict
 
-__all__ = ["StartedAttempt", "Submission"]
+__all__ = ["RanCommand", "StartedAttempt", "Submission"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,3 +64,27 @@ class Submission:
     def passed(self) -> bool:
         """True for a pass with advisories too: the goal was met either way."""
         return self.verdict.passed
+
+
+@dataclass(frozen=True, slots=True)
+class RanCommand:
+    """One command, as the attempt now remembers it.
+
+    The `CommandRun` rather than the bare `CommandResult`, because the caller wants
+    the things only the aggregate knows: when it happened, and the normalised line it
+    was recorded as. The attempt comes with it so a console can redraw its budget
+    without a second lookup -- `remaining_commands` is the number a solver watches.
+    """
+
+    attempt: Attempt
+    exercise: Exercise
+    command: CommandRun
+
+    @property
+    def remaining_commands(self) -> int:
+        return self.attempt.remaining_commands
+
+    @property
+    def succeeded(self) -> bool:
+        """A failing command is a normal outcome, often the instructive one."""
+        return self.command.result.succeeded

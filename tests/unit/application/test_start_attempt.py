@@ -75,20 +75,29 @@ def test_an_ungradable_kind_is_refused_before_the_fixture_runs() -> None:
     builds a repository; discovering afterwards that nothing can grade the
     result wastes the work *and* leaves a workspace for an attempt that can
     never be completed.
+
+    The registry here is deliberately missing the scenario grader. It used to be
+    missing it in production too, which is what this test was originally about;
+    stating the gap explicitly is what let it keep testing the ordering after
+    Phase 5 closed it.
     """
     world = an_environment()
+    start = a_start_attempt(
+        world, graders=GraderRegistry(graders={ExerciseKind.KATA: NullGrader()})
+    )
 
-    with pytest.raises(UnsupportedExerciseKindError, match="phase 5"):
-        a_start_attempt(world)(ExerciseId("git/revert-a-pushed-commit"))
+    with pytest.raises(UnsupportedExerciseKindError, match="registered for kata"):
+        start(ExerciseId("git/revert-a-pushed-commit"))
 
     assert world.provisioner.provisioned == []
     assert len(world.attempts) == 0
 
 
-def test_a_registered_scenario_grader_would_be_allowed_to_start() -> None:
+def test_a_registered_scenario_grader_is_allowed_to_start() -> None:
     """The refusal above has to be about the missing grader, not about the kind.
-    Register one and the same exercise provisions — otherwise the test passes
-    for a reason that would survive Phase 5 and block it.
+    Register one and the same exercise provisions -- without this, the test above
+    would pass just as happily if `StartAttempt` refused every git scenario
+    outright.
     """
     world = an_environment()
     start = a_start_attempt(

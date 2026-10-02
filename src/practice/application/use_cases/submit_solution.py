@@ -16,6 +16,15 @@ exactly that. Deleting it on the way out of a failed grading pass would destroy
 the one thing that could be inspected to find out why, and leave an active
 attempt that can never be submitted or resumed.
 
+**A finished attempt is refused before the workspace is reached.** Added in Phase
+5, when `SubmitScenario` needed the same guard. Phase 4 pinned the old behaviour in
+a test and got the ordering right while missing what it produced: a successful
+submission disposes of the workspace, so a second submission reached `attach`, found
+nothing, and was told the workspace was gone and to *abandon the attempt and start
+again* -- about an attempt that had just been graded successfully.
+`Attempt.complete` refuses the second call with the right message; it was simply
+never reached.
+
 **The source is saved to the attempt before it is graded**, so the event log
 records what was submitted even if grading then fails. A verdict is derived from
 something persisted and replayable, never from an argument that was only ever in
@@ -33,6 +42,7 @@ from practice.application.errors import (
     ExerciseNotFoundError,
     WorkspaceGoneError,
 )
+from practice.domain.errors import AttemptStateError
 
 if TYPE_CHECKING:
     from practice.application.registry import GraderRegistry
@@ -68,6 +78,10 @@ class SubmitSolution:
         attempt = self.attempts.get(attempt_id)
         if attempt is None:
             raise AttemptNotFoundError(f"no attempt with id {attempt_id}")
+        if not attempt.is_active:
+            raise AttemptStateError(
+                f"cannot submit: attempt {attempt.id.short} is {attempt.status.value}"
+            )
 
         exercise = self.content.get(attempt.exercise_id)
         if exercise is None:

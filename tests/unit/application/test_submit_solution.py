@@ -17,6 +17,7 @@ from practice.application.errors import (
     WorkspaceGoneError,
 )
 from practice.domain.attempt import AttemptStatus, ComplexityClaim
+from practice.domain.errors import AttemptStateError
 from practice.domain.exercise import ComplexityExpectation
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.verdict import Outcome
@@ -168,21 +169,24 @@ def test_a_collected_workspace_is_refused_rather_than_reprovisioned() -> None:
         a_submit_solution(world)(started.attempt.id, SOURCE)
 
 
-def test_a_second_submission_is_refused_because_the_workspace_is_gone() -> None:
-    """Which guard fires first is worth pinning rather than guessing.
+def test_a_second_submission_is_refused_for_being_a_second_submission() -> None:
+    """Which guard fires first is worth pinning rather than guessing, and this test
+    used to pin the wrong one.
 
-    `Attempt.complete` refuses to run twice (and the domain suite proves it),
-    but the use case never gets that far: a successful submission disposes of
-    the workspace, so the second attempt to grade has nothing to attach to. Both
-    refusals are correct; this is the one a solver actually sees, and a test that
-    accepted either would not have noticed the order.
+    Before Phase 5 the answer was `WorkspaceGoneError`: a successful submission
+    disposes of the workspace, so the second call reached `attach` and found
+    nothing. The ordering was right and what it produced was not — the message tells
+    a solver to *abandon the attempt and start again*, about an attempt that had
+    just been graded successfully. `Attempt.complete` refuses the second call with
+    the right message and was simply never reached, so the use case checks the
+    status itself now.
     """
     world = an_environment()
     started = a_start_attempt(world)(KATA)
     submit = a_submit_solution(world)
     submit(started.attempt.id, SOURCE)
 
-    with pytest.raises(WorkspaceGoneError):
+    with pytest.raises(AttemptStateError, match="completed"):
         submit(started.attempt.id, SOURCE)
 
     assert len(world.recorder.calls) == 1, "it graded twice"

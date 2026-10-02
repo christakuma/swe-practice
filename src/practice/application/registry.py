@@ -4,13 +4,17 @@ The dispatch PLAN.md §3 puts in the application layer and the reason `Grader` i
 a port rather than a method on `Exercise` — the domain must not know that a kata
 is graded by running pytest.
 
-**One entry today, and it still earns its place.** §13's rule is that an
-abstraction with one implementation gets deleted, and this is not that: it is
-one implementation of a *two*-kind enum, so the interesting case is the missing
-one. Without the registry, asking for a git scenario would reach a grader that
-is not there and fail with an `AttributeError` or, worse, provision a workspace
-and run a fixture before discovering it. With it, the refusal happens before
-anything is built and says which phase lands the missing half.
+**Both kinds are registered as of Phase 5**, which is the first point at which
+this module is doing the job it was built for rather than explaining a gap. It
+still earns its place under §13's two-implementations rule, and the gap it used
+to name is worth remembering: with no registry, asking for a git scenario before
+the engine existed would have reached a grader that was not there and failed with
+an `AttributeError` -- or worse, provisioned a workspace and run a fixture before
+discovering it.
+
+`_PENDING` is kept, empty. A third kind is a realistic Phase 13 move (SQL
+exercises are parked there), and the mechanism that makes its absence a readable
+refusal costs one mapping.
 """
 
 from __future__ import annotations
@@ -31,9 +35,7 @@ __all__ = ["GraderRegistry"]
 
 #: What to say about a kind nothing can grade yet. Keyed by the enum *value* so
 #: this module does not have to import the enum at runtime.
-_PENDING: Mapping[str, str] = MappingProxyType(
-    {"git_scenario": "the git scenario engine lands in phase 5"}
-)
+_PENDING: Mapping[str, str] = MappingProxyType({})
 
 
 @dataclass(frozen=True, slots=True)
