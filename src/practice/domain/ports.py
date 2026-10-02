@@ -44,6 +44,7 @@ __all__ = [
     "SandboxProvisioner",
     "Scheduler",
     "Workspace",
+    "WorkspaceSummary",
     "WorktreeStatus",
 ]
 
@@ -77,6 +78,43 @@ class WorktreeStatus:
     def is_pristine(self) -> bool:
         """Clean including untracked — `worktree_clean {include_untracked: true}`."""
         return self.is_clean and not self.untracked
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceSummary:
+    """One workspace directory, as the provisioner found it on disk.
+
+    Port vocabulary rather than an adapter type, because `practice gc`'s whole job
+    is a *decision* over these — a workspace with no active attempt row is an
+    orphan (PLAN.md §8.1) — and that decision belongs in a use case that can be
+    unit-tested against a fake, not in a CLI command nobody can hold to it.
+
+    **`short_id` is the handle, not `attempt_id`.** The directory name *is* the
+    attempt's short id, so the orphan rule can be decided from the name alone —
+    which matters because the most interesting leftover is an interrupted
+    provision whose metadata was never written, and which therefore has no
+    `attempt_id` to match on. Those fields describe a workspace; `short_id`
+    identifies it.
+
+    `size_bytes` is read eagerly rather than offered as a method, because the only
+    caller wants it for every workspace it lists, and a lazily-computed size on a
+    port would be an I/O call hiding behind an attribute access.
+    """
+
+    short_id: str
+    attempt_id: AttemptId | None = None
+    exercise_id: ExerciseId | None = None
+    created_at: str | None = None
+    size_bytes: int = 0
+
+    @property
+    def is_described(self) -> bool:
+        """Whether the metadata file could be read.
+
+        A workspace with none is still a workspace and gc has to report it: an
+        interrupted provision is exactly the kind of leftover it exists to find.
+        """
+        return self.attempt_id is not None
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,6 +258,30 @@ class SandboxProvisioner(Protocol):
     def provision(self, exercise: Exercise, attempt_id: AttemptId) -> Workspace: ...
 
     def attach(self, exercise: Exercise, attempt_id: AttemptId) -> Workspace | None: ...
+
+    def workspaces(self) -> Sequence[WorkspaceSummary]:
+        """Every workspace under the root, in a stable order.
+
+        Reports rather than judges: which of these is an orphan is a question about
+        the attempt table, and the provisioner has never heard of it. On the port
+        from Phase 6 because `CollectWorkspaces` is the thing that answers it, and a
+        use case may only see ports.
+        """
+        ...
+
+    def discard(self, short_id: str) -> None:
+        """Delete one workspace by its directory name, whatever is in it.
+
+        Keyed by `short_id` rather than by `AttemptId` for the reason
+        `WorkspaceSummary` documents: the leftover most worth collecting is one
+        whose metadata was never written, and it has no attempt id to be named by.
+
+        Distinct from `Workspace.dispose` in who calls it and why. `dispose` is an
+        attempt tidying up after itself at the end of its own life; this is a
+        *third party* removing a directory no attempt owns any more, and it does not
+        need — and must not need — the exercise required to attach to one.
+        """
+        ...
 
 
 class RepoQuery(Protocol):

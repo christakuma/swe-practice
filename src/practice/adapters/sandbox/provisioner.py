@@ -36,7 +36,6 @@ from __future__ import annotations
 
 import json
 import shutil
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
@@ -49,9 +48,14 @@ from practice.adapters.sandbox.env import (
     sandbox_path_entries,
 )
 from practice.adapters.sandbox.fixture_runner import run_fixture
-from practice.adapters.sandbox.workspace import SubprocessWorkspace, WorkspaceLayout
+from practice.adapters.sandbox.workspace import (
+    SubprocessWorkspace,
+    WorkspaceLayout,
+    WorkspacePathError,
+)
 from practice.domain.exercise import GitScenarioSpec, KataSpec
 from practice.domain.ids import AttemptId, ExerciseId
+from practice.domain.ports import WorkspaceSummary
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -63,7 +67,6 @@ __all__ = [
     "FIXTURE_LIB_PATH",
     "SubprocessSandboxProvisioner",
     "WorkspaceExistsError",
-    "WorkspaceRecord",
 ]
 
 #: The shared fixture helpers, relative to the content root.
@@ -115,44 +118,6 @@ class WorkspaceExistsError(Exception):
     throws it away. Silently clobbering it would make the resume-or-abandon
     promise in PLAN.md §8.1 a lie.
     """
-
-
-@dataclass(frozen=True, slots=True)
-class WorkspaceRecord:
-    """What a workspace says about itself, for a process that did not make it.
-
-    Written as JSON into the workspace rather than held in memory, because the
-    reader is a different process: `practice gc` enumerates directories left by
-    sessions that have exited.
-    """
-
-    layout: WorkspaceLayout
-    attempt_id: AttemptId | None
-    exercise_id: ExerciseId | None
-    created_at: str | None
-
-    @property
-    def short_id(self) -> str:
-        """The directory name, which is the attempt's short id (PLAN.md §8.1)."""
-        return self.layout.root.name
-
-    @property
-    def is_described(self) -> bool:
-        """Whether the metadata file could be read.
-
-        A workspace with no readable metadata is still a workspace, and gc has
-        to report it — an interrupted provision is exactly the kind of leftover
-        worth telling someone about.
-        """
-        return self.attempt_id is not None
-
-    def size_bytes(self) -> int:
-        """Total size on disk, for a report that says whether it is worth it."""
-        return sum(
-            path.stat().st_size
-            for path in self.layout.root.rglob("*")
-            if path.is_file()
-        )
 
 
 class SubprocessSandboxProvisioner:
@@ -246,19 +211,37 @@ class SubprocessSandboxProvisioner:
         """
         return self._content_root / exercise_id.value
 
-    def workspaces(self) -> Sequence[WorkspaceRecord]:
+    def workspaces(self) -> Sequence[WorkspaceSummary]:
         """Every workspace under the root, in a stable order.
 
-        What `practice gc` enumerates. Reports rather than filters: deciding
-        which of these is an orphan needs the attempt table, which is Phase 6.
+        What `practice gc` enumerates. Reports rather than filters: deciding which
+        of these is an orphan is a question about the attempt table, and this class
+        has never heard of it — `CollectWorkspaces` joins the two.
         """
         if not self._root.is_dir():
             return ()
         return tuple(
-            self._record(WorkspaceLayout(directory))
+            self._summarise(WorkspaceLayout(directory))
             for directory in sorted(self._root.iterdir())
             if directory.is_dir()
         )
+
+    def discard(self, short_id: str) -> None:
+        """Delete one workspace by its directory name. Safe to call twice.
+
+        The name is checked against the root rather than trusted, even though it
+        comes from a listing this class itself produced. One `..` in it and this
+        becomes a recursive delete of something else, which is too large a
+        consequence to leave resting on where the string came from — and the check
+        costs one comparison.
+        """
+        candidate = Path(short_id)
+        if candidate.name != short_id or short_id in {"", ".", ".."}:
+            raise WorkspacePathError(
+                f"{short_id!r} is not a workspace directory name; "
+                f"gc works on the names `workspaces()` reports"
+            )
+        WorkspaceLayout(self._root / short_id).destroy()
 
     # --- the pieces --------------------------------------------------------
 
@@ -338,12 +321,13 @@ class SubprocessSandboxProvisioner:
         for name in (spec.stub, spec.tests):
             shutil.copyfile(directory / name, layout.repo / name)
 
-    def _record(self, layout: WorkspaceLayout) -> WorkspaceRecord:
+    def _summarise(self, layout: WorkspaceLayout) -> WorkspaceSummary:
         """Read a workspace's metadata, tolerating every way it can be absent.
 
-        Unreadable metadata produces a record with empty fields rather than an
+        Unreadable metadata produces a summary with empty fields rather than an
         error. gc has to be able to describe a workspace whose provisioning was
-        interrupted — that is one of the things it exists to find.
+        interrupted — that is one of the things it exists to find, and the
+        `short_id` it is collected by comes from the directory name either way.
         """
         attempt_id: AttemptId | None = None
         exercise_id: ExerciseId | None = None
@@ -355,9 +339,25 @@ class SubprocessSandboxProvisioner:
             created_at = str(document["created_at"])
         except (OSError, ValueError, KeyError, TypeError):
             pass
-        return WorkspaceRecord(
-            layout=layout,
+        return WorkspaceSummary(
+            short_id=layout.root.name,
             attempt_id=attempt_id,
             exercise_id=exercise_id,
             created_at=created_at,
+            size_bytes=_size_on_disk(layout.root),
         )
+
+
+def _size_on_disk(root: Path) -> int:
+    """Total size of a workspace, for a report that says whether collecting it is
+    worth it. Tolerant of a tree being deleted underneath it — another process
+    disposing of its own workspace mid-listing is a race nobody needs to lose.
+    """
+    total = 0
+    for path in root.rglob("*"):
+        try:
+            if path.is_file():
+                total += path.stat().st_size
+        except OSError:
+            continue
+    return total

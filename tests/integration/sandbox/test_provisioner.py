@@ -16,6 +16,7 @@ import pytest
 from practice.adapters.sandbox import (
     SubprocessSandboxProvisioner,
     WorkspaceExistsError,
+    WorkspacePathError,
 )
 from practice.adapters.sandbox.env import FIXTURE_EPOCH, FIXTURE_STEP
 from practice.adapters.sandbox.fixture_runner import FixtureError
@@ -377,12 +378,12 @@ def test_a_workspace_describes_itself(
     """
     workspace = provisioner.provision(flagship, attempt_id)
     try:
-        (record,) = provisioner.workspaces()
+        (summary,) = provisioner.workspaces()
 
-        assert record.attempt_id == attempt_id
-        assert record.exercise_id == flagship.id
-        assert record.created_at
-        assert record.size_bytes() > 0
+        assert summary.attempt_id == attempt_id
+        assert summary.exercise_id == flagship.id
+        assert summary.created_at
+        assert summary.size_bytes > 0
     finally:
         workspace.dispose()
 
@@ -399,10 +400,10 @@ def test_an_undescribed_workspace_is_still_reported(
     try:
         workspace.layout.metadata.unlink()
 
-        (record,) = provisioner.workspaces()
+        (summary,) = provisioner.workspaces()
 
-        assert not record.is_described
-        assert record.short_id == attempt_id.short
+        assert not summary.is_described
+        assert summary.short_id == attempt_id.short
     finally:
         workspace.dispose()
 
@@ -411,6 +412,61 @@ def test_no_workspaces_before_anything_is_provisioned(
     provisioner: SubprocessSandboxProvisioner,
 ) -> None:
     assert provisioner.workspaces() == ()
+
+
+def test_discard_deletes_a_workspace_by_its_directory_name(
+    provisioner: SubprocessSandboxProvisioner,
+    flagship: Exercise,
+    attempt_id: AttemptId,
+) -> None:
+    """What `practice gc` calls. Addressed by the name rather than by the attempt,
+    because the leftover most worth collecting is an interrupted provision whose
+    metadata was never written — it has no attempt id to be named by.
+
+    It also has to survive the Windows papercut `dispose` does: a provisioned
+    scenario workspace is full of loose git objects git has marked read-only.
+    """
+    provisioner.provision(flagship, attempt_id)
+
+    provisioner.discard(attempt_id.short)
+
+    assert provisioner.workspaces() == ()
+    assert not provisioner.layout_for(attempt_id).exists
+
+
+def test_discarding_a_workspace_that_is_not_there_is_not_an_error(
+    provisioner: SubprocessSandboxProvisioner, attempt_id: AttemptId
+) -> None:
+    """gc lists and then deletes, and a second process may have disposed of one in
+    between. Raising would turn a harmless race into a failed collection.
+    """
+    provisioner.discard(attempt_id.short)
+
+
+@pytest.mark.parametrize("name", ["..", ".", "", "../elsewhere", "sub/dir"])
+def test_discard_refuses_anything_that_is_not_a_directory_name(
+    provisioner: SubprocessSandboxProvisioner, name: str
+) -> None:
+    """The name comes from a listing this class produced, and it is checked anyway.
+    One `..` in it turns a workspace delete into a recursive delete of the cache
+    directory, which is too large a consequence to rest on where a string came from
+    — and the check costs one comparison.
+    """
+    with pytest.raises(WorkspacePathError, match="workspace directory name"):
+        provisioner.discard(name)
+
+
+def test_discard_leaves_the_other_workspaces_alone(
+    provisioner: SubprocessSandboxProvisioner, flagship: Exercise
+) -> None:
+    first = AttemptId.parse("00000001-0000-4000-8000-000000000000")
+    second = AttemptId.parse("00000002-0000-4000-8000-000000000000")
+    provisioner.provision(flagship, first)
+    provisioner.provision(flagship, second)
+
+    provisioner.discard(first.short)
+
+    assert [found.short_id for found in provisioner.workspaces()] == [second.short]
 
 
 def test_a_disposed_workspace_is_no_longer_reported(

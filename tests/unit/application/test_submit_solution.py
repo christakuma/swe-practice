@@ -97,7 +97,7 @@ def test_the_workspace_is_disposed_on_a_successful_submission() -> None:
 
     a_submit_solution(world)(started.attempt.id, SOURCE)
 
-    assert world.provisioner.workspaces[started.attempt.id].disposed
+    assert world.provisioner.workspace_for(started.attempt.id).disposed
 
 
 def test_a_failing_verdict_still_completes_and_still_disposes() -> None:
@@ -112,7 +112,7 @@ def test_a_failing_verdict_still_completes_and_still_disposes() -> None:
     assert submission.outcome is Outcome.FAIL
     assert not submission.passed
     assert submission.attempt.status is AttemptStatus.COMPLETED
-    assert world.provisioner.workspaces[started.attempt.id].disposed
+    assert world.provisioner.workspace_for(started.attempt.id).disposed
 
 
 def test_a_grader_that_raises_leaves_the_workspace_alone() -> None:
@@ -127,7 +127,7 @@ def test_a_grader_that_raises_leaves_the_workspace_alone() -> None:
     with pytest.raises(RuntimeError, match="grader exploded"):
         a_submit_solution(world)(started.attempt.id, SOURCE)
 
-    workspace = world.provisioner.workspaces[started.attempt.id]
+    workspace = world.provisioner.workspace_for(started.attempt.id)
     assert not workspace.disposed
     stored = world.attempts.get(started.attempt.id)
     assert stored is not None

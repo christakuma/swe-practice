@@ -83,7 +83,7 @@ def test_the_workspace_is_disposed_on_success() -> None:
 
     a_submit_scenario(world)(started.attempt.id)
 
-    assert world.provisioner.workspaces[started.attempt.id].disposed is True
+    assert world.provisioner.workspace_for(started.attempt.id).disposed is True
 
 
 def test_it_grades_before_it_disposes() -> None:
@@ -113,7 +113,7 @@ def test_a_failed_grading_pass_leaves_the_workspace_and_the_attempt_alone() -> N
     with pytest.raises(RuntimeError, match="grader exploded"):
         a_submit_scenario(world)(started.attempt.id)
 
-    assert world.provisioner.workspaces[started.attempt.id].disposed is False
+    assert world.provisioner.workspace_for(started.attempt.id).disposed is False
     assert started.attempt.status is AttemptStatus.ACTIVE
     assert started.attempt.verdict is None
 
@@ -172,7 +172,7 @@ class TestRefusals:
         with pytest.raises(UnsupportedExerciseKindError):
             submit(started.attempt.id)
 
-        assert world.provisioner.workspaces[started.attempt.id].disposed is False
+        assert world.provisioner.workspace_for(started.attempt.id).disposed is False
 
     def test_an_attempt_cannot_be_submitted_twice(self) -> None:
         """And the refusal names the real reason. This is the use case a

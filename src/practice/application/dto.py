@@ -20,10 +20,18 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from practice.domain.attempt import Attempt, CommandRun
     from practice.domain.exercise import Exercise
-    from practice.domain.ports import Workspace
+    from practice.domain.ports import Workspace, WorkspaceSummary
     from practice.domain.verdict import Outcome, Verdict
 
-__all__ = ["RanCommand", "StartedAttempt", "Submission"]
+__all__ = [
+    "Abandoned",
+    "Collection",
+    "OpenAttempt",
+    "RanCommand",
+    "StartedAttempt",
+    "Submission",
+    "WorkspaceState",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,3 +96,94 @@ class RanCommand:
     def succeeded(self) -> bool:
         """A failing command is a normal outcome, often the instructive one."""
         return self.command.result.succeeded
+
+
+@dataclass(frozen=True, slots=True)
+class OpenAttempt:
+    """One attempt still in flight, and the two facts a prompt needs about it.
+
+    `exercise` is optional where every other DTO's is not, and that is the honest
+    encoding rather than a convenience: an exercise can be renamed or deleted from
+    the library under a live attempt, and the resulting attempt is one that can be
+    *abandoned* and never graded. A listing that refused to show it would hide the
+    only thing that can be done about it.
+
+    `workspace_on_disk` is what separates the two offers. An attempt whose workspace
+    has been collected cannot be resumed, so a prompt that did not know this would
+    offer a choice that cannot be taken.
+    """
+
+    attempt: Attempt
+    exercise: Exercise | None
+    workspace_on_disk: bool
+
+    @property
+    def label(self) -> str:
+        """The exercise's title, or its id when the library no longer has it."""
+        if self.exercise is None:
+            return f"{self.attempt.exercise_id} (no longer in the library)"
+        return self.exercise.title
+
+    @property
+    def can_resume(self) -> bool:
+        return self.workspace_on_disk and self.exercise is not None
+
+
+@dataclass(frozen=True, slots=True)
+class Abandoned:
+    """An attempt given up on, and the workspace that went with it.
+
+    Carries the attempt so a caller can report when it started and how far it got
+    -- the log survives, which is the difference between abandoning an attempt and
+    deleting its row.
+    """
+
+    attempt: Attempt
+    exercise: Exercise | None
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceState:
+    """One workspace on disk, and whether an active attempt still owns it.
+
+    The orphan rule of PLAN.md 8.1, as a value: `in_use` is the join against the
+    attempt table, and everything else is what the provisioner found.
+    """
+
+    workspace: WorkspaceSummary
+    in_use: bool
+
+    @property
+    def is_orphan(self) -> bool:
+        """A workspace with no corresponding `active` attempt row. Collectable."""
+        return not self.in_use
+
+
+@dataclass(frozen=True, slots=True)
+class Collection:
+    """What `practice gc` found, and what it did about it.
+
+    The same classification whether or not anything was deleted, so a dry run and a
+    real one cannot disagree about what counts as an orphan -- which is the bug that
+    makes a destructive command untrustworthy.
+    """
+
+    workspaces: tuple[WorkspaceState, ...]
+    deleted: tuple[str, ...]
+
+    @property
+    def orphans(self) -> tuple[WorkspaceState, ...]:
+        return tuple(state for state in self.workspaces if state.is_orphan)
+
+    @property
+    def in_use(self) -> tuple[WorkspaceState, ...]:
+        return tuple(state for state in self.workspaces if state.in_use)
+
+    @property
+    def total_bytes(self) -> int:
+        return sum(state.workspace.size_bytes for state in self.workspaces)
+
+    @property
+    def reclaimable_bytes(self) -> int:
+        """What collecting would free, which is the number worth printing."""
+        return sum(state.workspace.size_bytes for state in self.orphans)

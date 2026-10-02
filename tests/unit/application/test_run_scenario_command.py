@@ -40,7 +40,7 @@ def test_it_runs_the_command_and_records_it() -> None:
 
     assert ran.command.argv == ("git", "status", "--short")
     assert ran.attempt.command_count == 1
-    assert world.provisioner.workspaces[started.attempt.id].commands == [
+    assert world.provisioner.workspace_for(started.attempt.id).commands == [
         ("git", "status", "--short")
     ]
 
@@ -110,7 +110,7 @@ class TestRefusals:
         with pytest.raises(InvalidValueError, match="shell character"):
             a_run_scenario_command(world)(started.attempt.id, "echo broken > build.sh")
 
-        assert world.provisioner.workspaces[started.attempt.id].commands == []
+        assert world.provisioner.workspace_for(started.attempt.id).commands == []
         assert started.attempt.command_count == 0
 
     def test_a_program_the_exercise_does_not_allow_is_refused(self) -> None:
@@ -137,7 +137,7 @@ class TestRefusals:
         for _ in range(started.attempt.policy.max_commands):
             run(started.attempt.id, "git status")
 
-        workspace = world.provisioner.workspaces[started.attempt.id]
+        workspace = world.provisioner.workspace_for(started.attempt.id)
         before = len(workspace.commands)
 
         with pytest.raises(PolicyViolationError, match="budget exhausted"):

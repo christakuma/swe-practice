@@ -203,12 +203,13 @@ def test_gc_lists_a_provisioned_workspace(tmp_path: Path) -> None:
         workspace.dispose()
 
 
-def test_gc_says_it_deleted_nothing(tmp_path: Path) -> None:
-    """The promise that makes it safe to run at this phase.
+def test_gc_says_what_it_would_delete_without_deleting_it(tmp_path: Path) -> None:
+    """`--dry-run` is still the default, and still the thing that makes gc safe to
+    run without thinking about it.
 
-    An orphan is *a workspace with no active attempt row* (PLAN.md §8.1), and
-    there is no attempt table until Phase 6 — so "collect orphans" would
-    cheerfully delete the workspace of a session open in another tab.
+    This workspace was provisioned through the provisioner directly, so there is no
+    attempt row behind it and it *is* an orphan by PLAN.md §8.1's definition — which
+    is what makes the assertion meaningful rather than vacuous.
     """
     workspace_root = tmp_path / "ws"
     provisioner = SubprocessSandboxProvisioner(
@@ -221,22 +222,32 @@ def test_gc_says_it_deleted_nothing(tmp_path: Path) -> None:
 
         assert code == 0
         assert "Nothing deleted" in output
-        assert workspace.root.is_dir(), "gc must not have deleted it"
+        assert "re-run with --no-dry-run" in output
+        assert workspace.root.is_dir(), "a dry run must not have deleted it"
     finally:
         workspace.dispose()
 
 
-def test_gc_refuses_to_delete(tmp_path: Path) -> None:
-    """`--no-dry-run` is refused outright rather than quietly ignored.
+def test_gc_collects_an_orphan_when_it_is_asked_to(tmp_path: Path) -> None:
+    """The half that could not exist before the attempt table.
 
-    A flag that appears to enable deletion and does nothing is worse than one
-    that is not offered: the next person to read the output would believe the
-    cache had been cleared.
+    A real provisioned scenario workspace, which is the only version of this worth
+    running here: it is full of loose git objects that git has marked read-only, and
+    deleting one on Windows is the papercut `WorkspaceLayout.destroy` exists to
+    absorb. A unit test against a fake provisioner cannot find that.
     """
-    code, output = run("gc", "--no-dry-run", "--workspace-root", str(tmp_path))
+    workspace_root = tmp_path / "ws"
+    provisioner = SubprocessSandboxProvisioner(
+        content_root=content_root(), workspace_root=workspace_root
+    )
+    attempt_id = AttemptId.parse("3f2a1b0c-0000-4000-8000-000000000011")
+    workspace = provisioner.provision(_flagship(), attempt_id)
 
-    assert code == 2
-    assert "phase 6" in output
+    code, output = run("gc", "--no-dry-run", "--workspace-root", str(workspace_root))
+
+    assert code == 0
+    assert "collected 1 workspace" in output
+    assert not workspace.root.exists()
 
 
 def _flagship() -> Exercise:

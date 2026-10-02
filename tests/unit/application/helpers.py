@@ -20,6 +20,10 @@ from typing import TYPE_CHECKING
 from practice.adapters.persistence import InMemoryAttemptRepository
 from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
+    AbandonAttempt,
+    CollectWorkspaces,
+    ListOpenAttempts,
+    ResumeAttempt,
     RunScenarioCommand,
     StartAttempt,
     SubmitScenario,
@@ -38,10 +42,12 @@ from tests.fakes import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from practice.domain.attempt import Attempt
     from practice.domain.exercise import ComplexityExpectation, Exercise
     from practice.domain.ids import AttemptId
-    from practice.domain.ports import Grader, Workspace
+    from practice.domain.ports import Grader, Workspace, WorkspaceSummary
 
 __all__ = [
     "ExplodingGrader",
@@ -49,11 +55,15 @@ __all__ = [
     "NullGrader",
     "RecordingGrader",
     "World",
+    "a_collect_workspaces",
+    "a_list_open_attempts",
     "a_passing_verdict",
+    "a_resume_attempt",
     "a_run_scenario_command",
     "a_start_attempt",
     "a_submit_scenario",
     "a_submit_solution",
+    "an_abandon_attempt",
     "an_environment",
 ]
 
@@ -119,6 +129,15 @@ class FailingProvisioner:
     ) -> Workspace | None:  # pragma: no cover - never reached in these tests
         del exercise, attempt_id
         return None
+
+    def workspaces(self) -> Sequence[WorkspaceSummary]:  # pragma: no cover - ditto
+        """Nothing: a provision that raised got as far as the fixture and no
+        further, so there is nothing for this double to claim is on disk.
+        """
+        return ()
+
+    def discard(self, short_id: str) -> None:  # pragma: no cover - ditto
+        del short_id
 
 
 def a_passing_verdict() -> Verdict:
@@ -261,3 +280,36 @@ def a_submit_scenario(
 def _latest_source(attempt: Attempt) -> str:
     saved = [event for event in attempt.events if isinstance(event, SolutionSaved)]
     return saved[-1].source if saved else ""
+
+
+def a_resume_attempt(world: World) -> ResumeAttempt:
+    """No clock and no graders: resuming is a read and grades nothing."""
+    return ResumeAttempt(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+    )
+
+
+def an_abandon_attempt(world: World) -> AbandonAttempt:
+    return AbandonAttempt(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        clock=world.clock,
+    )
+
+
+def a_list_open_attempts(world: World) -> ListOpenAttempts:
+    return ListOpenAttempts(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+    )
+
+
+def a_collect_workspaces(world: World) -> CollectWorkspaces:
+    """No content repository: whether a directory is garbage is a question about
+    the attempt table and the workspace root, and the library has no part in it.
+    """
+    return CollectWorkspaces(attempts=world.attempts, provisioner=world.provisioner)

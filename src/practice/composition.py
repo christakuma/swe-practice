@@ -58,6 +58,10 @@ from practice.adapters.persistence import (
 from practice.adapters.sandbox import SubprocessSandboxProvisioner
 from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
+    AbandonAttempt,
+    CollectWorkspaces,
+    ListOpenAttempts,
+    ResumeAttempt,
     RunScenarioCommand,
     StartAttempt,
     SubmitScenario,
@@ -145,6 +149,42 @@ class Services:
             graders=self.graders,
             clock=self.clock,
         )
+
+    # --- the lifecycle ----------------------------------------------------
+
+    @property
+    def list_open_attempts(self) -> ListOpenAttempts:
+        return ListOpenAttempts(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+        )
+
+    @property
+    def resume_attempt(self) -> ResumeAttempt:
+        """No clock: resuming is a read, and nothing about the attempt changes."""
+        return ResumeAttempt(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+        )
+
+    @property
+    def abandon_attempt(self) -> AbandonAttempt:
+        return AbandonAttempt(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            clock=self.clock,
+        )
+
+    @property
+    def collect_workspaces(self) -> CollectWorkspaces:
+        """No content repository: whether a directory is garbage is a question
+        about the attempt table and the workspace root, and the exercise library
+        has no part in it.
+        """
+        return CollectWorkspaces(attempts=self.attempts, provisioner=self.provisioner)
 
 
 def build_services(

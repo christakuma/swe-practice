@@ -35,9 +35,10 @@ class ExerciseNotFoundError(ApplicationError):
 class AttemptNotFoundError(ApplicationError):
     """No stored attempt has that id.
 
-    Expected rather than exceptional once attempts outlive a process: an
-    in-memory repository forgets everything on exit, so every id from a previous
-    run lands here (Phase 6).
+    Expected rather than exceptional now that attempts outlive a process: a
+    mistyped id, a link from a browser tab left open across a reinstall, an id from
+    a database that has since been deleted. Every one of those is a normal thing
+    for a caller to turn into a message.
     """
 
 

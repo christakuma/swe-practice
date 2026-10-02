@@ -13,8 +13,11 @@ Seven modules, split by what each one knows about:
 * `workspace` — the directory, and the `Workspace` port over it.
 * `fixture_runner` — finds the bash git bundles, and runs a fixture under the
   pinned environment. Knows how Git for Windows lays itself out.
-* `provisioner` — builds a workspace, runs its fixture, and finds the ones
-  already built.
+* `provisioner` — builds a workspace, runs its fixture, finds the ones already
+  built, and deletes one nothing owns any more. What it reports about a workspace
+  it did not create is a `WorkspaceSummary`, which is port vocabulary rather than
+  a type of its own: the only question anyone asks of that list is the orphan
+  rule, and that rule is a use case (PLAN.md §8.1).
 
 The split that matters is the one PLAN.md §8.1 calls the trust split: **fixtures
 are trusted code, user commands are untrusted input.** A fixture is authored by
@@ -63,7 +66,6 @@ from practice.adapters.sandbox.fixture_runner import (
 from practice.adapters.sandbox.provisioner import (
     SubprocessSandboxProvisioner,
     WorkspaceExistsError,
-    WorkspaceRecord,
 )
 from practice.adapters.sandbox.virtual_commands import VIRTUAL_COMMANDS, is_virtual
 from practice.adapters.sandbox.workspace import (
@@ -88,7 +90,6 @@ __all__ = [
     "WorkspaceExistsError",
     "WorkspaceLayout",
     "WorkspacePathError",
-    "WorkspaceRecord",
     "find_bash",
     "find_git",
     "fingerprint_library",

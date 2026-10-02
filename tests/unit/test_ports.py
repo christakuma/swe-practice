@@ -187,6 +187,60 @@ def test_the_fake_provisioner_satisfies_the_provisioner_port() -> None:
     assert provisioner.attach(exercise, attempt_id) is provisioned
 
 
+def test_the_fake_provisioner_reports_what_it_has_provisioned() -> None:
+    """The Phase 6 half of the port: `gc` asks for a listing, and the fake has to
+    describe a workspace the way the real one does or the orphan rule is tested
+    against a shape that does not occur.
+    """
+    provisioner = FakeProvisioner()
+    exercise = a_kata()
+    attempt_id = AttemptId.parse("00000001-0000-4000-8000-000000000000")
+    provisioner.provision(exercise, attempt_id)
+
+    (found,) = provisioner.workspaces()
+
+    assert found.short_id == attempt_id.short
+    assert found.attempt_id == attempt_id
+    assert found.is_described is True
+
+
+def test_a_stray_workspace_is_listed_with_no_attempt_behind_it() -> None:
+    """What an interrupted provision leaves, and the only state that makes the
+    orphan rule interesting: a `short_id` and no metadata at all.
+    """
+    provisioner = FakeProvisioner()
+    provisioner.leave_stray("deadbeef")
+
+    (found,) = provisioner.workspaces()
+
+    assert found.short_id == "deadbeef"
+    assert found.attempt_id is None
+    assert found.is_described is False
+
+
+def test_discarding_removes_a_workspace_from_the_listing() -> None:
+    provisioner = FakeProvisioner()
+    provisioner.leave_stray("deadbeef")
+
+    provisioner.discard("deadbeef")
+
+    assert provisioner.workspaces() == ()
+    assert provisioner.discarded == ["deadbeef"]
+
+
+def test_a_disposed_workspace_stops_being_listed() -> None:
+    """An attempt disposing of its own workspace is why `gc` has nothing to do in
+    the normal case, so the fake has to stop reporting one.
+    """
+    provisioner = FakeProvisioner()
+    exercise = a_kata()
+    attempt_id = AttemptId.parse("00000001-0000-4000-8000-000000000000")
+
+    provisioner.provision(exercise, attempt_id).dispose()
+
+    assert provisioner.workspaces() == ()
+
+
 def test_the_fake_provisioner_returns_none_for_a_workspace_that_is_not_there() -> None:
     """What the real one does, and what `SubmitSolution` turns into
     `WorkspaceGoneError`. A fake that raised instead would make that branch
