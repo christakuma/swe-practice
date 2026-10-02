@@ -241,6 +241,88 @@ class Attempt:
         self._verdict: Verdict | None = None
         self._declared_complexity: ComplexityClaim | None = None
 
+    # --- reconstitution -----------------------------------------------------
+
+    # Nine parameters, and every one of them is a field of the aggregate: this is
+    # the whole of an attempt's persisted state, keyword-only, so a mapper that
+    # forgets one gets a type error rather than a silently defaulted field. A
+    # parameter object here would be the row type the mappers already are.
+    @classmethod
+    def restore(  # noqa: PLR0913
+        cls,
+        *,
+        attempt_id: AttemptId,
+        exercise_id: ExerciseId,
+        policy: AttemptPolicy,
+        started_at: datetime,
+        status: AttemptStatus,
+        events: Sequence[AttemptEvent] = (),
+        finished_at: datetime | None = None,
+        verdict: Verdict | None = None,
+        declared_complexity: ComplexityClaim | None = None,
+    ) -> Attempt:
+        """Rebuild a stored attempt. The repository's door, and nothing else's.
+
+        **Restoring state is not replaying behaviour, and conflating the two is the
+        mistake this exists to avoid.** The obvious alternative is to replay the log
+        through the public API — construct, then `record_command` for each stored
+        command, then `complete` — which reads as elegant and is wrong in two ways.
+        It re-checks the *current* policy against a past attempt, so an exercise
+        edited to allow fewer commands would make last week's attempts unloadable;
+        and it re-runs invariants that were already satisfied when the events
+        happened, which means the aggregate could refuse to load a row it had itself
+        produced. An attempt is graded under the rules it was started under — that is
+        the whole reason `AttemptPolicy` is copied in (PLAN.md §4.3) — and those
+        rules are stored with it.
+
+        So this bypasses the behavioural guards and enforces only what a *row* can
+        be wrong about: timestamps that are naive or go backwards, and the three
+        pairings between status, `finished_at` and `verdict`. A mapper bug then fails
+        here, naming the field, rather than producing an attempt that claims to be
+        active and finished at the same time.
+        """
+        attempt = cls(
+            attempt_id=attempt_id,
+            exercise_id=exercise_id,
+            policy=policy,
+            started_at=started_at,
+        )
+
+        last = started_at
+        for position, event in enumerate(events):
+            _require_aware(event.at, f"events[{position}].at")
+            if event.at < last:
+                raise InvalidValueError(
+                    f"attempt {attempt_id} has events out of order: "
+                    f"events[{position}] is at {event.at}, after {last}"
+                )
+            last = event.at
+
+        if (status is AttemptStatus.ACTIVE) is (finished_at is not None):
+            raise InvalidValueError(
+                f"an attempt is active until it finishes: {status.value} with "
+                f"finished_at={finished_at!r}"
+            )
+        if finished_at is not None:
+            _require_aware(finished_at, "finished_at")
+            if finished_at < last:
+                raise InvalidValueError(
+                    f"attempt {attempt_id} finished at {finished_at}, before its "
+                    f"last event at {last}"
+                )
+        if (status is AttemptStatus.COMPLETED) is (verdict is None):
+            raise InvalidValueError(
+                f"only a completed attempt carries a verdict: {status.value} with "
+                f"verdict={'a verdict' if verdict is not None else None}"
+            )
+
+        attempt._events = list(events)
+        attempt._status = status
+        attempt._finished_at = finished_at
+        attempt._verdict = verdict
+        attempt._declared_complexity = declared_complexity
+        return attempt
+
     # --- identity and state -------------------------------------------------
 
     @property

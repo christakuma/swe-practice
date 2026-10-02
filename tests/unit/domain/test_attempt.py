@@ -461,6 +461,230 @@ class TestEventLog:
             CommandResult(exit_code=0, duration_ms=-1)
 
 
+class TestRestore:
+    """Reconstitution: what a repository is allowed to rebuild, and what it is not.
+
+    The reason this is a separate door rather than a replay of the log through the
+    public API is in `Attempt.restore`'s own docstring, and the first two tests here
+    are that reason as assertions — a stored attempt loads even when it would now be
+    *illegal to produce*, because an attempt is graded under the rules it was started
+    under. The rest cover what a row can still be wrong about.
+    """
+
+    def test_a_round_trip_through_restore_preserves_everything(self) -> None:
+        """Every field, in one test, deliberately. A per-field test would pass with
+        a `restore` that dropped the one field nobody thought to write a case for.
+        """
+        original = an_attempt()
+        original.reveal_next_hint(at=at(1))
+        original.record_command(["git", "log"], OK, at=at(2))
+        original.save_solution("x = 1", at=at(3))
+        original.declare_complexity(ComplexityClaim(time="O(n)", space="O(1)"))
+        original.complete(a_verdict(), at=at(4))
+
+        restored = Attempt.restore(
+            attempt_id=original.id,
+            exercise_id=original.exercise_id,
+            policy=original.policy,
+            started_at=original.started_at,
+            status=original.status,
+            events=original.events,
+            finished_at=original.finished_at,
+            verdict=original.verdict,
+            declared_complexity=original.declared_complexity,
+        )
+
+        assert restored.id == original.id
+        assert restored.exercise_id == original.exercise_id
+        assert restored.policy == original.policy
+        assert restored.started_at == original.started_at
+        assert restored.status is AttemptStatus.COMPLETED
+        assert restored.events == original.events
+        assert restored.finished_at == original.finished_at
+        assert restored.verdict == original.verdict
+        assert restored.declared_complexity == original.declared_complexity
+        assert restored.command_count == 1
+        assert restored.hints_revealed == 1
+
+    def test_it_loads_a_log_the_current_policy_would_refuse(self) -> None:
+        """The case that decides the design.
+
+        An exercise edited down from three commands to one must not make last
+        week's attempts unloadable. A `restore` that replayed the log through
+        `record_command` would raise here, and the only honest fix would be to
+        stop storing the policy — which is the thing that makes the aggregate able
+        to enforce anything at all.
+        """
+        restored = Attempt.restore(
+            attempt_id=ATTEMPT_ID,
+            exercise_id=EXERCISE_ID,
+            policy=a_policy(max_commands=1, allowed_commands=frozenset({"cat"})),
+            started_at=STARTED_AT,
+            status=AttemptStatus.ACTIVE,
+            events=(
+                CommandRun(at=at(1), argv=("git", "log"), result=OK),
+                CommandRun(at=at(2), argv=("git", "status"), result=OK),
+            ),
+        )
+
+        assert restored.command_count == 2
+        assert restored.remaining_commands == -1
+
+    def test_a_restored_active_attempt_can_still_be_worked_on(self) -> None:
+        """Which is the whole point of the attempt table: a second process picks up
+        an attempt the first one started and the aggregate behaves normally.
+        """
+        restored = Attempt.restore(
+            attempt_id=ATTEMPT_ID,
+            exercise_id=EXERCISE_ID,
+            policy=a_policy(),
+            started_at=STARTED_AT,
+            status=AttemptStatus.ACTIVE,
+            events=(CommandRun(at=at(1), argv=("git", "log"), result=OK),),
+        )
+
+        restored.record_command(["git", "status"], OK, at=at(2))
+
+        assert restored.command_count == 2
+
+    def test_a_restored_attempt_refuses_an_event_before_its_last_one(self) -> None:
+        """The forward-only guard is rebuilt with the log, not reset by it."""
+        restored = Attempt.restore(
+            attempt_id=ATTEMPT_ID,
+            exercise_id=EXERCISE_ID,
+            policy=a_policy(),
+            started_at=STARTED_AT,
+            status=AttemptStatus.ACTIVE,
+            events=(CommandRun(at=at(5), argv=("git", "log"), result=OK),),
+        )
+
+        with pytest.raises(InvalidValueError, match="already has an event"):
+            restored.record_command(["git", "status"], OK, at=at(2))
+
+    def test_an_event_log_out_of_order_is_refused(self) -> None:
+        """A row can be wrong about this where the aggregate cannot: the log order
+        is `position`, and a query that forgot its `ORDER BY` returns the events in
+        whatever order the page cache held them.
+        """
+        with pytest.raises(InvalidValueError, match="out of order"):
+            Attempt.restore(
+                attempt_id=ATTEMPT_ID,
+                exercise_id=EXERCISE_ID,
+                policy=a_policy(),
+                started_at=STARTED_AT,
+                status=AttemptStatus.ACTIVE,
+                events=(
+                    CommandRun(at=at(5), argv=("git", "log"), result=OK),
+                    CommandRun(at=at(1), argv=("git", "status"), result=OK),
+                ),
+            )
+
+    def test_an_event_before_the_attempt_started_is_refused(self) -> None:
+        with pytest.raises(InvalidValueError, match="out of order"):
+            Attempt.restore(
+                attempt_id=ATTEMPT_ID,
+                exercise_id=EXERCISE_ID,
+                policy=a_policy(),
+                started_at=STARTED_AT,
+                status=AttemptStatus.ACTIVE,
+                events=(CommandRun(at=at(-1), argv=("git", "log"), result=OK),),
+            )
+
+    def test_a_naive_event_timestamp_is_refused(self) -> None:
+        with pytest.raises(InvalidValueError, match=r"events\[0\]"):
+            Attempt.restore(
+                attempt_id=ATTEMPT_ID,
+                exercise_id=EXERCISE_ID,
+                policy=a_policy(),
+                started_at=STARTED_AT,
+                status=AttemptStatus.ACTIVE,
+                events=(
+                    CommandRun(
+                        at=datetime(2026, 9, 30, 9, 1),  # noqa: DTZ001
+                        argv=("git", "log"),
+                        result=OK,
+                    ),
+                ),
+            )
+
+    @pytest.mark.parametrize(
+        ("status", "finished_at"),
+        [
+            (AttemptStatus.ACTIVE, at(4)),
+            (AttemptStatus.COMPLETED, None),
+            (AttemptStatus.ABANDONED, None),
+        ],
+    )
+    def test_status_and_finished_at_have_to_agree(
+        self, status: AttemptStatus, finished_at: datetime | None
+    ) -> None:
+        """An attempt is active until it finishes (PLAN.md 8.1), so "active with an
+        end time" and "completed with none" are both rows that cannot have been
+        produced by the aggregate.
+        """
+        with pytest.raises(InvalidValueError, match="active until it finishes"):
+            Attempt.restore(
+                attempt_id=ATTEMPT_ID,
+                exercise_id=EXERCISE_ID,
+                policy=a_policy(),
+                started_at=STARTED_AT,
+                status=status,
+                finished_at=finished_at,
+                verdict=a_verdict() if status is AttemptStatus.COMPLETED else None,
+            )
+
+    def test_finishing_before_the_last_event_is_refused(self) -> None:
+        with pytest.raises(InvalidValueError, match="before its last event"):
+            Attempt.restore(
+                attempt_id=ATTEMPT_ID,
+                exercise_id=EXERCISE_ID,
+                policy=a_policy(),
+                started_at=STARTED_AT,
+                status=AttemptStatus.ABANDONED,
+                events=(CommandRun(at=at(5), argv=("git", "log"), result=OK),),
+                finished_at=at(2),
+            )
+
+    @pytest.mark.parametrize(
+        ("status", "verdict"),
+        [
+            (AttemptStatus.COMPLETED, None),
+            (AttemptStatus.ABANDONED, a_verdict()),
+            (AttemptStatus.ACTIVE, a_verdict()),
+        ],
+    )
+    def test_only_a_completed_attempt_carries_a_verdict(
+        self, status: AttemptStatus, verdict: Verdict | None
+    ) -> None:
+        """`complete` is the only thing that attaches one, so every other pairing
+        is a mapper bug — most likely a status column read from the wrong row.
+        """
+        with pytest.raises(InvalidValueError, match="only a completed attempt"):
+            Attempt.restore(
+                attempt_id=ATTEMPT_ID,
+                exercise_id=EXERCISE_ID,
+                policy=a_policy(),
+                started_at=STARTED_AT,
+                status=status,
+                finished_at=None if status is AttemptStatus.ACTIVE else at(4),
+                verdict=verdict,
+            )
+
+    def test_a_restored_completed_attempt_refuses_to_be_completed_again(self) -> None:
+        restored = Attempt.restore(
+            attempt_id=ATTEMPT_ID,
+            exercise_id=EXERCISE_ID,
+            policy=a_policy(),
+            started_at=STARTED_AT,
+            status=AttemptStatus.COMPLETED,
+            finished_at=at(4),
+            verdict=a_verdict(),
+        )
+
+        with pytest.raises(AttemptStateError, match="completed"):
+            restored.complete(a_verdict(), at=at(5))
+
+
 def a_scenario_exercise() -> Exercise:
     return Exercise(
         id=EXERCISE_ID,

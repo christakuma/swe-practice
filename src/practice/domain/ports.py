@@ -129,6 +129,22 @@ class AttemptRepository(Protocol):
 
     def history_for(self, exercise_id: ExerciseId) -> Sequence[Attempt]: ...
 
+    def active(self) -> Sequence[Attempt]:
+        """Every attempt that has been neither submitted nor abandoned.
+
+        Added in Phase 6, and it is the method the whole attempt table was for.
+        PLAN.md §8.1 defines the lifecycle as active until submitted *or*
+        abandoned, ties the workspace's lifetime to exactly that, and defines an
+        orphan as a workspace with no active attempt row — so without a way to
+        ask the question, `practice gc` can see the workspaces and not which of
+        them are still in use, and the resume prompt has nothing to offer.
+
+        A query on the port rather than a filter over `history_for` across every
+        exercise, because the answer is a single indexed lookup and the
+        alternative is loading the entire history to throw almost all of it away.
+        """
+        ...
+
 
 class ReviewRepository(Protocol):
     """Persistence for scheduling state."""

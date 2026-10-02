@@ -129,6 +129,39 @@ def test_history_for_an_exercise_nobody_attempted_is_empty() -> None:
     assert InMemoryAttemptRepository().history_for(OTHER) == ()
 
 
+def test_active_holds_only_what_has_not_finished() -> None:
+    """The query PLAN.md §8.1 ties the workspace lifetime to, answered here by
+    filtering where the SQLite store has an index on the status.
+    """
+    attempts = InMemoryAttemptRepository()
+    still_going = an_attempt(1)
+    graded = an_attempt(2)
+    graded.complete(a_verdict(), at=FakeClock().now())
+    given_up = an_attempt(3)
+    given_up.abandon(at=FakeClock().now())
+    for attempt in (still_going, graded, given_up):
+        attempts.save(attempt)
+
+    assert [attempt.id.short for attempt in attempts.active()] == ["00000001"]
+
+
+def test_active_hands_out_copies_like_every_other_read() -> None:
+    """Otherwise the resume prompt would hold the store's own aggregate, and
+    abandoning what it offered would mutate the row without saving it.
+    """
+    attempts = InMemoryAttemptRepository()
+    attempts.save(an_attempt(1))
+
+    (offered,) = attempts.active()
+    offered.abandon(at=FakeClock().now())
+
+    assert len(attempts.active()) == 1
+
+
+def test_nothing_is_active_in_an_empty_store() -> None:
+    assert InMemoryAttemptRepository().active() == ()
+
+
 def test_it_describes_itself_by_how_much_it_holds() -> None:
     attempts = InMemoryAttemptRepository()
     attempts.save(an_attempt(1))

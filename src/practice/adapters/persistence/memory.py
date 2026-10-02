@@ -66,6 +66,21 @@ class InMemoryAttemptRepository:
             if attempt.exercise_id == exercise_id
         )
 
+    def active(self) -> Sequence[Attempt]:
+        """Every attempt still open, in the order they were saved.
+
+        Answered by filtering, where the SQLite implementation has an index on
+        the status. Appropriate for a store that holds one process's attempts and
+        another reason the two are both kept: this one is allowed to be the
+        simplest thing that satisfies the port, because it is never the one
+        holding a year of history.
+        """
+        return tuple(
+            deepcopy(attempt)
+            for attempt in self._attempts.values()
+            if attempt.is_active
+        )
+
     def __len__(self) -> int:
         """How many attempts are stored, for a test that wants to say so."""
         return len(self._attempts)
