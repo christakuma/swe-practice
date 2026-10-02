@@ -181,6 +181,16 @@ class RepoBuilder:
             self._blobs[(sha, path)] = content.encode("utf-8")
         return sha
 
+    def blob(self, sha: Sha, path: str, content: bytes) -> RepoBuilder:
+        """Attach raw bytes to a commit, where `commit(files=...)` wants text.
+
+        For the one thing text cannot express: a blob no encoding accepts. A solver
+        can commit any bytes they like, and an assertion that read one has to not
+        raise.
+        """
+        self._blobs[(sha, path)] = content
+        return self
+
     def chain(self, *subjects: str, alias_prefix: str = "c") -> tuple[Sha, ...]:
         """A linear run of commits, aliased `c1`, `c2`, … like a real fixture."""
         shas: list[Sha] = []
@@ -218,6 +228,15 @@ class RepoBuilder:
     def moved(self, name: str, sha: Sha) -> RepoBuilder:
         """Point a ref somewhere new without touching the fixture snapshot."""
         self._refs[name] = sha
+        return self
+
+    def deleted(self, name: str) -> RepoBuilder:
+        """Remove a ref, leaving the fixture snapshot remembering it.
+
+        Exactly what the real adapter sees after a `git branch -d`, and the only way
+        to test `ref_unchanged` against a ref the solver destroyed.
+        """
+        self._refs.pop(name, None)
         return self
 
     def head(self, ref: str) -> RepoBuilder:
