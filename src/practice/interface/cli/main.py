@@ -153,7 +153,7 @@ def validate(
     # green here is not content that is known to work (§9, §11).
     if caveats and report.ok:
         typer.echo("")
-        typer.secho("Not proven at this phase:", fg=typer.colors.YELLOW)
+        typer.secho("Not proven by this command:", fg=typer.colors.YELLOW)
         for caveat in unproven_by_design():
             typer.echo(f"  - {caveat}")
 

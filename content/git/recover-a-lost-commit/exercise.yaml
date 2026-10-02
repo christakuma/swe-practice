@@ -36,17 +36,27 @@ hints:
 scenario:
   fixture: fixture.sh
   reference: solution.cmds
-  # Each counter-example declares which check it must fail. CI asserts the
-  # named checks fail (others may fail too). Without this, an edit that
-  # shifts a HEAD@{n} index could leave a counter-example failing for an
-  # unrelated reason -- or passing -- and CI would stay green.
+  # Each counter-example declares EXACTLY the required checks it fails -- the
+  # whole set, not just the interesting one. CI asserts both directions
+  # (tests/content/test_scenarios.py).
+  #
+  # A declared check that passes means the assertion is too loose to tell this
+  # wrong answer from a right one. A check that fails and is not declared means
+  # this answer is wrong in a way nobody wrote down, which is how a
+  # counter-example quietly stops teaching what it was written for -- and an
+  # edit that shifts a HEAD@{n} index does exactly that.
+  #
+  # The first id in each list is the one the counter-example exists to
+  # demonstrate. The rest are the collateral, and they are declared because
+  # adding a check to this exercise ought to make someone re-read every wrong
+  # answer it ships.
   counter_examples:
     - file: naive-detached-checkout.cmds
-      expect_failures: [on-a-branch]
+      expect_failures: [on-a-branch, branch-restored, originals-recovered]
     - file: naive-cherry-pick.cmds
-      expect_failures: [originals-recovered]
+      expect_failures: [originals-recovered, branch-restored]
     - file: naive-reset-main.cmds
-      expect_failures: [main-untouched]
+      expect_failures: [main-untouched, branch-restored, originals-recovered]
   allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
   max_commands: 25
 

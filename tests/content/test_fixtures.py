@@ -2,21 +2,24 @@
 
 The half of PLAN.md §9's content suite that Phase 2 could not land. `validate`
 proves a scenario is *structurally* valid; this proves its fixture *works* —
-that it exits clean, builds a repository, and records the aliases its checks
-refer to.
+that it exits clean, builds a repository, dates its commits by the pinned clock,
+and records the aliases its checks refer to.
 
-**What is still missing, and why the tripwire stays.** Proving that
-`solution.cmds` passes every required check, and that each counter-example fails
-exactly the checks it declares, needs the check engine (Phase 5). So this file
-does the next best thing available now and asserts it loudly: every reference
-command list is *replayed through the real sandbox* and every command in it has
-to succeed. That catches a reference solution that cannot run at all — a flag
-that does not exist, a path that is not there, a command that needs a shell —
-which is most of the ways one rots, without claiming to know whether the end
-state is correct.
+**The oracle this file used to apologise for is `test_scenarios.py`.** Until
+Phase 5 there was no check engine, so nothing could say whether a replayed
+reference solution left the repository in the *right* state — and this file said
+so loudly and did the next best thing: replay every line and require it to
+succeed. That is still here and still worth having, because it catches a
+different class of rot. A reference solution with a flag that does not exist,
+a path that is not there or a command that needs a shell fails *here*, naming the
+line; the same solution arriving at a wrong end state fails in `test_scenarios.py`,
+naming the check. Two failures, two different fixes.
 
 Parametrized over the real `content/` directory, so adding an exercise adds test
-cases without touching this file.
+cases without touching this file. Discovery is shared with `test_scenarios.py`
+through `conftest.py`: two copies of "which directories are git scenarios" would
+be two chances to disagree, and the way they would disagree is one suite covering
+an exercise the other silently skips.
 """
 
 from __future__ import annotations
@@ -25,7 +28,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from practice.adapters.content import ContentError, load_exercise
+from practice.adapters.content import load_exercise
 from practice.adapters.content.validation import discover
 from practice.adapters.sandbox import SubprocessSandboxProvisioner, find_bash, find_git
 from practice.adapters.sandbox.env import FIXTURE_EPOCH, FIXTURE_STEP
@@ -37,10 +40,10 @@ from practice.adapters.sandbox.fixture_lock import (
     parse,
 )
 from practice.adapters.sandbox.provisioner import FIXTURE_LIB_PATH
-from practice.config import content_root
 from practice.domain.commands import parse_command_list
 from practice.domain.exercise import GitScenarioSpec
 from practice.domain.ids import AttemptId
+from tests.content.conftest import CONTENT_ROOT, identify, scenario_directories
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -49,31 +52,7 @@ if TYPE_CHECKING:
     from practice.adapters.sandbox import SubprocessWorkspace
     from practice.domain.exercise import Exercise
 
-CONTENT_ROOT = content_root()
-
-
-def _identify(directory: Path) -> str:
-    return directory.relative_to(CONTENT_ROOT).as_posix()
-
-
-def _scenario_directories() -> list[Path]:
-    """Every git scenario directory, found defensively.
-
-    A directory that will not load belongs to no kind and is reported by the
-    `validate` suite instead, rather than crashing collection here.
-    """
-    found = []
-    for directory in sorted(discover(CONTENT_ROOT)):
-        try:
-            exercise = load_exercise(directory)
-        except ContentError:
-            continue
-        if isinstance(exercise.spec, GitScenarioSpec):
-            found.append(directory)
-    return found
-
-
-SCENARIO_DIRECTORIES = _scenario_directories()
+SCENARIO_DIRECTORIES = scenario_directories()
 
 
 @pytest.fixture(scope="session")
@@ -87,7 +66,7 @@ def tools() -> tuple[Path, Path]:
     return find_git(), find_bash()
 
 
-@pytest.fixture(params=SCENARIO_DIRECTORIES, ids=_identify)
+@pytest.fixture(params=SCENARIO_DIRECTORIES, ids=identify)
 def scenario_directory(request: pytest.FixtureRequest) -> Path:
     directory: Path = request.param
     return directory
@@ -221,10 +200,11 @@ def test_its_reference_solution_replays_without_errors(
 ) -> None:
     """Every line of `solution.cmds`, run through the real sandbox.
 
-    Not the full §9 guarantee — whether the end state passes the checks needs
-    the Phase 5 engine — but it catches a reference solution that cannot run at
-    all, which is most of the ways one rots. The failure names the line, because
-    "the reference solution is broken" is not a useful thing to read.
+    Narrower than `test_scenarios.py` and not subsumed by it: that one asks
+    whether the end state is right, and this one asks whether the list can run at
+    all. The failure names the line, because "the reference solution is broken" is
+    not a useful thing to read — and a list that dies on line one would otherwise
+    reach the graded replay and fail every check at once.
     """
     text = (scenario_directory / spec.reference).read_text(encoding="utf-8")
     for command in parse_command_list(text):
@@ -311,7 +291,7 @@ def test_the_lock_file_covers_every_scenario() -> None:
         for entry in parse(lock_path(CONTENT_ROOT).read_text(encoding="utf-8"))
     }
 
-    assert locked == {_identify(directory) for directory in SCENARIO_DIRECTORIES}
+    assert locked == {identify(directory) for directory in SCENARIO_DIRECTORIES}
 
 
 def _all_exercises() -> list[Exercise]:
@@ -330,7 +310,7 @@ def test_the_fixture_library_is_shared_rather_than_copied() -> None:
         assert isinstance(spec, GitScenarioSpec)
         text = (directory / spec.fixture).read_text(encoding="utf-8")
 
-        assert "PRACTICE_FIXTURE_LIB" in text, _identify(directory)
+        assert "PRACTICE_FIXTURE_LIB" in text, identify(directory)
 
 
 def test_the_shared_library_is_where_the_provisioner_looks_for_it() -> None:

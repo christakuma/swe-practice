@@ -311,22 +311,23 @@ def test_the_unproven_guarantees_are_stated_rather_than_implied() -> None:
     """
     caveats = unproven_by_design()
 
-    assert any("not yet GRADED" in line for line in caveats)
-    assert any("counter-examples" in line for line in caveats)
+    assert caveats
+    assert any("nothing here is executed" in line for line in caveats)
+    assert any("pytest -m content" in line for line in caveats)
 
 
-def test_the_caveats_do_not_overclaim_what_phase_3_proved() -> None:
-    """The sandbox landed, so `solution.cmds` IS replayed now — by the content
-    suite and by `practice fixtures`, neither of which is this command.
+def test_the_caveats_name_a_division_of_labour_and_not_a_missing_phase() -> None:
+    """Every caveat this command has ever printed used to name the phase that
+    would retire it. Phase 5 retired the last one, and the list that replaced it
+    is permanent: `validate` runs nothing *by design*, so it will never grade a
+    solution however many phases land.
 
-    The distinction is worth a test because it is the easy one to get wrong in
-    both directions. Dropping the caveat would imply `validate` grades
-    solutions, which it does not and deliberately never will: it runs nothing,
-    so it stays usable on a machine with no git. Leaving the old wording would
-    claim the replay does not happen at all, which stopped being true in Phase
-    3.
+    Worth a test in both directions. Dropping the caveats would imply a green
+    audit covers solvability, which it does not. Leaving a phase number in them
+    would promise that someday it will, which is a promise nobody intends to
+    keep -- the fast offline audit has to stay usable on a machine with no git.
     """
     caveats = unproven_by_design()
 
-    assert any("replayed through the sandbox" in line for line in caveats)
-    assert not any("is not yet replayed" in line for line in caveats)
+    assert caveats
+    assert not any("phase" in line.casefold() for line in caveats)

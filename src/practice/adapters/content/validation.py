@@ -13,13 +13,17 @@ fixtures --check` holds the commit hashes to `content/fixtures.lock` — and Pha
 solution and its stub, so the claim that a kata is solvable and that its hidden
 suite rejects an empty stub is now tested rather than asserted.
 
-This module still does none of that, on purpose. `validate` runs nothing — it is
-the fast, offline audit an author runs while editing, and it has to stay usable
-on a machine with no git. What is left genuinely unproven is *scenario* grading:
-whether a replayed solution's end state passes every required check, and whether
-each counter-example fails exactly the checks it declares, needs the engine in
-Phase 5. `unproven_by_design` is that caveat in code, so a passing run says
-which guarantees it is not making.
+Phase 5 took the last bite: `tests/content/test_scenarios.py` grades every
+reference solution and every counter-example through the real use cases, so the
+§9 content suite is complete and the caveat this module used to print about
+scenario grading is gone.
+
+This module still runs nothing, on purpose. `validate` is the fast, offline audit
+an author runs while editing, and it has to stay usable on a machine with no git.
+So what is left unproven is no longer a missing engine but a deliberate division
+of labour, and `unproven_by_design` says which half a passing run is: an exercise
+that validates is well-formed and legal, and whether it is *solvable* is the test
+suite's answer, not this command's.
 
 What this module *can* prove is the thing §5.3 was written for: every line of
 every reference and counter-example list is legal under the exercise's own
@@ -68,19 +72,30 @@ _IGNORED_PREFIXES: Final = ("_", ".")
 
 
 def unproven_by_design() -> tuple[str, ...]:
-    """The guarantees a Phase 2 validation run does *not* make.
+    """The guarantees a validation run does *not* make, and never will.
 
     Printed by `practice validate`. A validation command that reports "3 passed"
     and says nothing else invites exactly the misreading PLAN.md §11 warns
     against, and the warning is worth more in the output than in the plan.
+
+    Both entries used to name Phase 5 as the thing that was missing. Phase 5 has
+    landed and the list is shorter and permanent: what remains unproven here is
+    unproven *by design*, because this command does not run anything. An author who
+    wants to know whether an exercise is solvable runs the test suite, and the
+    output says so rather than leaving them to assume a green audit covered it.
     """
     return (
         (
-            "solution.cmds is replayed through the sandbox by the content suite "
-            "and `practice fixtures`, but not yet GRADED: whether the end state "
-            "passes every required check needs the engine in phase 5"
+            "nothing here is executed: a fixture that cannot run, a reference "
+            "solution that reaches the wrong end state and a counter-example that "
+            "fails the wrong checks all pass this audit. `uv run pytest -m content` "
+            "is what grades them"
         ),
-        "counter-examples are not yet proven to fail the checks they declare",
+        (
+            "an exercise's prose is not reviewed: a check's label and explanation "
+            "are present and non-empty, and nothing can tell you whether they are "
+            "true of the assertion they are attached to"
+        ),
     )
 
 

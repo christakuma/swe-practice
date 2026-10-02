@@ -61,11 +61,16 @@ def test_every_shipped_exercise_is_listed_by_id() -> None:
 def test_it_reports_what_a_passing_run_does_not_prove() -> None:
     """PLAN.md §11 says in as many words not to mistake green here for content
     that works, and that warning is worth more in the output than in the plan.
+
+    The caveats used to name Phase 5 as the missing piece; they name the division
+    of labour now, because `validate` runs nothing on purpose and that is the
+    permanent reason rather than a temporary one.
     """
     _, output = run()
 
-    assert "Not proven at this phase:" in output
-    assert "not yet GRADED" in output
+    assert "Not proven by this command:" in output
+    assert "nothing here is executed" in output
+    assert "pytest -m content" in output
 
 
 def test_the_caveats_can_be_turned_off_for_a_terser_run() -> None:
