@@ -6,8 +6,7 @@ with its own connection logic:
 * `connection` — the `Database`, and the numbered migration runner.
 * `mappers` — domain <-> row, both directions, with no SQL in sight.
 * `attempts` — `SqliteAttemptRepository`, and the SQL it runs.
-
-`reviews` joins them in the next commit.
+* `reviews` — `SqliteReviewRepository`, likewise.
 
 The split between `mappers` and the repositories is the one worth pointing at,
 because it is what decides the testing. A mapper is a pure function over a
@@ -24,11 +23,13 @@ from practice.adapters.persistence.sqlite.connection import (
     MigrationError,
     load_migrations,
 )
+from practice.adapters.persistence.sqlite.reviews import SqliteReviewRepository
 
 __all__ = [
     "Database",
     "Migration",
     "MigrationError",
     "SqliteAttemptRepository",
+    "SqliteReviewRepository",
     "load_migrations",
 ]

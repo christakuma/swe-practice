@@ -11,14 +11,21 @@ whatever a dict happens to do.
 
 from __future__ import annotations
 
-from practice.adapters.persistence import InMemoryAttemptRepository
+from datetime import date
+
+from practice.adapters.persistence import (
+    InMemoryAttemptRepository,
+    InMemoryReviewRepository,
+)
 from practice.domain.attempt import Attempt, AttemptPolicy, AttemptStatus
 from practice.domain.ids import AttemptId, ExerciseId
+from practice.domain.review import ReviewCard
 from practice.domain.verdict import CheckReport, Severity, Verdict
 from tests.fakes import FakeClock, a_kata
 
 KATA = a_kata()
 OTHER = ExerciseId("katas/valid-parentheses")
+TODAY = date(2026, 10, 2)
 
 
 def an_attempt(number: int, exercise_id: ExerciseId | None = None) -> Attempt:
@@ -167,3 +174,67 @@ def test_it_describes_itself_by_how_much_it_holds() -> None:
     attempts.save(an_attempt(1))
 
     assert repr(attempts) == "InMemoryAttemptRepository(1 attempts)"
+
+
+class TestInMemoryReviewRepository:
+    """The second implementation of `ReviewRepository`, and the one Phase 9's
+    scheduler tests will use rather than opening a database to check arithmetic.
+    """
+
+    def test_a_card_comes_back_as_it_went_in(self) -> None:
+        reviews = InMemoryReviewRepository()
+        card = ReviewCard.new(KATA.id, TODAY)
+
+        reviews.save_card(card)
+
+        assert reviews.get_card(KATA.id) == card
+
+    def test_an_exercise_never_reviewed_has_no_card(self) -> None:
+        """`None`, never a card invented here: this layer has no clock, and a store
+        that manufactured one would make "has this ever been reviewed?" unanswerable.
+        """
+        assert InMemoryReviewRepository().get_card(OTHER) is None
+
+    def test_saving_the_same_exercise_twice_replaces_the_card(self) -> None:
+        reviews = InMemoryReviewRepository()
+        reviews.save_card(ReviewCard.new(KATA.id, TODAY))
+
+        reviews.save_card(
+            ReviewCard(exercise_id=KATA.id, due_on=TODAY, interval_days=15)
+        )
+
+        assert len(reviews) == 1
+        stored = reviews.get_card(KATA.id)
+        assert stored is not None
+        assert stored.interval_days == 15
+
+    def test_due_on_asks_the_card_rather_than_comparing_dates_itself(self) -> None:
+        """So it cannot disagree with `ReviewCard.is_due` about what due means --
+        the drift that stops a fake being evidence of anything.
+        """
+        reviews = InMemoryReviewRepository()
+        reviews.save_card(ReviewCard(exercise_id=KATA.id, due_on=date(2026, 9, 28)))
+        reviews.save_card(ReviewCard(exercise_id=OTHER, due_on=date(2026, 10, 9)))
+
+        due = reviews.due_on(TODAY)
+
+        assert [card.exercise_id for card in due] == [KATA.id]
+
+    def test_the_due_queue_is_longest_overdue_first(self) -> None:
+        reviews = InMemoryReviewRepository()
+        reviews.save_card(ReviewCard(exercise_id=KATA.id, due_on=TODAY))
+        reviews.save_card(ReviewCard(exercise_id=OTHER, due_on=date(2026, 9, 28)))
+
+        assert [card.exercise_id for card in reviews.due_on(TODAY)] == [
+            OTHER,
+            KATA.id,
+        ]
+
+    def test_nothing_is_due_in_an_empty_store(self) -> None:
+        assert InMemoryReviewRepository().due_on(TODAY) == ()
+
+    def test_it_describes_itself_by_how_much_it_holds(self) -> None:
+        reviews = InMemoryReviewRepository()
+        reviews.save_card(ReviewCard.new(KATA.id, TODAY))
+
+        assert repr(reviews) == "InMemoryReviewRepository(1 cards)"

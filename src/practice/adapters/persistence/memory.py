@@ -1,7 +1,7 @@
-"""Attempts in a dict, with database semantics on purpose.
+"""Attempts and review cards in dicts, with database semantics on purpose.
 
-Satisfies `practice.domain.ports.AttemptRepository`. The whole file is five
-methods and one decision:
+Satisfies `practice.domain.ports.AttemptRepository` and
+`practice.domain.ports.ReviewRepository`. Two small stores and one decision:
 
 **It stores a deep copy, and hands back a deep copy.** The obvious
 implementation keeps the `Attempt` object itself, which makes `save` very nearly
@@ -23,11 +23,13 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from datetime import date
 
     from practice.domain.attempt import Attempt
     from practice.domain.ids import AttemptId, ExerciseId
+    from practice.domain.review import ReviewCard
 
-__all__ = ["InMemoryAttemptRepository"]
+__all__ = ["InMemoryAttemptRepository", "InMemoryReviewRepository"]
 
 
 class InMemoryAttemptRepository:
@@ -87,3 +89,49 @@ class InMemoryAttemptRepository:
 
     def __repr__(self) -> str:
         return f"InMemoryAttemptRepository({len(self._attempts)} attempts)"
+
+
+class InMemoryReviewRepository:
+    """Review cards in a dict. No copying, and that asymmetry is the point.
+
+    `ReviewCard` is a frozen dataclass, so there is nothing to alias: a caller
+    holding one cannot change it, and the scheduler returns a *new* card rather
+    than mutating the old one. The deep copy above exists because `Attempt` is
+    mutable and the fake would otherwise hide a missing `save`; here the same
+    protection would be ceremony, and writing it anyway would suggest the two
+    types carry the same risk.
+    """
+
+    __slots__ = ("_cards",)
+
+    def __init__(self) -> None:
+        self._cards: dict[ExerciseId, ReviewCard] = {}
+
+    def get_card(self, exercise_id: ExerciseId) -> ReviewCard | None:
+        """`None` for an exercise never attempted -- never a card invented here."""
+        return self._cards.get(exercise_id)
+
+    def save_card(self, card: ReviewCard) -> None:
+        """Insert or replace. One card per exercise; the previous state is gone."""
+        self._cards[card.exercise_id] = card
+
+    def due_on(self, day: date) -> Sequence[ReviewCard]:
+        """Every card due on or before `day`, longest-overdue first.
+
+        Asks the card rather than comparing the dates itself, so this cannot
+        disagree with `ReviewCard.is_due` about what "due" means -- the drift that
+        stops a fake being evidence of anything.
+        """
+        return tuple(
+            card
+            for card in sorted(
+                self._cards.values(), key=lambda card: (card.due_on, card.exercise_id)
+            )
+            if card.is_due(day)
+        )
+
+    def __len__(self) -> int:
+        return len(self._cards)
+
+    def __repr__(self) -> str:
+        return f"InMemoryReviewRepository({len(self._cards)} cards)"

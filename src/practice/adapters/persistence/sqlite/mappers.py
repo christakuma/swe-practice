@@ -27,7 +27,7 @@ unexplainable. A row that is structurally wrong raises `RowError`.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Final
 
 from practice.domain.attempt import (
@@ -42,6 +42,7 @@ from practice.domain.attempt import (
 )
 from practice.domain.exercise import Hint
 from practice.domain.ids import AttemptId, ExerciseId
+from practice.domain.review import CardState, ReviewCard
 from practice.domain.verdict import CheckReport, Severity, Verdict
 
 if TYPE_CHECKING:
@@ -55,8 +56,10 @@ __all__ = [
     "SOLUTION",
     "RowError",
     "attempt_row",
+    "card_row",
     "event_rows",
     "to_attempt",
+    "to_card",
 ]
 
 #: `attempt_events.kind`. Three literals rather than the event class names,
@@ -295,6 +298,48 @@ def _to_claim(row: Mapping[str, object]) -> ComplexityClaim | None:
     return ComplexityClaim(time=str(time), space=str(space))
 
 
+# --- review cards -----------------------------------------------------------
+
+
+def card_row(card: ReviewCard) -> dict[str, object]:
+    """One row of `review_cards`, keyed by column name.
+
+    `due_on` goes in as `YYYY-MM-DD` and `last_reviewed_at` as a full timestamp,
+    which is the asymmetry the domain already has: a card comes due on a calendar
+    day, and the moment it was reviewed is an instant. Storing the first as a
+    timestamp would make `due_on <= :day` depend on a time of day nobody set.
+    """
+    return {
+        "exercise_id": str(card.exercise_id),
+        "state": card.state.value,
+        "ease": card.ease,
+        "interval_days": card.interval_days,
+        "reps": card.reps,
+        "lapses": card.lapses,
+        "due_on": card.due_on.isoformat(),
+        "last_reviewed_at": _isoformat(card.last_reviewed_at),
+    }
+
+
+def to_card(row: Mapping[str, object]) -> ReviewCard:
+    """Rebuild one card. Every bound it carries is re-checked by the dataclass.
+
+    Which is the point of the floor being in `ReviewCard` rather than only inside
+    the scheduler: the scheduler is not the sole writer, a repository is, and an
+    invariant that holds only while one function writes it is not an invariant.
+    """
+    return ReviewCard(
+        exercise_id=ExerciseId(_text(row, "exercise_id")),
+        state=CardState(_text(row, "state")),
+        ease=_number(row, "ease"),
+        interval_days=_integer(row, "interval_days"),
+        reps=_integer(row, "reps"),
+        lapses=_integer(row, "lapses"),
+        due_on=_day(row, "due_on"),
+        last_reviewed_at=_optional_timestamp(row, "last_reviewed_at"),
+    )
+
+
 # --- reading a row ----------------------------------------------------------
 #
 # Small and dull on purpose. Every one of these exists so that a column that is
@@ -327,6 +372,30 @@ def _integer(row: Mapping[str, object], column: str) -> int:
     if not isinstance(value, int) or isinstance(value, bool):
         raise RowError(f"{column} must be an integer, got {type(value).__name__}")
     return value
+
+
+def _number(row: Mapping[str, object], column: str) -> float:
+    """A REAL column. An integer is accepted: SQLite stores 2.0 as 2 given the
+    chance, and refusing it would make an ease of exactly 2 unreadable.
+    """
+    value = _required(row, column)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise RowError(f"{column} must be a number, got {type(value).__name__}")
+    return float(value)
+
+
+def _day(row: Mapping[str, object], column: str) -> date:
+    """A calendar day, and only that.
+
+    `date.fromisoformat` refuses a full timestamp, which is the behaviour wanted
+    here: a timestamp in `due_on` means the writer and this file disagree about
+    the column, and silently truncating it to a day would hide that.
+    """
+    text = _text(row, column)
+    try:
+        return date.fromisoformat(text)
+    except ValueError as exc:
+        raise RowError(f"{column} is not an ISO 8601 date: {text!r}") from exc
 
 
 def _timestamp(row: Mapping[str, object], column: str) -> datetime:

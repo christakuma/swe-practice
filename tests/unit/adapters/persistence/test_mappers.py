@@ -19,7 +19,7 @@ constructor with no indication of where the value came from.
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
@@ -28,8 +28,10 @@ import pytest
 from practice.adapters.persistence.sqlite.mappers import (
     RowError,
     attempt_row,
+    card_row,
     event_rows,
     to_attempt,
+    to_card,
 )
 from practice.domain.attempt import (
     Attempt,
@@ -41,6 +43,7 @@ from practice.domain.attempt import (
 from practice.domain.errors import InvalidValueError
 from practice.domain.exercise import Hint
 from practice.domain.ids import AttemptId, ExerciseId
+from practice.domain.review import CardState, ReviewCard
 from practice.domain.verdict import CheckReport, Severity, Verdict
 
 if TYPE_CHECKING:
@@ -395,3 +398,110 @@ def test_a_mapping_is_all_a_mapper_needs() -> None:
     row: Mapping[str, object] = dict(attempt_row(a_finished_attempt()))
 
     assert to_attempt(row, []).id == ATTEMPT_ID
+
+
+# --- review cards -----------------------------------------------------------
+
+
+def a_card(**overrides: Any) -> ReviewCard:
+    fields: dict[str, Any] = {
+        "exercise_id": EXERCISE_ID,
+        "due_on": date(2026, 10, 9),
+        "state": CardState.REVIEW,
+        "ease": 2.35,
+        "interval_days": 6,
+        "reps": 4,
+        "lapses": 1,
+        "last_reviewed_at": datetime(2026, 10, 2, 18, 30, tzinfo=UTC),
+    }
+    fields.update(overrides)
+    return ReviewCard(**fields)
+
+
+def test_a_card_survives_the_round_trip_intact() -> None:
+    """`ReviewCard` is a frozen dataclass, so this one can be a plain equality —
+    which is what `Attempt` cannot have, and the reason its round trip needs a
+    field-by-field helper.
+    """
+    card = a_card()
+
+    assert to_card(card_row(card)) == card
+
+
+def test_a_new_card_survives_too() -> None:
+    """Due immediately, never reviewed, every counter zero: the state every
+    exercise starts in and the only one with a null in it.
+    """
+    card = ReviewCard.new(EXERCISE_ID, date(2026, 10, 2))
+
+    restored = to_card(card_row(card))
+
+    assert restored == card
+    assert restored.last_reviewed_at is None
+    assert restored.state is CardState.NEW
+
+
+def test_the_card_row_is_keyed_by_column_name() -> None:
+    row = card_row(a_card())
+
+    assert row["exercise_id"] == "git/revert-a-pushed-commit"
+    assert row["state"] == "review"
+    assert row["ease"] == 2.35
+    assert row["due_on"] == "2026-10-09"
+    assert row["last_reviewed_at"] == "2026-10-02T18:30:00+00:00"
+
+
+def test_due_on_is_stored_as_a_day_and_not_a_timestamp() -> None:
+    """The asymmetry the domain already has: a card comes due on a calendar day and
+    the moment it was reviewed is an instant. A `due_on` carrying a time of day
+    nobody set would make `due_on <= :day` depend on it.
+    """
+    row = card_row(a_card())
+
+    assert "T" not in str(row["due_on"])
+    assert "T" in str(row["last_reviewed_at"])
+
+
+def a_card_row(**overrides: Any) -> dict[str, object]:
+    row = card_row(a_card())
+    row.update(overrides)
+    return row
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "expected"),
+    [
+        ("ease", "2.35", "must be a number"),
+        ("ease", True, "must be a number"),
+        ("due_on", "2026-10-09T00:00:00+00:00", "not an ISO 8601 date"),
+        ("due_on", "the ninth", "not an ISO 8601 date"),
+        ("last_reviewed_at", "yesterday", "not an ISO 8601 timestamp"),
+        ("state", 1, "must be text"),
+        ("interval_days", 6.5, "must be an integer"),
+    ],
+)
+def test_a_card_column_of_the_wrong_shape_says_which_and_why(
+    column: str, value: object, expected: str
+) -> None:
+    with pytest.raises(RowError, match=expected):
+        to_card(a_card_row(**{column: value}))
+
+
+def test_an_ease_integer_is_accepted() -> None:
+    """SQLite stores 2.0 in a REAL column as 2 given the chance, and refusing it
+    would make an ease of exactly 2 unreadable.
+    """
+    assert to_card(a_card_row(ease=2)).ease == 2.0
+
+
+def test_a_card_that_breaks_a_domain_bound_is_the_domains_refusal() -> None:
+    """Shaped correctly, holding something impossible: `InvalidValueError`, from the
+    value object that knows what a valid card looks like, not `RowError`.
+    """
+    with pytest.raises(InvalidValueError, match=r"1\.3"):
+        to_card(a_card_row(ease=0.9))
+
+
+def test_an_unknown_card_state_is_refused() -> None:
+    with pytest.raises(ValueError, match="mastered"):
+        to_card(a_card_row(state="mastered"))
