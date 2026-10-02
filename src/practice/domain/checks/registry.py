@@ -40,7 +40,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
-from practice.domain.checks import refs, trees
+from practice.domain.checks import recovery, refs, trees, worktree
 from practice.domain.checks.evaluation import CheckContext, CheckSpecError, Params
 from practice.domain.verdict import CheckReport
 
@@ -86,6 +86,19 @@ _TREES_AND_CONTENT: Final[Mapping[str, CheckFunction]] = {
     "tree_equals": trees.tree_equals,
 }
 
+#: The working tree and the index.
+_WORKTREE_AND_INDEX: Final[Mapping[str, CheckFunction]] = {
+    "index_staged": worktree.index_staged,
+    "unmerged_paths_empty": worktree.unmerged_paths_empty,
+    "worktree_clean": worktree.worktree_clean,
+}
+
+#: Where git keeps the things you thought you had destroyed.
+_RECOVERY: Final[Mapping[str, CheckFunction]] = {
+    "reflog_contains": recovery.reflog_contains,
+    "stash_count": recovery.stash_count,
+}
+
 #: Assertions whose name is legal and whose function has not landed yet. A
 #: within-phase scaffold, not a design: it exists so that each commit of Phase 5
 #: stands alone and is green, while the schema keeps rejecting a typo against the
@@ -93,19 +106,19 @@ _TREES_AND_CONTENT: Final[Mapping[str, CheckFunction]] = {
 #: empty by the end of the phase and this constant goes with it.
 _PENDING: Final[Mapping[str, str]] = MappingProxyType(
     {
-        "index_staged": "worktree assertions land next",
-        "unmerged_paths_empty": "worktree assertions land next",
-        "worktree_clean": "worktree assertions land next",
-        "reflog_contains": "recovery assertions land next",
-        "stash_count": "recovery assertions land next",
-        "command_count": "process assertions land after those",
-        "command_used": "process assertions land after those",
+        "command_count": "process assertions land next",
+        "command_used": "process assertions land next",
     }
 )
 
 #: Name to function, for everything that can be evaluated today.
 CHECKS: Final[Mapping[str, CheckFunction]] = MappingProxyType(
-    {**_REFS_AND_SHAPE, **_TREES_AND_CONTENT}
+    {
+        **_REFS_AND_SHAPE,
+        **_TREES_AND_CONTENT,
+        **_WORKTREE_AND_INDEX,
+        **_RECOVERY,
+    }
 )
 
 #: Read the `Attempt` event log rather than the repository, which is why the
