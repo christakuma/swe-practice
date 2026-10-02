@@ -1,0 +1,42 @@
+{#
+  The one layout. Every page extends it, and everything it loads is local.
+
+  No remote URLs, no CDN, no font service. `tests/web/test_offline.py` greps this
+  file for every spelling of one and fails the build on a hit, which is the only
+  form of that rule that survives someone adding a stylesheet in a hurry
+  (PLAN.md §8.2) — and the reason this comment names none of them literally.
+
+  CodeMirror's stylesheet is loaded on every page rather than only the workbench,
+  deliberately: it is 7 KB from the local disk, and the alternative is a per-page
+  asset block that the one page needing it forgets to fill in.
+#}<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# No referrer anywhere: there is nowhere to send one, and a local tool that
+     leaks the exercise you are stuck on into a referer header would be absurd. #}
+  <meta name="referrer" content="no-referrer">
+  <title>{{ title }} · swe-practice</title>
+  <link rel="stylesheet" href="{{ static }}/vendor/codemirror.min.css">
+  <link rel="stylesheet" href="{{ static }}/app.css">
+  <script src="{{ static }}/vendor/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/">swe-practice</a>
+    <nav>
+      <a href="/browse">Browse</a>
+    </nav>
+    <span class="bar-note">offline · loopback only</span>
+  </header>
+
+  <main>
+    {% block main %}{% endblock %}
+  </main>
+
+  <footer class="foot">
+    <span>Grade the end state, not the answer text.</span>
+  </footer>
+</body>
+</html>

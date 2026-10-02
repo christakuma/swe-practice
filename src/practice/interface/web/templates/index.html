@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block main %}
+<h1>Practice</h1>
+
+<p class="lede">
+  {{ exercise_count }} exercise{{ '' if exercise_count == 1 else 's' }} in the
+  library. <a href="/browse">Browse them</a>.
+</p>
+
+<section>
+  <h2>Open attempts</h2>
+  {% if open_attempts %}
+    {#
+      The resume-or-abandon rule of PLAN.md §8.1, in the form a browser can have
+      it. `can_resume` is the attempt's own answer, not a guess made here: an
+      attempt whose workspace has been collected, or whose exercise has left the
+      library, can only be abandoned — and offering a link that cannot work is
+      the thing the DTO carries that fact to prevent.
+    #}
+    <ul class="attempts">
+      {% for open in open_attempts %}
+        <li>
+          {% if open.can_resume %}
+            <a href="/attempt/{{ open.attempt.id }}">{{ open.label }}</a>
+          {% else %}
+            <span class="stale">{{ open.label }}</span>
+          {% endif %}
+          <span class="meta">
+            {{ open.attempt.command_count }} command{{ '' if open.attempt.command_count == 1 else 's' }}
+            · started {{ open.attempt.started_at.isoformat(timespec='seconds') }}
+          </span>
+          {% if not open.can_resume %}
+            <span class="warn">
+              {% if open.exercise is none %}
+                the exercise is gone, so this can only be abandoned
+              {% else %}
+                the workspace has been collected, so this can only be abandoned
+              {% endif %}
+            </span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">
+      Nothing open. An attempt stays open until it is submitted or abandoned, so
+      this is the usual state.
+    </p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Not here yet</h2>
+  <p class="empty">
+    Due today, streak and weakest tags need the spaced-repetition model, which is
+    phase 9. This page says what it knows rather than holding space for it.
+  </p>
+</section>
+{% endblock %}

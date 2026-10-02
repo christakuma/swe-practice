@@ -35,6 +35,15 @@ dev = [
     "ruff>=0.7",
     "mypy>=1.13",
     "types-pyyaml>=6.0",
+    # A *test* dependency, not a runtime one: FastAPI's TestClient drives the app
+    # through it in-process. Nothing the app ships makes an outbound request, and
+    # the dependency set above is the one a user installs (PLAN.md §2).
+    #
+    # httpx2 and not httpx. Starlette's TestClient warns on the latter, and this
+    # project's `filterwarnings = ["error"]` turns that warning into a collection
+    # error -- so the deprecated pairing does not merely work-for-now here, it
+    # fails outright. Worth the note: the obvious choice is the broken one.
+    "httpx2>=2.13.1",
 ]
 
 # `practice validate` runs in CI and `practice` is the second driving adapter

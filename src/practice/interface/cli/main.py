@@ -32,8 +32,8 @@ a prompt would be unusable from a script and `solve` would no longer work in CI.
 ids in full for exactly that reason. Accepting a prefix would need a
 `find_by_prefix` on the `AttemptRepository` port, which is a method added for one
 command's ergonomics and a query nothing else wants — PLAN.md §13's rule is that
-an abstraction has to earn its keep. The web app, where the id is in a link
-nobody types, is Phase 7.
+an abstraction has to earn its keep. The web app is where the id is in a link
+nobody types, and as of phase 7 that link exists.
 
 **One command for both exercise kinds, dispatching on the kind.** A kata takes
 `--source`; a git scenario takes `--commands`, a file of one command per line in
@@ -60,6 +60,7 @@ from pathlib import Path  # noqa: TC003  (Typer reads this annotation at runtime
 from typing import TYPE_CHECKING, Annotated, Final
 
 import typer
+import uvicorn
 
 from practice.adapters.content import (
     ExerciseReport,
@@ -93,6 +94,8 @@ from practice.domain.errors import DomainError, InvalidValueError
 from practice.domain.exercise import GitScenarioSpec, KataSpec
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.verdict import Outcome
+from practice.interface.web import create_app
+from practice.interface.web.security import NotLoopbackError, require_loopback
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -110,12 +113,15 @@ if TYPE_CHECKING:
     from practice.domain.verdict import CheckReport
 
 __all__ = [
+    "DEFAULT_HOST",
+    "DEFAULT_PORT",
     "abandon",
     "app",
     "attempts",
     "fixtures",
     "gc",
     "resume",
+    "serve",
     "solve",
     "start",
     "submit",
@@ -128,6 +134,16 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+
+#: Where `practice serve` binds. 127.0.0.1 rather than `localhost`, because the
+#: name resolves and the literal does not -- and resolution is what the Host
+#: check in `interface/web/security.py` exists to defend against.
+DEFAULT_HOST: Final = "127.0.0.1"
+
+#: Chosen to be memorable and unlikely to collide with a dev server someone is
+#: already running. Nothing depends on it; the cross-origin guard compares the
+#: port it actually arrived on.
+DEFAULT_PORT: Final = 8765
 
 _OK = "  ok   "
 _BAD = "  FAIL "
@@ -977,6 +993,83 @@ def solve(
 
     if not submission.passed:
         raise typer.Exit(code=1)
+
+
+@app.command()
+def serve(
+    host: Annotated[
+        str,
+        typer.Option(
+            "--host",
+            help="Must be a loopback address. Anything else is refused.",
+        ),
+    ] = DEFAULT_HOST,
+    port: Annotated[
+        int,
+        typer.Option("--port", help="The port to listen on."),
+    ] = DEFAULT_PORT,
+    content: Annotated[
+        Path | None,
+        typer.Option(
+            "--content-root",
+            envvar=CONTENT_ROOT_ENV,
+            help="The exercise library to serve. Defaults to this project's.",
+        ),
+    ] = None,
+    workspaces: Annotated[
+        Path | None,
+        typer.Option(
+            "--workspace-root",
+            envvar=WORKSPACE_ROOT_ENV,
+            help="Where attempts are provisioned. Defaults to the user cache.",
+        ),
+    ] = None,
+    db: Annotated[
+        Path | None,
+        typer.Option(
+            "--database",
+            envvar=DATABASE_PATH_ENV,
+            help="The attempt database. Defaults to the user data directory.",
+        ),
+    ] = None,
+) -> None:
+    """Run the web app on loopback, and nothing else.
+
+    **This command is not in PLAN.md §11's list for phase 7, and the phase does
+    not work without it** -- the same omission §16 records for `practice start` in
+    phase 6, and the same shape: the exit criterion is *a kata solved entirely in
+    the browser*, and nothing in the shipped CLI could open a browser at. A
+    commit list can be in dependency order and still describe a product with no
+    way into the state it adds.
+
+    The host is checked by `require_loopback` rather than by this function, and
+    the check is in the *argument* to `uvicorn.run`: a guard on the line above
+    is a guard someone deletes while rebasing. A server listening on `0.0.0.0`
+    has published a code-execution endpoint to the network before the first
+    request arrives, which is why this refuses rather than warning (PLAN.md §8.3).
+
+    `--reload` is deliberately absent. It makes uvicorn import the app by string
+    in a child process, which means the app would have to build its own services
+    from a global -- and `create_app` taking the object graph is the thing that
+    keeps the web adapter from becoming a second wiring point.
+    """
+    try:
+        bind = require_loopback(host)
+    except NotLoopbackError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
+
+    services = build_services(
+        content=content.resolve() if content is not None else None,
+        workspaces=workspaces.resolve() if workspaces is not None else None,
+        database=db.resolve() if db is not None else None,
+    )
+
+    typer.echo(f"http://{bind}:{port}")
+    typer.echo("")
+    typer.echo("Offline: every asset is served from disk, and nothing is fetched.")
+    typer.echo("Stop it with Ctrl-C.")
+    uvicorn.run(create_app(services), host=bind, port=port, log_level="warning")
 
 
 def _solve_kata(
