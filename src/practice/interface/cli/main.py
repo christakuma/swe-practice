@@ -1174,6 +1174,16 @@ def _report_history(services: Services, exercise_id: ExerciseId) -> None:
 
     The other question the attempt table can now answer, and the reason the
     `history_for` port method has had no caller until this phase.
+
+    **This reads the repository port directly rather than through a use case, and
+    that is the deliberate choice rather than a shortcut.** Every other command
+    here goes through one because a use case adds something: a join the caller
+    would otherwise make itself, an ordering of operations, a refusal. There is
+    nothing to add here — the exercise is the argument, so there is no join, and a
+    listing has no ordering to get wrong. A `ListAttemptHistory` that forwarded one
+    call and returned its result unchanged is the abstraction PLAN.md §13 says to
+    delete rather than write. It gains one the moment this needs anything the
+    repository does not already answer.
     """
     history = services.attempts.history_for(exercise_id)
     if not history:

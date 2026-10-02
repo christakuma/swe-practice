@@ -27,12 +27,12 @@ an afternoon do not need one.
 | [0003](0003-grade-git-exercises-by-repo-state.md) | Grade git exercises by repo state, not command text | accepted |
 | [0004](0004-content-as-declarative-data.md) | Content is declarative data, validated by schema | accepted |
 | [0005](0005-sandbox-via-temp-dirs-and-subprocess.md) | Sandbox via a scoped directory and subprocess, not containers | accepted |
+| [0006](0006-sqlite-without-an-orm.md) | SQLite with hand-written SQL and explicit mappers, not an ORM | accepted |
 | [0011](0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
 
 0011 is out of sequence because the number was reserved for it in PLAN.md §12
-before the decision was written up, and numbers are never reused. 0006–0010 are
+before the decision was written up, and numbers are never reused. 0007–0010 are
 the ones still to come.
 
-Planned, not yet written (PLAN.md §12): SQLite without an ORM · HTMX over an
-SPA · SM-2 first with FSRS behind a port · ship our own prompts · CodeMirror 5
-over 6.
+Planned, not yet written (PLAN.md §12): HTMX over an SPA · SM-2 first with FSRS
+behind a port · ship our own prompts · CodeMirror 5 over 6.
