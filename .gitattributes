@@ -33,5 +33,12 @@
 *.sqlite3 binary
 
 # Keep vendored and generated files out of diffs and language statistics.
-src/practice/interface/web/static/vendor/** linguist-vendored
+#
+# `-text` is the load-bearing half, and it is the one exception to the LF rule
+# above. These four files are pinned by SHA-256 in
+# src/practice/interface/web/vendor.py, so what git checks out has to be the
+# bytes that were downloaded and nothing adjacent to them. `text=auto` would
+# normalize them on the way in, which is harmless on its own and not harmless
+# the moment anything hashes the result.
+src/practice/interface/web/static/vendor/** -text linguist-vendored
 uv.lock -diff linguist-generated
