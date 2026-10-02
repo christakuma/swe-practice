@@ -37,7 +37,7 @@ from practice.domain.ports import CommitInfo, ReflogEntry, WorktreeStatus
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
 
-__all__ = ["FakeRepoQuery", "RepoBuilder", "RepoState", "a_repo"]
+__all__ = ["Commit", "FakeRepoQuery", "RepoBuilder", "RepoState", "a_repo"]
 
 #: `<rev>~<n>` and `<rev>^<n>`, with the count optional.
 _ANCESTOR_STEP: Final = re.compile(r"^(?P<base>.+?)(?P<operator>[~^])(?P<count>\d*)$")
@@ -75,8 +75,13 @@ def _invent_sha(seed: int, *, kind: str) -> Sha:
 
 
 @dataclass(frozen=True, slots=True)
-class _Commit:
-    """One node of the fake's DAG."""
+class Commit:
+    """One node of the fake's DAG.
+
+    Public rather than private because the conformance suite builds these out of a
+    real repository's log, which is the only way a fake can be compared to git at
+    all (see `tests/integration/git/test_conformance.py`).
+    """
 
     sha: Sha
     tree: Sha
@@ -99,7 +104,7 @@ class RepoState:
     naming it is what makes that suite expressible.
     """
 
-    commits: Mapping[Sha, _Commit] = field(default_factory=dict)
+    commits: Mapping[Sha, Commit] = field(default_factory=dict)
     refs: Mapping[str, Sha] = field(default_factory=dict)
     aliases: Mapping[str, Sha] = field(default_factory=dict)
     snapshot: Mapping[str, Sha] = field(default_factory=dict)
@@ -126,7 +131,7 @@ class RepoBuilder:
         query = repo.build()
     """
 
-    _commits: dict[Sha, _Commit] = field(default_factory=dict)
+    _commits: dict[Sha, Commit] = field(default_factory=dict)
     _order: list[Sha] = field(default_factory=list)
     _refs: dict[str, Sha] = field(default_factory=dict)
     _aliases: dict[str, Sha] = field(default_factory=dict)
@@ -159,7 +164,7 @@ class RepoBuilder:
         """
         self._counter += 1
         sha = _invent_sha(self._counter, kind=_COMMIT_NIBBLE)
-        self._commits[sha] = _Commit(
+        self._commits[sha] = Commit(
             sha=sha,
             tree=(
                 tree

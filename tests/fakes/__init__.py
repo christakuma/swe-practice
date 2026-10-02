@@ -20,10 +20,17 @@ from tests.fakes.clock import FakeClock
 from tests.fakes.content import FakeContentRepository, a_kata, a_scenario
 from tests.fakes.ids import SequentialIdGenerator
 from tests.fakes.kata import StubKataRunner, a_record, a_run, a_timeout
-from tests.fakes.repo import FakeRepoQuery, RepoBuilder, RepoState, a_repo
+from tests.fakes.repo import (
+    Commit,
+    FakeRepoQuery,
+    RepoBuilder,
+    RepoState,
+    a_repo,
+)
 from tests.fakes.sandbox import FakeProvisioner, FakeWorkspace
 
 __all__ = [
+    "Commit",
     "FakeClock",
     "FakeContentRepository",
     "FakeProvisioner",
