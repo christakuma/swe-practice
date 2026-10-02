@@ -6,8 +6,8 @@ command in isolation — exit codes, refusals, flags — and this one checks tha
 the *journey* works and that the commands compose. Fail on the stub, fix it,
 pass, and have `practice gc` agree that nothing was left behind.
 
-The git scenario half of this file arrives in Phase 5, when there is an engine
-that can grade one.
+The git scenario half lives in `test_solve_a_git_scenario.py`, which lands with
+the engine that can grade one.
 
 Two tests, because an e2e layer that grows is an e2e layer that becomes the
 slowest and least informative part of the suite. Anything that can be asserted

@@ -138,20 +138,23 @@ def test_a_failure_repeats_what_has_to_change_under_the_outcome(
 # --- what it refuses -------------------------------------------------------
 
 
-def test_a_git_scenario_is_refused_by_the_kata_path(workspaces: Path) -> None:
-    """`solve` with no answer flag falls back to the exercise's own stub, and a git
-    scenario does not have one.
+def test_a_git_scenario_is_refused_by_this_suites_kata_shaped_invocation(
+    workspaces: Path,
+) -> None:
+    """This suite's `solve` helper passes no answer flag, which is a kata-shaped
+    invocation, and the kata path must not quietly accept a scenario.
 
-    This test used to assert that the refusal named Phase 5 as the thing which would
-    make git scenarios gradable. A scenario grader is registered as of this commit,
-    so the attempt now *starts* — and the refusal moves to the point where a
-    kata-shaped invocation asks for a stub that is not there. The scenario driver,
-    and the refusal that tells someone to pass `--commands`, lands two commits later.
+    The third wording of this test in one phase, and each change tracked a real one.
+    It asserted the refusal named Phase 5 as what would make scenarios gradable;
+    then, once a grader was registered, that the kata path had no stub to fall back
+    on; and now that `solve` dispatches on the kind and says which flag the exercise
+    takes. The behaviour is covered properly in `test_cli_solve_scenario.py`; what is
+    left here is the boundary.
     """
     code, output = solve(workspaces, SCENARIO)
 
     assert code == 2
-    assert "no stub" in output
+    assert "--commands" in output
 
 
 def test_an_unknown_exercise_is_refused(workspaces: Path) -> None:
