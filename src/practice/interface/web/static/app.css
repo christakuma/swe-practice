@@ -290,6 +290,25 @@ button[disabled] {
   margin-left: auto;
 }
 
+.editor-actions input {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--ink);
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  width: 5rem;
+}
+
+/* The slot the verdict fragment is swapped into. Empty until something is
+   submitted, so the margin is on the content rather than on the container. */
+#verdict:not(:empty) {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
 /* --- verdicts ----------------------------------------------------------- */
 
 .checks {
@@ -358,9 +377,15 @@ button[disabled] {
 
 /* --- CodeMirror overrides ----------------------------------------------- */
 
+/*
+ * A fixed height with CodeMirror's own scrolling, not `height: auto` plus a
+ * `min-height`. That pairing looks right until you load a short stub: the widget
+ * sizes to its eight lines, the min-height adds empty panel underneath, and the
+ * horizontal scrollbar is drawn at the *content* edge with dead space below it.
+ * Found by looking at it; no test would have.
+ */
 .CodeMirror {
-  height: auto;
-  min-height: 24rem;
+  height: 26rem;
   font-family: var(--mono);
   font-size: 0.85rem;
   background: var(--bg-sunken);

@@ -47,7 +47,22 @@
       <form id="solution-form">
         <textarea id="source" name="source" spellcheck="false"
                   rows="20">{{ workbench.editor_source or '' }}</textarea>
+
+        <div class="editor-actions">
+          <button type="submit">Submit</button>
+          {#
+            Both axes or neither. `ComplexityClaim` refuses to hold one, because a
+            claim about time alone cannot disagree with an expectation that has
+            two — so the two inputs are one control, and leaving either blank
+            declares nothing rather than declaring half.
+          #}
+          <label class="meta">time <input name="time" size="6" placeholder="O(n)"></label>
+          <label class="meta">space <input name="space" size="6" placeholder="O(n)"></label>
+          <span class="meta">graded against the exercise's hidden suite</span>
+        </div>
       </form>
+
+      {# Where the verdict fragment lands. Empty until something is submitted. #}
       <div id="verdict"></div>
 
     {% else %}
@@ -82,9 +97,43 @@ practice submit {{ attempt.id }}</pre>
         mode: {{ editor_mode | tojson }},
         lineNumbers: true,
         indentUnit: 4,
-        viewportMargin: Infinity
+        lineWrapping: false
       }
     );
+
+    // The submission is wired here rather than as `hx-post` on the form, and
+    // that is forced by the line above: htmx would serialise the textarea, and
+    // the textarea stopped tracking the document the moment CodeMirror replaced
+    // it. `getValue()` is the only thing that knows what is on screen.
+    document.getElementById("solution-form").addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target;
+      var button = form.querySelector("button[type=submit]");
+
+      // Grading starts a pytest subprocess and can take a second or two, which
+      // is long enough that a button with no in-flight state reads as a button
+      // that did nothing -- and the second click it invites is refused by the
+      // aggregate, so the reward for impatience would be an error message.
+      // htmx's `hx-indicator` is for the attribute form; driven from JS, the
+      // honest equivalent is to disable the control that must not be pressed
+      // twice.
+      var label = button.textContent;
+      button.disabled = true;
+      button.textContent = "Grading…";
+
+      htmx.ajax("POST", {{ submit_url | tojson }}, {
+        target: "#verdict",
+        swap: "innerHTML",
+        values: {
+          source: window.practiceEditor.getValue(),
+          time: form.elements.time.value,
+          space: form.elements.space.value
+        }
+      }).finally(function () {
+        button.disabled = false;
+        button.textContent = label;
+      });
+    });
   </script>
 {% endif %}
 {% endblock %}

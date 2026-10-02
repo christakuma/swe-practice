@@ -43,7 +43,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from practice.domain.exercise import Exercise
-    from practice.domain.ports import Grader
 
 #: The origin the client speaks as, and the base url it requests. `TestClient`
 #: defaults to `http://testserver`, which `SameOriginMiddleware` refuses on the
@@ -70,7 +69,7 @@ class Wiring:
         self,
         *,
         exercises: tuple[Exercise, ...],
-        grader: Grader,
+        grader: RecordingGrader,
     ) -> None:
         self.content = FakeContentRepository(exercises)
         self.attempts = InMemoryAttemptRepository()
@@ -104,17 +103,37 @@ class Wiring:
         )
 
 
+def a_wiring(grader: RecordingGrader | None = None) -> Wiring:
+    """Both shipped exercise kinds, and a grader that records what it was asked.
+
+    A function as well as a fixture because a test that wants a *failing* verdict
+    has to choose the grader before the client is built -- the same shape
+    `an_environment(grader=...)` takes in the application tests, and for the same
+    reason: a shared environment mutated after the fact would make every test in
+    the file depend on the order they ran in.
+    """
+    return Wiring(
+        exercises=(a_kata(), a_scenario()),
+        grader=grader if grader is not None else RecordingGrader(),
+    )
+
+
+def client_for(wiring: Wiring) -> TestClient:
+    """The app over a wiring a test built itself, speaking as a browser."""
+    return TestClient(
+        create_app(wiring.services), base_url=ORIGIN, headers=BROWSER_HEADERS
+    )
+
+
 @pytest.fixture
 def wiring() -> Wiring:
-    """Both shipped exercise kinds and a grader that records what it was asked."""
-    return Wiring(exercises=(a_kata(), a_scenario()), grader=RecordingGrader())
+    return a_wiring()
 
 
 @pytest.fixture
 def client(wiring: Wiring) -> Iterator[TestClient]:
     """The app, driven in-process, speaking as a same-origin browser."""
-    app = create_app(wiring.services)
-    with TestClient(app, base_url=ORIGIN, headers=BROWSER_HEADERS) as client:
+    with client_for(wiring) as client:
         yield client
 
 
