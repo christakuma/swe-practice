@@ -53,8 +53,14 @@ _REPO_DIRNAME: Final = "repo"
 _MAP_FIELDS: Final = 2
 
 
-class WorkspacePathError(Exception):
+class WorkspacePathError(ValueError):
     """A path argument pointed outside the workspace, so nothing was done.
+
+    A `ValueError`, because it is one: the argument was not a usable path. That
+    also means a caller which already treats a bad path as "no such file" —
+    `GitRepoQuery.worktree_file`, grading a check whose `path:` escapes the
+    repository — catches it without importing this module and inverting the
+    dependency between the reader of a repository and the builder of one.
 
     Not a security boundary — the solver is the author of their own machine
     (PLAN.md §8.1). It is a blast-radius boundary: a `write ../../.bashrc` is

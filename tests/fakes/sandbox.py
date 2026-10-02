@@ -20,10 +20,10 @@ from typing import TYPE_CHECKING
 from practice.domain.attempt import CommandResult
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     from practice.domain.exercise import Exercise
-    from practice.domain.ids import AttemptId
+    from practice.domain.ids import AttemptId, Sha
 
 __all__ = ["FakeProvisioner", "FakeWorkspace"]
 
@@ -31,11 +31,19 @@ __all__ = ["FakeProvisioner", "FakeWorkspace"]
 class FakeWorkspace:
     """Satisfies `practice.domain.ports.Workspace` over a dict of files."""
 
-    def __init__(self, files: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        files: dict[str, str] | None = None,
+        *,
+        aliases: Mapping[str, Sha] | None = None,
+        snapshot: Mapping[str, Sha] | None = None,
+    ) -> None:
         self.files: dict[str, str] = dict(files or {})
         self.commands: list[tuple[str, ...]] = []
         self.tools: list[tuple[str, ...]] = []
         self.disposed = False
+        self._aliases: dict[str, Sha] = dict(aliases or {})
+        self._snapshot: dict[str, Sha] = dict(snapshot or {})
 
     def run(self, argv: Sequence[str], timeout: float) -> CommandResult:
         del timeout
@@ -61,6 +69,13 @@ class FakeWorkspace:
 
     def write_file(self, path: str, content: str) -> None:
         self.files[path] = content
+
+    def aliases(self) -> Mapping[str, Sha]:
+        """Empty by default, like a kata's workspace, where no fixture ran."""
+        return dict(self._aliases)
+
+    def snapshot(self) -> Mapping[str, Sha]:
+        return dict(self._snapshot)
 
     def dispose(self) -> None:
         self.disposed = True

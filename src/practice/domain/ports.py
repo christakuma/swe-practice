@@ -169,6 +169,21 @@ class Workspace(Protocol):
 
     def write_file(self, path: str, content: str) -> None: ...
 
+    def aliases(self) -> Mapping[str, Sha]:
+        """The fixture's `@c1`-style symbolic names, as it recorded them.
+
+        Here rather than only on the concrete workspace because a `RepoQuery` is
+        built *over* a workspace and needs them, and `Grader.grade` is handed the
+        port. They live outside the repository on purpose (§6.1), so `read_file`
+        — which confines itself to the repository — cannot reach them. Phase 5
+        finding, recorded in PLAN.md §16.
+        """
+        ...
+
+    def snapshot(self) -> Mapping[str, Sha]:
+        """Every ref as it stood when the fixture finished, for `ref_unchanged`."""
+        ...
+
     def dispose(self) -> None: ...
 
 
@@ -214,6 +229,16 @@ class RepoQuery(Protocol):
 
     def refs(self) -> Mapping[str, Sha]: ...
 
+    def head_ref(self) -> str | None:
+        """The ref `HEAD` is attached to, or `None` when it is detached.
+
+        Added in Phase 5, because `head_detached` cannot be answered without it:
+        `rev_parse("HEAD")` returns a hash whether HEAD is on a branch or not, and
+        "no branch points at this commit" is a different question with a different
+        answer (PLAN.md §16).
+        """
+        ...
+
     def status(self) -> WorktreeStatus: ...
 
     def reflog(self, ref: str) -> Sequence[ReflogEntry]: ...
@@ -223,6 +248,20 @@ class RepoQuery(Protocol):
     def stash_list(self) -> Sequence[str]: ...
 
     def read_blob(self, rev: str, path: str) -> bytes | None: ...
+
+    def worktree_file(self, path: str) -> str | None:
+        """The working tree's copy of `path`, or `None` if it is not readable.
+
+        Also added in Phase 5. Without it `file_exists` and `file_matches` could
+        only ask about committed content, which is what `file_at_ref_matches`
+        already does — and nothing could grade a state that has not been committed
+        yet, which is exactly what a merge-conflict exercise ends in (§15).
+
+        Text rather than bytes: every file these exercises touch is text, the
+        assertions over it are regular expressions, and a file that will not decode
+        reads as `None` rather than as noise a pattern might match.
+        """
+        ...
 
     def aliases(self) -> Mapping[str, Sha]:
         """The fixture's `@c1`-style symbolic names, resolved before git sees them."""

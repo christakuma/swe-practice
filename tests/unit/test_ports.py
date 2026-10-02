@@ -36,6 +36,7 @@ from tests.fakes import (
     StubKataRunner,
     a_kata,
     a_record,
+    a_repo,
     a_run,
     a_scenario,
 )
@@ -47,6 +48,7 @@ if TYPE_CHECKING:
         Clock,
         ContentRepository,
         IdGenerator,
+        RepoQuery,
         SandboxProvisioner,
         Workspace,
     )
@@ -252,3 +254,26 @@ def test_the_stub_kata_runner_satisfies_what_the_grader_needs() -> None:
     run = runner.run(FakeWorkspace(), exercise.spec, "source")
 
     assert [record.name for record in run.tests] == ["test_one"]
+
+
+# --- the Phase 5 fake ------------------------------------------------------
+
+
+def test_the_fake_repo_query_satisfies_the_repo_query_port() -> None:
+    """The annotation is the test, as everywhere else in this file. Twenty-four
+    methods is enough surface that a fake drifting out of shape is a question of
+    when, and mypy is the only thing that notices — an adapter never subclasses
+    its port, so there is no inheritance for Python to complain about.
+    """
+    repo = a_repo()
+    first, second = repo.chain("add build script", "add parser")
+    repo.branch("main", second)
+
+    query: RepoQuery = repo.build()
+
+    assert query.rev_parse("HEAD") == second
+    assert query.rev_parse("HEAD~1") == first
+    assert query.head_ref() == "refs/heads/main"
+    assert query.is_ancestor(first, second) is True
+    assert query.subject("main") == "add parser"
+    assert query.aliases() == {"c1": first, "c2": second}
