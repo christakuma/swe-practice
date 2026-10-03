@@ -262,6 +262,10 @@ class GitScenarioSpecModel(_SpecModel):
     counter_examples: tuple[CounterExampleModel, ...] = ()
     max_commands: Annotated[int, Field(ge=1)] = 25
     command_timeout_seconds: Annotated[int, Field(ge=1)] = 10
+    #: No upper bound here: "not more than `max_commands`" is a relationship
+    #: between two fields, which `GitScenarioSpec` already enforces and this
+    #: module does not restate (see the module docstring).
+    reference_failing_commands: Annotated[int, Field(ge=0)] = 0
 
     @field_validator("allowed_commands")
     @classmethod
@@ -291,6 +295,7 @@ class GitScenarioSpecModel(_SpecModel):
             ),
             max_commands=self.max_commands,
             command_timeout_seconds=self.command_timeout_seconds,
+            reference_failing_commands=self.reference_failing_commands,
         )
 
 

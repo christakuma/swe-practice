@@ -225,6 +225,20 @@ class TestGitScenarioSpec:
         with pytest.raises(InvalidValueError):
             a_scenario(**{field_name: value})
 
+    def test_defaults_to_a_reference_solution_that_never_fails(self) -> None:
+        assert a_scenario().reference_failing_commands == 0
+
+    @pytest.mark.parametrize("count", [-1, 26])
+    def test_rejects_a_failing_command_count_outside_the_budget(
+        self, count: int
+    ) -> None:
+        """Negative is nonsense; above `max_commands` is an exercise whose
+        reference cannot exist, since it would have to run more commands than the
+        exercise permits in order to fail that many of them.
+        """
+        with pytest.raises(InvalidValueError, match="reference_failing_commands"):
+            a_scenario(max_commands=25, reference_failing_commands=count)
+
 
 class TestKataSpec:
     def test_defaults_a_time_limit_and_no_declared_complexity(self) -> None:

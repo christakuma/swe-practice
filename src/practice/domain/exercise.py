@@ -221,6 +221,22 @@ class GitScenarioSpec:
     counter_examples: tuple[CounterExample, ...] = ()
     max_commands: int = 25
     command_timeout_seconds: int = 10
+    reference_failing_commands: int = 0
+    """How many of the reference solution's commands are expected to exit non-zero.
+
+    Zero for almost every exercise, and the content suite holds the reference to
+    exactly this number — not "at most", which is the whole point. A conflicting
+    `git merge`, a `git rebase` that stops partway and a push rejected as
+    non-fast-forward all exit 1, and in three Phase 11 scenarios that exit *is*
+    the lesson: the exercise starts when the command fails. Before this field the
+    suite required every reference line to succeed, so those exercises were
+    unauthorable (§16).
+
+    Counting rather than flagging keeps the original guarantee intact. A blanket
+    "this reference may fail" would also excuse a mistyped flag or a path that is
+    not there, which is the defect the strict check was written to catch; an exact
+    count still fails, and still names the line.
+    """
 
     def __post_init__(self) -> None:
         if not self.fixture.strip() or not self.reference.strip():
@@ -254,6 +270,10 @@ class GitScenarioSpec:
             raise InvalidValueError("max_commands must be at least 1")
         if self.command_timeout_seconds < 1:
             raise InvalidValueError("command_timeout_seconds must be at least 1")
+        if not 0 <= self.reference_failing_commands <= self.max_commands:
+            raise InvalidValueError(
+                "reference_failing_commands must be between 0 and max_commands"
+            )
 
     @property
     def kind(self) -> ExerciseKind:

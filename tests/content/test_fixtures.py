@@ -205,15 +205,31 @@ def test_its_reference_solution_replays_without_errors(
     all. The failure names the line, because "the reference solution is broken" is
     not a useful thing to read — and a list that dies on line one would otherwise
     reach the graded replay and fail every check at once.
+
+    **`reference_failing_commands` is why this counts instead of asserting.** Three
+    collaboration scenarios have an answer that begins when a command fails: a
+    conflicting `git merge`, a `git rebase` that stops partway, a push rejected as
+    non-fast-forward. All exit 1, and before that field existed those exercises
+    could not be authored at all. An exercise declares how many of its reference
+    lines are expected to fail and the count has to match **exactly** — so a
+    mistyped flag in a conflict scenario is still a failure here, naming its line,
+    which a blanket per-exercise exemption would have waved through.
     """
     text = (scenario_directory / spec.reference).read_text(encoding="utf-8")
+    failed = []
     for command in parse_command_list(text):
         result = provisioned.run(command.argv, timeout=spec.command_timeout_seconds)
+        if not result.succeeded:
+            failed.append(
+                f"{spec.reference}:{command.lineno}: {command.text}\n"
+                f"      exit {result.exit_code}\n{result.stderr}"
+            )
 
-        assert result.succeeded, (
-            f"{spec.reference}:{command.lineno}: {command.text}\n"
-            f"exit {result.exit_code}\n{result.stderr}"
-        )
+    assert len(failed) == spec.reference_failing_commands, (
+        f"{len(failed)} reference command(s) exited non-zero, and the exercise "
+        f"declares reference_failing_commands: "
+        f"{spec.reference_failing_commands}\n" + "\n".join(failed)
+    )
 
 
 def test_its_reference_solution_fits_the_command_budget(

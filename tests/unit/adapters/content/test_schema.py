@@ -176,6 +176,7 @@ def test_optional_fields_take_the_documented_defaults() -> None:
     assert exercise.spec.max_commands == 25
     assert exercise.spec.command_timeout_seconds == 10
     assert exercise.spec.counter_examples == ()
+    assert exercise.spec.reference_failing_commands == 0
 
 
 def test_check_params_survive_as_the_narrow_value_types() -> None:
@@ -458,6 +459,33 @@ def test_a_limit_of_zero_is_rejected(field: str, value: int) -> None:
     assert scenario_with(lambda p: p["scenario"].update({field: value})) == [
         (f"scenario.{field}", "Input should be greater than or equal to 1")
     ]
+
+
+def test_a_negative_count_of_failing_reference_commands_is_rejected() -> None:
+    assert scenario_with(
+        lambda p: p["scenario"].update({"reference_failing_commands": -1})
+    ) == [
+        (
+            "scenario.reference_failing_commands",
+            "Input should be greater than or equal to 0",
+        )
+    ]
+
+
+def test_more_failing_reference_commands_than_the_budget_is_rejected() -> None:
+    """The cross-field rule lives in `GitScenarioSpec`, so the failure arrives
+    from the domain with the whole `scenario` block as its location — which is
+    the module docstring's rule about not restating an invariant, observed at
+    the one place it is visible.
+    """
+    rejection = scenario_with(
+        lambda p: p["scenario"].update(
+            {"max_commands": 5, "reference_failing_commands": 6}
+        )
+    )
+
+    assert [location for location, _ in rejection] == ["scenario"]
+    assert "reference_failing_commands must be between" in rejection[0][1]
 
 
 def test_a_kata_time_limit_of_zero_is_rejected() -> None:
