@@ -67,6 +67,11 @@ _SELECT_DUE: Final = (
     "SELECT * FROM review_cards WHERE due_on <= :day ORDER BY due_on, exercise_id"
 )
 
+#: The whole table. No `WHERE`, so no index helps and none is wanted: the review
+#: queue has to join against the entire library anyway, and the progress page's
+#: mastery counts read every card by definition.
+_SELECT_ALL: Final = "SELECT * FROM review_cards ORDER BY exercise_id"
+
 
 class SqliteReviewRepository:
     """Scheduling state for every exercise that has ever been graded."""
@@ -99,6 +104,12 @@ class SqliteReviewRepository:
         """Every card due on or before `day`, longest-overdue first."""
         with self._database.connect() as connection:
             rows = connection.execute(_SELECT_DUE, {"day": day.isoformat()}).fetchall()
+        return tuple(to_card(_mapping(row)) for row in rows)
+
+    def cards(self) -> Sequence[ReviewCard]:
+        """Every card, in exercise-id order. See the port for why both exist."""
+        with self._database.connect() as connection:
+            rows = connection.execute(_SELECT_ALL).fetchall()
         return tuple(to_card(_mapping(row)) for row in rows)
 
     def __len__(self) -> int:

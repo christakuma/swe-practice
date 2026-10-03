@@ -17,16 +17,22 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from practice.adapters.persistence import InMemoryAttemptRepository
+from practice.adapters.persistence import (
+    InMemoryAttemptRepository,
+    InMemoryReviewRepository,
+)
 from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
+    GradeReview,
     InspectRepository,
     ListOpenAttempts,
+    OfferReview,
     OpenWorkbench,
     ResumeAttempt,
     RevealHint,
+    ReviewQueue,
     RunScenarioCommand,
     StartAttempt,
     SubmitScenario,
@@ -40,6 +46,7 @@ from tests.fakes import (
     FakeClock,
     FakeContentRepository,
     FakeProvisioner,
+    FixedScheduler,
     SequentialIdGenerator,
     a_kata,
     a_repo,
@@ -62,10 +69,12 @@ __all__ = [
     "RecordingGrader",
     "World",
     "a_collect_workspaces",
+    "a_grade_review",
     "a_list_open_attempts",
     "a_passing_verdict",
     "a_resume_attempt",
     "a_reveal_hint",
+    "a_review_queue",
     "a_run_scenario_command",
     "a_start_attempt",
     "a_submit_scenario",
@@ -73,6 +82,7 @@ __all__ = [
     "an_abandon_attempt",
     "an_environment",
     "an_inspect_repository",
+    "an_offer_review",
     "an_open_workbench",
 ]
 
@@ -181,10 +191,14 @@ class World:
 
     content: FakeContentRepository
     attempts: InMemoryAttemptRepository
+    reviews: InMemoryReviewRepository
     provisioner: FakeProvisioner
     graders: GraderRegistry
     clock: FakeClock
     ids: SequentialIdGenerator
+    #: Records the grade it was handed rather than running SM-2, so a test about
+    #: *which* grade reached the scheduler does not also depend on the intervals.
+    scheduler: FixedScheduler = field(default_factory=FixedScheduler)
     grader: Grader = field(default_factory=RecordingGrader)
     scenario_grader: Grader = field(default_factory=RecordingGrader)
     #: The repository `InspectRepository` reads. A builder, so a test arranges the
@@ -231,6 +245,7 @@ def an_environment(
             [a_kata(complexity=complexity), a_scenario()],
         ),
         attempts=InMemoryAttemptRepository(),
+        reviews=InMemoryReviewRepository(),
         provisioner=FakeProvisioner(),
         graders=GraderRegistry(
             graders={
@@ -356,3 +371,28 @@ def a_collect_workspaces(world: World) -> CollectWorkspaces:
     the attempt table and the workspace root, and the library has no part in it.
     """
     return CollectWorkspaces(attempts=world.attempts, provisioner=world.provisioner)
+
+
+def an_offer_review(world: World) -> OfferReview:
+    """No scheduler and no clock: reading what a grade would be moves nothing."""
+    return OfferReview(
+        content=world.content, attempts=world.attempts, reviews=world.reviews
+    )
+
+
+def a_grade_review(world: World) -> GradeReview:
+    """The only use case here that holds the `Scheduler`, and the only one that
+    writes a card.
+    """
+    return GradeReview(
+        content=world.content,
+        attempts=world.attempts,
+        reviews=world.reviews,
+        scheduler=world.scheduler,
+        clock=world.clock,
+    )
+
+
+def a_review_queue(world: World) -> ReviewQueue:
+    """No attempt store: what is due is a question about cards and the library."""
+    return ReviewQueue(content=world.content, reviews=world.reviews, clock=world.clock)

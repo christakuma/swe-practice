@@ -34,6 +34,7 @@ from tests.fakes import (
     FakeClock,
     FakeContentRepository,
     FakeProvisioner,
+    FixedScheduler,
     SequentialIdGenerator,
     a_kata,
     a_repo,
@@ -78,6 +79,10 @@ class Wiring:
         self.reviews = InMemoryReviewRepository()
         self.provisioner = FakeProvisioner()
         self.clock = FakeClock()
+        #: Records the grade it was handed rather than doing SM-2's
+        #: arithmetic, so a web test asserts on what the page sent and not on
+        #: an interval it would have to keep in step with the scheduler.
+        self.scheduler = FixedScheduler()
         self.ids = SequentialIdGenerator(start=0)
         self.grader = grader
         #: The repository the state panel and the commit graph are drawn from. A
@@ -109,6 +114,7 @@ class Wiring:
             clock=self.clock,
             ids=self.ids,
             repo_query=BuilderRepoQueryFactory(self.repo),
+            scheduler=self.scheduler,
         )
 
 

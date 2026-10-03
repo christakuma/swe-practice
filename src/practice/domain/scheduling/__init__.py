@@ -15,5 +15,6 @@ what a panel looks like.
 """
 
 from practice.domain.scheduling.sm2 import Sm2Scheduler
+from practice.domain.scheduling.suggestion import GradeSuggestion, suggest_grade
 
-__all__ = ["Sm2Scheduler"]
+__all__ = ["GradeSuggestion", "Sm2Scheduler", "suggest_grade"]

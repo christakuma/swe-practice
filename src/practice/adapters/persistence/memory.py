@@ -130,6 +130,15 @@ class InMemoryReviewRepository:
             if card.is_due(day)
         )
 
+    def cards(self) -> Sequence[ReviewCard]:
+        """Every card, in exercise-id order.
+
+        The order is explicit rather than the dict's, unlike `history_for` above:
+        there the port's contract is insertion order and the dict supplies it, and
+        here the contract is *by id*, which no insertion order gives.
+        """
+        return tuple(sorted(self._cards.values(), key=lambda card: card.exercise_id))
+
     def __len__(self) -> int:
         return len(self._cards)
 

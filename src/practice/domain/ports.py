@@ -194,6 +194,23 @@ class ReviewRepository(Protocol):
 
     def due_on(self, day: date) -> Sequence[ReviewCard]: ...
 
+    def cards(self) -> Sequence[ReviewCard]:
+        """Every card there is, in exercise-id order.
+
+        Added in Phase 9, and it is not a looser `due_on`. The two answer
+        different questions and the review queue needs both: `due_on` is the
+        indexed range scan that says *what is due*, longest-overdue first, and
+        that ordering is the queue's order; this says *what has ever been
+        scheduled*, which is the only way to find the exercises that have not
+        been — and an exercise with no card is the most common due item there is,
+        so a method returning the due subset can never report one.
+
+        Also what the progress page's mastery and lapse counts read. The whole
+        table is a row per exercise in a library of tens, so returning it whole
+        costs less than the join a narrower query would need.
+        """
+        ...
+
 
 # --- the sandbox ----------------------------------------------------------
 

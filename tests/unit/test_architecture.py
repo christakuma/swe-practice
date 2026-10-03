@@ -217,6 +217,7 @@ def test_the_walk_actually_found_the_domain() -> None:
         "practice.domain.review",
         "practice.domain.scheduling",
         "practice.domain.scheduling.sm2",
+        "practice.domain.scheduling.suggestion",
         "practice.domain.verdict",
     } <= found
 

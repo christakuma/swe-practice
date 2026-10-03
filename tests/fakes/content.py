@@ -42,17 +42,26 @@ def a_kata(
     exercise_id: str = "katas/two-sum",
     complexity: ComplexityExpectation | None = None,
     time_limit_seconds: int = 10,
+    estimated_minutes: int = 15,
+    hints: tuple[str, ...] = ("Trade space for time.",),
+    tags: tuple[str, ...] = ("arrays", "hash-map"),
 ) -> Exercise:
-    """A kata whose files are named the way the real ones are."""
+    """A kata whose files are named the way the real ones are.
+
+    The three Phase 9 overrides -- the estimate, the hint list and the tags --
+    exist because the grade suggestion reads the first two and tag mastery reads
+    the third, and a fake with one hint and a fixed estimate can only express one
+    of the cases those rules distinguish.
+    """
     return Exercise(
         id=ExerciseId(exercise_id),
         kind=ExerciseKind.KATA,
         title="Two Sum",
         prompt="Return the two positions whose values add up to the target.",
         difficulty=Difficulty.EASY,
-        tags=(tag("arrays"), tag("hash-map")),
-        estimated_minutes=15,
-        hints=(Hint("Trade space for time."),),
+        tags=tuple(tag(name) for name in tags),
+        estimated_minutes=estimated_minutes,
+        hints=tuple(Hint(text) for text in hints),
         notes="Why a dict beats two loops.",
         spec=KataSpec(
             language="python",

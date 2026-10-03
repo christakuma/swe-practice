@@ -60,11 +60,14 @@ from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
+    GradeReview,
     InspectRepository,
     ListOpenAttempts,
+    OfferReview,
     OpenWorkbench,
     ResumeAttempt,
     RevealHint,
+    ReviewQueue,
     RunScenarioCommand,
     StartAttempt,
     SubmitScenario,
@@ -72,6 +75,7 @@ from practice.application.use_cases import (
 )
 from practice.config import content_root, database_path, workspace_root
 from practice.domain.exercise import ExerciseKind
+from practice.domain.scheduling import Sm2Scheduler
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -85,6 +89,7 @@ if TYPE_CHECKING:
         RepoQueryFactory,
         ReviewRepository,
         SandboxProvisioner,
+        Scheduler,
     )
 
 __all__ = ["Services", "build_services"]
@@ -108,6 +113,7 @@ class Services:
     clock: Clock
     ids: IdGenerator
     repo_query: RepoQueryFactory
+    scheduler: Scheduler
 
     @property
     def start_attempt(self) -> StartAttempt:
@@ -222,6 +228,40 @@ class Services:
             clock=self.clock,
         )
 
+    # --- scheduling -------------------------------------------------------
+
+    @property
+    def offer_review(self) -> OfferReview:
+        """No scheduler and no clock: reading what a grade *would* be moves
+        nothing, and the suggestion is computed from the attempt's own frozen
+        elapsed time rather than from the current moment.
+        """
+        return OfferReview(
+            content=self.content, attempts=self.attempts, reviews=self.reviews
+        )
+
+    @property
+    def grade_review(self) -> GradeReview:
+        """The only use case holding the `Scheduler`, and the only one that writes
+        a card. Both halves of that sentence are the point: the port has exactly
+        one caller, which is what keeps swapping SM-2 for FSRS a change here.
+        """
+        return GradeReview(
+            content=self.content,
+            attempts=self.attempts,
+            reviews=self.reviews,
+            scheduler=self.scheduler,
+            clock=self.clock,
+        )
+
+    @property
+    def review_queue(self) -> ReviewQueue:
+        """No attempt store: what is due is a question about cards and the
+        library, and an attempt is neither. The join that *does* need attempts is
+        the progress summary.
+        """
+        return ReviewQueue(content=self.content, reviews=self.reviews, clock=self.clock)
+
     @property
     def collect_workspaces(self) -> CollectWorkspaces:
         """No content repository: whether a directory is garbage is a question
@@ -273,6 +313,7 @@ def build_services(
         clock=clock if clock is not None else SystemClock(),
         ids=Uuid4IdGenerator(),
         repo_query=GitRepoQuery,
+        scheduler=Sm2Scheduler(),
     )
 
 

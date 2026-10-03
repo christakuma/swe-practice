@@ -233,6 +233,23 @@ class TestInMemoryReviewRepository:
     def test_nothing_is_due_in_an_empty_store(self) -> None:
         assert InMemoryReviewRepository().due_on(TODAY) == ()
 
+    def test_cards_returns_everything_in_exercise_id_order(self) -> None:
+        """The question `due_on` cannot answer, and the reason both exist: the
+        review queue has to recognise the exercises that have *no* card, which a
+        method returning the due subset can never report.
+
+        The order is asserted rather than assumed because it is explicit here and
+        not the dict's -- unlike `history_for`, whose contract is insertion order.
+        """
+        reviews = InMemoryReviewRepository()
+        reviews.save_card(ReviewCard(exercise_id=OTHER, due_on=date(2026, 12, 1)))
+        reviews.save_card(ReviewCard(exercise_id=KATA.id, due_on=date(2026, 9, 28)))
+
+        assert [card.exercise_id for card in reviews.cards()] == [KATA.id, OTHER]
+
+    def test_an_empty_store_has_no_cards(self) -> None:
+        assert InMemoryReviewRepository().cards() == ()
+
     def test_it_describes_itself_by_how_much_it_holds(self) -> None:
         reviews = InMemoryReviewRepository()
         reviews.save_card(ReviewCard.new(KATA.id, TODAY))

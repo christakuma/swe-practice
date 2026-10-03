@@ -5,7 +5,7 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Eleven of them, in three groups.
+Fourteen of them, in four groups.
 
 **Four about solving**, two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
@@ -44,16 +44,30 @@ the log beside the commands they ran, because Phase 9's grade suggestion reads i
 "passed, but with three of four hints" is a different outcome from "passed". That is
 why it is a use case and not a property on the workbench DTO.
 
-`GradeReview` joins these in Phase 9.
+**Three about scheduling**, Phase 9's own group and the one that turns a pile of
+verdicts into a training system. `OfferReview` reads what the tool would grade a
+finished attempt; `GradeReview` moves the card, taking the suggestion when no grade
+is given; `ReviewQueue` answers *what should I practise today* by joining the card
+store against the whole library, because an exercise with no card is the most
+common due item there is.
+
+`OfferReview` and `GradeReview` share `load_offer` rather than one calling the
+other. They have to agree about whether an attempt has already been reviewed --
+the panel hides the buttons on exactly the attempts the post refuses -- and a use
+case holding a use case would have given the same answer while putting a second
+decision in the composition root about which of them owns the repositories.
 """
 
 from practice.application.use_cases.abandon_attempt import AbandonAttempt
 from practice.application.use_cases.collect_workspaces import CollectWorkspaces
+from practice.application.use_cases.grade_review import GradeReview
 from practice.application.use_cases.inspect_repository import InspectRepository
 from practice.application.use_cases.list_open_attempts import ListOpenAttempts
+from practice.application.use_cases.offer_review import OfferReview
 from practice.application.use_cases.open_workbench import OpenWorkbench
 from practice.application.use_cases.resume_attempt import ResumeAttempt
 from practice.application.use_cases.reveal_hint import RevealHint
+from practice.application.use_cases.review_queue import ReviewQueue
 from practice.application.use_cases.run_scenario_command import RunScenarioCommand
 from practice.application.use_cases.start_attempt import StartAttempt
 from practice.application.use_cases.submit_scenario import SubmitScenario
@@ -62,11 +76,14 @@ from practice.application.use_cases.submit_solution import SubmitSolution
 __all__ = [
     "AbandonAttempt",
     "CollectWorkspaces",
+    "GradeReview",
     "InspectRepository",
     "ListOpenAttempts",
+    "OfferReview",
     "OpenWorkbench",
     "ResumeAttempt",
     "RevealHint",
+    "ReviewQueue",
     "RunScenarioCommand",
     "StartAttempt",
     "SubmitScenario",

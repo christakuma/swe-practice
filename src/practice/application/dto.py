@@ -19,21 +19,27 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+    from datetime import date
 
     from practice.application.graph import CommitGraph
     from practice.domain.attempt import Attempt, CommandRun
     from practice.domain.exercise import Exercise, Hint
     from practice.domain.ids import Sha
     from practice.domain.ports import Workspace, WorkspaceSummary, WorktreeStatus
+    from practice.domain.review import Grade, ReviewCard
+    from practice.domain.scheduling import GradeSuggestion
     from practice.domain.verdict import Outcome, Verdict
 
 __all__ = [
     "Abandoned",
     "Collection",
+    "DueExercise",
     "OpenAttempt",
     "RanCommand",
     "RepoView",
     "RevealedHint",
+    "ReviewOffer",
+    "Reviewed",
     "StartedAttempt",
     "Submission",
     "Workbench",
@@ -310,6 +316,108 @@ def short_ref(name: str) -> str:
         if name.startswith(prefix):
             return name.removeprefix(prefix)
     return name
+
+
+# --- scheduling ------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewOffer:
+    """A graded attempt, the card behind it, and what the tool would grade it.
+
+    The read half of the review pair. `card` is `None` for an exercise that has
+    never been scheduled, which is the normal first time and not a gap: the
+    repository refuses to manufacture one, because a card invented on the spot
+    would make "has this ever been reviewed?" unanswerable (`memory.py`).
+
+    **`already_reviewed` lives here rather than in the use case that enforces
+    it**, so the panel that hides the buttons and the use case that refuses the
+    post cannot disagree about which attempts are still open to review.
+    """
+
+    attempt: Attempt
+    exercise: Exercise
+    card: ReviewCard | None
+    suggestion: GradeSuggestion
+
+    @property
+    def suggested(self) -> Grade:
+        return self.suggestion.grade
+
+    @property
+    def already_reviewed(self) -> bool:
+        """Whether *this* attempt has already moved the card.
+
+        Compared on timestamps rather than counted, because the card keeps no
+        history (`sqlite/reviews.py`) and so cannot be asked which attempt last
+        moved it. A card reviewed at or after the attempt finished was moved by
+        this attempt -- nothing else could have happened in between -- and
+        reviewing it again would advance the interval twice for one piece of
+        evidence.
+        """
+        finished_at = self.attempt.finished_at
+        if self.card is None or self.card.last_reviewed_at is None:
+            return False
+        # An unfinished attempt cannot have been reviewed, and the use cases
+        # refuse one before they ever build this -- but the DTO is constructible
+        # and answering `True` for an attempt with no end would be a refusal
+        # nobody could clear.
+        return finished_at is not None and self.card.last_reviewed_at >= finished_at
+
+
+@dataclass(frozen=True, slots=True)
+class Reviewed:
+    """A card that has just been moved, and what moved it.
+
+    `suggestion` comes along with the grade that was actually used so a surface
+    can say whether the solver took the tool's reading or overrode it -- which is
+    the only feedback the suggestion rule will ever get.
+    """
+
+    attempt: Attempt
+    exercise: Exercise
+    card: ReviewCard
+    grade: Grade
+    suggestion: GradeSuggestion
+
+    @property
+    def followed_the_suggestion(self) -> bool:
+        return self.grade is self.suggestion.grade
+
+    @property
+    def interval_days(self) -> int:
+        """How long until this comes back. The number a solver actually reads."""
+        return self.card.interval_days
+
+
+@dataclass(frozen=True, slots=True)
+class DueExercise:
+    """One row of the review queue: an exercise, and why it is being offered.
+
+    `card` is `None` for an exercise that has never been scheduled, and those are
+    offered too. A queue that only listed cards would be empty on a fresh install
+    with the whole library unpractised -- which is the one state where "what
+    should I practice today?" most needs an answer.
+
+    `today` is carried rather than reached for so that `days_overdue` is a
+    property of the row and not of the moment it is rendered: a page built at
+    23:59 and read at 00:01 says the same thing it said when it was built.
+    """
+
+    exercise: Exercise
+    card: ReviewCard | None
+    today: date
+
+    @property
+    def is_new(self) -> bool:
+        return self.card is None
+
+    @property
+    def days_overdue(self) -> int:
+        """Zero for a new exercise and for one due exactly today."""
+        if self.card is None:
+            return 0
+        return max(0, (self.today - self.card.due_on).days)
 
 
 @dataclass(frozen=True, slots=True)

@@ -6,9 +6,10 @@ boundary, and the thing a frozen dataclass makes easy to get wrong in the other
 direction — that a float survives the trip and comes back as a number the
 `ease >= 1.3` floor can be checked against.
 
-The scheduler that moves a card arrives in Phase 9. This is the table it will move
-cards in, and the second implementation that stops `ReviewRepository` being a port
-with nothing behind it (PLAN.md §13).
+Phase 9 added `cards()` beside `due_on`, and the two are tested together because
+the only thing worth proving about them is that they *differ*: the due query cannot
+report an exercise that has no card, and that exercise is the most common thing the
+review queue has to offer.
 """
 
 from __future__ import annotations
@@ -197,3 +198,22 @@ def test_the_repository_describes_which_database_it_is_over(
     database: Database,
 ) -> None:
     assert str(database.path) in repr(SqliteReviewRepository(database))
+
+
+def test_cards_returns_every_row_including_ones_not_yet_due(
+    reviews: SqliteReviewRepository,
+) -> None:
+    """What `due_on` cannot answer. The review queue needs the set of exercises
+    that have *ever* been scheduled, so it can recognise the ones that have not.
+    """
+    reviews.save_card(a_card(REVERT, due_on=date(2026, 9, 28)))
+    reviews.save_card(a_card(TWO_SUM, due_on=date(2026, 12, 25)))
+
+    assert [card.exercise_id for card in reviews.due_on(TODAY)] == [REVERT]
+    assert [card.exercise_id for card in reviews.cards()] == [REVERT, TWO_SUM]
+
+
+def test_cards_is_empty_before_anything_is_scheduled(
+    reviews: SqliteReviewRepository,
+) -> None:
+    assert reviews.cards() == ()

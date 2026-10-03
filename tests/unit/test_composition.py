@@ -34,6 +34,7 @@ from practice.config import content_root, database_path
 from practice.domain.exercise import ExerciseKind
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.review import ReviewCard
+from practice.domain.scheduling import Sm2Scheduler
 from tests.fakes import FakeClock
 
 if TYPE_CHECKING:
@@ -157,6 +158,30 @@ def test_the_grader_and_the_panel_share_one_repo_query_factory() -> None:
     # `Grader` port, and this test is about what the wiring point built.
     assert grader._query_for is services.repo_query
     assert services.inspect_repository.repo_query is services.repo_query
+
+
+def test_the_scheduler_is_sm2_and_only_one_use_case_holds_it() -> None:
+    """Both halves matter. SM-2 is the v1 choice, named once; and `GradeReview`
+    being its only caller is what keeps swapping it for FSRS a change to this
+    file -- a port with callers scattered across the use cases would be a port in
+    name only.
+    """
+    services = build_services()
+
+    assert isinstance(services.scheduler, Sm2Scheduler)
+    assert services.grade_review.scheduler is services.scheduler
+
+
+def test_the_review_use_cases_read_the_card_store_the_root_built() -> None:
+    """All three, because the one that writes and the one that offers have to
+    agree about what is already scheduled -- which they can only do by reading
+    the same repository.
+    """
+    services = build_services()
+
+    assert services.offer_review.reviews is services.reviews
+    assert services.grade_review.reviews is services.reviews
+    assert services.review_queue.reviews is services.reviews
 
 
 def test_the_content_root_override_reaches_both_adapters() -> None:
