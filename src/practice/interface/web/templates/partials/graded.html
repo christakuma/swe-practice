@@ -1,0 +1,18 @@
+{#
+  A finished attempt: the verdict, and the schedule control under it.
+
+  **One file both submit routes return and the page includes**, which is the same
+  property `partials/verdict.html` already had and the reason this wraps rather
+  than replaces it: a reload of a graded attempt has to show what the submission
+  showed, and two templates written to match are two templates that will stop
+  matching. The kata route and the scenario route both target `#verdict` with
+  `innerHTML`, so this lands whole in either.
+
+  The split between the two files is by subject rather than by layout. The
+  verdict is about the attempt that just ended; the schedule is about the next
+  one. `partials/verdict.html` is still included on its own wherever only the
+  first is wanted — which is nowhere today, and is the point: it does not know
+  about scheduling, so nothing has to be unpicked when it is.
+#}
+{% include "partials/verdict.html" %}
+{% include "partials/review.html" %}

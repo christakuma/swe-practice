@@ -792,3 +792,53 @@ button[disabled] {
 .CodeMirror-selected {
   background: var(--line);
 }
+
+/* --- the schedule control ----------------------------------------------- */
+
+/*
+ * The block under the verdict. A panel of its own rather than a continuation of
+ * the verdict, because it is about the *next* attempt rather than the one that
+ * just ended, and a reader who has stopped at the outcome should see something
+ * start rather than something continue.
+ */
+.review {
+  margin-top: 1rem;
+}
+
+.review h2 {
+  margin-top: 0;
+}
+
+.review .suggestion,
+.review .scheduled {
+  margin: 0 0 0.6rem;
+}
+
+/*
+ * Four buttons of equal weight, because every one of them is a decision -- there
+ * is no submit to press afterwards. The suggested one is marked rather than
+ * styled as primary for the same reason: a recommendation, not a default.
+ */
+.grades {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.grade {
+  flex: 1 1 5rem;
+  text-transform: capitalize;
+}
+
+.grade.suggested {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Disabled while the post is in flight, by `hx-disabled-elt` on the group: the
+   schedule moves once per attempt and a second click is refused, so the reward
+   for impatience would otherwise be an error message. */
+.grades button[disabled] {
+  opacity: 0.5;
+}

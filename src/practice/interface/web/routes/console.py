@@ -53,6 +53,7 @@ from starlette.responses import HTMLResponse, Response
 from practice.application.errors import ApplicationError
 from practice.domain.errors import DomainError
 from practice.domain.ids import AttemptId
+from practice.interface.web.routes.review import REVIEW_URL
 
 if TYPE_CHECKING:
     from fastapi.templating import Jinja2Templates
@@ -112,9 +113,10 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         """Grade the repository as the solver left it and return the verdict.
 
         No form body, by the module docstring's argument. The fragment is the same
-        `partials/verdict.html` the kata route returns and the page includes for a
+        `partials/graded.html` the kata route returns and the page includes for a
         finished attempt, which is what makes a reload show what the submission
-        showed.
+        showed -- the schedule control included, since scheduling belongs to the
+        attempt and not to the exercise kind.
         """
         try:
             parsed = AttemptId.parse(attempt_id)
@@ -131,8 +133,12 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
 
         return templates.TemplateResponse(
             request=request,
-            name="partials/verdict.html",
-            context={"verdict": submission.verdict},
+            name="partials/graded.html",
+            context={
+                "verdict": submission.verdict,
+                "review": services.offer_review(parsed),
+                "review_url": REVIEW_URL.format(attempt_id=parsed),
+            },
         )
 
     return router

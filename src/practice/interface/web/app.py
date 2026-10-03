@@ -20,6 +20,11 @@ load-bearing rather than hygiene: a verdict's `actual` field carries captured
 `stderr` from a command the solver wrote, so untrusted text reaches a template on
 the normal path and not the exotic one.
 
+**`grades` is a Jinja global, built from the enum.** The schedule block draws one
+button per `Grade`, and four strings written into the template would be four
+strings to miss if a fifth bucket is ever added -- the enum is the list, so the
+template reads it rather than restating it.
+
 **Two filters, registered rather than reimplemented.** `short_ref` turns
 `refs/heads/main` into `main` for the repo state panel, and it is the application
 layer's function rather than a copy in Jinja: the prefix list it strips is the same
@@ -38,8 +43,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from practice.application.dto import short_ref
+from practice.domain.review import Grade
 from practice.interface.web.commit_graph import render_graph
-from practice.interface.web.routes import attempt, browse, console, dashboard
+from practice.interface.web.routes import attempt, browse, console, dashboard, review
 from practice.interface.web.security import SameOriginMiddleware
 from practice.interface.web.vendor import static_root
 
@@ -85,6 +91,7 @@ def create_app(services: Services) -> FastAPI:
 
     templates = Jinja2Templates(directory=templates_root())
     templates.env.globals["static"] = STATIC_URL
+    templates.env.globals["grades"] = tuple(Grade)
     templates.env.filters["short_ref"] = short_ref
     templates.env.filters["commit_graph"] = render_graph
     app.include_router(dashboard.build_router(services, templates))
@@ -95,4 +102,6 @@ def create_app(services: Services) -> FastAPI:
     # list top to bottom should follow a visitor: dashboard, browse, workbench,
     # and then the console inside it.
     app.include_router(console.build_router(services, templates))
+    # Last, and after both: it is the endpoint under the fragment they return.
+    app.include_router(review.build_router(services, templates))
     return app

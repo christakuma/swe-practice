@@ -12,6 +12,14 @@ This module keeps the kata submission because that is the one that carries a bod
 -- the editor's source and a complexity claim. A scenario sends nothing, which is
 the argument `routes/console.py` makes for its own submit route.
 
+**The schedule control is drawn here and driven from `routes/review.py`**, which
+is the same division the console has: this module owns the page and the other
+owns the endpoints under it. It is a separate module rather than a third route
+here because both submit routes render the block -- a kata's and a scenario's --
+and a constant living in either one of them would have to be imported by the
+other, which is the import cycle `attempt` and `console` already avoid by
+pointing one way.
+
 **Hint reveal is here rather than in either half**, because hints belong to the
 attempt and not to the exercise kind: a kata has them and a git scenario has them,
 and the panel they appear in is in the shared prompt column. It is the one endpoint
@@ -58,6 +66,7 @@ from practice.domain.exercise import KataSpec
 from practice.domain.ids import AttemptId
 from practice.interface.web.errors import render_problem
 from practice.interface.web.routes.console import COMMAND_URL, SCENARIO_SUBMIT_URL
+from practice.interface.web.routes.review import REVIEW_URL
 
 if TYPE_CHECKING:
     from fastapi.templating import Jinja2Templates
@@ -119,6 +128,12 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # question that does not apply.
                 "repo": None if is_kata else services.inspect_repository(parsed),
                 "hint_url": HINT_URL.format(attempt_id=parsed),
+                "review_url": REVIEW_URL.format(attempt_id=parsed),
+                # Only for a finished attempt, because `OfferReview` refuses one
+                # with no verdict -- there is nothing to read a grade off. The
+                # template asks the same question to decide which half of the
+                # page to draw, so the two cannot disagree.
+                "review": (None if opened.is_active else services.offer_review(parsed)),
             },
         )
 
@@ -164,8 +179,16 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
 
         return templates.TemplateResponse(
             request=request,
-            name="partials/verdict.html",
-            context={"verdict": submission.verdict},
+            name="partials/graded.html",
+            context={
+                "verdict": submission.verdict,
+                # Read back through the use case rather than assembled from the
+                # submission: the schedule block has to know whether a card
+                # already exists for this exercise, and a submission has never
+                # heard of one.
+                "review": services.offer_review(parsed),
+                "review_url": REVIEW_URL.format(attempt_id=parsed),
+            },
         )
 
     @router.post(HINT_URL, response_class=HTMLResponse)

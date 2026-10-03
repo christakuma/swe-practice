@@ -1,0 +1,99 @@
+{#
+  Schedule the next sighting of this exercise. The control that fills the queue.
+
+  **Nothing is scheduled until this is pressed**, and that is a decision rather
+  than an omission. Applying the suggestion automatically at submission would
+  make the queue self-filling and would make an override impossible to honour: a
+  card is replaced rather than versioned (`sqlite/reviews.py`), so a correction
+  would have to be applied on top of a schedule already moved, compounding one
+  piece of evidence twice. Pressing it once is the only shape in which the
+  suggestion can be a suggestion.
+
+  Forgetting to press it is not a hole. An exercise with no card is offered by
+  `ReviewQueue` as new, which is where it was before — so the cost of skipping
+  this is that the tool keeps no memory of the attempt, not that the exercise
+  disappears.
+
+  **Four buttons from the enum, not four strings written here.** `grades` is a
+  Jinja global built from `Grade` in `app.py`, so a fifth bucket would appear
+  rather than be missed. The suggested one is marked rather than preselected:
+  there is no "submit" to press afterwards, so every button is a decision and the
+  mark is a recommendation rather than a default someone can fail to notice.
+
+  One `id`, one section, every state. The response to a press replaces this whole
+  element, which is why the refusal renders inside it too — a reader looking at
+  the schedule block should not have the block vanish to tell them something
+  about it.
+#}
+<section class="panel review" id="review">
+  <h2>Schedule</h2>
+
+  {% if detail %}
+    <p class="problem">{{ detail }}</p>
+
+  {% elif reviewed %}
+    <p class="scheduled">
+      Scheduled as <strong>{{ reviewed.grade.value }}</strong>{% if not reviewed.followed_the_suggestion %}, overriding the suggested
+      <em>{{ reviewed.suggestion.grade.value }}</em>{% endif %}.
+      Next due <strong>{{ reviewed.card.due_on.isoformat() }}</strong>,
+      in {{ reviewed.interval_days }} day{{ '' if reviewed.interval_days == 1 else 's' }}.
+    </p>
+    <p class="meta">
+      Ease {{ '%.2f' | format(reviewed.card.ease) }} ·
+      {{ reviewed.card.reps }} review{{ '' if reviewed.card.reps == 1 else 's' }} ·
+      {{ reviewed.card.lapses }} lapse{{ '' if reviewed.card.lapses == 1 else 's' }}
+    </p>
+    <p><a href="/">Back to the queue</a></p>
+
+  {% elif review.already_reviewed %}
+    {#
+      The double-click case, answered before it is pressed. The use case refuses
+      the second post as well -- `ReviewOffer.already_reviewed` is the same
+      property both read, so what is shown and what is accepted cannot disagree.
+    #}
+    <p class="scheduled">
+      Already scheduled. Next due
+      <strong>{{ review.card.due_on.isoformat() }}</strong>.
+    </p>
+    <p><a href="/">Back to the queue</a></p>
+
+  {% else %}
+    <p class="suggestion">
+      Suggested: <strong>{{ review.suggested.value }}</strong>
+      {#
+        The reading, not a verdict restated. A suggestion whose reason is not
+        visible is one a solver either accepts blindly or ignores entirely, and
+        both make the data worse than asking them cold.
+      #}
+      {%- set s = review.suggestion -%}
+      {%- if not s.passed %} — the attempt did not pass
+      {%- elif s.is_clean %} — passed clean, inside the estimate, no hints
+      {%- else %} — passed, but
+        {%- set reasons = [] -%}
+        {%- if s.advisories %}{% set _ = reasons.append('%d advisory on how you got there' % s.advisories) %}{% endif -%}
+        {%- if s.hints_used %}{% set _ = reasons.append('%d hint%s revealed' % (s.hints_used, '' if s.hints_used == 1 else 's')) %}{% endif -%}
+        {%- if s.overran %}{% set _ = reasons.append('over the ' ~ review.exercise.estimated_minutes ~ ' minute estimate') %}{% endif -%}
+        {{ ' ' }}{{ reasons | join(', ') }}
+      {%- endif %}.
+    </p>
+
+    <div class="grades">
+      {% for grade in grades %}
+        <button type="button"
+                class="grade{{ ' suggested' if grade == review.suggested }}"
+                hx-post="{{ review_url }}"
+                hx-vals='{"grade": "{{ grade.value }}"}'
+                hx-target="#review"
+                hx-swap="outerHTML"
+                hx-disabled-elt="closest .grades">
+          {{ grade.value }}{% if grade == review.suggested %} ★{% endif %}
+        </button>
+      {% endfor %}
+    </div>
+
+    <p class="meta">
+      How well did you know this? The suggestion is read off the verdict, the
+      hints you revealed and the time taken — override it if it is wrong.
+    </p>
+  {% endif %}
+</section>
