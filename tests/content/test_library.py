@@ -46,6 +46,7 @@ from practice.config import content_root
 from practice.domain.checks import registry
 from practice.domain.commands import parse_command_list
 from practice.domain.exercise import GitScenarioSpec, KataSpec
+from practice.interface.web.routes.dashboard import QUEUE_LIMIT
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -353,6 +354,25 @@ def test_the_repository_loads_the_whole_library() -> None:
     assert {str(exercise.id) for exercise in repository.list_exercises()} == {
         _identify(directory) for directory in EXERCISE_DIRECTORIES
     }
+
+
+def test_the_first_screen_of_the_curriculum_offers_both_kinds() -> None:
+    """The dashboard offers the top `QUEUE_LIMIT` rows, so the curriculum's first
+    few entries *are* the product's front page on a fresh install.
+
+    A content rule rather than a web one, and it exists because the first draft
+    of the manifest broke it: a leading track of six git exercises filled all six
+    rows and pushed every kata off the first screen. Interleaving at track
+    granularity does not interleave the first thing anybody sees.
+    `tests/e2e/test_schedule_a_review.py` is what noticed — it asks for Two Sum
+    on the dashboard — and it took the whole suite to find, so the claim is
+    asserted here where `-m content` can check it in milliseconds.
+    """
+    curriculum = load_curriculum(CONTENT_ROOT)
+    first_screen = curriculum.exercise_ids[:QUEUE_LIMIT]
+    tracks = {exercise_id.value.split("/")[0] for exercise_id in first_screen}
+
+    assert tracks == {"git", "katas"}, sorted(str(one) for one in first_screen)
 
 
 def test_the_curriculum_orders_the_whole_library() -> None:

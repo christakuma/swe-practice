@@ -21,11 +21,22 @@
 # rather than quietly appearing at the end.
 
 tracks:
+  # Deliberately mixed, and deliberately four long. The dashboard offers the top
+  # six rows of the queue, so a first track of six git exercises would put a
+  # kata off the first screen entirely -- interleaving at track granularity does
+  # not interleave the first thing anybody sees. Found by an e2e test that asked
+  # for Two Sum on the dashboard and could not find it.
+  - name: start-here
+    title: "Start here: one of each, nothing clever"
+    exercises:
+      - git/publish-a-branch-for-review
+      - katas/two-sum
+      - git/amend-the-last-commit
+      - katas/valid-parentheses
+
   - name: git-foundations
     title: "Git: the operations you undo things with"
     exercises:
-      - git/publish-a-branch-for-review
-      - git/amend-the-last-commit
       - git/move-commits-off-main
       - git/squash-fixups-before-pushing
       - git/drop-a-secret-from-a-commit
@@ -34,8 +45,6 @@ tracks:
   - name: arrays-strings-hashing
     title: "Katas: arrays, strings and hashing"
     exercises:
-      - katas/two-sum
-      - katas/valid-parentheses
       - katas/move-zeroes
       - katas/longest-common-prefix
       - katas/group-anagrams
