@@ -66,20 +66,15 @@
     The streak is said in words rather than drawn, because one number drawn is a
     chart with one bar. The window chart lives on `/progress`, where there is
     room for it to be read rather than glanced at.
+
+    Each sentence is written on one line, the way `partials/verdict.html` writes
+    its summary: a Jinja block that wraps the source wraps the output too, and an
+    assertion about the sentence then has to know where the template's newlines
+    fell. Found by writing the e2e, which reads this page the way a person does.
   #}
   <p class="lede">
-    {% if progress.streak_days %}
-      <strong>{{ progress.streak_days }} day{{ '' if progress.streak_days == 1 else 's' }}</strong> running.
-    {% else %}
-      No streak yet — one attempt today starts one.
-    {% endif %}
-    {% if progress.total %}
-      {{ progress.passed }} of {{ progress.total }} attempt{{ '' if progress.total == 1 else 's' }} passed,
-      {{ progress.scheduled }} exercise{{ '' if progress.scheduled == 1 else 's' }} scheduled.
-      <a href="/progress">See the detail</a>.
-    {% else %}
-      Nothing graded yet, so there is nothing to report.
-    {% endif %}
+    {% if progress.streak_days %}<span><strong>{{ progress.streak_days }} day{{ '' if progress.streak_days == 1 else 's' }}</strong> running.</span>{% else %}<span>No streak yet — one attempt today starts one.</span>{% endif %}
+    {% if progress.total %}<span>{{ progress.passed }} of {{ progress.total }} attempt{{ '' if progress.total == 1 else 's' }} passed, {{ progress.scheduled }} exercise{{ '' if progress.scheduled == 1 else 's' }} scheduled.</span> <a href="/progress">See the detail</a>.{% else %}<span>Nothing graded yet, so there is nothing to report.</span>{% endif %}
   </p>
 
   {% if progress.weakest %}
