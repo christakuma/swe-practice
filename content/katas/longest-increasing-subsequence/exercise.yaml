@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/longest-increasing-subsequence
+kind: kata
+title: Longest Increasing Subsequence
+difficulty: medium
+tags: [dynamic-programming, binary-search, arrays]
+estimated_minutes: 30
+
+prompt: |
+  Return the length of the longest **strictly increasing** subsequence. A
+  subsequence keeps the original order but does not have to be contiguous.
+
+  ```
+  longest_increasing([10, 9, 2, 5, 3, 7, 101, 18])   ->  4     (2, 3, 7, 101)
+  longest_increasing([1, 2, 3, 4, 5])                ->  5
+  longest_increasing([5, 4, 3, 2, 1])                ->  1
+  longest_increasing([7, 7, 7, 7])                   ->  1
+  ```
+
+  Strictly increasing: a repeated value does not extend a run.
+
+  The list may have a few thousand elements. The straightforward O(n²)
+  solution is a fine first answer; the suite is sized so that it is worth
+  knowing the faster one.
+
+hints:
+  - "Start with the quadratic version: for each position, the longest run ending
+     there is one more than the best run ending at any earlier, smaller value."
+  - "For the faster version, flip what you store. Instead of \"the longest run
+     ending at position i\", keep \"the smallest value that can end a run of
+     length k\", for each k."
+  - "That list is always sorted, so each new value can be placed with a binary
+     search: it either extends the longest run, or it replaces the first entry
+     it is not larger than."
+  - "Replacing never loses anything: a run of the same length ending in a
+     smaller value is at least as extendable. Use `bisect_left` — `bisect_right`
+     gives you the non-decreasing answer instead."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n)"

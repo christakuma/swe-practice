@@ -1,0 +1,43 @@
+schema_version: 1
+id: katas/knapsack
+kind: kata
+title: Fit the Most Value in the Bag
+difficulty: hard
+tags: [dynamic-programming, greedy, tables]
+estimated_minutes: 35
+
+prompt: |
+  Given `(weight, value)` items and a weight capacity, return the most value
+  you can carry. Each item may be taken **at most once** and cannot be split.
+
+  ```
+  best_value([(1, 1), (3, 4), (4, 5), (5, 7)], 7)      ->  9
+  best_value([(10, 60), (20, 100), (30, 120)], 50)     ->  220
+  best_value([(2, 3)], 1)                              ->  0
+  best_value([], 5)                                    ->  0
+  ```
+
+  Two hundred items and a capacity in the thousands, so enumerating subsets is
+  out.
+
+hints:
+  - "Try the greedy approaches first and find out how they fail: most valuable
+     first, lightest first, best value-per-weight first. The third is the
+     convincing one and it still loses."
+  - "Build a table over capacities. If you know, for every capacity, the best
+     value using the first k items, what does adding item k+1 change?"
+  - "For each capacity the item fits in, you choose: take it — value plus the
+     best for the remaining capacity — or leave it. That is the recurrence."
+  - "With a single array of capacities, iterate the capacities **downwards** for
+     each item. Upwards lets the same item be taken twice, which quietly solves a
+     different problem."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(items * capacity)"
+    expected_space: "O(capacity)"

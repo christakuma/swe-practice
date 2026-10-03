@@ -1,0 +1,45 @@
+schema_version: 1
+id: katas/climbing-stairs
+kind: kata
+title: Ways to Climb the Stairs
+difficulty: easy
+tags: [dynamic-programming, recurrence, counting]
+estimated_minutes: 15
+
+prompt: |
+  Count the distinct ways to climb a staircase, taking one or two steps at a
+  time.
+
+  ```
+  ways_to_climb(1)  ->  1       1
+  ways_to_climb(2)  ->  2       1+1, 2
+  ways_to_climb(3)  ->  3       1+1+1, 1+2, 2+1
+  ways_to_climb(0)  ->  1       take no steps
+  ```
+
+  Order matters: `1+2` and `2+1` are different ways.
+
+  The staircase may have hundreds of steps, so the answer can be a very large
+  number — and the obvious recursion is far too slow.
+
+hints:
+  - "Ask what the *last* step was. There are only two possibilities, and each
+     one leaves a smaller version of the same problem behind."
+  - "If the last step was a single, you came from `n-1`. If it was a double, from
+     `n-2`. Those two sets of routes share nothing and cover everything, so the
+     counts add."
+  - "`ways(0) = 1`, not 0: there is exactly one way to climb no steps, which is
+     to take none. Set it to 0 and every answer collapses to 0."
+  - "Write it as a loop from the bottom up rather than as recursion. The
+     recurrence only ever looks back two places, so two variables are enough —
+     no table and no cache."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

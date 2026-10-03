@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/edit-distance
+kind: kata
+title: Edit Distance
+difficulty: hard
+tags: [dynamic-programming, strings, tables]
+estimated_minutes: 35
+
+prompt: |
+  Return the fewest single-character edits that turn one string into another.
+  An edit inserts a character, deletes one, or replaces one.
+
+  ```
+  edit_distance("kitten", "sitting")   ->  3
+  edit_distance("horse", "ros")        ->  3
+  edit_distance("abc", "")             ->  3
+  edit_distance("same", "same")        ->  0
+  ```
+
+  There is no transposition operation, so `"ab"` to `"ba"` costs two.
+
+  The strings may be a few hundred characters long, which rules out trying
+  every sequence of edits.
+
+hints:
+  - "Think about the *last* character of each string. If they match, they cost
+     nothing and the problem shrinks by one on both sides."
+  - "If they do not match, the last edit was one of three things: replace, delete
+     from the source, or insert into the source. Each leaves a smaller
+     subproblem."
+  - "So the answer for prefixes of length `i` and `j` depends on `(i-1, j-1)`,
+     `(i-1, j)` and `(i, j-1)`. That is a two-dimensional table, filled row by
+     row."
+  - "Fill the first row and column first: turning an empty string into `j`
+     characters costs `j`, and `i` characters into nothing costs `i`. Get those
+     right and the body of the loop needs no special cases."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n * m)"
+    expected_space: "O(min(n, m)) with two rows"

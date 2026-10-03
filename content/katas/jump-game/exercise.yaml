@@ -1,0 +1,44 @@
+schema_version: 1
+id: katas/jump-game
+kind: kata
+title: Can You Reach the End
+difficulty: medium
+tags: [greedy, arrays]
+estimated_minutes: 18
+
+prompt: |
+  Each position holds the furthest you may move forward from it. Starting at
+  position 0, decide whether the last position is reachable.
+
+  ```
+  can_reach_the_end([2, 3, 1, 1, 4])   ->  True
+  can_reach_the_end([3, 2, 1, 0, 4])   ->  False
+  can_reach_the_end([2, 5, 0, 0])      ->  True
+  can_reach_the_end([0])               ->  True
+  ```
+
+  A jump of `n` may land anywhere from 1 to `n` positions forward, so a long
+  jump can clear a zero.
+
+  The list may have tens of thousands of positions.
+
+hints:
+  - "The naive version marks every position reachable from every position, which
+     is quadratic. You do not need to know *how* you got somewhere, only whether
+     you can."
+  - "Keep one number: the furthest position you know is reachable. Walk forward
+     and widen it."
+  - "If the position you are standing on is beyond that frontier, nothing can
+     reach it — and nothing beyond it either, so you can stop."
+  - "Watch the two ends: a zero at the final position does not matter (you have
+     arrived), and a single-element list is already finished."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

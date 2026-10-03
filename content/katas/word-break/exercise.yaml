@@ -1,0 +1,45 @@
+schema_version: 1
+id: katas/word-break
+kind: kata
+title: Can This String Be Split Into Words
+difficulty: medium
+tags: [dynamic-programming, strings, greedy]
+estimated_minutes: 25
+
+prompt: |
+  Decide whether a string can be split into a sequence of words from a
+  dictionary. Words may be reused, and not every word has to be used.
+
+  ```
+  can_segment("leetcode", ["leet", "code"])                     ->  True
+  can_segment("applepenapple", ["apple", "pen"])                ->  True
+  can_segment("catsandog", ["cats", "dog", "sand", "and", "cat"]) -> False
+  can_segment("", ["a"])                                        ->  True
+  ```
+
+  An empty string is always splittable — by the empty sequence of words.
+
+  Strings may be several hundred characters long, so trying every way to cut
+  them is out.
+
+hints:
+  - "Try matching the longest word at each step. Then run it on `\"cars\"` with
+     `[\"car\", \"ca\", \"rs\"]` — `car` leaves `s`, and the answer needs `ca`
+     first."
+  - "So a choice early on can only be judged by what happens later. Keep, for
+     every position, whether the string *up to* that position can be split."
+  - "Position 0 is splittable (nothing to split). Position `i` is splittable if
+     some earlier splittable position `j` has `text[j:i]` in the dictionary."
+  - "Put the dictionary in a `set`, and bound the inner loop by the length of
+     the longest word — there is no point testing slices longer than anything
+     in the dictionary."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n * longest word), amortised over slicing"
+    expected_space: "O(n)"

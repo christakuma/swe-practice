@@ -1,0 +1,44 @@
+schema_version: 1
+id: katas/coin-change
+kind: kata
+title: Fewest Coins to Make an Amount
+difficulty: medium
+tags: [dynamic-programming, greedy, counting]
+estimated_minutes: 25
+
+prompt: |
+  Return the fewest coins that add up to an amount. Each coin value may be used
+  as many times as you like.
+
+  ```
+  fewest_coins([1, 2, 5], 11)   ->  3     (5 + 5 + 1)
+  fewest_coins([1, 3, 4], 6)    ->  2     (3 + 3)
+  fewest_coins([2], 3)          ->  -1
+  fewest_coins([1], 0)          ->  0
+  ```
+
+  Return `-1` when no combination reaches the amount.
+
+  Amounts may be in the thousands, so enumerating combinations is not an
+  option.
+
+hints:
+  - "Write the greedy version — take the largest coin that fits, repeat — and
+     then run it on `[1, 3, 4]` making 6. It gets 3 coins where 2 are possible."
+  - "Build up from the bottom instead. If you know the fewest coins for every
+     amount below the target, what does that tell you about the target?"
+  - "For each amount, try every coin: if the coin fits, the answer is one more
+     than the answer for `amount - coin`. Take the smallest over all the coins."
+  - "`best[0] = 0` and everything else starts at infinity, meaning unreachable.
+     Using infinity rather than -1 inside the table keeps `best[a - c] + 1` an
+     honest statement — only the final answer needs translating."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(amount * number of coins)"
+    expected_space: "O(amount)"

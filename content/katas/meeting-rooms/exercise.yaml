@@ -1,0 +1,45 @@
+schema_version: 1
+id: katas/meeting-rooms
+kind: kata
+title: How Many Meeting Rooms
+difficulty: medium
+tags: [intervals, sorting, heap, greedy]
+estimated_minutes: 25
+
+prompt: |
+  Given `(start, end)` meetings, return the fewest rooms that can hold them
+  all — which is the largest number that overlap at any one moment.
+
+  ```
+  rooms_needed([(0, 30), (5, 10), (15, 20)])    ->  2
+  rooms_needed([(7, 10), (2, 4)])               ->  1
+  rooms_needed([(1, 2), (2, 3), (3, 4)])        ->  1
+  rooms_needed([])                              ->  0
+  ```
+
+  Intervals are **half-open**: a meeting ending at 3 and one starting at 3 can
+  share a room.
+
+  Meetings arrive in no particular order, and there may be tens of thousands.
+
+hints:
+  - "Sort by start time. Then process the meetings in order and ask, for each
+     one, whether any room has freed up."
+  - "You only ever need to check **one** room: the one that frees up soonest. If
+     that one is still busy, every other one is too."
+  - "So keep the end times of the meetings in progress in a min-heap. Reuse the
+     earliest if it has finished by this meeting's start; otherwise push a new
+     one."
+  - "`ends[0] <= start`, not `<`: the intervals are half-open, so touching
+     meetings share a room. The heap's final size is the answer — it is a
+     high-water mark and never shrinks."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n)"

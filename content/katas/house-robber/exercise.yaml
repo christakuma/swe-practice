@@ -1,0 +1,41 @@
+schema_version: 1
+id: katas/house-robber
+kind: kata
+title: Largest Total With No Two Adjacent
+difficulty: medium
+tags: [dynamic-programming, arrays, recurrence]
+estimated_minutes: 20
+
+prompt: |
+  Given non-negative values in a row, pick a subset with the largest total,
+  subject to one rule: you may not pick two values that are next to each other.
+
+  ```
+  best_haul([1, 2, 3])        ->  4      (1 and 3)
+  best_haul([2, 100, 2])      ->  100
+  best_haul([5, 1, 1, 5])     ->  10     (the two ends)
+  best_haul([])               ->  0
+  ```
+
+  The list may be long enough that trying every subset is impossible.
+
+hints:
+  - "Try \"take every other one\" on `[5, 1, 1, 5]`. Both alignments give 6,
+     and the answer is 10 — so the answer is not a pattern, it is a decision per
+     value."
+  - "Ask the usual question: what did you decide about the *last* value? Taking
+     it rules out the one before; skipping it rules out nothing."
+  - "So `best(i) = max(best(i-1), best(i-2) + values[i])`. The two cases are
+     skip and take, and they cover everything."
+  - "The recurrence looks back two places, so two variables are enough. Watch
+     the update order — both new values depend on both old ones."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
