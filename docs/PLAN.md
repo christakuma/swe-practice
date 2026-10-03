@@ -4,19 +4,24 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 7 complete — **the core bet works, an attempt survives the
-> process that started it, and a kata is now solved in a browser.** A git scenario
-> is graded end to end: `practice solve git/revert-a-pushed-commit --reference`
-> passes, and the same exercise replayed with `reset --hard` fails
+> **Status:** Phase 8 complete — **the core bet works, an attempt survives the
+> process that started it, and both exercise kinds are now solved in a browser.** A
+> git scenario is graded end to end: `practice solve git/revert-a-pushed-commit
+> --reference` passes, and the same exercise replayed with `reset --hard` fails
 > `history-preserved` while passing `content-restored`, because the trees are
 > identical and the ancestry is not. Two `RepoQuery` implementations proved to
 > agree, 22 pure assertions, a scenario grader, and a content suite that grades
 > every reference solution and holds every counter-example to the checks it
 > declares. An attempt lives in SQLite: `start`, `resume`, `resume`, `submit` is
 > four processes sharing one repository, one event log and one budget. And
-> `practice serve` now puts the same use cases behind HTMX — browse, start, edit
-> in CodeMirror, submit, read the verdict — with every asset served from disk and
-> a server that refuses any request it cannot prove came from its own page.
+> `practice serve` puts the same use cases behind HTMX — browse, start, edit in
+> CodeMirror or **type real git into a console**, reveal hints one at a time,
+> submit, read the verdict — with every asset served from disk and a server that
+> refuses any request it cannot prove came from its own page. **The scenario
+> workbench reads the repository through the same port the grader does** (ADR
+> 0012), so the panel somebody decides to submit from cannot disagree with the
+> verdict they then get: HEAD, the refs, the worktree and a hand-rolled SVG commit
+> graph, all re-rendered out of band after every command.
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
 ---
@@ -1547,7 +1552,7 @@ omission Phase 6 found with `practice start`, in the same shape.
 
 ---
 
-### Phase 8 — Git scenario workbench · 4 sessions
+### Phase 8 — Git scenario workbench · 4 sessions — **complete**
 
 - Command console with HTMX-appended history
 - Repo state panel: HEAD, refs, status, stash
@@ -1559,9 +1564,23 @@ omission Phase 6 found with `practice start`, in the same shape.
 2. `feat(web): render repo state panel with refs and status`
 3. `feat(web): add commit graph renderer`
 4. `feat(web): add hint reveal and verdict breakdown`
+5. `docs: add ADR 0012 and mark phase 8 complete`
 
 **Exit:** a git scenario driven start to finish in the browser, with the graph
-visibly changing after each command.
+visibly changing after each command. **Met** by
+`tests/e2e/test_solve_a_git_scenario_in_the_browser.py`, which browses, starts,
+inspects, hits the no-shell refusal, reveals a hint, reverts, pushes and submits
+over real adapters — asserting on the way that the panel came back out of band with
+each command and that the graph had grown a commit by the end. Unlike Phases 6 and
+7 the commit list needed no additions; what this phase needed was a port moved
+(§16).
+
+The two defects this phase found are both in the graph, and both are the kind that
+pass a casual look: an edge built from a lane *reservation* rather than from the
+finished row points at a column the parent is not drawn in, and a lane left
+reserved after the commit it was waiting for is drawn elsewhere pushes every later
+branch a column right. Neither is visible on a linear history, which is what a
+fixture mostly has.
 
 ---
 
@@ -1680,6 +1699,7 @@ changed"* is worth more than any code sample.
 | 0009 | Ship our own prompts; never redistribute problem text | not yet written |
 | [0010](adr/0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | accepted |
 | [0011](adr/0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
+| [0012](adr/0012-inspect-the-repository-through-the-grading-port.md) | The repo state panel reads through the grading port, not a second git path | accepted |
 
 ---
 
@@ -2661,3 +2681,97 @@ The phase closed at **1,973 tests** — 111 more than Phase 6 — with `domain/`
 1,364 statements and 258 branches. `practice validate` and `practice fixtures
 --check` are unchanged and green, and `unproven_by_design` still names the same two
 permanent caveats.
+
+**2026-10-02 — Phase 8: the git scenario workbench.** The phase the whole project
+was arranged to make possible, and the first one where the *rendering* of a
+repository was the hard part rather than the reading of it.
+
+**The decision worth the ADR is which repository the panel reads.** A
+display-only git wrapper — `git status` as humans see it, `git branch -vv` —
+would have been less code and no new port. It would also have put two readers of
+one repository in the app, and the disagreement that matters is invisible:
+`worktree_clean` ignores untracked files by design (§6.5), so a panel built on raw
+`git status` reads as dirty exactly where the verdict reads as clean, and the
+solver has no way to tell which one lied. So inspection goes through `RepoQuery`,
+`RepoQueryFactory` moves from a protocol inside `adapters/git/grader.py` to a port
+in `domain/ports.py`, and `Services` holds one factory that both the grader and
+the panel are built from. ADR 0012, with the rejected alternatives.
+
+**The port moved because a protocol in an adapter is reachable only by that
+adapter's collaborators** — true for three phases, and false the moment a second
+caller appeared. Worth recording as a pattern rather than as an incident: §13's
+rule is that a port needs two implementations to earn its place, and the natural
+consequence is that a protocol starts life next to its only user and is promoted
+when the second arrives. `RepoQueryFactory` had two implementations from day one
+(`GitRepoQuery` and a test factory) and still belonged in the adapter until Phase 8.
+
+**Two defects in the graph layout, both caught while reasoning through the merge
+case rather than by running anything, and both invisible on the shapes a fixture
+mostly has.** Building an edge from a lane *reservation*
+rather than from the finished row sends it to a column the parent is not drawn in —
+two children can each reserve a lane for one parent, and the parent is drawn in
+exactly one of them. And a lane left reserved after its commit is claimed elsewhere
+is never freed, so every later branch starts a column further right. Neither shows
+on a linear history, which is what the shipped fixtures have, so neither would have
+been found by driving the app — the only thing that would have caught them is the
+thing that did: writing down what a merge means before writing the loop. Both now
+have named tests, and the fix for the first is a second pass that resolves every
+edge from the finished rows, where the only endpoints available are positions
+something is actually drawn at.
+
+**The graph reads every ref, not HEAD.** Found by using it. A drawing taken from
+`log("HEAD")` is correct and useless at the moment it matters most: after
+`git reset --hard HEAD~1` the commit still on `origin/main` is unreachable from
+HEAD, so the graph would have gone quiet about exactly what the solver just did.
+`merge_logs` asks for one log per distinct ref tip and merges them with Kahn's
+algorithm, tiebroken on input position, which gives a deterministic order in which
+every commit precedes its own parents — the property `lay_out` needs. Commit dates
+would be git's own tiebreak and `CommitInfo` does not carry one; adding a field to a
+port value object for one renderer was the wrong trade, and the difference only
+shows between commits neither of which can reach the other.
+
+**"Text lanes first, then the SVG renderer" was one deliverable, not two.** §11's
+sequencing is risk management and the risk is the lane model, which is proved by
+its own unit tests with no renderer involved. Once that was green a text rendering
+would have established nothing the SVG does not, and shipping both would have meant
+two drawings of one model. The §10 sketch of `adapters/git/graph.py` stays absent
+for the reason Phase 5 gave; the Phase 8 graph module is a different thing in a
+different layer — a pure view model in `application/`, where the coverage gate
+covers it and where `domain/` would have been wrong, because a lane number is not a
+rule the product can be right or wrong about.
+
+**The draft-persistence question Phase 7 left open is answered, and the answer is
+no.** Hint reveal has the same shape on the surface — both are a write on a path
+that looks like display — and they come apart on the question the event log asks:
+*is this something the solver did in the exercise?* Revealing a hint is, and Phase
+9's grade suggestion will read it, which is why `RevealHint` is a use case and the
+reveal is persisted. An editor autosave is not; it is a keystroke, and a log full of
+them would make every §6.3 process assertion learn to ignore a kind of entry. The
+workbench still loses the buffer when the tab closes, now on purpose rather than
+pending.
+
+**Three findings from looking at the page, none of which a test would have caught.**
+`:empty::after` can never place a placeholder inside a `for` loop, because the loop
+leaves whitespace in the element — it is a real `<li>` hidden by `:not(:last-child)`
+once htmx appends past it. The prompt column needed widening before the flagship
+fixture's own prose stopped wrapping mid-sentence at three columns. And the first
+draft put `hx-confirm` on the reveal-a-hint button, which is defensible on paper and
+awful in use: a blocking native dialog in front of something done four times an
+attempt. The control says "recorded on the attempt" beside it instead; `hx-confirm`
+stays on Submit, which cannot be undone.
+
+**The commit split needed no additions this time** — unlike Phases 6 and 7, the
+list in §11 was also the list that shipped. What it needed was a repair: commit
+2 failed `ruff` on its own, because a lint fix for a test it introduced had been
+made in the working tree and swept into commit 3. The cheap tier caught it, the
+amend-and-rebase cost two minutes, and it is the mirror image of the caveat §11
+already records — not a defect attributed to the wrong commit, but a *fix*
+attributed to the wrong one.
+
+The phase closed at **2,115 tests** — 142 more than Phase 7 — with `domain/` and
+`application/` at **100%** statement and branch coverage against the 90% gate, on
+1,588 statements and 328 branches — 224 statements and 70 branches more than Phase
+7 covered, almost all of them in three places: the inspection use case, the lane
+layout, and the DTOs those two feed. `practice validate` reports three exercises
+valid and `practice fixtures --check` matches both fixtures against
+`fixtures.lock`.

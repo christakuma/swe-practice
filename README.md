@@ -15,10 +15,10 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 7 (web shell and kata workbench) complete — **the core bet
-works, a session survives the terminal it was opened in, and a kata is now solved
-in a browser.** Both exercise kinds are solvable from the terminal, and a git
-scenario is graded on what your commands actually did:
+**Status:** Phase 8 (git scenario workbench) complete — **the core bet works, a
+session survives the terminal it was opened in, and both exercise kinds are now
+solved in a browser.** A git scenario is graded on what your commands actually
+did, from a console or from the terminal:
 
 ```
 $ practice solve git/revert-a-pushed-commit -c my-attempt.cmds
@@ -88,10 +88,11 @@ uv run practice serve
 ```
 
 `/browse` filters the library by kind, difficulty and tag, and starts an attempt;
-`/attempt/{id}` is the workbench — the prompt beside a CodeMirror editor seeded
-from the exercise's stub, and a verdict panel that the submission swaps in without
-a page reload. An attempt already open shows **Resume** instead of **Start**,
-because a second one would split one piece of work across two budgets.
+`/attempt/{id}` is the workbench. For a kata that is the prompt beside a CodeMirror
+editor seeded from the exercise's stub; for a git scenario it is a **command
+console over the real repository**, with a repo state panel and a commit graph
+beside it. An attempt already open shows **Resume** instead of **Start**, because a
+second one would split one piece of work across two budgets.
 
 Submissions return **HTML, not JSON**. There is no API — `openapi_url=None` — and
 the fragment a submission renders is the same template the page uses when it loads
@@ -106,6 +107,32 @@ because the failure mode of a split rule is a category that falls between the
 halves. CodeMirror **5** and not 6 is a real tradeoff, recorded in
 [ADR 0010](docs/adr/0010-codemirror-5-over-6.md): a maintenance-mode dependency,
 accepted to keep an npm toolchain out of a Python project for one widget.
+
+### The scenario workbench
+
+Type `git revert --no-edit HEAD` into the console and three things come back in one
+response: the command's output appended to the transcript, the command budget, and
+the whole repo state panel — HEAD and whether it is detached, the local branches,
+what `origin/main` points at, the four worktree states, the stash, and a
+hand-rolled SVG commit graph. htmx swaps the first in place and the rest by id, so
+there is no client-side model of a repository anywhere.
+
+The thing to watch is `git reset --hard HEAD~1`. `main` moves down a commit, the
+commit it left behind stays on the graph because `origin/main` still points at it,
+and the two lines of the panel say what you just did to your teammate before the
+verdict does.
+
+**The panel reads the repository through the same port the grader does**
+([ADR 0012](docs/adr/0012-inspect-the-repository-through-the-grading-port.md)). A
+display-only git wrapper would have been less code and would have let the panel and
+the verdict quietly disagree — `worktree_clean` ignores untracked files by design,
+so a panel built on raw `git status` reads as dirty where the grader reads as
+clean, and nothing tells you which one to believe.
+
+Hints are revealed one at a time, and each reveal is recorded on the attempt
+alongside the commands — because "passed, with three of four hints" is a different
+outcome from "passed", and that is the record the spaced-repetition model reads in
+Phase 9.
 
 ### Why localhost is not automatically safe
 
@@ -174,11 +201,11 @@ is held to, a green build would mean a solution exists rather than a solution
 exists *within the rules*, and a scenario could ship unsolvable
 ([ADR 0011](docs/adr/0011-reference-solutions-are-command-lists.md)).
 
-There is still no interactive console: a `.cmds` file is not a REPL, and the
-console belongs in the web workbench, which is Phase 8. The workbench page already
-exists and says so, with the two commands that drive the same attempt from a
-terminal — what is missing is the console, the repo state panel and the commit
-graph, not the attempt underneath them.
+A `.cmds` file is not a REPL, and it was never meant to be one: the interactive
+console is in the web workbench, where a commit graph can actually be drawn. Both
+drive the same attempt, the same log and the same budget, so a session started in
+the browser can be finished from a terminal and the console shows the commands the
+terminal ran.
 
 ## Working on an attempt
 
@@ -267,7 +294,7 @@ without the flag, and there is no force option — the way to get rid of one is
 src/practice/
 ├── domain/        pure data and functions; zero I/O
 │   └── checks/    the 22 assertions, as pure functions over a read-only port
-├── application/   use cases over ports, and the exercise-kind registry
+├── application/   use cases over ports, the kind registry, and graph layout
 ├── adapters/
 │   ├── sandbox/     builds a repository and runs commands in it
 │   ├── git/         reads one back: GitRepoQuery, ScenarioGrader
@@ -275,7 +302,7 @@ src/practice/
 │   ├── content/     the exercise library on disk
 │   └── persistence/ in-memory stores, and sqlite/ behind the same ports
 ├── interface/
-│   ├── web/         FastAPI + Jinja2 + HTMX; routes, templates, vendored assets
+│   ├── web/         FastAPI + Jinja2 + HTMX; routes, templates, hand-rolled SVG
 │   └── cli/         Typer: the second driving adapter over the same use cases
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
