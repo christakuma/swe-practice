@@ -33,6 +33,7 @@ an afternoon do not need one.
 | [0010](0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | accepted |
 | [0011](0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
 | [0012](0012-inspect-the-repository-through-the-grading-port.md) | The repo state panel reads through the grading port, not a second git path | accepted |
+| [0013](0013-grade-on-save-is-a-preview.md) | Grade-on-save is a preview that persists nothing | accepted |
 
 0010 and 0011 are out of sequence because their numbers were reserved in
 PLAN.md §12 before the decisions were written up, and numbers are never reused.

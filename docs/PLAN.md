@@ -4,8 +4,8 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 9 complete — **the MVP is done.** Phases 0–9 are a
-> complete product: the core bet works, an attempt survives the process that
+> **Status:** Phase 10 complete — **the MVP is done and you can leave the
+> browser.** Phases 0–9 are a complete product: the core bet works, an attempt survives the process that
 > started it, both exercise kinds are solved in a browser, and the tool now
 > answers *what should I practise today?* instead of leaving it to you. A git
 > scenario is graded end to end — `practice solve git/revert-a-pushed-commit
@@ -25,6 +25,18 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > is scheduled and drops an exercise the moment it is; and a dashboard and a
 > `/progress` page — streak, weakest tags, mastery by tag, activity window —
 > drawn as hand-rolled inline SVG with no dependency.
+>
+> **Phase 10 lets you solve a kata without the browser's editor at all.** The
+> stub the provisioner already copies into the workspace *is* the working copy,
+> so own-editor mode needed a path rather than a scaffold: `practice start` now
+> prints it, and the workbench opens your editor on it through an
+> `EditorLauncher` port that reports a missing editor instead of raising. A
+> `watchfiles` watcher behind a `FileWatcher` port notices every save and an SSE
+> endpoint streams back the same verdict fragment a submission would have
+> rendered — as a **preview that persists nothing**
+> ([ADR 0013](adr/0013-grade-on-save-is-a-preview.md)): the attempt is handed
+> the file's contents in memory, graded, and never saved, so the event log stays
+> a record of what the solver did rather than of what they typed.
 >
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
@@ -1023,6 +1035,17 @@ the appended command output **and** the re-rendered repo state panel in one
 response. Charts are **hand-rolled inline SVG generated in Python** — zero
 dependencies, fully offline, fully server-rendered.
 
+**Own-editor mode is two endpoints under the workbench**, added in Phase 10.
+`POST /api/attempt/{id}/editor` writes what is in the browser editor to the
+attempt's real file and opens the solver's editor on it;
+`GET /api/attempt/{id}/watch` is a **server-sent event stream** that re-grades
+the file on every save and pushes back the same verdict fragment a submission
+would have rendered, plus the file's own text so the browser editor can mirror
+it. It is the one endpoint in the app that is `async` and the one that is not an
+HTMX swap — native `EventSource`, because htmx 2 ships SSE as a separate
+extension and §8.2 would then have a fifth file to pin. A save is a **preview**:
+nothing is persisted and the attempt stays open (ADR 0013).
+
 The **repo state panel** is the piece that makes git scenarios teachable: HEAD
 (and whether it is detached), local and remote branches, a `status` summary,
 stash count, and a commit graph. Phase 8 ships a styled text graph built from
@@ -1110,12 +1133,13 @@ swe-practice/
 │   │   ├── persistence/sqlite/{connection,migrations/,attempts,reviews,mappers}.py
 │   │   ├── sandbox/{workspace,provisioner,command_policy,virtual_commands,env}.py
 │   │   │            {execution,fixture_runner,fixture_lock}.py  # §16
+│   │   │            {editor,watcher}.py   # the solver's own editor; phase 10
 │   │   ├── git/{repo_query,graph}.py   # reads repos; phase 5
 │   │   ├── kata/{pytest_runner,report_plugin,grader}.py
 │   │   └── clock.py  ids.py
 │   ├── interface/
 │   │   ├── web/{app,security,errors,vendor}.py  # vendor.py: the asset manifest
-│   │   │   ├── routes/{dashboard,browse,attempt}.py
+│   │   │   ├── routes/{dashboard,browse,attempt,console,editor,progress,review}.py
 │   │   │   ├── templates/*.html + partials/{verdict,refusal}.html
 │   │   │   └── static/app.css + vendor/   # htmx + CodeMirror 5, hash-pinned
 │   │   └── cli/main.py
@@ -1630,16 +1654,25 @@ met by `tests/unit/domain/scheduling/test_sm2.py`, each named after its bullet.
 
 ---
 
-### Phase 10 — Own-editor mode · 2 sessions
+### Phase 10 — Own-editor mode · 2 sessions — **complete**
 
 - Scaffold the kata into a real file on disk; reveal it in the editor
 - `watchfiles` watcher plus an SSE endpoint that re-grades on save
 
-**Commits**
+**Commits** — three, where the plan sketched two (§16)
 1. `feat(workspace): add file mode scaffolding and reveal in editor`
 2. `feat(web): stream grade-on-save results over SSE`
+3. `docs: add ADR 0013 and mark phase 10 complete`
 
-**Exit:** save in VS Code, see the verdict update in the browser.
+**Exit:** save in VS Code, see the verdict update in the browser. **Met** by
+`tests/e2e/test_solve_a_kata_in_my_own_editor.py`, which over real adapters
+reveals the file, has a real editor process write a solution into it, watches a
+real `watchfiles` watcher notice the save, grades it with a real pytest run, and
+reads the verdict fragment off the event stream — then asserts the attempt is
+still open and its log holds no solution, which is ADR 0013 as a test. The
+scaffolding half is met by `tests/unit/application/test_reveal_solution_file.py`
+and `tests/integration/sandbox/test_editor.py`, and the "nothing is scaffolded,
+because the stub already is the working copy" finding is in §16.
 
 ---
 
@@ -1722,6 +1755,7 @@ changed"* is worth more than any code sample.
 | [0010](adr/0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | accepted |
 | [0011](adr/0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
 | [0012](adr/0012-inspect-the-repository-through-the-grading-port.md) | The repo state panel reads through the grading port, not a second git path | accepted |
+| [0013](adr/0013-grade-on-save-is-a-preview.md) | Grade-on-save is a preview that persists nothing | accepted |
 
 ---
 
@@ -2903,3 +2937,174 @@ Phase 8 covered, almost all of them in four places — the scheduler, the
 suggestion rule, the progress summary and the three new DTOs. `practice validate`
 reports three exercises valid and `practice fixtures --check` matches both
 fixtures against `fixtures.lock`.
+
+**2026-10-02 — Phase 10: own-editor mode.** Two sessions budgeted, two commits
+sketched, three written — the third being this entry and ADR 0013. The phase
+reads as two features and is really one finding and one decision.
+
+**The finding is that there was nothing to scaffold.** The first commit is called
+"file mode scaffolding" because the plan called it that, and the plan was wrong
+in a cheap direction: `SubprocessSandboxProvisioner` has copied a kata's stub
+into `<workspace>/repo/<stub>` since Phase 3, and `OpenWorkbench` has seeded the
+browser editor by reading it from there since Phase 7. **The stub already was the
+working copy.** The first draft of this phase created a second file for the
+solver to edit, which is one file too many: the page and the editor would have
+shown different things and whichever was submitted the other would have been
+silently discarded. What was actually missing was the *path* — so the commit
+added `Workspace.resolve` to the port (promoting a method
+`SubprocessWorkspace` already had) and gave it two callers, and the CLI's whole
+share of the phase was one line: `_next_step` now names the file instead of
+saying `--source FILE`. Which means **the terminal has had own-editor mode all
+along** and nobody could find the file.
+
+**The decision is ADR 0013: a save is a preview that persists nothing.** The
+obvious implementation — call `SubmitSolution` on every save — cannot work, and
+not for a fixable reason: submission completes the attempt and disposes of the
+workspace holding the file being edited, so the first Ctrl+S would end the
+exercise and delete the directory. The next idea, appending a `SolutionSaved`
+event per save, works and is worse, and Phase 8 had already settled the
+principle for the browser editor: a save is a keystroke, not something the
+solver *did in the exercise*. Three things read that log as a record of
+deliberate acts — the §6.3 process assertions, the Phase 9 grade suggestion, and
+`latest_source` — and all three would have grown an exception. So
+`WatchSolutionFile` loads the attempt, hands it the source **in memory**, grades
+that aggregate and throws it away. The `SolutionSaved` event lives for one
+grading pass, which is exactly as long as `Grader.grade`'s contract needs it
+(*a verdict is derived from a source the attempt remembers*), and the stored log
+is untouched. The property is held by a test that counts the events after three
+saves and by the e2e, which asserts one `SolutionSaved` for one submission.
+
+**Grading acquired a concurrency problem it had never had, and the port addition
+is what found it.** A submission cannot collide with itself — the aggregate
+refuses a second one — so until now nothing could run two grading passes over
+one workspace. Grade-on-save can immediately: §8.1 explicitly supports an attempt
+being open in another tab, and two tabs are two SSE streams, each writing
+`solution.py` and reading `report.json` in the same directory. Interleaved, the
+second overwrites the source the first is about to run and `report.json` comes
+back describing somebody else's code — a *wrong verdict on a completed attempt*,
+which is the worst outcome this system has. Answered in `PytestKataRunner`, which
+is the module whose own docstring already called those files "this module's
+contract with the subprocess": the write-run-read sequence is under one instance
+lock, and the composition root builds exactly one runner, which is what makes an
+instance lock enough. A submission may now wait out a preview, bounded by the
+exercise's time limit. That is the right price.
+
+**Three Windows findings, all from running it rather than reasoning about it.**
+
+- **A bare `code` cannot be started.** `Popen(["code", path])` raises
+  `FileNotFoundError [WinError 2]`, because `CreateProcess` searches `PATH` and
+  does not apply `PATHEXT` — and the file VS Code installs is `code.CMD`.
+  `shutil.which` does apply it, and `Popen` of the resolved `.CMD` works. The
+  resolution goes through `execution.resolve_program`, which is the one function
+  in the package that already knew this, from the other direction.
+- **`shlex.split(posix=False)` keeps the quote characters in the token.** Needed
+  on Windows, because POSIX mode treats a backslash as an escape and turns
+  `C:\Tools\npp.exe` into `C:Toolsnpp.exe`. But non-POSIX mode produced a
+  program name of `'"C:\...\python.exe"'`, quotes included, which resolved to
+  nothing. One matching pair stripped by hand is the whole fix, and the case it
+  is for is an editor under `C:\Program Files`, which is where editors are.
+- **A fire-and-forget `Popen` fails this test suite, and it is right to.**
+  `Popen.__del__` emits a `ResourceWarning` when it is collected with a live
+  child, and `filterwarnings = ["error"]` turns that into a failing test —
+  correctly, because an abandoned child is also a zombie on POSIX, since nothing
+  reaps it. So the launcher keeps a reference to every process it started and
+  polls them on the way past, which reaps the exited ones and keeps the live ones
+  from being collected. The warning is right about production, where a server
+  holds its launcher for its whole life, and wrong about a test, whose launcher
+  dies at the end of the function — so the test waits, through a fixture that
+  exists to say exactly that.
+
+**The watcher watches the directory, not the file, and that is not an
+optimisation.** Editors do not write files, they replace them: VS Code, vim and
+anything else that saves atomically write a temporary file and rename it over the
+target, so the inode a file watch was given stops being the file the solver is
+editing after the first save. A file watch sees one modification and then nothing
+ever again, which is the version of this bug that looks like it works. The filter
+is positive and names the one file, because the grading pass writes five others
+into the same directory — so a watch that reported everything would re-grade on
+its own output, forever, as fast as pytest can start. Excluding the known five
+would be the same rule written the fragile way round.
+
+**`watchfiles` is now in the architecture test's I/O module set**, and it is the
+first third-party name in it. A file watcher is I/O in the same sense a socket
+is, and the `FileWatcher` port exists so that a use case wanting to know about a
+save asks for one rather than importing one. Without the line in the test, that
+would have been a paragraph in a docstring.
+
+**The periodic tick turned out to be load-bearing, which the first draft of the
+port did not have.** `FileWatcher` yields `False` as well as `True`, and the
+`False` is how the web layer discovers that the browser holding a stream open has
+gone: without it the generator sits in `awatch` forever, and every closed tab
+leaves a watcher running until the server stops. The tick is also what the ping
+is written on, and writing is what fails on a dead socket — so the keepalive is
+the mechanism, not the courtesy. The matching half is `contextlib.aclosing`
+around the loop: returning from the generator on a disconnect leaves the one
+underneath it to be garbage collected, and the watch runs for as long as that
+takes — which would have undone the reason the tick exists in the first place.
+Both use cases' generators are therefore typed as `AsyncGenerator` rather than
+`AsyncIterator`, which is the narrower and truer claim: something holding a live
+watch should be closeable.
+
+**No fifth vendored asset.** htmx 2 moved SSE out of the core into
+`htmx-ext-sse`, so the attribute form would have meant another file to download,
+hash-pin, review and keep current (§8.2) for one panel on one page. The workbench
+has hand-wired its own submission in a `<script>` since Phase 7, because
+CodeMirror forced it, so the honest comparison was four `addEventListener` calls
+against a new third-party dependency. The four lines won.
+
+**Two smaller things worth writing down.**
+
+- **A refusal on an SSE endpoint has to be a 200.** `EventSource` reconnects on
+  its own after a failed response, forever, with no way to decline — so a 404
+  would turn one unopenable attempt into a request every few seconds for as long
+  as the tab is open. The stream opens, says what is wrong in a `problem` event,
+  says `done`, and the page closes it. This is the same "refusals are 200"
+  conclusion the htmx routes reached, for a completely different reason.
+- **A preview of a kata with a complexity expectation can never be a clean
+  `PASS`.** Found by the e2e, asserting the wrong outcome word. Declaring the
+  cost is part of *submitting*, so every draft carries the `not declared`
+  advisory. Accurate, and arguably a useful standing reminder — but it means the
+  outcome word changes at submission time for a solver who does declare, and
+  that is better stated than discovered.
+
+**Universal newlines make the CRLF round trip safe, by accident of Phase 3.**
+The exit criterion is "save in VS Code", on Windows, where an editor may well
+write CRLF. `Workspace.read_file` uses `read_text`, whose universal-newline
+translation turns `\r\n` into `\n` on the way in; `write_file` passes
+`newline=""` so LF survives on the way out. So a CRLF save crosses the SSE
+stream as LF and submits as LF, and the blob the grader sees is the same one on
+both platforms — which is the §6.1 determinism guarantee holding somewhere
+nobody wrote it down for.
+
+**The fake watcher is a queue, and a test that appends to it on every draft never
+ends.** Written as a list iterated in place, which is almost right: appending
+from inside the loop is the sequence a solver actually produces (save, read the
+verdict, save something different), and the first test to use it appended
+unconditionally. The symptom is a *unit* test that hangs rather than fails, which
+is the worst shape a test failure has. The fake now pops from the front and its
+docstring names the trap.
+
+**Double quotes inside a `-c` payload split a command in half, twice.** Both the
+integration suite's stand-in editor and the e2e's hit it: the script is passed as
+one double-quoted argument, and a double quote in the middle of it closes that
+quote in `shlex`'s eyes. The integration one switched to single quotes inside;
+the e2e's payload is the kata solution, which contains
+`ValueError("no pair ...")`, so it is base64 and decoded in the script. Worth the
+note because the failure is silent — the process starts, the launch reports
+success, and the only symptom is a timeout somewhere downstream.
+
+The phase closed at **2,348 tests** — 71 more than Phase 9 — with `domain/` and
+`application/` at **100%** statement and branch coverage against the 90% gate,
+on 1,996 statements and 386 branches: 104 statements and 20 branches more than
+Phase 9 covered, almost all of them in the two new use cases and the two new
+DTOs. `practice validate` reports three exercises valid and
+`practice fixtures --check` matches both fixtures against `fixtures.lock`.
+
+**The cheap tier's known caveat did not fire, and this time it was checked
+rather than lucky.** The phase changed exactly one existing user-facing string —
+`_next_step`'s kata branch, which said `--source FILE` and now names the file —
+so the one defect that tier cannot see had somewhere to hide. `grep -rn` found
+the only test asserting on `--source FILE`, and it is about a different message
+(`submit`'s refusal when a kata is submitted without one), which is unchanged.
+Both commits passed the cheap tier on their own and the pre-push run found
+nothing new, which is the second phase in a row where that is true.

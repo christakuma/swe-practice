@@ -15,10 +15,10 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 9 complete — **the MVP is done.** The core bet works, a session
-survives the terminal it was opened in, both exercise kinds are solved in a
-browser, and the tool now answers *what should I practise today?* instead of
-leaving it to you. A git scenario is graded on what your commands actually did,
+**Status:** Phase 10 complete — **the MVP is done.** The core bet works, a
+session survives the terminal it was opened in, both exercise kinds are solved
+in a browser *or in your own editor*, and the tool now answers *what should I
+practise today?* instead of leaving it to you. A git scenario is graded on what your commands actually did,
 from a console or from the terminal:
 
 ```
@@ -135,6 +135,58 @@ clean, and nothing tells you which one to believe.
 Hints are revealed one at a time, and each reveal is recorded on the attempt
 alongside the commands — because "passed, with three of four hints" is a different
 outcome from "passed", and that is the record the spaced-repetition model reads.
+
+### Your own editor
+
+A textarea is not where anyone wants to write a hash map. **Open in my editor**
+starts your editor on the file the kata is actually graded from, and from then on
+the browser re-grades it every time you press Ctrl+S:
+
+```
+YOUR EDITOR
+The solution for this attempt is a real file. Edit and save it in whatever you
+like:
+
+  C:\Users\you\AppData\Local\swe-practice\ws\18ec95b0\repo\stub.py
+
+Opened in your editor. Watching for saves. Re-graded every time you save.
+```
+
+There was nothing to scaffold, which is the nice part: the provisioner has
+copied the stub into the workspace since Phase 3, and the browser editor already
+reads it from there — so the stub *is* the working copy and all that was missing
+was its path. `practice start` prints it too, which means the terminal has had
+own-editor mode all along:
+
+```bash
+uv run practice start katas/two-sum
+# Edit .../ws/18ec95b0/repo/stub.py in your own editor, then grade it with
+# `practice submit 18ec95b0-... --source .../ws/18ec95b0/repo/stub.py`.
+```
+
+Which editor is one environment variable, `PRACTICE_EDITOR`, defaulting to
+`code`. `$EDITOR` is deliberately *not* consulted: it names a program that
+expects to own a terminal, and this launch has none — `EDITOR=vim` would start
+successfully, draw nothing anywhere, and report success. If the editor cannot be
+started the panel says so **and still shows the path**, because the feature is
+the file and the launch is the convenience on top of it.
+
+**A save is a preview, never a submission**
+([ADR 0013](docs/adr/0013-grade-on-save-is-a-preview.md)). Grading on save by
+calling the submit path cannot work — submission completes the attempt and
+deletes the workspace holding the file you are editing — and recording each save
+in the event log would be worse: the log is a record of what you *did in the
+exercise*, and three things read it that way. So a save loads the attempt, hands
+it the file's contents in memory, grades that, and throws it away. Submitting is
+still a button, and it is still the only thing that writes.
+
+The verdict arrives over **server-sent events**, framed by hand with native
+`EventSource` rather than htmx's SSE extension — which htmx 2 ships separately,
+and which would have been a fifth hash-pinned vendored file for one panel. What
+crosses the wire is the same `partials/verdict.html` fragment a submission
+returns, plus the file's own text, so the browser editor goes read-only and
+mirrors what is on disk. That is what makes Submit unambiguous with two editors
+open: it sends the source the verdict on screen was computed from.
 
 ## What to practise today
 
@@ -346,7 +398,7 @@ src/practice/
 │   └── scheduling/  SM-2, and the grade the tool reads off a finished attempt
 ├── application/   use cases over ports, the kind registry, graph layout, progress
 ├── adapters/
-│   ├── sandbox/     builds a repository and runs commands in it
+│   ├── sandbox/     builds a repository, runs commands in it, opens your editor
 │   ├── git/         reads one back: GitRepoQuery, ScenarioGrader
 │   ├── kata/        the pytest runner and its grader
 │   ├── content/     the exercise library on disk
