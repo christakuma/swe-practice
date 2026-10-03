@@ -40,7 +40,7 @@ verdict they then get.
 
 **One that looks like display and is not.** `RevealHint` renders a fragment, and it
 writes: revealing a hint is something the solver *did* in the exercise, recorded in
-the log beside the commands they ran, because Phase 9's grade suggestion reads it --
+the log beside the commands they ran, because the grade suggestion reads it --
 "passed, but with three of four hints" is a different outcome from "passed". That is
 why it is a use case and not a property on the workbench DTO.
 

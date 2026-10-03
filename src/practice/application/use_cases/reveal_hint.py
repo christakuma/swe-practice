@@ -4,7 +4,7 @@
 whole reason it is a use case rather than a property on the workbench DTO.
 `OpenWorkbench` and `InspectRepository` answer *what does this page look like*;
 revealing a hint is something the solver **did**, in the exercise, and the attempt
-records it next to the commands they ran. Phase 9's grade suggestion reads that
+records it next to the commands they ran. The grade suggestion reads that
 record — "passed, but with three of four hints" is a different outcome from
 "passed" — so a page that printed every hint at once would make the record describe
 something nobody did.

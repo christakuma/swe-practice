@@ -43,8 +43,12 @@ adds fails the type check in isolation, by name and line, with nothing executed.
 **Before a push** — the whole suite with the coverage gate, once, over the final
 tree. This is the one that decides.
 
-Four things the cheap tier cannot do, all found by using it:
+Five things the cheap tier cannot do, all found by using it:
 
+- **Nothing else may be running.** Two pytest runs compete for temp dirs, SQLite
+  files and subprocesses, and `--cov` makes it worse — one `.coverage` in the
+  project root, shared. A run started beside another reports failures that do
+  not reproduce. Suspect this before debugging one.
 - Run it in the working tree, not a `git worktree`. An editable install resolves
   `practice` to the path it was installed from, so a worktree runs the *working
   tree's* source against the *commit's* tests.

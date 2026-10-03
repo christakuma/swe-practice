@@ -15,10 +15,11 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 8 (git scenario workbench) complete — **the core bet works, a
-session survives the terminal it was opened in, and both exercise kinds are now
-solved in a browser.** A git scenario is graded on what your commands actually
-did, from a console or from the terminal:
+**Status:** Phase 9 complete — **the MVP is done.** The core bet works, a session
+survives the terminal it was opened in, both exercise kinds are solved in a
+browser, and the tool now answers *what should I practise today?* instead of
+leaving it to you. A git scenario is graded on what your commands actually did,
+from a console or from the terminal:
 
 ```
 $ practice solve git/revert-a-pushed-commit -c my-attempt.cmds
@@ -58,9 +59,10 @@ uv sync
 uv run practice serve
 ```
 
-That opens the web app on `http://127.0.0.1:8765`: browse the library, start an
-attempt, write a solution in the editor and read the verdict. Everything it
-serves comes off the disk, so it works with the wifi off.
+That opens the web app on `http://127.0.0.1:8765`: see what is due, start an
+attempt, write a solution in the editor or type real git into a console, read the
+verdict, and schedule the next sighting. Everything it serves comes off the disk,
+so it works with the wifi off.
 
 The terminal is a second adapter over the same use cases, documented below. It is
 not a fallback — it is the proof that the core is not secretly coupled to HTTP.
@@ -87,8 +89,9 @@ the library checks over every exercise on disk.
 uv run practice serve
 ```
 
+`/` is the dashboard — what is due, your streak, your weakest tags.
 `/browse` filters the library by kind, difficulty and tag, and starts an attempt;
-`/attempt/{id}` is the workbench. For a kata that is the prompt beside a CodeMirror
+`/attempt/{id}` is the workbench; `/progress` is the long form. For a kata that is the prompt beside a CodeMirror
 editor seeded from the exercise's stub; for a git scenario it is a **command
 console over the real repository**, with a repo state panel and a commit graph
 beside it. An attempt already open shows **Resume** instead of **Start**, because a
@@ -131,8 +134,54 @@ clean, and nothing tells you which one to believe.
 
 Hints are revealed one at a time, and each reveal is recorded on the attempt
 alongside the commands — because "passed, with three of four hints" is a different
-outcome from "passed", and that is the record the spaced-repetition model reads in
-Phase 9.
+outcome from "passed", and that is the record the spaced-repetition model reads.
+
+## What to practise today
+
+Under the verdict is a schedule control, and it is the thing that turns a pile of
+graded attempts into a training system. The tool **suggests** the grade, because
+it has three readings you do not: the verdict it derived from the end state, the
+hints you revealed, and the time against the author's own estimate. A clean pass
+inside the estimate with no hints is `easy`; each of the three costs a step; a
+failure is `again`, and a *pass* never is — passing messily is not the same as
+not knowing it.
+
+```
+SCHEDULE
+Suggested: good — passed, but 1 hint revealed
+  [ again ]  [ hard ]  [ good ★ ]  [ easy ]
+```
+
+Nothing is scheduled until a button is pressed, which is deliberate: a card is
+replaced rather than versioned, so applying the suggestion automatically would
+make an override impossible to honour. One attempt moves a card once — a
+double-click is refused, because advancing the interval twice for one piece of
+evidence is not undoable.
+
+The scheduler is SM-2, the four-grade Anki variant, as a pure function with no
+clock and no repository — forty lines held to the four properties the plan states
+by hypothesis over thousands of generated cards, including the
+`max(previous + 1, ...)` interval clamp without which "consecutive *good*
+strictly increases the interval" is false at the ease floor. FSRS is the obvious
+upgrade and is behind the same port;
+[ADR 0008](docs/adr/0008-sm2-first-with-fsrs-behind-a-port.md) records why not
+yet, and the cost of waiting.
+
+`/` then answers the question. Everything due comes first, longest-overdue first,
+followed by everything that has never been scheduled — which on a fresh install
+is the whole library, and is the state where the question most needs an answer. A
+queue built from the card table alone would say "nothing due" beside an untouched
+library.
+
+`/progress` is the long form: pass rate and lapses per **tag** rather than per
+exercise, because "you failed `git/recover-a-lost-commit`" is something you
+already knew and tags are what generalise; an activity window that draws its idle
+days, because a month with seven scattered attempts and a week with seven
+consecutive ones are opposite facts about a habit; and the whole attempt history.
+Both charts are **hand-rolled inline SVG generated in Python** — no chart
+library, no dependency, every colour a CSS custom property so the drawings follow
+the light scheme, and every figure printed in words beside the picture, because a
+chart is the fastest way to see a shape and the worst way to learn a number.
 
 ### Why localhost is not automatically safe
 
@@ -293,8 +342,9 @@ without the flag, and there is no force option — the way to get rid of one is
 ```
 src/practice/
 ├── domain/        pure data and functions; zero I/O
-│   └── checks/    the 22 assertions, as pure functions over a read-only port
-├── application/   use cases over ports, the kind registry, and graph layout
+│   ├── checks/      the 22 assertions, as pure functions over a read-only port
+│   └── scheduling/  SM-2, and the grade the tool reads off a finished attempt
+├── application/   use cases over ports, the kind registry, graph layout, progress
 ├── adapters/
 │   ├── sandbox/     builds a repository and runs commands in it
 │   ├── git/         reads one back: GitRepoQuery, ScenarioGrader
@@ -302,7 +352,7 @@ src/practice/
 │   ├── content/     the exercise library on disk
 │   └── persistence/ in-memory stores, and sqlite/ behind the same ports
 ├── interface/
-│   ├── web/         FastAPI + Jinja2 + HTMX; routes, templates, hand-rolled SVG
+│   ├── web/         FastAPI + Jinja2 + HTMX; routes, templates, three SVG charts
 │   └── cli/         Typer: the second driving adapter over the same use cases
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live

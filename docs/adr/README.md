@@ -29,6 +29,7 @@ an afternoon do not need one.
 | [0005](0005-sandbox-via-temp-dirs-and-subprocess.md) | Sandbox via a scoped directory and subprocess, not containers | accepted |
 | [0006](0006-sqlite-without-an-orm.md) | SQLite with hand-written SQL and explicit mappers, not an ORM | accepted |
 | [0007](0007-htmx-over-a-single-page-app.md) | HTMX and server-rendered fragments, not a single-page app | accepted |
+| [0008](0008-sm2-first-with-fsrs-behind-a-port.md) | SM-2 first, with FSRS behind the same port | accepted |
 | [0010](0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | accepted |
 | [0011](0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
 | [0012](0012-inspect-the-repository-through-the-grading-port.md) | The repo state panel reads through the grading port, not a second git path | accepted |
@@ -36,5 +37,4 @@ an afternoon do not need one.
 0010 and 0011 are out of sequence because their numbers were reserved in
 PLAN.md §12 before the decisions were written up, and numbers are never reused.
 
-Planned, not yet written (PLAN.md §12): SM-2 first with FSRS behind a port (0008)
-· ship our own prompts (0009).
+Planned, not yet written (PLAN.md §12): ship our own prompts (0009).

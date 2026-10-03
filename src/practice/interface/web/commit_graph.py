@@ -2,8 +2,8 @@
 
 PLAN.md §8.4 settled the technique before this was written: *"charts are hand-rolled
 inline SVG generated in Python — zero dependencies, fully offline, fully
-server-rendered."* This is the first of them, and Phase 9's progress charts follow
-the same rule.
+server-rendered."* This was the first of them; the two progress charts in
+`charts.py` follow the same rule.
 
 **Why SVG and not a text graph.** §11 sketched "text lanes first, then the SVG
 renderer", which is risk sequencing rather than two deliverables: the risky half is

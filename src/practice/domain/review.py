@@ -1,14 +1,16 @@
 """Spaced-repetition value objects.
 
 The card and its vocabulary only. The SM-2 arithmetic that moves a card lives in
-`domain/scheduling/` behind the `Scheduler` port and arrives in Phase 9 — the
-card has to exist first, because `ReviewRepository` and `Scheduler` are both
-declared in `ports.py` now.
+`domain/scheduling/sm2.py`, behind the `Scheduler` port — the card came first,
+in Phase 1, because `ReviewRepository` and `Scheduler` are both declared in
+`ports.py` and neither could be written down without it.
 
 `ease` has a floor of 1.3, which is SM-2's own, and the floor is enforced here
-rather than only inside the scheduler: it is the invariant the Phase 9 property
-tests assert, and an invariant that only holds while one function is the sole
-writer is not an invariant.
+rather than only inside the scheduler: it is the invariant the scheduler's
+property tests assert, the scheduler is not the sole writer — a repository is —
+and an invariant that holds only while one function writes it is not an
+invariant. The schema restates it a third time, for the third reason
+(`sqlite/migrations/0001_initial.sql`).
 """
 
 from __future__ import annotations

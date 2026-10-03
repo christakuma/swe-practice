@@ -6,18 +6,20 @@ Satisfies `practice.domain.ports.ReviewRepository`, structurally (ADR 0002).
 scheduler returns a new one, so `save_card` is an upsert on `exercise_id` and the
 previous state is gone. That is a real decision rather than the obvious one: a
 review *log* — every grade ever given, with the interval it produced — is what
-would let the Phase 9 scheduler be evaluated against its own history rather than
-only property-tested, and it is also a table nothing in the MVP reads. So it is not
+would let the scheduler be evaluated against its own history rather than only
+property-tested, and it is also a table nothing in the MVP reads. So it is not
 here, and the `reps`/`lapses` counters the card already carries are what survives
-instead. The thing to notice if that choice is revisited is that the counters are
-derivable from a log and the log is not derivable from the counters.
+instead. The thing to notice is that the counters are derivable from a log and the
+log is not derivable from the counters, so every day this runs without one is a
+day of evidence that cannot be recovered -- ADR 0008 records that as the
+standing cost of shipping SM-2 first.
 
-**There is no `Scheduler` yet, and this still earns its place now.** PLAN.md §13's
-rule is that a port with one implementation and no test double gets deleted;
-`ReviewRepository` was declared in Phase 1 with every other protocol and had none at
-all. This commit gives it two — this one and the in-memory store beside it — which
-is what makes Phase 9's arithmetic something that can be tested against a repository
-instead of against a dict it invents on the spot.
+**It was written one phase before anything moved a card, and still earned its
+place.** PLAN.md §13's rule is that a port with one implementation and no test
+double gets deleted; `ReviewRepository` was declared in Phase 1 with every other
+protocol and had neither. Phase 6 gave it two — this one and the in-memory store
+beside it — which is what let Phase 9's arithmetic be tested against a repository
+rather than against a dict it invented on the spot.
 """
 
 from __future__ import annotations

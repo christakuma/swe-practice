@@ -4,24 +4,28 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 8 complete — **the core bet works, an attempt survives the
-> process that started it, and both exercise kinds are now solved in a browser.** A
-> git scenario is graded end to end: `practice solve git/revert-a-pushed-commit
+> **Status:** Phase 9 complete — **the MVP is done.** Phases 0–9 are a
+> complete product: the core bet works, an attempt survives the process that
+> started it, both exercise kinds are solved in a browser, and the tool now
+> answers *what should I practise today?* instead of leaving it to you. A git
+> scenario is graded end to end — `practice solve git/revert-a-pushed-commit
 > --reference` passes, and the same exercise replayed with `reset --hard` fails
 > `history-preserved` while passing `content-restored`, because the trees are
-> identical and the ancestry is not. Two `RepoQuery` implementations proved to
-> agree, 22 pure assertions, a scenario grader, and a content suite that grades
-> every reference solution and holds every counter-example to the checks it
-> declares. An attempt lives in SQLite: `start`, `resume`, `resume`, `submit` is
-> four processes sharing one repository, one event log and one budget. And
-> `practice serve` puts the same use cases behind HTMX — browse, start, edit in
-> CodeMirror or **type real git into a console**, reveal hints one at a time,
-> submit, read the verdict — with every asset served from disk and a server that
-> refuses any request it cannot prove came from its own page. **The scenario
-> workbench reads the repository through the same port the grader does** (ADR
-> 0012), so the panel somebody decides to submit from cannot disagree with the
-> verdict they then get: HEAD, the refs, the worktree and a hand-rolled SVG commit
-> graph, all re-rendered out of band after every command.
+> identical and the ancestry is not. Underneath: 22 pure assertions over a
+> read-only port implemented twice and proved to agree, a content suite that
+> grades every reference solution and holds every counter-example to the checks
+> it declares, an attempt that lives in SQLite across four processes sharing one
+> repository and one budget, and an HTMX app that serves every byte off the disk
+> and refuses any request it cannot prove came from its own page. **Phase 9
+> closes the loop**: SM-2 behind the `Scheduler` port
+> ([ADR 0008](adr/0008-sm2-first-with-fsrs-behind-a-port.md)), property-tested on
+> the four invariants §9.7 states; a grade the tool *suggests*
+> from the verdict, the hints revealed and the time taken, which the solver
+> presses or overrides; a due queue that offers the whole library before anything
+> is scheduled and drops an exercise the moment it is; and a dashboard and a
+> `/progress` page — streak, weakest tags, mastery by tag, activity window —
+> drawn as hand-rolled inline SVG with no dependency.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
 ---
@@ -1181,7 +1185,17 @@ That is also exactly what CI runs on both platforms, so the per-commit tier is
 a bisectability check and the pre-push tier is the correctness one. Neither
 substitutes for the other, and only one of them needs to be fast.
 
-Three caveats on the per-commit loop. Run it in the working tree rather than in a
+Four caveats on the per-commit loop. **Nothing else may be running**, which
+sounds obvious and is the one that wasted the most time: the loop was started
+seconds after two full-suite runs were killed, and commit 1 came back with 29
+failures that did not reproduce on either of two re-runs. A suite competing with
+another for temp directories, SQLite files and subprocesses fails in ways that
+look like real defects and are not — and `--cov` makes it worse, because two
+runs share one `.coverage` in the project root and will report a module at 60%
+that is fully covered. Run one thing at a time, and suspect this before
+debugging a failure that only appears under the loop.
+
+Run it in the working tree rather than in a
 `git worktree`: an editable install resolves `practice` to the path it was
 installed from, so a worktree runs the *working tree's* source against the
 *commit's* tests and reports failures that are artifacts of the method. (This
@@ -1584,7 +1598,7 @@ fixture mostly has.
 
 ---
 
-### Phase 9 — Spaced repetition and progress · 3 sessions
+### Phase 9 — Spaced repetition and progress · 3 sessions — **complete**
 
 Turns a quiz app into a training system.
 
@@ -1596,13 +1610,21 @@ Turns a quiz app into a training system.
 - Dashboard: due queue, streak, weakest tags
 - Progress page with inline-SVG charts
 
-**Commits**
+**Commits** — seven, where the plan sketched four (§16)
 1. `feat(domain): add SM-2 scheduler with property tests`
 2. `feat(app): add review queue and grade suggestion`
-3. `feat(web): add dashboard with due queue and streak`
-4. `feat(web): add progress page with tag mastery charts`
+3. `feat(web): schedule a review from the verdict panel`
+4. `feat(app): summarise progress from the attempt history`
+5. `feat(web): add dashboard with due queue and streak`
+6. `feat(web): add progress page with tag mastery charts`
+7. `test(e2e): schedule a review and see the dashboard change`
+8. `docs: add ADR 0008 and mark phase 9 complete`
 
 **Exit:** "what should I practice today?" is answered by the tool, not by you.
+**Met** by `tests/e2e/test_schedule_a_review.py`, which over real adapters asks
+the dashboard, solves the kata it offers, takes the grade the tool proposes, and
+asks again — and gets a different answer. The four properties §9.7 states are
+met by `tests/unit/domain/scheduling/test_sm2.py`, each named after its bullet.
 
 **MVP ends here.** Phases 0–9 are a complete, genuinely useful product.
 
@@ -1695,7 +1717,7 @@ changed"* is worth more than any code sample.
 | [0005](adr/0005-sandbox-via-temp-dirs-and-subprocess.md) | Sandbox via a scoped directory and subprocess, not containers | accepted |
 | [0006](adr/0006-sqlite-without-an-orm.md) | SQLite with hand-written SQL and explicit mappers, not an ORM | accepted |
 | [0007](adr/0007-htmx-over-a-single-page-app.md) | HTMX and server-rendered fragments, not a single-page app | accepted |
-| 0008 | SM-2 first, FSRS behind a port | not yet written |
+| [0008](adr/0008-sm2-first-with-fsrs-behind-a-port.md) | SM-2 first, with FSRS behind the same port | accepted |
 | 0009 | Ship our own prompts; never redistribute problem text | not yet written |
 | [0010](adr/0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | accepted |
 | [0011](adr/0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
@@ -2775,3 +2797,109 @@ The phase closed at **2,115 tests** — 142 more than Phase 7 — with `domain/`
 layout, and the DTOs those two feed. `practice validate` reports three exercises
 valid and `practice fixtures --check` matches both fixtures against
 `fixtures.lock`.
+
+**2026-10-02 — Phase 9: spaced repetition and progress. The MVP is complete.**
+Three sessions budgeted and the work landed in that range; the surprises were
+all in the shape of the phase rather than in its difficulty.
+
+**The commit list was missing the commit that makes the phase work.** §11
+sketched four — scheduler, queue, dashboard, charts — and none of them writes a
+card. Without a surface that grades a review the due queue is empty forever and
+the exit criterion is unmeetable, so the real list is seven. Worth recording as a
+category rather than as an oversight: Phases 6 and 7 needed additions too, and
+the shape is always the same one — a plan written from the *model* outward
+describes every piece of state and forgets the gesture that creates it.
+
+**The `Scheduler` port's signature was wrong in §4.6, and the property test is
+what said so.** `next_card(card, grade, today: date)` cannot produce the
+`last_reviewed_at` the card carries, and §9.7's fourth property — *`due_on` is
+always after `last_reviewed_at`* — is stated as a property *of the scheduler*.
+Either the scheduler returns a card with a stale review time for a use case to
+patch, splitting one card's construction across two places, or the port takes
+the instant. It takes the instant; `today` is `now.date()`.
+
+**The clamp §9.7 names was hiding two more stalls.** The plan predicts that at
+the 1.3 ease floor `round(1 × 1.3) == 1`, so a naive multiply leaves a one-day
+interval where it was and the monotonicity property fails. True, and writing the
+property first also surfaced that `HARD` multiplies by 1.2 whatever the ease, so
+*any* interval under two and a half days rounds back to itself, and that Python's
+round-half-even (`round(2.5) == 2`) would add a third. One clamp on the shared
+return covers all three, which is the argument for putting it there rather than
+inside the `GOOD` branch — and is a small vindication of §9.7's "write the test
+first and watch it catch this".
+
+**A suggestion is not a schedule, and keeping them apart is the phase's main
+design decision.** The tool proposes a grade from three readings it has and the
+solver does not — the verdict, the hints revealed, the time against the author's
+estimate — and then waits to be pressed. Applying it automatically would make the
+queue self-filling and an override impossible to honour, because a card is
+replaced rather than versioned (Phase 6) and a correction would land on a
+schedule already moved. The rule is three penalties against a ceiling: a pass
+never suggests `AGAIN`, because `AGAIN` means *you did not know this* and someone
+whose end state satisfied every required check did. It lives in `domain/` and not
+behind the port, because FSRS would want it unchanged.
+
+**`RevealHint` being a use case since Phase 8 paid off exactly as predicted.**
+That commit's message argued the reveal is persisted because "Phase 9's grade
+suggestion reads that record". It does, and the sentence the schedule block shows
+— *passed, but 1 hint revealed* — is the whole of why the log was worth keeping.
+
+**Two port additions, each with a reason the other does not cover.**
+`ReviewRepository.cards()` is not a looser `due_on`: the queue is a join against
+the whole library, and an exercise with no card is the most common due item there
+is, so a method returning the due subset can never report one. `due_on` keeps its
+place because its ordering *is* the queue's. `AttemptRepository.completed()` is
+`active()`'s counterpart, and it is the query `sqlite/attempts.py` predicted in
+Phase 6 — "the shape that stops being free the first time a progress page asks
+for a hundred attempts". It is two statements rather than N+1 for that reason;
+the honest limit is that it loads whole aggregates, which is fine at hundreds of
+rows and wants a projection rather than a narrower query if it ever is not.
+
+**Three defects found by looking at the page, and one of them is the worst kind.**
+The default button in this app is an accent *fill* with background-coloured text,
+so marking the suggested grade by accenting its border and label painted accent
+on accent and shipped a button with no words on it — four controls, one blank,
+and every fragment assertion green. The tests could see `class="grade suggested"`
+and could not see that it rendered invisible; nothing short of a screenshot
+would have. (Also: idle ticks drawn in the bar colour made a 30-day window with
+one attempt read as a dashed chart rather than as a month off, and the history
+said "0 min" for every attempt under a minute, which is most of them.)
+
+**Writing the e2e found that two pages' sentences were unassertable.** A Jinja
+block that wraps the source wraps the output, so the streak line a person reads
+is not a line a test can match; the web tests had been checking fragments short
+enough to fall inside one line and had not noticed. `partials/verdict.html`
+already knew this and said so in a comment — the finding is that the comment was
+load-bearing and nobody had carried it to the next template.
+
+**The Phase 2 tripwire mechanism worked a second time.** The dashboard carried a
+section saying due-today and a streak were "phase 9", with a test asserting that
+sentence was *present*, so that landing the phase would break the build and force
+someone to delete the promise. It broke. The inverse assertion is what is left.
+
+**The phase is web-only, deliberately, and it is the first one that is.** Nothing
+in the CLI schedules a review or prints a queue, so a solver who only ever runs
+`practice submit` builds no history. That is defensible — §8.4 puts due-today,
+the streak and the weakest tags on *pages*, and the suggestion is a control with
+four buttons that a terminal would have to prompt for, which would block
+`practice solve` in CI the way an interactive resume prompt would have (Phase 6)
+— but it is worth saying out loud rather than discovering. The cheap half, a
+`practice due` that prints the queue, is one command over `ReviewQueue` and has
+no new ports behind it; the expensive half is the grade, and it is the half that
+would have to answer what a non-interactive invocation does.
+
+ADR 0008, whose number §12 reserved in the original plan, records SM-2 over FSRS
+and the three constraints that decide it — no review log to fit against, a
+scheduler being the easiest thing in the system to get wrong quietly, and a
+library of tens rather than thousands of cards. Its most useful paragraph is the
+cost: the card keeps no history, so every day the tool runs without one is a day
+of evidence that cannot be recovered, and the table being easy to add later is
+not the same as the data being recoverable.
+
+The phase closed at **2,277 tests** — 162 more than Phase 8 — with `domain/` and
+`application/` at **100%** statement and branch coverage against the 90% gate,
+on 1,892 statements and 366 branches: 304 statements and 38 branches more than
+Phase 8 covered, almost all of them in four places — the scheduler, the
+suggestion rule, the progress summary and the three new DTOs. `practice validate`
+reports three exercises valid and `practice fixtures --check` matches both
+fixtures against `fixtures.lock`.
