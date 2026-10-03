@@ -81,12 +81,20 @@ need to be one.
 
 ## How long you have
 
-Unreferenced commits survive until they are garbage collected. The defaults are
-generous — 90 days for reachable-from-reflog objects, 30 days for truly
-unreachable ones (`gc.reflogExpire`, `gc.pruneExpire`) — and `git gc` runs
-automatically once enough loose objects accumulate.
+Unreferenced commits survive until they are garbage collected, and the defaults
+are generous:
 
-So: days or weeks, not minutes. But the honest version of the rule is that the
-window exists and you should not plan around its size. This practice
-environment pins `gc.auto=0` precisely so that an exercise about recovering
-unreferenced commits cannot become unsolvable while you are reading the hints.
+| setting | default | what it expires |
+|---|---|---|
+| `gc.reflogExpire` | 90 days | reflog entries for commits still reachable |
+| `gc.reflogExpireUnreachable` | 30 days | reflog entries for commits that are not |
+| `gc.pruneExpire` | 2 weeks | loose objects nothing refers to at all |
+
+`git gc` runs automatically once enough loose objects accumulate, so the clock
+starts when you delete the branch rather than when you next type a command.
+
+So: weeks, not minutes. But the honest version of the rule is that the window
+exists and you should not plan around its size. This practice environment pins
+`gc.auto = 0` and both reflog expiries to `never`, precisely so that an exercise
+about recovering unreferenced commits cannot become unsolvable while you are
+reading the hints.

@@ -55,7 +55,8 @@ for start in range(max(0, end - longest), end):
 ```
 
 On real text — short words, long string — that turns O(n²) slices into O(n × k)
-for a small k, and it is the difference between a toy and something you could
+of them, so O(n × k²) once the slicing and hashing of each is counted. With k
+small and n large that is the difference between a toy and something you could
 point at a document.
 
 ## The exponential version, and why memoising it is the same thing
@@ -72,8 +73,8 @@ suite's `"aaa...ab"` case is built for this: every prefix is splittable and
 nothing covers the final `b`, so the search explores astronomically many splits
 before concluding failure.
 
-`@functools.cache` on that function makes it O(n × k) and is the top-down
-spelling of the same table. Worth knowing both directions — top-down is usually
+`@functools.cache` on that function makes it polynomial — the same O(n × k²) —
+and is the top-down spelling of the same table. Worth knowing both directions — top-down is usually
 easier to derive, bottom-up is usually easier to make space-efficient.
 
 ## Variants

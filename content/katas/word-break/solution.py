@@ -20,10 +20,12 @@ def can_segment(text: str, words: list[str]) -> bool:
     word" once per pair of positions. With a list it is a linear scan each time
     and the whole thing gains a factor of the dictionary size.
 
-    O(n^2) slices, each costing O(n) to cut and hash, so O(n^3) in the length of
-    the text in the worst case. Bounding the inner loop by the longest word in
-    the dictionary is the easy improvement and is what makes it practical on real
-    text, where words are short and the string is long.
+    Unbounded, the inner loop tries every earlier position, so there are O(n^2)
+    slices each costing O(n) to cut and hash -- O(n^3) in the length of the text.
+    Bounding it by the longest word in the dictionary brings that to O(n * k^2)
+    for a longest word of length k: n end positions, k starts each, and a slice
+    of up to k characters to cut and hash. On real text k is small and n is large,
+    which is the whole reason the bound is worth the line.
     """
     dictionary = set(words)
     longest = max((len(word) for word in dictionary), default=0)

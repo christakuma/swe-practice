@@ -77,9 +77,16 @@ intuition.
 
 ## Why anyone cares
 
-LIS is the core of `diff`: the longest common subsequence of two files reduces
-to an LIS on index positions, which is how `git diff` finds the lines that did
-not change. It also shows up in box-stacking, scheduling, and anywhere "pick a
-compatible increasing chain" appears — and it is the standard example of a DP
-whose complexity improves by changing what the table *means* rather than by
-optimising the loops.
+LIS is how **patience diff** works, which is a real `git diff --patience` and the
+default in some other tools: match the lines that appear exactly once in both
+files, then find the longest increasing subsequence of their positions in the
+second file. That subsequence is the set of lines that did not move, and
+everything between consecutive members is recursed into. (`git diff`'s default
+algorithm is Myers', which is an edit-script search rather than an LIS — the
+patience variant exists because Myers' output is sometimes less readable, not
+because it is wrong.)
+
+It also shows up in box-stacking, scheduling, and anywhere "pick a compatible
+increasing chain" appears — and it is the standard example of a DP whose
+complexity improves by changing what the table *means* rather than by optimising
+the loops.

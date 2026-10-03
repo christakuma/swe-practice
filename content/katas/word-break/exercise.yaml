@@ -41,5 +41,5 @@ kata:
   reference: solution.py
   time_limit_seconds: 10
   complexity:
-    expected_time: "O(n * longest word), amortised over slicing"
+    expected_time: "O(n * k^2) for a longest word of length k"
     expected_space: "O(n)"
