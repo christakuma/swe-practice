@@ -29,6 +29,7 @@ from tests.fakes.repo import (
     a_repo,
 )
 from tests.fakes.sandbox import FakeProvisioner, FakeWorkspace
+from tests.fakes.scheduling import FixedScheduler, Scheduled
 
 __all__ = [
     "BuilderRepoQueryFactory",
@@ -38,8 +39,10 @@ __all__ = [
     "FakeProvisioner",
     "FakeRepoQuery",
     "FakeWorkspace",
+    "FixedScheduler",
     "RepoBuilder",
     "RepoState",
+    "Scheduled",
     "SequentialIdGenerator",
     "StubKataRunner",
     "a_kata",

@@ -27,12 +27,15 @@ from practice.domain.attempt import Attempt, AttemptPolicy
 from practice.domain.exercise import ExerciseFilter, ExerciseKind, KataSpec
 from practice.domain.ids import AttemptId, ExerciseId, Sha
 from practice.domain.ports import CommitInfo, ReflogEntry, WorktreeStatus
+from practice.domain.review import Grade, ReviewCard
+from practice.domain.scheduling import Sm2Scheduler
 from tests.fakes import (
     BuilderRepoQueryFactory,
     FakeClock,
     FakeContentRepository,
     FakeProvisioner,
     FakeWorkspace,
+    FixedScheduler,
     SequentialIdGenerator,
     StubKataRunner,
     a_kata,
@@ -52,6 +55,7 @@ if TYPE_CHECKING:
         RepoQuery,
         RepoQueryFactory,
         SandboxProvisioner,
+        Scheduler,
         Workspace,
     )
 
@@ -372,3 +376,35 @@ def test_the_builder_factory_hands_out_a_fresh_query_each_call() -> None:
     repo.moved("refs/heads/main", second)
 
     assert factory(FakeWorkspace()).rev_parse("HEAD") == second
+
+
+# --- the Phase 9 scheduler -------------------------------------------------
+
+
+def test_the_sm2_scheduler_satisfies_the_scheduler_port() -> None:
+    """The real one. `tests/unit/domain/scheduling/` is where its arithmetic is
+    held to §9.7's properties; what this adds is the shape, which only mypy sees.
+    """
+    scheduler: Scheduler = Sm2Scheduler()
+    now = FakeClock().now()
+    card = ReviewCard.new(ExerciseId("katas/two-sum"), now.date())
+
+    reviewed = scheduler.next_card(card, Grade.GOOD, now)
+
+    assert reviewed.due_on > now.date()
+    assert reviewed.last_reviewed_at == now
+
+
+def test_the_fixed_scheduler_satisfies_it_too() -> None:
+    """The second implementation §13 asks of the port, and the one the use-case
+    tests drive: it records the grade it was handed instead of doing arithmetic
+    those tests would then depend on.
+    """
+    scheduler: Scheduler = FixedScheduler(interval_days=3)
+    card = ReviewCard.new(ExerciseId("katas/two-sum"), FakeClock().today())
+
+    reviewed = scheduler.next_card(card, Grade.AGAIN, FakeClock().now())
+
+    assert reviewed.interval_days == 3
+    assert isinstance(scheduler, FixedScheduler)
+    assert scheduler.grades == [Grade.AGAIN]

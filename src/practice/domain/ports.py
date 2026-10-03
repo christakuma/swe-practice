@@ -394,9 +394,20 @@ class Grader(Protocol):
 
 
 class Scheduler(Protocol):
-    """Moves a review card after an attempt. SM-2 in v1, FSRS behind the same port."""
+    """Moves a review card after an attempt. SM-2 in v1, FSRS behind the same port.
 
-    def next_card(self, card: ReviewCard, grade: Grade, today: date) -> ReviewCard: ...
+    **`now` rather than the `today: date` PLAN.md §4.6 sketched**, because the card
+    the scheduler returns carries `last_reviewed_at`, and a date cannot produce a
+    timestamp. The alternative is a use case patching the returned card, which
+    splits one card's construction across two places and lets `due_on` be computed
+    from one clock reading while `last_reviewed_at` comes from another — when
+    §9.7's fourth property is exactly that the two agree, stated as a property of
+    the scheduler. `today` is `now.date()` and the implementation derives it.
+    """
+
+    def next_card(
+        self, card: ReviewCard, grade: Grade, now: datetime
+    ) -> ReviewCard: ...
 
 
 # --- ambient ---------------------------------------------------------------

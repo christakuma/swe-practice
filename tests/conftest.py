@@ -1,6 +1,6 @@
 """Shared pytest configuration.
 
-Two things, and they are here rather than anywhere else for the same reason: a
+Three things, and they are here rather than anywhere else for the same reason: a
 rule that has to be remembered per test is a rule that will be forgotten by one.
 
 **Markers are applied by directory.** The alternative — a decorator on every test
@@ -15,6 +15,13 @@ history. A single test that forgot to override it would write into it, and
 `practice attempts` would then list test fixtures as real attempts. An autouse
 fixture is the only form of this rule that cannot be forgotten — the override is
 not something a test opts into.
+
+**Hypothesis runs without a deadline.** Its default fails an example that takes
+over 200ms, which is a useful guard against an accidentally quadratic property and
+a bad fit for this suite: the scheduler properties are microseconds of arithmetic,
+so the only thing the deadline can catch here is a CI runner pausing — a flake with
+no defect behind it, in the suite that is meant to be the most trustworthy. The
+bound that matters, `max_examples`, is left alone.
 """
 
 from __future__ import annotations
@@ -23,8 +30,12 @@ from itertools import count
 from typing import TYPE_CHECKING
 
 import pytest
+from hypothesis import settings
 
 from practice.config import DATABASE_PATH_ENV
+
+settings.register_profile("practice", deadline=None)
+settings.load_profile("practice")
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
