@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
+    from practice.application.graph import CommitGraph
     from practice.domain.attempt import Attempt, CommandRun
     from practice.domain.exercise import Exercise
     from practice.domain.ids import Sha
@@ -209,6 +210,12 @@ class RepoView:
     `stashes` is the list rather than a count. A stash's message is the only clue
     to what is in it, and "1 stash" is the version of this that sends someone to
     the terminal.
+
+    `graph` is already laid out, and that is not a shortcut. It is a view model
+    over the same `CommitInfo` values -- `application/graph.py` says why it lives
+    one layer in from the renderer -- and building it here means one inspection
+    produces one consistent answer: refs, status and drawing all read from a single
+    `RepoQuery` instance rather than from three taken a moment apart.
     """
 
     head_ref: str | None
@@ -218,6 +225,7 @@ class RepoView:
     remote_branches: Mapping[str, Sha]
     tags: Mapping[str, Sha]
     stashes: Sequence[str]
+    graph: CommitGraph
 
     @property
     def is_detached(self) -> bool:

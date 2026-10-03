@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import pytest
 
+from practice.application.dto import short_ref
 from practice.application.errors import (
     AttemptNotFoundError,
     ExerciseNotFoundError,
@@ -267,3 +268,16 @@ def test_inspecting_records_nothing_on_the_attempt() -> None:
     after = world.attempts.get(attempt_id)
     assert after is not None
     assert len(after.events) == count
+
+
+def test_a_ref_outside_the_three_namespaces_is_shown_whole() -> None:
+    """`refs/stash` and `refs/notes/commits` are real refs with no short form.
+
+    Stripping only the three prefixes a reader knows, and returning anything else
+    untouched, is the behaviour that cannot mislead: an unfamiliar ref shown in
+    full is a ref someone can go and look up.
+    """
+    assert short_ref("refs/stash") == "refs/stash"
+    assert short_ref("refs/heads/main") == "main"
+    assert short_ref("refs/remotes/origin/main") == "origin/main"
+    assert short_ref("refs/tags/v1") == "v1"

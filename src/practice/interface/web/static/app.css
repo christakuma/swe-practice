@@ -271,7 +271,7 @@ button[disabled] {
  * out of.
  */
 .workbench.scenario {
-  grid-template-columns: minmax(0, 26rem) minmax(0, 1fr) minmax(0, 19rem);
+  grid-template-columns: minmax(0, 24rem) minmax(0, 1fr) minmax(0, 25rem);
 }
 
 @media (max-width: 78rem) {
@@ -614,6 +614,61 @@ button[disabled] {
   margin-top: 0.9rem;
   padding-top: 0.9rem;
   border-top: 1px solid var(--line);
+}
+
+/* --- the commit graph ---------------------------------------------------- */
+
+/*
+ * The drawing is served with `width="100%"` over a fixed `viewBox`, so it scales
+ * to the column rather than clipping. Everything below is colour and stroke --
+ * geometry is the renderer's, and splitting those two was the point of putting
+ * the layout in Python at all.
+ *
+ * `var(--…)` inside SVG attributes is the reason this works in both schemes with
+ * one palette. A renderer that wrote `#dfe3ec` into a `fill` would be invisible on
+ * the light theme and nothing would notice until someone looked.
+ */
+.commit-graph {
+  display: block;
+  margin-top: 0.2rem;
+  font-family: var(--mono);
+  overflow: visible;
+}
+
+/* The lanes take the node colour at low opacity rather than `--line`. At the
+   scale this drawing ends up at in a side column, a panel-border grey reads as no
+   line at all, and a graph whose commits are not visibly joined is a list. */
+.commit-graph .lane {
+  fill: none;
+  stroke: var(--accent);
+  stroke-opacity: 0.4;
+  stroke-width: 1.5;
+}
+
+.commit-graph .node {
+  fill: var(--accent);
+  stroke: var(--bg-raised);
+  stroke-width: 1.5;
+}
+
+/* A merge is hollow, because the other thing that identifies one -- a second line
+   arriving -- is exactly what a reader is scanning for and has not found yet. */
+.commit-graph .node.merge {
+  fill: var(--bg-raised);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.commit-graph .row {
+  fill: var(--ink);
+}
+
+.commit-graph .sha {
+  fill: var(--ink-dim);
+}
+
+.commit-graph .refs {
+  fill: var(--note);
 }
 
 /* --- CodeMirror overrides ----------------------------------------------- */

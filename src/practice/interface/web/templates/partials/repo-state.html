@@ -122,6 +122,22 @@
         </dd>
       {% endif %}
 
+      <dt>History</dt>
+      <dd>
+        {#
+          Inline SVG, generated in Python (PLAN.md §8.4). The filter returns
+          `Markup`, so there is no `| safe` here and no question about who escaped
+          what -- `commit_graph.py` escapes every string from the repository at the
+          point it builds the element around it.
+
+          It draws everything reachable from HEAD *or any ref*, which is the whole
+          reason it is worth having: after `reset --hard` the commit still on
+          `origin/main` is unreachable from HEAD, and a graph that stopped showing
+          it would hide what the solver just did.
+        #}
+        {{ repo.graph | commit_graph }}
+      </dd>
+
       <dt>Stash</dt>
       <dd>
         {% if repo.stashes %}

@@ -35,7 +35,7 @@ does not apply. `RunScenarioCommand` refuses the same thing for the same reason.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from practice.application.dto import RepoView
 from practice.application.errors import (
@@ -43,6 +43,7 @@ from practice.application.errors import (
     ExerciseNotFoundError,
     WorkspaceGoneError,
 )
+from practice.application.graph import lay_out, merge_logs
 from practice.domain.exercise import GitScenarioSpec
 
 if TYPE_CHECKING:
@@ -51,6 +52,7 @@ if TYPE_CHECKING:
     from practice.domain.ids import AttemptId, Sha
     from practice.domain.ports import (
         AttemptRepository,
+        CommitInfo,
         ContentRepository,
         RepoQuery,
         RepoQueryFactory,
@@ -65,6 +67,12 @@ __all__ = ["InspectRepository"]
 _HEADS = "refs/heads/"
 _REMOTES = "refs/remotes/"
 _TAGS = "refs/tags/"
+
+#: How many commits the graph draws. A window rather than the whole history,
+#: because the panel sits beside a console and a scenario fixture is three commits
+#: deep -- and because `lay_out` truncates *before* laying out, so a limit here
+#: cannot produce an edge with nothing on the end of it.
+GRAPH_ROWS: Final = 12
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,22 +116,59 @@ class InspectRepository:
 
 
 def _view(repo: RepoQuery) -> RepoView:
-    """Six questions, asked once each, through one cached query instance.
+    """Every question the panel asks, through one cached query instance.
 
     `refs()` is asked once and split three ways rather than asked three times,
     which matters because the real implementation caches per instance and a reader
     should not have to know that to see why this is cheap.
     """
     refs = repo.refs()
+    head_ref = repo.head_ref()
     return RepoView(
-        head_ref=repo.head_ref(),
+        head_ref=head_ref,
         head_sha=repo.rev_parse("HEAD"),
         status=repo.status(),
         branches=_under(refs, _HEADS),
         remote_branches=_under(refs, _REMOTES),
         tags=_under(refs, _TAGS),
         stashes=repo.stash_list(),
+        graph=lay_out(
+            _history(repo, refs),
+            refs=refs,
+            head_ref=head_ref,
+            limit=GRAPH_ROWS,
+        ),
     )
+
+
+def _history(repo: RepoQuery, refs: Mapping[str, Sha]) -> tuple[CommitInfo, ...]:
+    """Everything reachable from HEAD *or from any ref*, in one order.
+
+    **Not just HEAD, and that is the point of the graph.** After
+    `git reset --hard HEAD~1` the commit still on `origin/main` is no longer
+    reachable from HEAD, and a drawing that stopped showing it would hide the exact
+    thing the flagship scenario is about -- the solver would see a tidy history and
+    no sign of what they stranded.
+
+    **One `log` per distinct tip, deduplicated by sha.** `RepoQuery.log` answers for
+    one revision, so several tips mean several calls; in the usual state of these
+    fixtures `main` and `origin/main` are the same commit and that is one call, not
+    two. The real implementation caches per rev string as well, so a ref asked for
+    twice costs one process either way.
+    """
+    tips: list[str] = []
+    seen: set[Sha] = set()
+
+    head = repo.rev_parse("HEAD")
+    if head is not None:
+        tips.append("HEAD")
+        seen.add(head)
+    for name, sha in sorted(refs.items()):
+        if sha not in seen:
+            tips.append(name)
+            seen.add(sha)
+
+    return merge_logs(repo.log(tip) for tip in tips)
 
 
 def _under(refs: Mapping[str, Sha], prefix: str) -> dict[str, Sha]:
