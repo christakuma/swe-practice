@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/detect-a-dependency-cycle
+kind: kata
+title: Is There a Dependency Cycle
+difficulty: medium
+tags: [graphs, dfs, cycles]
+estimated_minutes: 25
+
+prompt: |
+  Given a dependency graph as a dict from a name to the names it depends on,
+  decide whether any chain of dependencies leads back to where it started.
+
+  ```
+  has_cycle({"a": ["b"], "b": ["a"]})                          ->  True
+  has_cycle({"a": ["b"], "b": ["c"], "c": []})                 ->  False
+  has_cycle({"a": ["b", "c"], "b": ["d"], "c": ["d"], "d": []}) ->  False
+  has_cycle({"a": ["a"]})                                      ->  True
+  ```
+
+  A name may appear as a dependency without having an entry of its own — that is
+  how a leaf is written.
+
+  The graph may have several disconnected parts, and chains may be ten thousand
+  links long.
+
+hints:
+  - "Walk the graph depth-first from every node you have not already finished
+     with. \"Every\" matters: a cycle can sit in a part of the graph that is
+     unreachable from the first node you try."
+  - "A single visited set does not work. Look at the diamond example: `d` is
+     reached from both `b` and `c`, which is a revisit and is not a cycle."
+  - "What makes a cycle is coming back to a node that is still *on the path you
+     are currently walking*. So you need two sets: one for nodes on the current
+     path, one for nodes you have finished with entirely."
+  - "Write it with an explicit stack, not recursion — ten thousand links is ten
+     thousand frames. The fiddly part is knowing when a node leaves the current
+     path, which recursion gets for free on the way back out."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(V + E)"
+    expected_space: "O(V)"

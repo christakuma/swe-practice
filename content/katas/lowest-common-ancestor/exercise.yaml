@@ -1,0 +1,49 @@
+schema_version: 1
+id: katas/lowest-common-ancestor
+kind: kata
+title: Lowest Common Ancestor
+difficulty: medium
+tags: [trees, recursion, dfs]
+estimated_minutes: 22
+
+prompt: |
+  Given a binary tree and two values in it, return the value of the **deepest**
+  node that has both of them somewhere below it.
+
+  ```
+          3
+       /     \
+      5       1          lca(5, 1)  ->  3
+    /   \    /  \        lca(7, 4)  ->  2
+   6     2  0    8       lca(5, 4)  ->  5
+        / \
+       7   4
+  ```
+
+  A node counts as its own ancestor, which is why `lca(5, 4)` is `5`.
+
+  This is **not** a search tree — there is no ordering to steer by. Values are
+  distinct. Return `None` if either value is not in the tree.
+
+hints:
+  - "Think about what a subtree can report upwards. There are only three useful
+     answers: \"the ancestor is here\", \"I contain one of the two values\", and
+     \"I contain neither\"."
+  - "If the left subtree reports finding something and the right subtree does
+     too, then the two values are split across this node — so this node is the
+     answer."
+  - "If only one side reports anything, pass that report up unchanged. The
+     ancestor is somewhere above you, or that one value *is* the ancestor."
+  - "Handle the missing-value case separately, before recursing. Without a
+     presence check, asking for a value that is not in the tree returns the
+     position of the one that is."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(h) for a tree of height h"

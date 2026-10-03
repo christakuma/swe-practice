@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/topological-order
+kind: kata
+title: Order Things by Their Dependencies
+difficulty: medium
+tags: [graphs, topological-sort, heap, greedy]
+estimated_minutes: 28
+
+prompt: |
+  Given a dict from a name to the names it depends on, return an order in which
+  every name comes after everything it depends on. Return `None` if no such
+  order exists.
+
+  ```
+  topological_order({"c": ["b"], "b": ["a"], "a": []})   ->  ["a", "b", "c"]
+  topological_order({"build": ["tools"]})                ->  ["tools", "build"]
+  topological_order({"a": ["b"], "b": ["a"]})            ->  None
+  ```
+
+  Several orders are usually valid. To make the answer unique, always choose the
+  **alphabetically smallest** name that is ready.
+
+  A name may appear only as a dependency and never as a key — it still belongs
+  in the output. Graphs may be ten thousand names deep.
+
+hints:
+  - "Which name can safely go first? Whichever one depends on nothing. Emit it,
+     and then ask the same question of what is left."
+  - "Keep a count per name of how many of its dependencies have not been emitted
+     yet. Emitting a name decrements that count for everything that depends on
+     it; a count reaching zero makes that name ready."
+  - "The dict runs the wrong way for that — it maps a name to what it needs, and
+     you need to go from a name to what needs it. Build the reverse index first."
+  - "When the loop stops, compare how many names you emitted with how many there
+     were. Anything left over is waiting on something that is also waiting,
+     which is a cycle — so cycle detection is free. Use a heap for the ready set
+     to get the alphabetical tie-break."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O((V + E) log V) with the heap"
+    expected_space: "O(V + E)"

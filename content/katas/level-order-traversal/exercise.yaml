@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/level-order-traversal
+kind: kata
+title: Read a Tree Level by Level
+difficulty: medium
+tags: [trees, bfs, queues]
+estimated_minutes: 18
+
+prompt: |
+  Return a tree's values grouped by level: one list per level, top to bottom,
+  each read left to right.
+
+  ```
+        3
+       / \
+      9  20          ->  [[3], [9, 20], [15, 7]]
+        /  \
+       15   7
+  ```
+
+  An empty tree gives `[]`. Missing children leave no gap — a level holds only
+  the nodes that exist.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "Depth-first recursion visits a whole subtree before its sibling, so it
+     never has a level in hand. You want to visit nodes in the order they appear
+     on the page."
+  - "That order is breadth-first: a queue, seeded with the root. Take from the
+     front, append the children to the back."
+  - "A plain breadth-first walk gives you the right *order* and no level
+     boundaries. The trick is that at the top of each round, the queue holds
+     exactly one level — so read its length first and then drain that many."
+  - "Use `collections.deque`, not a list. `list.pop(0)` shifts every remaining
+     element, which turns this into a quadratic traversal on a wide tree."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(w) for a tree of maximum width w"

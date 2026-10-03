@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/shortest-path-in-a-grid
+kind: kata
+title: Shortest Path Through a Grid
+difficulty: medium
+tags: [graphs, grids, bfs, shortest-path]
+estimated_minutes: 25
+
+prompt: |
+  Return the fewest cells on a route from the top-left of a grid to the
+  bottom-right, moving only up, down, left or right, and never entering a cell
+  holding `1`.
+
+  ```
+  0 0 0            0 1 0
+  0 0 0  ->  5     0 1 0  ->  5     0 1  ->  -1
+  0 0 0            0 0 0            1 0
+  ```
+
+  Count both ends: a 1x1 open grid is `1`. Return `-1` when there is no route.
+
+  You may modify the grid. It may be a few hundred cells on a side.
+
+hints:
+  - "This is the grid-as-a-graph problem again, but \"shortest\" changes which
+     search you can use. Think about what depth-first search would report on a
+     grid with two routes of different lengths."
+  - "Breadth-first search finishes everything at distance 1 before it starts
+     anything at distance 2, so the first time it reaches a cell is by the
+     fewest steps. That property is the entire reason to use it here."
+  - "A queue of `(row, column, steps)`. Take from the front, push each open
+     neighbour with `steps + 1`, and return as soon as you take the destination
+     off the queue."
+  - "Mark a cell as seen when you *push* it, not when you pop it. Marking on pop
+     lets the same cell enter the queue once for every neighbour that reaches
+     it."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns)"
+    expected_space: "O(rows * columns)"

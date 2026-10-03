@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/validate-a-binary-search-tree
+kind: kata
+title: Is This a Binary Search Tree
+difficulty: medium
+tags: [trees, recursion, dfs, invariants]
+estimated_minutes: 20
+
+prompt: |
+  Decide whether a binary tree satisfies the search tree property: every value
+  in a node's left subtree is **strictly less** than the node, and every value
+  in its right subtree is **strictly greater**.
+
+  ```
+        2              5
+       / \            / \         the 6 is in 5's left subtree
+      1   3   True   3   8  False and must be less than 5
+                    / \
+                   1   6
+  ```
+
+  Duplicates are not allowed. An empty tree is valid. Values may be negative.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "Write the obvious check first: at each node, is the left child smaller and
+     the right child bigger? Then find a tree it accepts that is not a search
+     tree."
+  - "The property is about every *descendant*, not every child. A node deep in
+     a left subtree still has to be less than the ancestor it hangs off."
+  - "So each node has a range it is allowed to be in, and the range narrows as
+     you go down: stepping left lowers the ceiling to the current value,
+     stepping right raises the floor to it."
+  - "Recurse with `(node, low, high)`. The root has no bounds at all — do not
+     seed them with 0, or every tree containing a negative number is rejected."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(h) for a tree of height h"

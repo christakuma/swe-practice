@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/detect-a-cycle-in-a-linked-list
+kind: kata
+title: Does This Linked List Loop
+difficulty: medium
+tags: [linked-lists, two-pointers]
+estimated_minutes: 18
+
+prompt: |
+  Decide whether following `next_node` from the head of a singly linked list
+  ever revisits a node.
+
+  ```
+  1 -> 2 -> 3 -> None        False
+  1 -> 2 -> 3 -> 2 ...       True    (the tail points back at the second node)
+  1 -> 1 (itself)            True
+  None                       True?   no -- an empty list has no cycle
+  ```
+
+  The list may be a hundred thousand nodes long. The tests build lists with the
+  `ListNode` class in the stub.
+
+  Solve it in **O(1) extra space** — a set of visited nodes is correct and is
+  not what this kata is for.
+
+hints:
+  - "A set of seen nodes answers it immediately and costs O(n) space. Keep that
+     version in mind as the thing to beat."
+  - "Two pointers moving at different speeds. If the list ends, the faster one
+     falls off it. If it loops, both are inside the loop forever — and then what
+     happens to the distance between them?"
+  - "Inside the loop, the fast pointer gains one position on the slow one every
+     step. A gap that shrinks by exactly one cannot step over zero, so they meet."
+  - "`while fast is not None and fast.next_node is not None`. Both halves are
+     needed: an odd-length list lands the fast pointer on the last node, an
+     even-length one lands it just short."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/count-islands
+kind: kata
+title: Count Islands in a Grid
+difficulty: medium
+tags: [graphs, grids, dfs, bfs, connected-components]
+estimated_minutes: 22
+
+prompt: |
+  Count the connected groups of `1`s in a rectangular grid of `0`s and `1`s.
+
+  Cells connect **only** up, down, left and right. Diagonal neighbours do not
+  count.
+
+  ```
+  1 1 0 0
+  1 1 0 0    ->  2
+  0 0 1 0
+  ```
+
+  An empty grid has no islands. You may modify the grid.
+
+  The grid may be large — up to a few hundred cells on a side, all of it one
+  island.
+
+hints:
+  - "A grid is a graph in disguise: every cell is a node, and \"directly
+     adjacent\" is the edge. The question is then the textbook one — how many
+     connected components are there?"
+  - "Walk the grid. The first time you meet a `1` you have found a new island,
+     so count it and then explore everything reachable from it so you never
+     count it again."
+  - "Marking visited cells by writing `0` over them is the usual trick here —
+     the problem says you may modify the grid, and it saves a visited set."
+  - "Write the exploration with an explicit stack rather than recursion. A grid
+     of ninety thousand connected cells means ninety thousand nested calls, and
+     Python gives up at a thousand."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns)"
+    expected_space: "O(rows * columns) for the stack in the worst case"

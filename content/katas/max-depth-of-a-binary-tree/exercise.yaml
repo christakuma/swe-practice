@@ -1,0 +1,44 @@
+schema_version: 1
+id: katas/max-depth-of-a-binary-tree
+kind: kata
+title: Depth of a Binary Tree
+difficulty: easy
+tags: [trees, recursion, dfs]
+estimated_minutes: 10
+
+prompt: |
+  Return the number of nodes on the longest path from the root down to a leaf.
+
+  ```
+        3
+       / \
+      9  20          ->  3
+        /  \
+       15   7
+  ```
+
+  An empty tree has depth 0; a single node has depth 1.
+
+  The tests build trees with the `TreeNode` class in the stub — leave it as it
+  is and write `max_depth`.
+
+hints:
+  - "Say what the depth of a tree is in terms of its subtrees. One sentence, and
+     it is the whole function."
+  - "The depth is one more than the deeper of the two subtrees. The deeper, not
+     the sum and not the first one — a tree can lean either way."
+  - "Make the base case the *empty* tree rather than a leaf. Then a leaf needs
+     no special handling: it is a node whose subtrees are both empty, so it
+     comes out as `1 + max(0, 0)`."
+  - "`if root is None: return 0`, then `return 1 + max(max_depth(root.left),
+     max_depth(root.right))`."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(h) for a tree of height h"
