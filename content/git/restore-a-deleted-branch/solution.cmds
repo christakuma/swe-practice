@@ -1,0 +1,22 @@
+# Reference solution. Deleting a branch deletes a pointer, not the commits.
+
+git status --short --branch
+git log --oneline --decorate --all
+git branch -a
+
+# HEAD's own history: every position it has held, newest first. The branch's
+# own reflog went with the branch, but HEAD's did not.
+git reflog
+
+# HEAD@{0} is the commit on main; HEAD@{1} is the checkout back to main;
+# HEAD@{2} is the tip of the deleted branch, "Retry failed webhook deliveries".
+git show --stat HEAD@{2}
+
+# Recreate the branch at that commit. git branch takes a starting point.
+git branch feature/webhooks HEAD@{2}
+git checkout feature/webhooks
+
+# Verify: both commits back, main untouched, tree clean.
+git log --oneline --decorate --all
+cat webhook.py
+git status --short --branch

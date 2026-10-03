@@ -1,0 +1,9 @@
+# Counter-example: tag the most recent commit that touched the file.
+#
+# `git log -- middleware.py` puts it at the top of the list, and it is a
+# genuine change to the chain -- so it looks like the place the chain was last
+# reasoned about. The guard was already gone three commits earlier.
+
+git log --oneline -- middleware.py
+git tag culprit main
+git log --oneline --decorate

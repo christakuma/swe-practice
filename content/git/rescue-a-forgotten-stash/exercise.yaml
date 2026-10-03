@@ -1,0 +1,99 @@
+schema_version: 1
+id: git/rescue-a-forgotten-stash
+kind: git_scenario
+title: Finish the work you stashed two days ago
+difficulty: easy
+tags: [stash, recovery, local-only]
+estimated_minutes: 10
+
+prompt: |
+  You stashed a half-finished change on Tuesday — threading a timeout through
+  the catalogue client — and then did two days of unrelated work on top of it.
+
+  `git log` shows no sign of it. `git status` is clean. The stash holds the
+  only copy.
+
+  Get that work committed on `main`, and leave nothing in the stash.
+
+  `git stash list` is the command that proves it is still there.
+
+hints:
+  - "A stash is not a patch file in a temp directory. It is a commit (two, in
+     fact) that nothing points at except a ref called `refs/stash` — which is
+     why `git log` cannot see it and `git stash list` can."
+  - "`git stash show --stat stash@{0}` tells you what is in it before you touch
+     your working tree. Worth doing when the stash is older than you are sure
+     about."
+  - "`git stash apply` applies the change and leaves the entry in the list.
+     `git stash pop` applies it and removes the entry. They differ in exactly
+     one thing, and this exercise checks for it."
+  - "`git stash pop`, then `git add client.py` and commit. Popping restores the
+     change as an uncommitted edit — it does not commit anything, so stopping
+     there leaves the work in a worse place than the stash did."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-pop-and-stop.cmds
+      expect_failures: [work-is-committed, clean-worktree]
+    - file: naive-drop-it.cmds
+      expect_failures: [work-is-committed]
+    - file: naive-apply-without-dropping.cmds
+      expect_failures: [nothing-left-stashed]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: work-is-committed
+      label: The timeout handling is in a commit
+      severity: required
+      assert: file_at_ref_matches
+      with: {ref: HEAD, path: client.py, pattern: 'DEFAULT_TIMEOUT'}
+      explanation: |
+        Reads the committed copy, not the working tree. That distinction is the
+        whole exercise: a popped stash is an uncommitted edit, which is the one
+        state git offers no way to recover from — there is no reflog for work
+        that was never committed.
+
+    - id: nothing-left-stashed
+      label: The stash is empty
+      severity: required
+      assert: stash_count
+      with: {equals: 0}
+      explanation: |
+        `apply` leaves the entry behind; `pop` does not. A change that is both
+        committed and still stashed is a trap for whoever pops it next — they
+        reapply something already in history, and git reports it as a conflict
+        or, when the lines happen to match, as nothing at all.
+
+    - id: clean-worktree
+      label: Nothing left uncommitted
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        The state a stash exists to get you out of. Popping moves the change
+        from a stash commit into your working tree, which is progress only if
+        you then commit it.
+
+    - id: history-only-grew
+      label: You added a commit rather than rewriting one
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "@c3", descendant: HEAD}
+      explanation: |
+        The stashed change was made *before* the two commits on top of it, and
+        it is tempting to try to put it back where it belongs chronologically.
+        It does not belong there: a stash records work, not a point in history,
+        and the honest commit is the one you make now.
+
+    - id: looked-in-the-stash
+      label: You looked at the stash before acting on it
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git stash (list|show)\b'}
+      explanation: |
+        A two-day-old stash may not contain what you remember, and it may not
+        be the only entry. `git stash list` and `git stash show --stat` are the
+        two commands that cost nothing and tell you which `stash@{n}` you
+        actually want.

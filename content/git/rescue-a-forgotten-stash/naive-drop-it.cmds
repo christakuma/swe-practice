@@ -1,0 +1,10 @@
+# Counter-example: clear the stash out of the way.
+#
+# `git stash drop` is the right command when you have decided the work is not
+# wanted, and `git stash list` looks identical afterwards either way. The
+# repository is clean, the branch is tidy, and the timeout handling is gone.
+
+git stash list
+git stash drop
+git stash list
+git status --short --branch

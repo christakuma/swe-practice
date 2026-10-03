@@ -1,0 +1,39 @@
+# Reference solution. A binary search over history, driven by reading the two
+# numbers at each step and applying the README's rule.
+
+git log --oneline
+cat README.md
+cat limits.yaml
+
+# HEAD is bad: 8 workers want 16 connections and the pool holds 14.
+git bisect start
+git bisect bad
+
+# Nine commits back is the oldest one in the history, and it was fine:
+# 2 workers want 4 connections out of 8.
+git bisect good HEAD~8
+
+# git checks out the midpoint. Read both numbers, apply the rule, answer.
+# c5: 5 workers want 10 of 12. Fine.
+cat limits.yaml
+git bisect good
+
+# c7: 7 workers want 14 of 12. Broken.
+cat limits.yaml
+git bisect bad
+
+# c6: 7 workers want 14 of 12. Broken, and there is nothing left to test --
+# git now says this is the first bad commit and leaves HEAD on it.
+cat limits.yaml
+git bisect bad
+
+# Record the answer while HEAD is still sitting on the culprit.
+git log --oneline -1
+git tag first-bad
+
+# Put the repository back the way it was. Without this you are left detached
+# in the middle of a bisect.
+git bisect reset
+
+git log --oneline --decorate
+git status --short --branch

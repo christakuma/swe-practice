@@ -1,0 +1,12 @@
+# Counter-example: write the script again from memory.
+#
+# It is five lines and the shape is obvious, so this is tempting -- and the
+# flags come back as the short forms, which behave the same way and are not
+# what the original said. The real cost is that the next person reading `git
+# log -- tools/healthcheck.sh` sees the file appearing from nowhere rather
+# than being restored.
+
+write tools/healthcheck.sh '#!/usr/bin/env bash' 'set -euo pipefail' 'curl -f -m 5 http://localhost:8080/healthz' 'echo "healthy"'
+git add tools/healthcheck.sh
+git commit -m "Add a healthcheck back"
+git log --oneline

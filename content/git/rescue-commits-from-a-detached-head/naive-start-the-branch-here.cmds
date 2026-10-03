@@ -1,0 +1,9 @@
+# Counter-example: make the branch and start over.
+#
+# `git branch -a` lists feature/cache and `git status` says you are on it. The
+# cache is still orphaned, and the branch has nothing on it but main's history.
+
+git log --oneline --decorate --all
+git checkout -b feature/cache
+git log --oneline --decorate --all
+ls

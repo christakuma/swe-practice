@@ -1,0 +1,11 @@
+# Counter-example: find the right commit, check it out to look at it, and tag
+# it from there.
+#
+# The tag is on exactly the right commit. The repository is left detached on a
+# commit from the middle of the week, which is the state the next person --
+# including you, tomorrow -- has to notice and undo before anything else works.
+
+git log --oneline -S enforce_rate_limit -- middleware.py
+git checkout main~3
+git tag culprit
+git log --oneline -1

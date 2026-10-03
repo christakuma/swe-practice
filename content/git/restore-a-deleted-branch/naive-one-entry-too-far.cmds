@@ -1,0 +1,11 @@
+# Counter-example: the right technique, read off by one. HEAD@{3} is the first
+# of the two commits, not the tip -- so the branch comes back a commit short
+# and the retry logic is still orphaned.
+#
+# This is why `git show --stat` on the entry is worth the extra command before
+# you act on it.
+
+git reflog
+git branch feature/webhooks HEAD@{3}
+git checkout feature/webhooks
+git log --oneline --decorate --all

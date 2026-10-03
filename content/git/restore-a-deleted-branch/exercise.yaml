@@ -1,0 +1,119 @@
+schema_version: 1
+id: git/restore-a-deleted-branch
+kind: git_scenario
+title: Bring back a branch you deleted with two commits still on it
+difficulty: medium
+tags: [recovery, reflog, branches, local-only]
+estimated_minutes: 12
+
+prompt: |
+  You tidied up after a release and ran `git branch -D feature/webhooks`. It
+  had two commits on it that were never merged and never pushed, so there is no
+  copy anywhere else.
+
+  You then committed something on `main` before noticing, so the deletion is
+  not the most recent thing in the repository's history.
+
+  Bring `feature/webhooks` back, pointing at the commit it pointed at, with
+  both commits reachable from it. `main` must not move.
+
+  `git branch -a` will confirm the branch is gone. The commits are not.
+
+hints:
+  - "`git log` and `git branch` only ever show you things reachable from a ref.
+     Deleting the ref did not delete the commits — it made them invisible to
+     both commands."
+  - "`git reflog` lists every position `HEAD` has held, newest first, as
+     `HEAD@{0}`, `HEAD@{1}` and so on. The deleted branch's own reflog went with
+     it; HEAD's records the commits you made while you were on it."
+  - "Read the descriptions rather than counting. `git show --stat HEAD@{n}`
+     tells you which commit an entry is before you act on it — being one entry
+     off restores the branch a commit short."
+  - "`git branch feature/webhooks HEAD@{2}` recreates the branch at a given
+     starting point. You are on `main`, so nothing you do to the new branch can
+     move `main`."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  # The first id is what the counter-example exists to demonstrate; the rest is
+  # collateral, declared because CI asserts the set exactly.
+  counter_examples:
+    - file: naive-recreate-at-main.cmds
+      expect_failures: [branch-at-the-lost-tip, work-is-reachable]
+    - file: naive-one-entry-too-far.cmds
+      expect_failures: [branch-at-the-lost-tip]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: branch-exists
+      label: A branch called feature/webhooks exists again
+      severity: required
+      assert: branch_exists
+      with: {name: feature/webhooks}
+      explanation: |
+        The easiest half, and the one `git branch -a` checks for you — which is
+        the problem: a branch of the right name pointing at the wrong commit
+        looks identical in that listing.
+
+    - id: branch-at-the-lost-tip
+      label: It points at the commit it pointed at before
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/heads/feature/webhooks", target: "@w2"}
+      explanation: |
+        Recreating the branch at your current position gets you the name back
+        and none of the work. Being one reflog entry off gets you the name and
+        half the work. Both look like success until someone reads the log.
+
+    - id: work-is-reachable
+      label: Both commits are in the branch's history
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "@w1", descendant: "refs/heads/feature/webhooks"}
+      explanation: |
+        Stated separately from the tip because it fails for a different
+        mistake: a branch rebuilt by cherry-picking the two commits onto a new
+        base has the same files and brand-new commits, leaving the originals
+        orphaned exactly as the deletion did.
+
+    - id: main-untouched
+      label: main is where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        Recovery should have no collateral. `git reset --hard HEAD@{2}` while
+        standing on `main` does restore the lost commits — onto `main`, which
+        then carries unreviewed feature work and has lost its own last commit.
+
+    - id: on-a-branch
+      label: HEAD is attached to a branch
+      severity: required
+      assert: head_detached
+      not: true
+      explanation: |
+        `git checkout HEAD@{2}` is a natural way to go and look at the lost
+        commit, and it leaves you detached. Work continued from there belongs to
+        no branch, which is how the commits got lost in the first place.
+
+    - id: clean-worktree
+      label: Nothing left staged or half-applied
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        Restoring a branch is a pointer operation. A dirty worktree means
+        content was copied around instead — which recreates the files and not
+        the history.
+
+    - id: used-the-reflog
+      label: You found the commit with the reflog
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (reflog\b|log\b.*(-g\b|--walk-reflogs\b)|fsck\b)'}
+      explanation: |
+        `git fsck --lost-found` also finds unreferenced commits, and reading
+        `.git/logs/HEAD` by hand works too. The reflog is the one to reach for
+        first, and knowing it exists is the difference between a one-minute
+        recovery and retyping an afternoon.

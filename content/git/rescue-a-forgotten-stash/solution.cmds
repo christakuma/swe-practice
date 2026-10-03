@@ -1,0 +1,23 @@
+# Reference solution. A stash is a commit nothing points at except the stash
+# ref, so the work is there -- it is just not in any branch.
+
+git status --short --branch
+git log --oneline --decorate --all
+
+# What is in the stash, and what it changed.
+git stash list
+git stash show --stat stash@{0}
+
+# pop applies it and drops it in one step. apply would leave the entry behind.
+git stash pop
+
+git status --short
+cat client.py
+
+git add client.py
+git commit -m "Give catalogue fetches a timeout"
+
+# Verify: committed, nothing stashed, nothing left in the working tree.
+git stash list
+git log --oneline --decorate
+git status --short --branch

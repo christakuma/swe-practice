@@ -1,0 +1,120 @@
+schema_version: 1
+id: git/rescue-commits-from-a-detached-head
+kind: git_scenario
+title: Rescue two commits you made on a detached HEAD
+difficulty: medium
+tags: [recovery, reflog, branches, detached-head]
+estimated_minutes: 12
+
+prompt: |
+  You checked out a commit to look at something, forgot you were detached, and
+  wrote the whole LRU cache there — two commits. Then you switched back to
+  `main`.
+
+  Git printed a warning about leaving commits behind. It scrolled past half an
+  hour ago, and `ls` now shows no `cache.py` at all.
+
+  Put that work on a branch called `feature/cache`, pointing at the second of
+  the two commits, with both of them reachable from it. `main` must not move.
+
+hints:
+  - "`git log --oneline --decorate --all` shows every commit reachable from
+     every ref — and the two you want are reachable from no ref at all, which
+     is why they are not in that listing."
+  - "`git reflog` records every position `HEAD` has held, detached ones
+     included. The entry you want is the one just before the checkout back to
+     `main`."
+  - "`git show --stat HEAD@{1}` confirms which commit an entry is. Worth doing:
+     the indices shift every time anything moves `HEAD`, including the command
+     you are about to run."
+  - "`git branch feature/cache HEAD@{1}` creates the branch at that commit.
+     Creating it at your *current* position instead gets you the name and none
+     of the work."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  # Both counter-examples fail the same pair, and that is the lesson rather
+  # than a redundancy: one has the branch and not the work, the other has the
+  # work and not the commits. Identical files, two different wrong answers.
+  counter_examples:
+    - file: naive-start-the-branch-here.cmds
+      expect_failures: [branch-at-the-orphaned-tip, originals-recovered]
+    - file: naive-cherry-pick-them-over.cmds
+      expect_failures: [branch-at-the-orphaned-tip, originals-recovered]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: branch-exists
+      label: A branch called feature/cache exists
+      severity: required
+      assert: branch_exists
+      with: {name: feature/cache}
+      explanation: |
+        The commits need a name, because a name is the only thing that makes a
+        commit reachable — and reachability is what every other git command
+        answers questions about.
+
+    - id: branch-at-the-orphaned-tip
+      label: It points at the second of the two orphaned commits
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/heads/feature/cache", target: "@d2"}
+      explanation: |
+        Not "has the same files as" — is that commit. A branch created at your
+        current position has the right name and main's history; one rebuilt by
+        cherry-picking has the right files and the wrong commits.
+
+    - id: originals-recovered
+      label: The original commits are in the branch, not copies of them
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "@d1", descendant: "refs/heads/feature/cache"}
+      explanation: |
+        Cherry-picking the two commits onto a new branch produces identical
+        trees and brand-new commits, leaving the originals as orphaned as they
+        started. Which matters as soon as anything refers to them by hash — and
+        matters immediately for the honest reason that you did not need to
+        rebuild anything.
+
+    - id: main-untouched
+      label: main is where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        `git reset --hard HEAD@{1}` recovers the commits too — onto `main`,
+        which then carries an unreviewed cache implementation. Recovery with
+        collateral damage is the failure mode this track keeps coming back to.
+
+    - id: on-a-branch
+      label: HEAD is attached to a branch
+      severity: required
+      assert: head_detached
+      not: true
+      explanation: |
+        The state that caused the problem. `git checkout HEAD@{1}` is a natural
+        way to go and look at the lost work, and finishing there leaves you
+        exactly where you began: on a commit, not a branch, one checkout away
+        from losing it again.
+
+    - id: clean-worktree
+      label: Nothing left staged or half-applied
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        Rescuing commits is a pointer operation. A dirty worktree means the
+        files were copied out of the orphaned commit rather than the commits
+        being given a home.
+
+    - id: used-the-reflog
+      label: You found the commits with the reflog
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (reflog\b|log\b.*(-g\b|--walk-reflogs\b)|fsck\b)'}
+      explanation: |
+        This is the one situation where `git log` genuinely cannot help: it
+        walks from refs, and there is no ref. Knowing that the reflog exists is
+        the whole difference between a thirty-second recovery and rewriting an
+        afternoon from memory.

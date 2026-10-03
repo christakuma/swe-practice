@@ -39,6 +39,33 @@ git/drop-a-secret-from-a-commit:
     HEAD: ccebde83e8e14c274d417a6ba4a55cfd78a300f2
     refs/heads/main: ccebde83e8e14c274d417a6ba4a55cfd78a300f2
     refs/remotes/origin/main: 18b17d2ea39c4e5231767ca9f4706c4f8b69f9c3
+git/find-the-commit-that-removed-a-line:
+  aliases:
+    c1: 44145386d9b790ff420a3f90481bbc545e7db676
+    c2: e75822287aed66c2da87a963f0ad109bdaa040f1
+    c3: 410aceb6233494b986b3de284de4144459c8b26e
+    c4: 7b58608011018bc91e8a3051cb1de369805ef1ae
+    c5: 84c6a83429e904f9bd83fb651e20c8f501e8af83
+    c6: 3f55bbd0d5db449b11dac8eefeabcb7a50d812d7
+    c7: 8d47e9b7be0cfd062f3a929c1d81dac57b9d8c99
+    c8: 59db0e532cc273d3135efcfc6a68945610b88758
+  refs:
+    HEAD: 59db0e532cc273d3135efcfc6a68945610b88758
+    refs/heads/main: 59db0e532cc273d3135efcfc6a68945610b88758
+git/find-the-first-bad-commit-with-bisect:
+  aliases:
+    c1: 476b6ce2e7e240fabab221aadbac00b7cb540611
+    c2: 02c2596792e92fa5ac8ef050ce30f8deb6f6eb60
+    c3: a8afd3c4448e077fb0e4989ecd59907a830f7f8c
+    c4: 4bba3968ab7f658356e33044e355631fe163729b
+    c5: f6d17fd57f9155249036f9d2b49ecef438a1cfda
+    c6: d6786819d7eda4aaca28bcb35b2166ff43236641
+    c7: 47c02eb96207fb7bd5e6dbf70e22cde823f2608f
+    c8: 4f22e220a8932babae430ef624dc5304563a5470
+    c9: 0de2417af482ff833ceed1929360ea6c04fe6084
+  refs:
+    HEAD: 0de2417af482ff833ceed1929360ea6c04fe6084
+    refs/heads/main: 0de2417af482ff833ceed1929360ea6c04fe6084
 git/move-commits-off-main:
   aliases:
     c1: 206fc666e74dda8cb6591c96d71c1c1d5635bda9
@@ -69,6 +96,43 @@ git/recover-a-lost-commit:
     HEAD: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
     refs/heads/feature/csv-export: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
     refs/heads/main: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
+git/rescue-a-forgotten-stash:
+  aliases:
+    c1: 216cd1ab4b91694e0c5e9bb5e3d864ed861e270c
+    c2: 8be93715ca3c26851440c965fd8bb5b623e70a5f
+    c3: d3ec7fd937d2feddbaedbfa360974d90aa9ad82a
+  refs:
+    HEAD: d3ec7fd937d2feddbaedbfa360974d90aa9ad82a
+    refs/heads/main: d3ec7fd937d2feddbaedbfa360974d90aa9ad82a
+    refs/stash: 045c4521732ff890a8c8c5ff85495dd9b6ef25ee
+git/rescue-commits-from-a-detached-head:
+  aliases:
+    c1: 22350424cd6bc755f2e801c4f50832289e4d5ba2
+    c2: dcb9e5eaf3e16e92391298b232a92449e6063a89
+    d1: 2aca9ce9613d258632c18a58f0c2b7350d4f8b98
+    d2: 0dc2255525d64c0a38cba0a7db9fad33b4de010f
+  refs:
+    HEAD: dcb9e5eaf3e16e92391298b232a92449e6063a89
+    refs/heads/main: dcb9e5eaf3e16e92391298b232a92449e6063a89
+git/restore-a-deleted-branch:
+  aliases:
+    c1: b73eed0ef1fc5f12b78c3582115a9fa53f2a11aa
+    c2: 8a829fb7fef463cff8a313b61c91dcbd4d8c45a4
+    w1: 35b15d0e02b7a026e4e1a257ee83b5c844245953
+    w2: d3409c8b9020534408cd45579e5f75aa4858363b
+  refs:
+    HEAD: 8a829fb7fef463cff8a313b61c91dcbd4d8c45a4
+    refs/heads/main: 8a829fb7fef463cff8a313b61c91dcbd4d8c45a4
+git/restore-a-file-deleted-long-ago:
+  aliases:
+    c1: e90b572e47edc960050258ef81849fd24772822b
+    c2: b2157d7668d644e8bc0a38b0f1fe948ec7a2c246
+    c3: 2678111a97d6b4301c639c8d40b0abc42b2e5c1d
+    c4: caf6225e8252a5de26b8ff490ff48c8521a72b55
+    c5: b11ec2a8355454c47e927c312f55c0b963003ee2
+  refs:
+    HEAD: b11ec2a8355454c47e927c312f55c0b963003ee2
+    refs/heads/main: b11ec2a8355454c47e927c312f55c0b963003ee2
 git/revert-a-pushed-commit:
   aliases:
     c1: 906e5c939db46ea7fd2ffbb47f8e922e8dc52fe9
@@ -97,6 +161,16 @@ git/squash-fixups-before-pushing:
     HEAD: 315a37e113aa56069f1b15647db0aba6401386f4
     refs/heads/main: 315a37e113aa56069f1b15647db0aba6401386f4
     refs/remotes/origin/main: 9d67bb6a7156870bf899dabf0ea21dbb997d0788
+git/undo-a-merge-you-have-not-pushed:
+  aliases:
+    c1: a34187897390951caf7813245e03df37c4a3d904
+    c2: 4a74726d6c08af25664016c67fba2c1c6f1bbda4
+    s1: e32147c9b9c90f4c731d7d8c66adcdc70b059729
+  refs:
+    HEAD: 842d835ea0feaedab4f8af242b5f195f6c3c4db4
+    refs/heads/feature/search: e32147c9b9c90f4c731d7d8c66adcdc70b059729
+    refs/heads/main: 842d835ea0feaedab4f8af242b5f195f6c3c4db4
+    refs/remotes/origin/main: 4a74726d6c08af25664016c67fba2c1c6f1bbda4
 git/undo-a-rebase-with-orig-head:
   aliases:
     c1: 1bb0e7e37b9f12134b7218a97869c52686da691f

@@ -1,0 +1,13 @@
+# Counter-example: revert the merge instead of resetting past it.
+#
+# `git revert -m 1` is the correct tool for a merge that has been PUBLISHED --
+# it undoes the content with a new commit and leaves history alone. Here that
+# is exactly the wrong property: main keeps the merge commit, keeps the
+# unfinished branch in its ancestry, and gains a second commit explaining the
+# first. Merging feature/search again later then does nothing at all, because
+# git still considers it merged.
+
+git log --oneline --graph --decorate
+git revert --no-edit -m 1 HEAD
+git log --oneline --graph --decorate
+ls

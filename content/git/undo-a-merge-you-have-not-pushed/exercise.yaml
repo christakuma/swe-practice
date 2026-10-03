@@ -1,0 +1,117 @@
+schema_version: 1
+id: git/undo-a-merge-you-have-not-pushed
+kind: git_scenario
+title: Undo a merge you made an hour too early
+difficulty: medium
+tags: [merge, recovery, reset, local-only]
+estimated_minutes: 12
+
+prompt: |
+  You merged `feature/search` into `main`. The branch is not finished — its
+  only function raises `NotImplementedError` with a note about the tokenizer.
+
+  You have not pushed. `origin/main` is still at the commit before the merge.
+
+  Put `main` back to what `origin` has, leave `feature/search` exactly as it
+  is, and leave no trace of the merge in `main`'s history.
+
+  `git log --oneline --graph --decorate --all` draws the shape you are undoing.
+
+hints:
+  - "There are two ways to undo a merge, and which one is right depends
+     entirely on whether the merge has been published. Check `git log --oneline
+     origin/main..HEAD` before choosing."
+  - "`git revert -m 1 <merge>` undoes a merge's *content* by adding a commit.
+     The merge commit stays in history — which is what you want for a published
+     merge and not what you want here."
+  - "Since nothing is published, `main` can simply move. `git reset --hard
+     <revision>` moves the branch you are on and resets your files to match."
+  - "`git reset --hard origin/main`. Do not delete `feature/search` while
+     tidying up: it holds the only copy of the search work."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-revert-the-merge.cmds
+      expect_failures: [main-back-where-it-was, no-merge-in-main]
+    - file: naive-delete-the-branch-too.cmds
+      expect_failures: [branch-still-there]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: main-back-where-it-was
+      label: main points at the commit origin has
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/heads/main", target: "refs/remotes/origin/main"}
+      explanation: |
+        "Undone" here means the branch is where it was, not that the files look
+        right. A revert gets the files right and leaves `main` two commits
+        further along than `origin`, both of which exist only to describe a
+        mistake.
+
+    - id: no-merge-in-main
+      label: Nothing reachable from main is a merge commit
+      severity: required
+      assert: linear_history
+      with: {ref: "refs/heads/main"}
+      explanation: |
+        The check a revert cannot pass. `git revert -m 1` adds an inverse commit
+        and leaves the merge itself in the ancestry — so `feature/search` counts
+        as already merged, and merging it again when it *is* finished brings in
+        nothing at all. That is the quiet half of this mistake.
+
+    - id: half-finished-work-is-gone-from-main
+      label: The unfinished search module is not in main
+      severity: required
+      assert: file_at_ref_matches
+      not: true
+      with: {ref: "refs/heads/main", path: search.py, pattern: '.'}
+      explanation: |
+        Negated and matching any character, so it passes only when the file is
+        absent from `main` entirely. A reset satisfies this; so does a revert,
+        which is why it cannot be the only check.
+
+    - id: branch-still-there
+      label: feature/search still points at its own work
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/heads/feature/search", target: "@s1"}
+      explanation: |
+        The branch was not the problem — the merge was. Deleting it while
+        tidying up turns a pointer move into a reflog recovery, because nothing
+        has pushed it and the merge commit you just discarded was the only other
+        thing pointing at it.
+
+    - id: nothing-published-was-rewritten
+      label: origin/main is where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/remotes/origin/main", since: fixture}
+      explanation: |
+        The precondition for the whole answer. Push the merge first and
+        `reset --hard` stops being available: the merge is then something other
+        people have, and `git revert -m 1` becomes the correct tool rather than
+        the wrong one.
+
+    - id: clean-worktree
+      label: The working tree matches main
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        `reset --hard` rewrites your files along with the pointer, so this
+        should be true by construction. A dirty tree means a `--soft` or
+        `--mixed` reset left the merged content staged, which is the same files
+        in a different place.
+
+    - id: looked-before-leaping
+      label: You checked whether the merge was published before undoing it
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|status|diff)\b'}
+      explanation: |
+        This exercise has two correct answers for two different situations, and
+        one command distinguishes them. `git log --oneline origin/main..HEAD`
+        lists what you have that `origin` does not.

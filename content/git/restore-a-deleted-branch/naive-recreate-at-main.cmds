@@ -1,0 +1,10 @@
+# Counter-example: recreate the branch and start again.
+#
+# `git branch -a` now lists feature/webhooks, which is what the eye checks for.
+# It points at main's tip, so both commits of work are still reachable from
+# nothing -- and the branch looks restored.
+
+git log --oneline --decorate --all
+git branch feature/webhooks
+git checkout feature/webhooks
+git log --oneline --decorate --all

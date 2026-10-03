@@ -1,0 +1,12 @@
+# Counter-example: copy the two commits onto a fresh branch.
+#
+# Produces byte-identical files on a branch with the right name -- and two new
+# commits, with new hashes and rewritten committer dates, while the originals
+# stay orphaned exactly as they were. Fails the same pair of checks as
+# naive-start-the-branch-here, for the opposite reason: this one has the work
+# and not the commits.
+
+git reflog
+git checkout -b feature/cache
+git cherry-pick HEAD@{3} HEAD@{2}
+git log --oneline --decorate --all

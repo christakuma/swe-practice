@@ -1,0 +1,21 @@
+# Reference solution. The commits exist; nothing points at them. Give them a
+# branch.
+
+git status --short --branch
+git log --oneline --decorate --all
+ls
+
+# HEAD's reflog holds every position it has had, including the detached ones.
+git reflog
+
+# HEAD@{0} is the checkout back to main; HEAD@{1} is the tip of the orphaned
+# work, "Evict the least recently used entry".
+git show --stat HEAD@{1}
+
+git branch feature/cache HEAD@{1}
+git checkout feature/cache
+
+# Verify: both commits reachable, the file is here, main untouched.
+git log --oneline --decorate --all
+cat cache.py
+git status --short --branch

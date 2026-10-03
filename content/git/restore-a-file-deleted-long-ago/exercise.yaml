@@ -1,0 +1,108 @@
+schema_version: 1
+id: git/restore-a-file-deleted-long-ago
+kind: git_scenario
+title: Bring back a file that was deleted three commits ago
+difficulty: easy
+tags: [recovery, history, search, files]
+estimated_minutes: 10
+
+prompt: |
+  `tools/healthcheck.sh` was removed in a tidy-up a few commits back, and CI
+  needs it again. Three commits have landed since, and all of them should stay.
+
+  Get the file back, with the content it had before it was deleted, committed
+  on `main`.
+
+  `ls tools` shows it is gone. `git log` still knows everything about it.
+
+hints:
+  - "`git log -- <path>` restricts the log to commits that touched that path,
+     and it still works for a path that no longer exists."
+  - "`git log --diff-filter=D -- <path>` narrows that to the commit that
+     *deleted* it. That commit does not contain the file — its parent does."
+  - "`git show <rev>:<path>` prints a file as it was at a revision, which is
+     how you check you have the right one before restoring anything."
+  - "`git checkout <rev> -- <path>` copies the file out of that revision into
+     your working tree and index. Then commit. `git restore --source=<rev> --
+     <path>` is the newer spelling of the same thing."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-retype-it.cmds
+      expect_failures: [content-is-the-original]
+    - file: naive-reset-to-before-the-deletion.cmds
+      expect_failures: [history-only-grew, one-commit-added]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: file-is-back
+      label: tools/healthcheck.sh exists again
+      severity: required
+      assert: file_exists
+      with: {path: tools/healthcheck.sh}
+      explanation: |
+        Reads the working tree, which is where CI would look for it. The
+        committed copy is covered by `content-is-the-original` — both are
+        needed, because `git show <rev>:<path>` prints the file without
+        restoring it, and it is easy to stop there.
+
+    - id: content-is-the-original
+      label: It is the file that was deleted, not a new one like it
+      severity: required
+      assert: file_at_ref_matches
+      with:
+        ref: HEAD
+        path: tools/healthcheck.sh
+        pattern: 'curl --fail --max-time 5'
+      explanation: |
+        Five lines are quick to retype and the short flags behave identically,
+        so a rewritten version passes any test CI has. What it loses is the
+        claim that this *is* the old file: a reviewer comparing the restore
+        against the deletion sees a diff, and nobody can tell whether the
+        difference was deliberate.
+
+    - id: history-only-grew
+      label: The three commits since the deletion are still there
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "@c5", descendant: HEAD}
+      explanation: |
+        Winding the branch back to before the deletion restores the file
+        perfectly and throws away everything committed since. It is the fastest
+        wrong answer available here, and the one that passes every check about
+        the file itself.
+
+    - id: one-commit-added
+      label: Exactly one commit was added
+      severity: required
+      assert: commit_count
+      with: {ref: HEAD, equals: 6}
+      explanation: |
+        Five from the fixture plus your restore. A count below that means the
+        branch moved backwards; above it means something was reverted and
+        re-applied, which gets to the same files through two commits that each
+        need explaining.
+
+    - id: clean-worktree
+      label: Nothing left staged
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        `git checkout <rev> -- <path>` stages the file as well as writing it, so
+        stopping there leaves a staged addition that is not committed. That
+        state passes `file-is-back` and fails `content-is-the-original`, which
+        is a confusing pair of results until you notice one reads the working
+        tree and the other reads `HEAD`.
+
+    - id: found-the-deletion
+      label: You looked up where the file went
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|diff)\b'}
+      explanation: |
+        The whole skill here is that a deleted file is still fully described by
+        the history. `git log --diff-filter=D -- <path>` is the command worth
+        remembering, because without it the only route back is memory.

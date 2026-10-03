@@ -1,0 +1,17 @@
+# Reference solution. The merge is unpublished, so undoing it is moving a
+# pointer -- not adding a commit that says sorry.
+
+git log --oneline --graph --decorate --all
+git status --short --branch
+
+# Confirm what the merge brought in, and that origin has not seen it.
+git show --stat HEAD
+git log --oneline origin/main..HEAD
+
+# Move main back to what is published. The merge commit becomes unreferenced;
+# feature/search still points at its own work.
+git reset --hard origin/main
+
+git log --oneline --graph --decorate --all
+ls
+git status --short --branch

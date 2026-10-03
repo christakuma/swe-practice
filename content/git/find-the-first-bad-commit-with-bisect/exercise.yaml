@@ -1,0 +1,126 @@
+schema_version: 1
+id: git/find-the-first-bad-commit-with-bisect
+kind: git_scenario
+title: Find the commit that broke the capacity rule
+difficulty: medium
+tags: [bisect, debugging, history, search]
+estimated_minutes: 15
+
+prompt: |
+  Jobs started failing with pool timeouts sometime this week. `README.md` has
+  the rule that is being broken:
+
+  > each worker holds two pooled connections, so `workers * 2` must not exceed
+  > `pool_size`
+
+  `limits.yaml` holds both numbers and has been edited in almost every one of
+  the last nine commits. The current values break the rule. The oldest commit
+  in the history does not.
+
+  Find the **first** commit where the rule is broken, tag it `first-bad`, and
+  leave the repository back on `main` with a clean working tree.
+
+  There is no value you can search for: every individual number in the file is
+  plausible, and only the pair of them is wrong.
+
+hints:
+  - "Nine commits is three questions if you halve the range each time, and
+     eight if you walk backwards one at a time. Git has a command for the
+     first strategy."
+  - "`git bisect start`, then tell it one commit that is broken and one that is
+     fine: `git bisect bad` for where you are, `git bisect good HEAD~8` for the
+     oldest commit. Git then checks out the midpoint for you."
+  - "At each step, `cat limits.yaml`, multiply the worker count by two, compare
+     it to the pool size, and answer `git bisect good` or `git bisect bad`.
+     Git narrows the range until one commit is left."
+  - "When it finishes, git leaves `HEAD` on the first bad commit — so
+     `git tag first-bad` tags the right thing with no arguments. Then
+     `git bisect reset` puts you back on `main`; without it you are left
+     detached mid-bisect."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-blame-the-symptom.cmds
+      expect_failures: [tagged-the-first-bad-commit]
+    - file: naive-forgot-to-reset.cmds
+      expect_failures: [back-on-a-branch, back-on-main]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 30
+
+  checks:
+    - id: culprit-is-tagged
+      label: There is a tag called first-bad
+      severity: required
+      assert: tag_exists
+      with: {name: first-bad}
+      explanation: |
+        A bisect leaves nothing behind once it is reset — the whole result is a
+        commit hash printed to your terminal. Recording it as a tag is what
+        turns the search into something the next person can act on, and it is
+        what makes this exercise gradable at all.
+
+    - id: tagged-the-first-bad-commit
+      label: The tag is on the commit where the rule was first broken
+      severity: required
+      assert: tag_points_at
+      with: {name: first-bad, target: "@c6"}
+      explanation: |
+        "First bad" is the point of a bisect. Three of the last four commits
+        break the rule, so tagging any of them is a true statement about that
+        commit and the wrong answer: the change that introduced the regression
+        is where the fix belongs and where the reasoning about why it happened
+        lives.
+
+    - id: back-on-a-branch
+      label: HEAD is attached again, not left mid-bisect
+      severity: required
+      assert: head_detached
+      not: true
+      explanation: |
+        A bisect works by checking commits out, so you are detached for its
+        whole duration. `git bisect reset` is what ends it. Leaving it running
+        means the next command anyone types here — including the next
+        `git bisect start` — begins from a commit in the middle of last week.
+
+    - id: back-on-main
+      label: You ended up back on main
+      severity: required
+      assert: ref_points_at
+      with: {ref: HEAD, target: "refs/heads/main"}
+      explanation: |
+        `git bisect reset` with no argument returns to the branch you started
+        from. Checked separately from `back-on-a-branch` because `git checkout
+        main` after a bisect also reattaches HEAD — and leaves `refs/bisect/*`
+        and `BISECT_START` behind, so git still thinks a bisect is in progress.
+
+    - id: main-untouched
+      label: main is exactly where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        Finding a bad commit is a read-only operation. Nothing in this exercise
+        asks you to fix the configuration, and an answer that moved `main` has
+        done something other than search.
+
+    - id: clean-worktree
+      label: The working tree is clean
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        `git bisect reset` restores the files along with the branch. A dirty
+        worktree here usually means the bisect was abandoned by hand rather
+        than reset, leaving a checkout from the middle of the search in place.
+
+    - id: used-bisect
+      label: You searched rather than read every commit
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git bisect\b'}
+      explanation: |
+        Nine commits can be read one at a time, and at ninety you will not. The
+        habit worth building is reaching for the binary search while the range
+        is still small enough that either approach works — which is the only
+        time you get to practise it.

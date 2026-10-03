@@ -1,0 +1,10 @@
+# Counter-example: wind the branch back to before the tidy-up.
+#
+# The file comes back with its exact original content, so every check about
+# the file itself passes -- along with the loss of the three commits that were
+# made after the deletion, including the rollback script.
+
+git log --oneline
+git reset --hard main~3
+ls tools
+git log --oneline

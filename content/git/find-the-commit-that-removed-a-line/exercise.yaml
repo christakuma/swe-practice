@@ -1,0 +1,116 @@
+schema_version: 1
+id: git/find-the-commit-that-removed-a-line
+kind: git_scenario
+title: Find the commit that dropped the rate-limit guard
+difficulty: medium
+tags: [search, history, debugging, pickaxe]
+estimated_minutes: 12
+
+prompt: |
+  The public API stopped rate limiting. `middleware.py` used to call
+  `enforce_rate_limit(request)` in the chain and no longer does.
+
+  Nobody removed it on purpose, so no commit message mentions it. Eight
+  commits are in the history and four of them touch this file.
+
+  Find the commit that removed the call, and tag it `culprit`. Leave `main`
+  where it is and end up on it.
+
+  `git blame` will not help: the line is not there to blame.
+
+hints:
+  - "`git blame` answers \"who last changed this line\". There is no line. You
+     need the opposite question: which commit made this string stop appearing?"
+  - "`git log -S<string>` — the pickaxe — lists commits where the number of
+     occurrences of `<string>` changed. Adding a path after `--` narrows it to
+     one file."
+  - "It will list two commits: the one that introduced the call and the one
+     that removed it. `git log` is newest-first, so the removal is the one at
+     the top."
+  - "Read the commit before you trust it. `git show` on it is titled as a
+     refactor and changes several lines — the deleted guard is one of them,
+     which is exactly why nobody noticed in review."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-blame-the-last-change.cmds
+      expect_failures: [tagged-the-removing-commit]
+    - file: naive-tag-from-a-detached-head.cmds
+      expect_failures: [back-on-a-branch, back-on-main]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: culprit-is-tagged
+      label: There is a tag called culprit
+      severity: required
+      assert: tag_exists
+      with: {name: culprit}
+      explanation: |
+        A search leaves nothing behind but the hash on your terminal. Recording
+        it is what makes the answer usable by anyone else — and it is what makes
+        this exercise gradable, since the searching itself leaves no trace in
+        the repository.
+
+    - id: tagged-the-removing-commit
+      label: The tag is on the commit that removed the call
+      severity: required
+      assert: tag_points_at
+      with: {name: culprit, target: "@c5"}
+      explanation: |
+        Four commits touch this file and one of them removed the guard. The
+        most recent change to the chain is the plausible wrong answer: it is a
+        real change to the thing that broke, made three commits after it was
+        already broken.
+
+    - id: main-untouched
+      label: main is exactly where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        This exercise asks you to find something, not to fix it. Restoring the
+        guard is the next ticket; moving `main` while investigating means the
+        state you were diagnosing is no longer the state you have.
+
+    - id: back-on-a-branch
+      label: HEAD is attached, not left detached from looking around
+      severity: required
+      assert: head_detached
+      not: true
+      explanation: |
+        `git checkout <sha>` is the obvious way to go and look at a suspect
+        commit, and it detaches HEAD. Tagging from there gives the right answer
+        and leaves the repository on a commit from the middle of the week.
+
+    - id: back-on-main
+      label: You ended up on main
+      severity: required
+      assert: ref_points_at
+      with: {ref: HEAD, target: "refs/heads/main"}
+      explanation: |
+        Stated separately from `back-on-a-branch` because the two fail for
+        different mistakes: this one also catches ending up correctly attached
+        to the wrong branch, which is what `git checkout -b` while poking
+        around produces.
+
+    - id: clean-worktree
+      label: The working tree is clean
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        Searching history is read-only. Anything dirty here means a file was
+        checked out of an old commit — which is a reasonable way to look at
+        something and needs undoing before you stop.
+
+    - id: used-the-pickaxe
+      label: You searched history rather than reading every diff
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git log\b.*(-S|-G\b|--pickaxe)'}
+      explanation: |
+        Eight commits can be read with `git log -p`; eight hundred cannot. The
+        pickaxe is the tool that scales, and the only time to get fluent with it
+        is while the history is still small enough that either approach works.

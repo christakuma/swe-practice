@@ -1,0 +1,9 @@
+# Counter-example: undo the merge and tidy up the branch that caused it.
+#
+# main is restored correctly. The branch that held the only copy of the search
+# work is also gone, which turns a two-second pointer fix into a reflog
+# recovery.
+
+git reset --hard origin/main
+git branch -D feature/search
+git log --oneline --decorate --all

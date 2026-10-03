@@ -1,0 +1,11 @@
+# Counter-example: everything right except the cleanup.
+#
+# `git stash apply` leaves the entry in the stash, so the change is now
+# committed AND still stashed. The next person to pop it reapplies a change
+# that is already in history -- usually as a conflict, sometimes silently.
+
+git stash list
+git stash apply
+git add client.py
+git commit -m "Give catalogue fetches a timeout"
+git stash list

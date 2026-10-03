@@ -1,0 +1,18 @@
+# Counter-example: find it correctly, tag it correctly, and walk away.
+#
+# The tag is right. The repository is left detached in the middle of a bisect,
+# with refs/bisect/* still in place and the working tree on a commit from
+# halfway through the week -- so the next thing anyone does here, including the
+# next `git bisect start`, starts from somewhere unexpected.
+
+git bisect start
+git bisect bad
+git bisect good HEAD~8
+cat limits.yaml
+git bisect good
+cat limits.yaml
+git bisect bad
+cat limits.yaml
+git bisect bad
+git tag first-bad
+git log --oneline -1

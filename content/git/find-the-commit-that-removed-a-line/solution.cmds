@@ -1,0 +1,20 @@
+# Reference solution. The pickaxe searches history for commits that CHANGE the
+# number of times a string appears -- which is how you find a deletion.
+
+git log --oneline
+cat middleware.py
+
+# Two commits changed how many times "enforce_rate_limit" appears: the one
+# that added the call and the one that removed it. Newest first.
+git log --oneline -S enforce_rate_limit -- middleware.py
+
+# The newer of those two is the removal. Read it before trusting it: the
+# commit is titled as a refactor and the deleted line is one of several
+# changes in it.
+git show --stat main~3
+git show main~3
+
+git tag culprit main~3
+
+git log --oneline --decorate
+git status --short --branch

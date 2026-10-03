@@ -1,0 +1,10 @@
+# Counter-example: pop the stash and consider the job done.
+#
+# The work is back in the working tree and the stash is empty, so `git stash
+# list` is silent and everything looks finished. The only copy of the change
+# is now an uncommitted edit -- strictly worse than where it started, because
+# the stash was at least a commit.
+
+git stash list
+git stash pop
+git status --short

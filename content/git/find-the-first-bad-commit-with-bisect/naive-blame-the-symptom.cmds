@@ -1,0 +1,10 @@
+# Counter-example: tag the commit where you first noticed the problem.
+#
+# c8 is bad -- 6 workers want 12 connections out of 10 -- so it is a true
+# statement about that commit and a wrong answer to the question. Two earlier
+# commits are bad too, and the fix belongs where the rule was first broken.
+
+git log --oneline
+cat limits.yaml
+git tag first-bad main~1
+git log --oneline --decorate

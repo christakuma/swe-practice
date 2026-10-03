@@ -1,0 +1,25 @@
+# Reference solution. Find the commit that deleted it, then take the file from
+# that commit's parent -- where it still existed.
+
+git log --oneline
+ls tools
+
+# Which commit removed it? --diff-filter=D lists only deletions, and a path
+# after -- restricts the log to commits that touched it.
+git log --oneline --diff-filter=D -- tools/healthcheck.sh
+
+# That is main~2. Its parent, main~3, is the last commit that still had the
+# file. Confirm before copying anything out of it.
+git show --stat main~2
+git show main~3:tools/healthcheck.sh
+
+# Restore the file from that commit into the working tree and the index.
+git checkout main~3 -- tools/healthcheck.sh
+
+git status --short
+cat tools/healthcheck.sh
+
+git commit -m "Restore the deploy healthcheck"
+
+git log --oneline --decorate
+git status --short --branch
