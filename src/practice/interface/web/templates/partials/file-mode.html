@@ -11,6 +11,11 @@
   `code` on its PATH gets the path, the reason, and the variable that fixes it —
   rather than an error page with none of the three on it. That is the whole shape
   of the decision: the feature is the file, the launch is the convenience.
+
+  **The panel claims nothing about the stream.** Whether the browser managed to
+  open one is something only the browser knows, so the live line is written by the
+  page's own script into `#watch-status` — a server-rendered "re-grading on every
+  save" would be a promise this template cannot keep.
 #}
 <div class="file-mode">
   <h3>Your editor</h3>
@@ -26,6 +31,6 @@
     <p class="problem">{{ revealed.detail }}</p>
   {% endif %}
 
-  <p class="meta">Reload this page to pull <code>{{ revealed.name }}</code> back
-  into the editor above, then submit it from there.</p>
+  <p class="meta" id="watch-status">The editor above is now a mirror of
+  <code>{{ revealed.name }}</code>; reload to pull your file back into it.</p>
 </div>

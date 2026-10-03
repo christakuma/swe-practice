@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 __all__ = [
     "Abandoned",
     "Collection",
+    "Draft",
     "DueExercise",
     "OpenAttempt",
     "RanCommand",
@@ -144,6 +145,38 @@ class RevealedHint:
     @property
     def remaining(self) -> int:
         return self.attempt.remaining_hints
+
+
+@dataclass(frozen=True, slots=True)
+class Draft:
+    """What is in the solver's file right now, and what it would score.
+
+    Produced on every save in own-editor mode, and the thing worth saying about
+    it is what it is *not*: a `Submission`. Nothing about it is persisted. The
+    attempt is loaded, handed this source in memory, graded and thrown away, so
+    a solver can save forty times and the event log still records only what they
+    submitted (ADR 0013).
+
+    **It carries the source as well as the verdict**, because the page it feeds
+    has to show the code the verdict is about. The browser editor goes read-only
+    and mirrors the file, which is what makes "submit" unambiguous in a mode with
+    two editors: what gets submitted is the source the verdict on screen was
+    computed from.
+
+    No attempt and no exercise, unlike every other DTO in this module. Neither
+    is a join a caller needs here — and carrying the aggregate would invite a
+    template to render a hint count or an elapsed time off an object that was
+    deliberately never saved, which is a number that would reset itself on the
+    next keystroke.
+    """
+
+    source: str
+    verdict: Verdict
+
+    @property
+    def outcome(self) -> Outcome:
+        """Derived by the verdict, never stored -- see `Verdict.outcome`."""
+        return self.verdict.outcome
 
 
 @dataclass(frozen=True, slots=True)

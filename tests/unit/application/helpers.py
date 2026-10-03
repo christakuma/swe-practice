@@ -39,6 +39,7 @@ from practice.application.use_cases import (
     SubmitScenario,
     SubmitSolution,
     SummariseProgress,
+    WatchSolutionFile,
 )
 from practice.domain.attempt import SolutionSaved
 from practice.domain.exercise import ExerciseKind
@@ -48,6 +49,7 @@ from tests.fakes import (
     FakeClock,
     FakeContentRepository,
     FakeEditorLauncher,
+    FakeFileWatcher,
     FakeProvisioner,
     FixedScheduler,
     SequentialIdGenerator,
@@ -84,6 +86,7 @@ __all__ = [
     "a_submit_scenario",
     "a_submit_solution",
     "a_summarise_progress",
+    "a_watch_solution_file",
     "an_abandon_attempt",
     "an_environment",
     "an_inspect_repository",
@@ -209,6 +212,10 @@ class World:
     #: The editor own-editor mode opens. Records what it was asked for and can
     #: be told to refuse, which is the branch `RevealedFile` has three fields for.
     editor: FakeEditorLauncher = field(default_factory=FakeEditorLauncher)
+    #: Ctrl+S, scripted. A test says "two saves and a tick" before draining the
+    #: stream, which is what makes grade-on-save a unit test rather than a race
+    #: against a real filesystem event.
+    watcher: FakeFileWatcher = field(default_factory=FakeFileWatcher)
     #: The repository `InspectRepository` reads. A builder, so a test arranges the
     #: shape it is about and the factory builds a query per call -- which is the
     #: property the real factory has and the reason it is a factory at all.
@@ -341,6 +348,21 @@ def a_reveal_solution_file(world: World) -> RevealSolutionFile:
         attempts=world.attempts,
         provisioner=world.provisioner,
         editor=world.editor,
+    )
+
+
+def a_watch_solution_file(world: World) -> WatchSolutionFile:
+    """Every port `submit_solution` needs, plus the watcher. The symmetry is the
+    point: a preview grades through exactly the same machinery a submission
+    does, and differs only in that nothing is saved.
+    """
+    return WatchSolutionFile(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        graders=world.graders,
+        clock=world.clock,
+        watcher=world.watcher,
     )
 
 

@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import AsyncIterator, Mapping, Sequence
     from datetime import date, datetime
     from pathlib import Path
 
@@ -38,6 +38,7 @@ __all__ = [
     "CommitInfo",
     "ContentRepository",
     "EditorLauncher",
+    "FileWatcher",
     "Grader",
     "IdGenerator",
     "ReflogEntry",
@@ -365,6 +366,34 @@ class EditorLauncher(Protocol):
     """
 
     def reveal(self, path: Path) -> str | None: ...
+
+
+class FileWatcher(Protocol):
+    """Notices when one file is saved, and says so until nobody is listening.
+
+    The other half of own-editor mode: `EditorLauncher` puts the file in front of
+    the solver and this is what notices them pressing Ctrl+S. A port rather than
+    a direct `watchfiles` call, for two reasons that are both really the same
+    one. It keeps a file-watching library out of the layers that must not do
+    I/O — `tests/unit/test_architecture.py` names `watchfiles` among the
+    modules the domain and the application may not import, so this protocol is
+    the only way through. And it is what makes the stream testable: a fake that
+    yields a scripted sequence turns *grade on every save* into a unit test,
+    where the alternative is racing a real filesystem event and hoping.
+
+    **It yields `False` as well as `True`, and the `False` is load-bearing.**
+    `True` means the file changed. `False` is a periodic tick with nothing to
+    report, and the caller needs it: an SSE stream that only ever wrote on a
+    change has no way to discover that the browser holding it open has gone, and
+    would keep a watcher alive per tab that was ever closed. A tick is when the
+    web layer gets to check, and it is the reason this is not simply an iterator
+    of saves.
+
+    Two implementations, which is what PLAN.md §13 asks: `WatchfilesFileWatcher`
+    and the scripted fake in `tests/fakes/watcher.py`.
+    """
+
+    def changes(self, path: Path) -> AsyncIterator[bool]: ...
 
 
 class RepoQuery(Protocol):

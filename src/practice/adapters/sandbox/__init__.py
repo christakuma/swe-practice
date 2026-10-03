@@ -1,6 +1,6 @@
 """The sandbox: a throwaway directory an attempt runs real commands inside.
 
-Eight modules, split by what each one knows about:
+Nine modules, split by what each one knows about:
 
 * `env` — the environment a sandboxed process gets, where git is installed, and
   the commit clock that spans the whole attempt. Knows about reproducibility.
@@ -16,6 +16,8 @@ Eight modules, split by what each one knows about:
   anyway: the architecture test allows exactly one package to start a process,
   and relaxing that to two would cost more than the oddity of this one living
   next to the two that are scoped (PLAN.md §16, Phase 10).
+* `watcher` — notices the solver saving that file, over `watchfiles`. Knows
+  that editors save by rename rather than by writing in place.
 * `fixture_runner` — finds the bash git bundles, and runs a fixture under the
   pinned environment. Knows how Git for Windows lays itself out.
 * `provisioner` — builds a workspace, runs its fixture, finds the ones already
@@ -79,6 +81,7 @@ from practice.adapters.sandbox.provisioner import (
     WorkspaceExistsError,
 )
 from practice.adapters.sandbox.virtual_commands import VIRTUAL_COMMANDS, is_virtual
+from practice.adapters.sandbox.watcher import TICK_SECONDS, WatchfilesFileWatcher
 from practice.adapters.sandbox.workspace import (
     SubprocessWorkspace,
     WorkspaceLayout,
@@ -89,6 +92,7 @@ __all__ = [
     "DEFAULT_EDITOR",
     "EDITOR_ENV",
     "LOCK_FILENAME",
+    "TICK_SECONDS",
     "VIRTUAL_COMMANDS",
     "CommandPolicy",
     "CommandRejectedError",
@@ -101,6 +105,7 @@ __all__ = [
     "SubprocessSandboxProvisioner",
     "SubprocessWorkspace",
     "ToolNotFoundError",
+    "WatchfilesFileWatcher",
     "WorkspaceExistsError",
     "WorkspaceLayout",
     "WorkspacePathError",

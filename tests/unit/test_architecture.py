@@ -60,6 +60,12 @@ IO_MODULES = frozenset(
         "subprocess",
         "tempfile",
         "urllib",
+        # Phase 10's addition, and the only third-party name in this set. A file
+        # watcher is I/O in the same sense a socket is, and the `FileWatcher`
+        # port exists precisely so that a use case which wants to know about a
+        # save asks for one rather than importing one. Without this line the
+        # rule would be a paragraph in a docstring.
+        "watchfiles",
         "webbrowser",
     }
 )
@@ -269,6 +275,7 @@ def test_the_detector_catches_an_outward_import(fake_tree: Path, body: str) -> N
         "from subprocess import run",
         "import os.path",
         "from urllib.request import urlopen",
+        "from watchfiles import awatch",
     ],
 )
 def test_the_detector_catches_an_io_import(fake_tree: Path, body: str) -> None:

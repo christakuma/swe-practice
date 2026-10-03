@@ -58,6 +58,7 @@ from practice.adapters.persistence import (
 from practice.adapters.sandbox import (
     SubprocessEditorLauncher,
     SubprocessSandboxProvisioner,
+    WatchfilesFileWatcher,
 )
 from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
@@ -77,6 +78,7 @@ from practice.application.use_cases import (
     SubmitScenario,
     SubmitSolution,
     SummariseProgress,
+    WatchSolutionFile,
 )
 from practice.config import content_root, database_path, workspace_root
 from practice.domain.exercise import ExerciseKind
@@ -90,6 +92,7 @@ if TYPE_CHECKING:
         Clock,
         ContentRepository,
         EditorLauncher,
+        FileWatcher,
         Grader,
         IdGenerator,
         RepoQueryFactory,
@@ -121,6 +124,7 @@ class Services:
     repo_query: RepoQueryFactory
     scheduler: Scheduler
     editor: EditorLauncher
+    watcher: FileWatcher
 
     @property
     def start_attempt(self) -> StartAttempt:
@@ -241,6 +245,23 @@ class Services:
         )
 
     @property
+    def watch_solution_file(self) -> WatchSolutionFile:
+        """The one use case holding the `FileWatcher`, and the only one that
+        grades without writing: a save is a preview, never a submission
+        (ADR 0013). It needs the grader registry for the same reason
+        `submit_solution` does, and the clock for the in-memory event it builds
+        and discards.
+        """
+        return WatchSolutionFile(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            graders=self.graders,
+            clock=self.clock,
+            watcher=self.watcher,
+        )
+
+    @property
     def abandon_attempt(self) -> AbandonAttempt:
         return AbandonAttempt(
             content=self.content,
@@ -349,6 +370,7 @@ def build_services(
         repo_query=GitRepoQuery,
         scheduler=Sm2Scheduler(),
         editor=SubprocessEditorLauncher(),
+        watcher=WatchfilesFileWatcher(),
     )
 
 

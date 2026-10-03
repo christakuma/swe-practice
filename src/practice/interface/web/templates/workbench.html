@@ -72,7 +72,7 @@
         <button type="button" id="open-editor" class="quiet">
           Open in my editor
         </button>
-        <span class="meta">writes what is above to a real file and opens it</span>
+        <span class="meta">re-grades every time you save, without submitting</span>
       </div>
 
       {# Where the verdict fragment lands. Empty until something is submitted. #}
@@ -156,8 +156,52 @@
         target: "#file-mode",
         swap: "innerHTML",
         values: { source: window.practiceEditor.getValue() }
-      });
+      }).then(watchTheFile);
     });
+
+    // From here on the file is the solution and this editor is a mirror of it.
+    // Read-only is not decoration: with two editors open on one attempt, the
+    // one that is not the source of truth has to stop looking like it is --
+    // and `nocursor` is the value that also removes the caret, because a
+    // caret in a read-only document is an invitation.
+    function watchTheFile() {
+      var status = document.getElementById("watch-status");
+      if (status === null) {
+        return;  // the reveal was refused; the panel is a problem, not a path
+      }
+      window.practiceEditor.setOption("readOnly", "nocursor");
+
+      // Native `EventSource` rather than htmx's SSE extension, which htmx 2
+      // ships separately and would be a fifth vendored file for four lines.
+      var stream = new EventSource({{ watch_url | tojson }});
+
+      stream.addEventListener("open", function () {
+        status.textContent = "Watching for saves. Re-graded every time you save.";
+      });
+
+      // The source first, then the verdict: when the verdict lands, the editor
+      // is already showing the code it is about -- which is what makes Submit
+      // unambiguous here. It sends what the verdict on screen was computed from.
+      stream.addEventListener("source", function (event) {
+        window.practiceEditor.setValue(event.data);
+      });
+
+      stream.addEventListener("verdict", function (event) {
+        document.getElementById("verdict").innerHTML = event.data;
+      });
+
+      // `textContent`, not `innerHTML`: this payload is a sentence rather than a
+      // fragment, and the sentence can carry a path or a quoted command.
+      stream.addEventListener("problem", function (event) {
+        status.textContent = event.data;
+      });
+
+      // Closing on `done` is the only way to stop `EventSource` reconnecting:
+      // it retries a dropped stream on its own, forever, by design.
+      stream.addEventListener("done", function () {
+        stream.close();
+      });
+    }
   </script>
 {% endif %}
 {% endblock %}

@@ -7,11 +7,11 @@ in-memory DAG rather than storing the answers, so it can be *wrong* — which is
 what makes both the 22 assertion tests and the conformance suite in
 `tests/integration/git/` evidence rather than ceremony.
 
-`content`, `sandbox`, `kata` and `editor` are what make the application tests
-cheap: between them they stand in for an exercise library, a provisioned
-directory, a git environment, a pytest subprocess and the solver's own editor,
-so a test about the *ordering* of a use case costs a millisecond rather than ten
-seconds. They are held to the real
+`content`, `sandbox`, `kata`, `editor` and `watcher` are what make the
+application tests cheap: between them they stand in for an exercise library, a
+provisioned directory, a git environment, a pytest subprocess, the solver's own
+editor and their Ctrl+S, so a test about the *ordering* of a use case costs a
+millisecond rather than ten seconds. They are held to the real
 adapters' behaviour wherever it is observable — `attach` returning `None`,
 `read_file` raising `OSError` — on the principle that a fake allowed to differ
 makes its tests prove nothing.
@@ -32,6 +32,7 @@ from tests.fakes.repo import (
 )
 from tests.fakes.sandbox import FakeProvisioner, FakeWorkspace
 from tests.fakes.scheduling import FixedScheduler, Scheduled
+from tests.fakes.watcher import FakeFileWatcher
 
 __all__ = [
     "BuilderRepoQueryFactory",
@@ -39,6 +40,7 @@ __all__ = [
     "FakeClock",
     "FakeContentRepository",
     "FakeEditorLauncher",
+    "FakeFileWatcher",
     "FakeProvisioner",
     "FakeRepoQuery",
     "FakeWorkspace",

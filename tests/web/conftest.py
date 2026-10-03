@@ -34,6 +34,7 @@ from tests.fakes import (
     FakeClock,
     FakeContentRepository,
     FakeEditorLauncher,
+    FakeFileWatcher,
     FakeProvisioner,
     FixedScheduler,
     SequentialIdGenerator,
@@ -89,6 +90,9 @@ class Wiring:
         #: starts a GUI program -- and a web test that opened VS Code would be a
         #: web test nobody runs twice.
         self.editor = FakeEditorLauncher()
+        #: Ctrl+S, scripted. A web test arranges the saves it wants and then
+        #: drains the stream, rather than writing a file and waiting.
+        self.watcher = FakeFileWatcher()
         self.grader = grader
         #: The repository the state panel and the commit graph are drawn from. A
         #: *builder* rather than a built query, so a test can start an attempt and
@@ -121,6 +125,7 @@ class Wiring:
             repo_query=BuilderRepoQueryFactory(self.repo),
             scheduler=self.scheduler,
             editor=self.editor,
+            watcher=self.watcher,
         )
 
 

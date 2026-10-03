@@ -30,6 +30,19 @@ it):
 * `-q --no-header` — the captured output is read by a human only when something
   went wrong, and the banner is never the interesting part of it.
 
+**One grading pass at a time, and Phase 10 is what forced it.** The five files
+below are written into the workspace on every run, `solution.py` among them, and
+two passes over one workspace interleave: the second overwrites the source the
+first is about to run, and `report.json` comes back describing somebody else's
+code. Until own-editor mode there was no way to ask for two — a submission ends
+the attempt, so a second one is refused. Grade-on-save creates it immediately:
+two browser tabs on one attempt are two SSE streams, and §8.1 explicitly
+supports an attempt being open in another tab. So the write-run-read sequence is
+serialised, on a lock held by the runner — which the composition root builds
+exactly one of, which is what makes an instance lock enough. A wrong verdict on
+a completed attempt is the worst outcome this system has, and it is worth a
+submission waiting out a preview to avoid.
+
 **Why the plugin is copied rather than imported.** `-p` takes a module name and
 `-I` implies `-P`, so the workspace is not on `sys.path` when pytest resolves
 plugin arguments — the import fails before collection starts. The copied-in
@@ -42,6 +55,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -251,13 +265,19 @@ class PytestKataRunner:
     exactly one.
     """
 
-    __slots__ = ("_plugin_source",)
+    __slots__ = ("_lock", "_plugin_source")
 
     def __init__(self) -> None:
         # Read once, at construction. The alternative is reading the file on
         # every submission, which makes grading depend on the installed package
         # still being on disk half an hour into a session.
         self._plugin_source = plugin_source()
+        #: One pass at a time. See the module docstring: the files below are a
+        #: shared resource, and two passes over one workspace grade each other's
+        #: source. Not per workspace, because a solver works on one attempt at a
+        #: time and a registry of locks keyed by path would be more machinery
+        #: than the contention it avoids.
+        self._lock = threading.Lock()
 
     def run(self, workspace: Workspace, spec: KataSpec, source: str) -> KataRun:
         """Install the mechanism, write the source, run the suite, read the report.
@@ -266,24 +286,32 @@ class PytestKataRunner:
         They are this module's contract with the subprocess, not the exercise's
         content, and rewriting them means a resumed attempt cannot be graded by
         a plugin that was copied in by an older version of this file.
-        """
-        self._install(workspace)
-        workspace.write_file(SOLUTION_MODULE, source)
 
-        result = workspace.run_tool(
-            [
-                sys.executable,
-                "-I",
-                "-X",
-                "utf8",
-                "-m",
-                "pytest",
-                spec.tests,
-                *_ARGV,
-            ],
-            timeout=spec.time_limit_seconds,
-        )
-        document = self._read_report(workspace)
+        **The whole sequence is under one lock**, because all four steps share
+        those files: a second pass that wrote `solution.py` between this one's
+        write and its `pytest` would have this one grade its source. The lock is
+        held for as long as pytest runs, which is bounded by the exercise's own
+        time limit -- so the worst a caller waits is one timeout, and what it
+        buys is that no verdict is ever about code nobody submitted.
+        """
+        with self._lock:
+            self._install(workspace)
+            workspace.write_file(SOLUTION_MODULE, source)
+
+            result = workspace.run_tool(
+                [
+                    sys.executable,
+                    "-I",
+                    "-X",
+                    "utf8",
+                    "-m",
+                    "pytest",
+                    spec.tests,
+                    *_ARGV,
+                ],
+                timeout=spec.time_limit_seconds,
+            )
+            document = self._read_report(workspace)
 
         return KataRun(
             tests=parse_records(document),

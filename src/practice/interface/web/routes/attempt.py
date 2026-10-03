@@ -71,7 +71,7 @@ from practice.domain.exercise import KataSpec
 from practice.domain.ids import AttemptId
 from practice.interface.web.errors import render_problem
 from practice.interface.web.routes.console import COMMAND_URL, SCENARIO_SUBMIT_URL
-from practice.interface.web.routes.editor import EDITOR_URL
+from practice.interface.web.routes.editor import EDITOR_URL, WATCH_URL
 from practice.interface.web.routes.review import REVIEW_URL
 
 if TYPE_CHECKING:
@@ -138,6 +138,7 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # same reason the console's two URLs are, so that there is one
                 # place a path can be got wrong.
                 "editor_url": EDITOR_URL.format(attempt_id=parsed),
+                "watch_url": WATCH_URL.format(attempt_id=parsed),
                 "hint_url": HINT_URL.format(attempt_id=parsed),
                 "review_url": REVIEW_URL.format(attempt_id=parsed),
                 # Only for a finished attempt, because `OfferReview` refuses one
