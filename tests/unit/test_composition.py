@@ -184,6 +184,17 @@ def test_the_review_use_cases_read_the_card_store_the_root_built() -> None:
     assert services.review_queue.reviews is services.reviews
 
 
+def test_the_progress_summary_reads_all_three_stores() -> None:
+    """The only use case holding the attempt repository for something other than
+    finding one attempt by id, and the only read that joins all three.
+    """
+    services = build_services()
+
+    assert services.summarise_progress.attempts is services.attempts
+    assert services.summarise_progress.reviews is services.reviews
+    assert services.summarise_progress.content is services.content
+
+
 def test_the_content_root_override_reaches_both_adapters() -> None:
     """One argument, two readers: the repository loads exercises from it and the
     provisioner copies fixtures out of it. A root that reached only one of them

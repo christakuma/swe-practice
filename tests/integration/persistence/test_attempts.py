@@ -301,6 +301,50 @@ def test_active_is_empty_on_a_fresh_database(
     assert attempts.active() == ()
 
 
+def test_completed_holds_only_graded_attempts_oldest_finish_first(
+    attempts: SqliteAttemptRepository,
+) -> None:
+    """`active`'s counterpart and the progress page's only query.
+
+    Ordered by *finish* and not by start, which is the order a history reads in
+    and the order a streak is counted from -- and which differs from the start
+    order whenever one attempt is left open across another.
+    """
+    still_going = an_attempt(1, minutes=10)
+    slow = an_attempt(2, minutes=20)
+    slow.complete(a_verdict(), at=at(90))
+    quick = an_attempt(3, minutes=30)
+    quick.complete(a_verdict(), at=at(35))
+    given_up = an_attempt(4, minutes=40)
+    given_up.abandon(at=at(45))
+    for attempt in (still_going, slow, quick, given_up):
+        attempts.save(attempt)
+
+    assert [attempt.id for attempt in attempts.completed()] == [an_id(3), an_id(2)]
+
+
+def test_completed_carries_the_event_log_like_every_other_listing(
+    attempts: SqliteAttemptRepository,
+) -> None:
+    """Two queries and not one per attempt, which is the shape that matters here
+    more than anywhere: this is the listing with no upper bound on its size.
+    """
+    attempt = an_attempt(1)
+    attempt.record_command(["git", "log"], CommandResult(exit_code=0), at=at(1))
+    attempt.complete(a_verdict(), at=at(2))
+    attempts.save(attempt)
+
+    (loaded,) = attempts.completed()
+
+    assert [command.argv for command in loaded.commands] == [("git", "log")]
+
+
+def test_completed_is_empty_on_a_fresh_database(
+    attempts: SqliteAttemptRepository,
+) -> None:
+    assert attempts.completed() == ()
+
+
 # --- surviving a restart ---------------------------------------------------
 
 

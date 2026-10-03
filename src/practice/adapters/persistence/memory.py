@@ -83,6 +83,21 @@ class InMemoryAttemptRepository:
             if attempt.is_active
         )
 
+    def completed(self) -> Sequence[Attempt]:
+        """Every graded attempt, in the order they were saved.
+
+        By filtering, like `active`, and for the same reason: this store holds
+        one process's attempts and is allowed to be the simplest thing that
+        satisfies the port. Abandoned attempts are excluded by asking for a
+        verdict rather than for a status -- the two cannot disagree, since only
+        `complete` sets one, and the verdict is what the summary actually reads.
+        """
+        return tuple(
+            deepcopy(attempt)
+            for attempt in self._attempts.values()
+            if attempt.verdict is not None
+        )
+
     def __len__(self) -> int:
         """How many attempts are stored, for a test that wants to say so."""
         return len(self._attempts)

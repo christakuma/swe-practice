@@ -184,6 +184,29 @@ class AttemptRepository(Protocol):
         """
         ...
 
+    def completed(self) -> Sequence[Attempt]:
+        """Every attempt that was submitted and graded, oldest first.
+
+        Phase 9's addition, and the counterpart to `active()`: that one is about
+        what is still open, this one about what is finished. The progress summary
+        needs both halves of each attempt -- when it ended and whether it passed
+        -- and neither is derivable from the review cards, which keep no history
+        (`sqlite/reviews.py`) and so cannot say which day anything happened on.
+
+        Abandoned attempts are excluded. They have an end timestamp and no
+        verdict, so counting one would either shorten a pass rate for work that
+        was never graded or extend a streak for a day somebody gave up -- and
+        both readings are worse than leaving them out.
+
+        It loads whole aggregates, event logs included, which is the shape
+        `sqlite/attempts.py` already names as the one that stops being free "the
+        first time a progress page asks for a hundred attempts". That page is
+        now here, and the answer for the MVP is that a single-user local history
+        is hundreds of rows rather than millions. The replacement when it is not
+        is a projection, not a narrower query.
+        """
+        ...
+
 
 class ReviewRepository(Protocol):
     """Persistence for scheduling state."""

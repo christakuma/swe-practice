@@ -37,6 +37,7 @@ from practice.application.use_cases import (
     StartAttempt,
     SubmitScenario,
     SubmitSolution,
+    SummariseProgress,
 )
 from practice.domain.attempt import SolutionSaved
 from practice.domain.exercise import ExerciseKind
@@ -79,6 +80,7 @@ __all__ = [
     "a_start_attempt",
     "a_submit_scenario",
     "a_submit_solution",
+    "a_summarise_progress",
     "an_abandon_attempt",
     "an_environment",
     "an_inspect_repository",
@@ -396,3 +398,13 @@ def a_grade_review(world: World) -> GradeReview:
 def a_review_queue(world: World) -> ReviewQueue:
     """No attempt store: what is due is a question about cards and the library."""
     return ReviewQueue(content=world.content, reviews=world.reviews, clock=world.clock)
+
+
+def a_summarise_progress(world: World) -> SummariseProgress:
+    """No provisioner: none of this is a question about a workspace."""
+    return SummariseProgress(
+        content=world.content,
+        attempts=world.attempts,
+        reviews=world.reviews,
+        clock=world.clock,
+    )

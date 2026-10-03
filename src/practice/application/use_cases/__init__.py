@@ -5,7 +5,7 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Fourteen of them, in four groups.
+Fifteen of them, in four groups.
 
 **Four about solving**, two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
@@ -51,6 +51,10 @@ is given; `ReviewQueue` answers *what should I practise today* by joining the ca
 store against the whole library, because an exercise with no card is the most
 common due item there is.
 
+`SummariseProgress` joins them and is the only read in the group that touches the
+attempt log: what is *due* is a question about cards and the library, and how it
+is *going* is a question about everything that has been graded.
+
 `OfferReview` and `GradeReview` share `load_offer` rather than one calling the
 other. They have to agree about whether an attempt has already been reviewed --
 the panel hides the buttons on exactly the attempts the post refuses -- and a use
@@ -72,6 +76,7 @@ from practice.application.use_cases.run_scenario_command import RunScenarioComma
 from practice.application.use_cases.start_attempt import StartAttempt
 from practice.application.use_cases.submit_scenario import SubmitScenario
 from practice.application.use_cases.submit_solution import SubmitSolution
+from practice.application.use_cases.summarise_progress import SummariseProgress
 
 __all__ = [
     "AbandonAttempt",
@@ -88,4 +93,5 @@ __all__ = [
     "StartAttempt",
     "SubmitScenario",
     "SubmitSolution",
+    "SummariseProgress",
 ]

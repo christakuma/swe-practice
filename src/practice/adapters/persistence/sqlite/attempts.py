@@ -110,6 +110,14 @@ _SELECT_ACTIVE: Final = (
     "SELECT * FROM attempts WHERE status = 'active' ORDER BY started_at, id"
 )
 
+#: Ordered by when they *finished* rather than when they started, which is the
+#: order a history reads in and the order the streak is counted from. Two
+#: attempts can finish inside one clock tick, so `id` breaks the tie and a
+#: listing never reshuffles between runs.
+_SELECT_COMPLETED: Final = (
+    "SELECT * FROM attempts WHERE status = 'completed' ORDER BY finished_at, id"
+)
+
 _SELECT_EVENTS: Final = (
     "SELECT * FROM attempt_events WHERE attempt_id = :attempt_id ORDER BY position"
 )
@@ -174,6 +182,19 @@ class SqliteAttemptRepository:
         """
         with self._database.connect() as connection:
             rows = connection.execute(_SELECT_ACTIVE).fetchall()
+            return self._hydrate(connection, rows)
+
+    def completed(self) -> Sequence[Attempt]:
+        """Every graded attempt, oldest finish first. What `/progress` reads.
+
+        No index behind it, deliberately. `attempts_active` is partial because
+        every other status is dead weight in an index whose question is "which
+        are still open"; the mirror image would be an index over almost the whole
+        table, which SQLite would decline to use for a scan that returns almost
+        the whole table anyway.
+        """
+        with self._database.connect() as connection:
+            rows = connection.execute(_SELECT_COMPLETED).fetchall()
             return self._hydrate(connection, rows)
 
     def __len__(self) -> int:

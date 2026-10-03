@@ -169,6 +169,39 @@ def test_nothing_is_active_in_an_empty_store() -> None:
     assert InMemoryAttemptRepository().active() == ()
 
 
+def test_completed_holds_only_what_was_graded() -> None:
+    """`active`'s counterpart, and the one the progress page reads. Abandoned
+    attempts are excluded by asking for a *verdict* rather than for a status:
+    only `complete` sets one, so the two cannot disagree, and the verdict is
+    what a summary actually reads.
+    """
+    attempts = InMemoryAttemptRepository()
+    still_going = an_attempt(1)
+    graded = an_attempt(2)
+    graded.complete(a_verdict(), at=FakeClock().now())
+    given_up = an_attempt(3)
+    given_up.abandon(at=FakeClock().now())
+    for attempt in (still_going, graded, given_up):
+        attempts.save(attempt)
+
+    assert [attempt.id.short for attempt in attempts.completed()] == ["00000002"]
+
+
+def test_completed_hands_out_copies_like_every_other_read() -> None:
+    attempts = InMemoryAttemptRepository()
+    graded = an_attempt(1)
+    graded.complete(a_verdict(), at=FakeClock().now())
+    attempts.save(graded)
+
+    (offered,) = attempts.completed()
+
+    assert offered is not graded
+
+
+def test_nothing_is_completed_in_an_empty_store() -> None:
+    assert InMemoryAttemptRepository().completed() == ()
+
+
 def test_it_describes_itself_by_how_much_it_holds() -> None:
     attempts = InMemoryAttemptRepository()
     attempts.save(an_attempt(1))

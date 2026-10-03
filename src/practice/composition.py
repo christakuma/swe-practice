@@ -72,6 +72,7 @@ from practice.application.use_cases import (
     StartAttempt,
     SubmitScenario,
     SubmitSolution,
+    SummariseProgress,
 )
 from practice.config import content_root, database_path, workspace_root
 from practice.domain.exercise import ExerciseKind
@@ -261,6 +262,19 @@ class Services:
         the progress summary.
         """
         return ReviewQueue(content=self.content, reviews=self.reviews, clock=self.clock)
+
+    @property
+    def summarise_progress(self) -> SummariseProgress:
+        """The only read that touches both stores and the library at once -- and
+        the only one holding the attempt repository for something other than
+        finding one attempt by id.
+        """
+        return SummariseProgress(
+            content=self.content,
+            attempts=self.attempts,
+            reviews=self.reviews,
+            clock=self.clock,
+        )
 
     @property
     def collect_workspaces(self) -> CollectWorkspaces:
