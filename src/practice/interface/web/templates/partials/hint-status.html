@@ -1,0 +1,33 @@
+{#
+  The reveal button and what is left, as one swappable block.
+
+  Both halves move together — the last hint turns the button into a note — so this
+  is one element with one id rather than a button and a counter that can disagree.
+  `oob` comes from the route, exactly as it does for the console's budget; the page
+  renders it inline and the reveal response sends it back marked for an
+  out-of-band swap.
+#}
+<div class="hint-status" id="hint-status"{% if oob is defined and oob %} hx-swap-oob="true"{% endif %}>
+  {% if not attempt.is_active %}
+    <p class="meta">
+      {{ attempt.hints_revealed }} of {{ attempt.policy.hint_count }} hints were
+      revealed on this attempt.
+    </p>
+  {% elif attempt.remaining_hints > 0 %}
+    <button type="button" class="quiet"
+            hx-post="{{ hint_url }}"
+            hx-target="#hint-list"
+            hx-swap="beforeend"
+            hx-disabled-elt="this">
+      Reveal a hint
+    </button>
+    <span class="meta">
+      {{ attempt.remaining_hints }} of {{ attempt.policy.hint_count }} left ·
+      recorded on the attempt
+    </span>
+  {% else %}
+    <p class="meta">
+      All {{ attempt.policy.hint_count }} hints revealed.
+    </p>
+  {% endif %}
+</div>

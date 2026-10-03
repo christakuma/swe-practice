@@ -1,0 +1,12 @@
+{#
+  What revealing a hint returns: the hint to append, and the control, out of band.
+
+  The same wrapper shape as `console-response.html`, for the same htmx reason —
+  `hx-swap-oob` is only honoured on a top-level element of the response, so the
+  thing being swapped by id has to be a sibling of the thing being appended.
+#}
+<li class="hint">
+  <span class="meta">{{ revealed.number }} of {{ attempt.policy.hint_count }}</span>
+  {{ revealed.hint.text }}
+</li>
+{% include "partials/hint-status.html" %}

@@ -5,7 +5,7 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Ten of them, in three groups.
+Eleven of them, in three groups.
 
 **Four about solving**, two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
@@ -38,6 +38,12 @@ It answers the repo state panel *through the same `RepoQuery` the grader reads
 through*, so the panel a solver decides to submit from cannot disagree with the
 verdict they then get.
 
+**One that looks like display and is not.** `RevealHint` renders a fragment, and it
+writes: revealing a hint is something the solver *did* in the exercise, recorded in
+the log beside the commands they ran, because Phase 9's grade suggestion reads it --
+"passed, but with three of four hints" is a different outcome from "passed". That is
+why it is a use case and not a property on the workbench DTO.
+
 `GradeReview` joins these in Phase 9.
 """
 
@@ -47,6 +53,7 @@ from practice.application.use_cases.inspect_repository import InspectRepository
 from practice.application.use_cases.list_open_attempts import ListOpenAttempts
 from practice.application.use_cases.open_workbench import OpenWorkbench
 from practice.application.use_cases.resume_attempt import ResumeAttempt
+from practice.application.use_cases.reveal_hint import RevealHint
 from practice.application.use_cases.run_scenario_command import RunScenarioCommand
 from practice.application.use_cases.start_attempt import StartAttempt
 from practice.application.use_cases.submit_scenario import SubmitScenario
@@ -59,6 +66,7 @@ __all__ = [
     "ListOpenAttempts",
     "OpenWorkbench",
     "ResumeAttempt",
+    "RevealHint",
     "RunScenarioCommand",
     "StartAttempt",
     "SubmitScenario",

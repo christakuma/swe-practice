@@ -12,6 +12,13 @@ This module keeps the kata submission because that is the one that carries a bod
 -- the editor's source and a complexity claim. A scenario sends nothing, which is
 the argument `routes/console.py` makes for its own submit route.
 
+**Hint reveal is here rather than in either half**, because hints belong to the
+attempt and not to the exercise kind: a kata has them and a git scenario has them,
+and the panel they appear in is in the shared prompt column. It is the one endpoint
+on this page that is a GET-shaped idea and a POST in fact -- revealing a hint writes
+an event the attempt records (§4.3), so it is not safe to repeat and must not be
+something a browser can prefetch.
+
 **The submission returns HTML, not JSON**, which is PLAN.md §8.4's rule and the
 whole shape of the HTMX bet (ADR 0007): the server renders the fragment and the
 browser swaps it in, so there is one template for a verdict and no client-side
@@ -57,11 +64,16 @@ if TYPE_CHECKING:
 
     from practice.composition import Services
 
-__all__ = ["SUBMIT_URL", "build_router"]
+__all__ = ["HINT_URL", "SUBMIT_URL", "build_router"]
 
 #: Where the editor posts a solution. A template builds the attempt's own URL from
 #: this, so the route and the page cannot disagree about the path.
 SUBMIT_URL = "/api/attempt/{attempt_id}/submit"
+
+#: Where the prompt panel asks for the next hint. No index in it, deliberately: an
+#: endpoint taking one is an endpoint a solver skips to the last hint with, and the
+#: progression is the thing being recorded.
+HINT_URL = "/api/attempt/{attempt_id}/hint"
 
 
 def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
@@ -106,6 +118,7 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # stub in it is not a repository in a strange state, it is a
                 # question that does not apply.
                 "repo": None if is_kata else services.inspect_repository(parsed),
+                "hint_url": HINT_URL.format(attempt_id=parsed),
             },
         )
 
@@ -153,6 +166,42 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
             request=request,
             name="partials/verdict.html",
             context={"verdict": submission.verdict},
+        )
+
+    @router.post(HINT_URL, response_class=HTMLResponse)
+    def hint(request: Request, attempt_id: str) -> Response:
+        """Reveal the next hint, append it, and re-render the counter out of band.
+
+        The same two-part response shape the console uses, and for the same reason:
+        one request changes two places on the page -- the list of hints and the
+        "one left" note under the button -- and htmx swaps both from it.
+
+        A refusal lands in the list rather than replacing the page, because the
+        reader is looking at the list. The two it can be are *no hints left*, which
+        the aggregate raises, and *this attempt is finished*, which it also raises;
+        both are sentences written to be read, so neither is rephrased here.
+        """
+        try:
+            parsed = AttemptId.parse(attempt_id)
+            revealed = services.reveal_hint(parsed)
+        except (ApplicationError, DomainError, ValueError) as exc:
+            return templates.TemplateResponse(
+                request=request,
+                name="partials/hint-refusal.html",
+                context={"detail": str(exc)},
+            )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="partials/hint-response.html",
+            context={
+                "revealed": revealed,
+                "attempt": revealed.attempt,
+                # The status block holds the button, so it needs the URL it posts
+                # to even when it is being re-rendered by a response from it.
+                "hint_url": HINT_URL.format(attempt_id=parsed),
+                "oob": True,
+            },
         )
 
     return router

@@ -102,8 +102,8 @@ def _seed(spec: ExerciseSpec, workspace: Workspace | None) -> str | None:
     """What the editor opens with, or `None` when there is no editor.
 
     `None` rather than an empty string, and the distinction is one the template
-    reads: a git scenario has no editor at all (its surface is a console, which is
-    Phase 8), while a kata with an empty stub would have one that happens to be
+    reads: a git scenario has no editor at all -- its surface is a console over a
+    repository -- while a kata with an empty stub would have one that happens to be
     blank. A missing stub file is also `None` rather than an exception -- the
     content suite is what holds a kata to having one, and a workbench that refused
     to load would be the wrong place to find out.

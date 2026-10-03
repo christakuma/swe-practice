@@ -1,0 +1,40 @@
+{#
+  Progressive hint reveal, in the prompt column of both exercise kinds.
+
+  **One at a time, and the attempt records each one.** A page that printed all four
+  would make the log describe something nobody did — and Phase 9 reads that log to
+  suggest a grade, where "passed, with three of four hints" is a different outcome
+  from "passed". The order is the aggregate's: `reveal_next_hint` hands back the
+  next one and refuses once they run out, so there is no request that skips ahead.
+
+  **Already-revealed hints are rendered from the event log**, like the console
+  transcript, so a reload shows what was revealed rather than resetting the ladder
+  — and so a hint revealed from one tab is there in the other.
+
+  **No confirmation dialog on the button, and that is a decision rather than an
+  omission.** Revealing is recorded, so the first draft put `hx-confirm` on it --
+  and a blocking native dialog in front of something a solver does three or four
+  times an attempt buys a worse experience than the honesty is worth. The control
+  says "recorded on the attempt" beside it instead, which is the same information
+  without the interruption. `hx-confirm` stays where it belongs: on Submit, which
+  finishes the attempt and cannot be undone.
+#}
+<section class="hints">
+  <h3>Hints</h3>
+
+  <ol class="hint-list" id="hint-list">
+    {#
+      The index comes off the event, not off the loop counter: the log records
+      *which* hint was shown so that it still says so after the exercise is edited,
+      and renumbering here from the loop would throw that away.
+    #}
+    {% for revealed in attempt.revealed_hints %}
+      <li class="hint">
+        <span class="meta">{{ revealed.index + 1 }} of {{ attempt.policy.hint_count }}</span>
+        {{ revealed.hint.text }}
+      </li>
+    {% endfor %}
+  </ol>
+
+  {% include "partials/hint-status.html" %}
+</section>

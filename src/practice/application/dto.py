@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from practice.application.graph import CommitGraph
     from practice.domain.attempt import Attempt, CommandRun
-    from practice.domain.exercise import Exercise
+    from practice.domain.exercise import Exercise, Hint
     from practice.domain.ids import Sha
     from practice.domain.ports import Workspace, WorkspaceSummary, WorktreeStatus
     from practice.domain.verdict import Outcome, Verdict
@@ -33,6 +33,7 @@ __all__ = [
     "OpenAttempt",
     "RanCommand",
     "RepoView",
+    "RevealedHint",
     "StartedAttempt",
     "Submission",
     "Workbench",
@@ -103,6 +104,38 @@ class RanCommand:
     def succeeded(self) -> bool:
         """A failing command is a normal outcome, often the instructive one."""
         return self.command.result.succeeded
+
+
+@dataclass(frozen=True, slots=True)
+class RevealedHint:
+    """One hint, and where it sits in the sequence.
+
+    `index` as well as the hint, because the thing that makes a progressive reveal
+    legible is knowing *which* one this is -- "hint 2 of 4" -- and because the
+    attempt's log records the position for exactly the same reason: so it still
+    says which hint was shown after the exercise is edited.
+
+    The attempt comes with it so a page can redraw the counter without a second
+    lookup, which is the same join `RanCommand` makes for the command budget.
+    """
+
+    attempt: Attempt
+    exercise: Exercise
+    hint: Hint
+    index: int
+
+    @property
+    def number(self) -> int:
+        """1-based, because that is how it is spoken about. `index` stays 0-based,
+        because that is how the policy's list is addressed and how the log stores
+        it -- converting in one direction at the edge beats two conventions in the
+        middle.
+        """
+        return self.index + 1
+
+    @property
+    def remaining(self) -> int:
+        return self.attempt.remaining_hints
 
 
 @dataclass(frozen=True, slots=True)

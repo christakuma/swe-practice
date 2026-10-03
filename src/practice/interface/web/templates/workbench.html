@@ -23,13 +23,8 @@
     #}
     <pre>{{ exercise.prompt }}</pre>
 
-    {% if exercise.hints %}
-      <p class="meta">
-        {{ exercise.hint_count }} hint{{ '' if exercise.hint_count == 1 else 's' }}
-        available. Revealing them one at a time is phase 8: the attempt records
-        every reveal, and a page that printed them all at once would make that
-        record describe something nobody did.
-      </p>
+    {% if attempt.policy.hint_count %}
+      {% include "partials/hints.html" %}
     {% endif %}
   </section>
 

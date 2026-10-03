@@ -64,6 +64,7 @@ from practice.application.use_cases import (
     ListOpenAttempts,
     OpenWorkbench,
     ResumeAttempt,
+    RevealHint,
     RunScenarioCommand,
     StartAttempt,
     SubmitScenario,
@@ -200,6 +201,16 @@ class Services:
             attempts=self.attempts,
             provisioner=self.provisioner,
             repo_query=self.repo_query,
+        )
+
+    @property
+    def reveal_hint(self) -> RevealHint:
+        """No provisioner: a hint is content and a log entry, and touches neither
+        the sandbox nor the repository. It is the one use case that still works
+        for an attempt whose workspace has been collected.
+        """
+        return RevealHint(
+            content=self.content, attempts=self.attempts, clock=self.clock
         )
 
     @property

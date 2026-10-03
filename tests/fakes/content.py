@@ -119,3 +119,13 @@ class FakeContentRepository:
         live attempt — the one case `SubmitSolution` cannot recover from.
         """
         self._exercises.pop(exercise_id, None)
+
+    def replace_with(self, exercise: Exercise) -> None:
+        """Edit an exercise under a live attempt, keeping its id.
+
+        The other half of `forget`, and the half that tests the subtler claim: an
+        `Attempt` copies the limits and the hint list in at construction (§4.3), so
+        a library edited mid-attempt must not change what that attempt is held to
+        -- or what its own log is an index into.
+        """
+        self._exercises[exercise.id] = exercise

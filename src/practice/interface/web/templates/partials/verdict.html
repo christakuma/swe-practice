@@ -1,5 +1,5 @@
 {#
-  One verdict: every check, then the outcome.
+  One verdict: a summary, every check, the outcome, and what to do next.
 
   **A partial, included by the workbench page and returned on its own as the HTMX
   response to a submission.** One template for both, which is the property that
@@ -8,23 +8,42 @@
   to match.
 
   In the order the verdict holds them, which for a kata is the order the hidden
-  suite declared its tests — so two runs of the same solution read the same way
-  down the page. The CLI's `_report_verdict` makes the same choice for the same
-  reason, and this is the one piece of presentation deliberately duplicated
-  between the two adapters: `dto.py` carries domain objects rather than display
-  strings precisely so neither of them owns the other's formatting.
+  suite declared its tests and for a git scenario is the order the author declared
+  their checks — so two runs of the same answer read the same way down the page.
+  The CLI's `_report_verdict` makes the same choice for the same reason, and this is
+  the one piece of presentation deliberately duplicated between the two adapters:
+  `dto.py` carries domain objects rather than display strings precisely so neither
+  of them owns the other's formatting.
 
-  What is repeated under the outcome is whatever has to change next: the failures
-  when there are any, the advisories when there are not. The outcome is where
-  someone stops reading, and listing advisories under a FAIL would bury the thing
-  that actually failed.
+  **Every failing check carries its author's explanation, and an advisory carries
+  it even when the attempt passed.** That is the whole of the §4.4 bet: *correct
+  tree, but you rewrote history that was already published* is the sentence the
+  product exists to be able to say, and a panel that showed advisories as a bare
+  label under a green outcome would have graded craft and then not mentioned it.
+
+  **Severity is on the row, not inferred from the colour.** A check that failed and
+  did not block is a different thing from one that passed, and "advisory" written
+  on it is the only form of that distinction a screen reader or a printout keeps.
 #}
 {% set verdict = verdict if verdict is defined else workbench.verdict %}
 {% if verdict %}
+  {#
+    One line, written as one: a Jinja block that wraps the source wraps the output
+    too, and an assertion about the sentence then has to know where the template's
+    newlines fell. The count answers the question a wall of check rows does not --
+    "how close was that?" -- before any of them is read.
+  #}
+  {%- set passed = verdict.reports | selectattr('passed') | list | length -%}
+  {%- set advisories = verdict.advisories | length -%}
+  <p class="verdict-summary">{{ passed }} of {{ verdict.reports | length }} checks passed{% if advisories %} · {{ advisories }} advisory on how you got there{% endif %}.</p>
+
   <ul class="checks">
     {% for report in verdict.reports %}
       <li class="check {{ 'passed' if report.passed else ('failed' if report.is_required else 'advisory') }}">
         <span class="label">{{ report.label }}</span>
+        {% if not report.is_required %}
+          <span class="severity">advisory</span>
+        {% endif %}
         {% if not report.passed and report.expected and report.actual %}
           <span class="detail">expected {{ report.expected }}, got {{ report.actual }}</span>
         {% endif %}
@@ -39,10 +58,23 @@
     {{ verdict.outcome.value.replace('_', ' ') }}
   </p>
 
-  <ul class="checks">
+  {#
+    What is repeated under the outcome is whatever has to change next: the failures
+    when there are any, the advisories when there are not. The outcome is where
+    someone stops reading, and listing advisories under a FAIL would bury the thing
+    that actually failed.
+
+    The advisories are repeated *with their explanations* rather than as labels,
+    which is the Phase 8 change. A passing attempt's advisory is the only piece of
+    teaching on the page, and it was the one piece rendered without its reason.
+  #}
+  <ul class="checks breakdown">
     {% for report in (verdict.advisories if verdict.passed else verdict.failures) %}
       <li class="check {{ 'advisory' if verdict.passed else 'failed' }}">
         <span class="label">{{ report.label }}</span>
+        {% if report.explanation %}
+          <span class="why">{{ report.explanation }}</span>
+        {% endif %}
       </li>
     {% endfor %}
   </ul>

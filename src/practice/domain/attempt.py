@@ -381,8 +381,23 @@ class Attempt:
         return self._policy.max_commands - self.command_count
 
     @property
+    def revealed_hints(self) -> tuple[HintRevealed, ...]:
+        """Every hint this attempt has been shown, in the order it was shown.
+
+        The events rather than the `Hint`s, because a page redrawing the panel
+        wants the index as well as the text -- "hint 2 of 4" is the thing that
+        makes a progressive reveal legible, and the index is recorded precisely so
+        the log still says *which* hint was shown after the exercise is edited.
+
+        Shaped like `commands`, and for the same reason: a template cannot filter a
+        heterogeneous event log by type, and teaching it to would put a second
+        opinion about the log's shape outside the aggregate.
+        """
+        return tuple(event for event in self._events if isinstance(event, HintRevealed))
+
+    @property
     def hints_revealed(self) -> int:
-        return sum(1 for event in self._events if isinstance(event, HintRevealed))
+        return len(self.revealed_hints)
 
     @property
     def remaining_hints(self) -> int:

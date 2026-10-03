@@ -26,6 +26,7 @@ from practice.application.use_cases import (
     ListOpenAttempts,
     OpenWorkbench,
     ResumeAttempt,
+    RevealHint,
     RunScenarioCommand,
     StartAttempt,
     SubmitScenario,
@@ -64,6 +65,7 @@ __all__ = [
     "a_list_open_attempts",
     "a_passing_verdict",
     "a_resume_attempt",
+    "a_reveal_hint",
     "a_run_scenario_command",
     "a_start_attempt",
     "a_submit_scenario",
@@ -300,6 +302,13 @@ def a_resume_attempt(world: World) -> ResumeAttempt:
         attempts=world.attempts,
         provisioner=world.provisioner,
     )
+
+
+def a_reveal_hint(world: World) -> RevealHint:
+    """No provisioner: a hint is content and a log entry, and touches neither the
+    sandbox nor the repository.
+    """
+    return RevealHint(content=world.content, attempts=world.attempts, clock=world.clock)
 
 
 def an_abandon_attempt(world: World) -> AbandonAttempt:

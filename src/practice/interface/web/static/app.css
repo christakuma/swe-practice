@@ -411,6 +411,69 @@ button[disabled] {
   color: var(--fail);
 }
 
+/* --- hints --------------------------------------------------------------- */
+
+.hints {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.hints h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+
+.hint-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Revealed hints are marked at the edge in the advisory colour rather than the
+   accent, because that is what they are: something the attempt recorded that the
+   grade will be read against. */
+.hint {
+  border-left: 2px solid var(--note);
+  padding-left: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.hint .meta {
+  display: block;
+}
+
+.hint.refused {
+  border-left-color: var(--fail);
+}
+
+.hint.refused .problem {
+  border-left: 0;
+  padding-left: 0;
+  margin: 0;
+}
+
+.hint-list:not(:empty) + .hint-status {
+  margin-top: 0.7rem;
+}
+
+.hint-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.hint-status p {
+  margin: 0;
+}
+
 /* --- the repo state panel ----------------------------------------------- */
 
 /*
@@ -486,6 +549,29 @@ button[disabled] {
 
 .paths li.untracked {
   color: var(--ink-dim);
+}
+
+/* The summary line above the checks. Sized between the heading and the rows, so
+   it reads as a caption on the list rather than as another check. */
+.verdict-summary {
+  margin: 0 0 0.6rem;
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+}
+
+/* "advisory" written on the row, because colour alone is not a distinction a
+   screen reader or a printed page keeps. */
+.check .severity {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--note);
+}
+
+/* The repeat under the outcome carries explanations now, so it needs the spacing
+   of prose rather than of a label list. */
+.checks.breakdown .why {
+  margin-top: 0.15rem;
 }
 
 /* --- the git scenario console ------------------------------------------- */
