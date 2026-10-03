@@ -20,6 +20,12 @@
   there is no "submit" to press afterwards, so every button is a decision and the
   mark is a recommendation rather than a default someone can fail to notice.
 
+  All four carry `quiet`, which is what makes that mark possible at all. The
+  default button in this app is an accent *fill* with background-coloured text,
+  so accenting the suggested one's border and label painted accent on accent and
+  left it blank — four buttons, one of them with no words on it. Found by
+  looking at the page; no fragment assertion would have seen it.
+
   One `id`, one section, every state. The response to a press replaces this whole
   element, which is why the refusal renders inside it too — a reader looking at
   the schedule block should not have the block vanish to tell them something
@@ -80,7 +86,7 @@
     <div class="grades">
       {% for grade in grades %}
         <button type="button"
-                class="grade{{ ' suggested' if grade == review.suggested }}"
+                class="grade quiet{{ ' suggested' if grade == review.suggested }}"
                 hx-post="{{ review_url }}"
                 hx-vals='{"grade": "{{ grade.value }}"}'
                 hx-target="#review"

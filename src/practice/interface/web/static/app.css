@@ -883,3 +883,73 @@ button[disabled] {
   gap: 0.5rem;
   padding: 0.2rem 0;
 }
+
+/* --- the progress charts ------------------------------------------------ */
+
+/*
+ * Both charts are served at `width="100%"` over a fixed viewBox with no height,
+ * so the browser derives the height from the aspect ratio and a narrow column
+ * scales the drawing rather than clipping it. The max-width is what stops a
+ * 400-unit drawing being blown up to 1200 pixels on a wide screen, where the
+ * bars would be fine and the 11px text would be a third of its intended size.
+ */
+.chart {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0.6rem 0 0;
+}
+
+.mastery-table {
+  border-collapse: collapse;
+  margin-top: 0.8rem;
+  font-size: 0.85rem;
+}
+
+.mastery-table th,
+.mastery-table td {
+  text-align: left;
+  padding: 0.25rem 0.9rem 0.25rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.mastery-table th {
+  color: var(--ink-dim);
+  font-weight: 500;
+}
+
+/*
+ * The history list. One outcome chip per row, in the verdict panel's three
+ * colours -- same words, same hues, so a row here and the page it links to
+ * cannot describe one attempt differently.
+ */
+.history li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.outcome-chip {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+}
+
+.outcome-chip.pass {
+  border-color: var(--pass);
+  color: var(--pass);
+}
+
+.outcome-chip.pass_with_advisories {
+  border-color: var(--note);
+  color: var(--note);
+}
+
+.outcome-chip.fail {
+  border-color: var(--fail);
+  color: var(--fail);
+}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block main %}
+<h1>Progress</h1>
+
+{#
+  Every figure on this page is printed in words beside its chart. A chart is the
+  fastest way to see a shape and the worst way to learn a number, and a page
+  whose content exists only inside an `svg` is one that a printout, a screen
+  reader and a copy-paste all lose.
+
+  Each sentence is written on one line, the way `partials/verdict.html` writes
+  its summary and for the same reason: a Jinja block that wraps the source wraps
+  the output too, and an assertion about the sentence then has to know where the
+  template's newlines fell.
+#}
+<p class="lede">
+  <span>{{ progress.total }} graded attempt{{ '' if progress.total == 1 else 's' }}, {{ progress.passed }} passed{% if progress.total %} ({{ (progress.pass_rate * 100) | round | int }}%){% endif %}.</span>
+  <span>{{ progress.scheduled }} exercise{{ '' if progress.scheduled == 1 else 's' }} scheduled.</span>
+  {% if progress.streak_days %}<span>Current streak <strong>{{ progress.streak_days }} day{{ '' if progress.streak_days == 1 else 's' }}</strong>.</span>{% else %}<span>No streak running.</span>{% endif %}
+</p>
+
+<section class="panel">
+  <h2>Activity</h2>
+  <p class="meta">
+    Attempts per day over the last {{ progress.days | length }} days; the filled
+    part of each bar is what passed. Idle days are drawn as a tick, because the
+    gaps are the point — a month with seven scattered attempts and a week with
+    seven consecutive ones are opposite facts about a habit.
+  </p>
+  {{ progress | activity_chart }}
+</section>
+
+<section class="panel">
+  <h2>Mastery by tag</h2>
+  <p class="meta">
+    Pass rate per tag, worst first. An attempt counts against every tag its
+    exercise carries, so these are per-tag rates rather than a split of the
+    total. A tag something has gone wrong with is drawn in amber whatever its
+    rate — the dashboard's weakest list reads the same answer.
+  </p>
+  {{ progress.tags | mastery_chart }}
+
+  {% if progress.tags %}
+    <table class="mastery-table">
+      <thead>
+        <tr><th>Tag</th><th>Attempted</th><th>Passed</th><th>Lapses</th></tr>
+      </thead>
+      <tbody>
+        {% for row in progress.tags %}
+          <tr>
+            <td><span class="tag">{{ row.tag }}</span></td>
+            <td>{{ row.attempted }}</td>
+            <td>{{ row.passed }}</td>
+            <td>{{ row.lapses }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>History</h2>
+  {#
+    Newest first, which `summarise` decided rather than this template: the
+    repository answers oldest-first because that is the order an index gives, and
+    reversing it in Jinja would put the decision somewhere no test looks.
+
+    An attempt whose exercise has left the library still appears, under its id.
+    It happened, and hiding it would make a deleted exercise quietly rewrite the
+    totals printed above it.
+  #}
+  {% if progress.attempts %}
+    <ul class="attempts history">
+      {% for attempt in progress.attempts %}
+        <li>
+          <a href="/attempt/{{ attempt.id }}">
+            {{ titles.get(attempt.exercise_id, attempt.exercise_id) }}
+          </a>
+          <span class="outcome-chip {{ attempt.verdict.outcome.value }}">
+            {{ attempt.verdict.outcome.value.replace('_', ' ') }}
+          </span>
+          {#
+            Under a minute reads as "< 1 min" rather than "0 min", which is what
+            a replayed reference solution and most kata submissions actually
+            take -- and "0 min" says the attempt was instantaneous rather than
+            quick.
+          #}
+          {% set minutes = (attempt.elapsed(attempt.finished_at).total_seconds() / 60) | round | int %}
+          <span class="meta">
+            {{ attempt.finished_at.date().isoformat() }} ·
+            {{ '< 1 min' if minutes < 1 else minutes ~ ' min' }}
+            {%- if attempt.hints_revealed %} · {{ attempt.hints_revealed }} hint{{ '' if attempt.hints_revealed == 1 else 's' }}{% endif %}
+            {%- if attempt.command_count %} · {{ attempt.command_count }} command{{ '' if attempt.command_count == 1 else 's' }}{% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">
+      Nothing graded yet. <a href="/browse">Pick an exercise</a> — the history
+      starts at the first submission.
+    </p>
+  {% endif %}
+</section>
+{% endblock %}

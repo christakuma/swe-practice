@@ -128,7 +128,11 @@ def test_every_grade_is_a_button_and_the_suggested_one_is_marked(
 
     for grade in Grade:
         assert f'"grade": "{grade.value}"' in response.text
-    assert 'class="grade suggested"' in response.text
+    assert 'class="grade quiet suggested"' in response.text
+    # `quiet` on all four, not only on the three that are not suggested: the
+    # default button here is an accent fill, and accenting the suggested one on
+    # top of it left it with no visible label at all.
+    assert response.text.count('class="grade quiet') == len(Grade)
 
 
 # --- pressing it -----------------------------------------------------------

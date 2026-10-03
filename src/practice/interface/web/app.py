@@ -31,7 +31,10 @@ layer's function rather than a copy in Jinja: the prefix list it strips is the s
 one `RepoView.head_branch` uses, and two copies of it would be two places for
 `feature/parser` to come out as `parser`. `commit_graph` renders a laid-out graph
 as inline SVG and returns `Markup`, so no template needs `| safe` -- the escaping
-decision stays in the module that does the escaping.
+decision stays in the module that does the escaping. `activity_chart` and
+`mastery_chart` joined them in Phase 9 on the same terms, which is the whole of
+what §8.4's "hand-rolled inline SVG generated in Python" costs: two filters and
+no dependency.
 """
 
 from __future__ import annotations
@@ -44,8 +47,16 @@ from fastapi.templating import Jinja2Templates
 
 from practice.application.dto import short_ref
 from practice.domain.review import Grade
+from practice.interface.web.charts import render_activity, render_mastery
 from practice.interface.web.commit_graph import render_graph
-from practice.interface.web.routes import attempt, browse, console, dashboard, review
+from practice.interface.web.routes import (
+    attempt,
+    browse,
+    console,
+    dashboard,
+    progress,
+    review,
+)
 from practice.interface.web.security import SameOriginMiddleware
 from practice.interface.web.vendor import static_root
 
@@ -94,13 +105,16 @@ def create_app(services: Services) -> FastAPI:
     templates.env.globals["grades"] = tuple(Grade)
     templates.env.filters["short_ref"] = short_ref
     templates.env.filters["commit_graph"] = render_graph
+    templates.env.filters["activity_chart"] = render_activity
+    templates.env.filters["mastery_chart"] = render_mastery
     app.include_router(dashboard.build_router(services, templates))
     app.include_router(browse.build_router(services, templates))
+    app.include_router(progress.build_router(services, templates))
     app.include_router(attempt.build_router(services, templates))
     # After `attempt`, which owns the page these endpoints drive. Order is not
     # load-bearing -- no two routers declare the same path -- but reading the
-    # list top to bottom should follow a visitor: dashboard, browse, workbench,
-    # and then the console inside it.
+    # list top to bottom should follow a visitor: dashboard, browse, progress,
+    # workbench, and then the console and the schedule inside it.
     app.include_router(console.build_router(services, templates))
     # Last, and after both: it is the endpoint under the fragment they return.
     app.include_router(review.build_router(services, templates))
