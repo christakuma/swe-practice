@@ -21,6 +21,7 @@ from datetime import date
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from practice.adapters.git import ScenarioGrader
 from practice.adapters.persistence import (
     InMemoryAttemptRepository,
     SqliteAttemptRepository,
@@ -138,6 +139,24 @@ def test_every_exercise_kind_has_a_grader() -> None:
     graders = build_services().graders
 
     assert set(graders.graders) == set(ExerciseKind)
+
+
+def test_the_grader_and_the_panel_share_one_repo_query_factory() -> None:
+    """The single disagreement `InspectRepository` exists to make impossible.
+
+    If the grader built its `RepoQuery` one way and the repo state panel built one
+    another way, the panel a solver decides to submit from could answer "is this
+    worktree clean?" differently from the verdict they then get -- and nothing
+    would tell them which of the two was lying. One factory, named once, here.
+    """
+    services = build_services()
+
+    grader = services.graders.graders[ExerciseKind.GIT_SCENARIO]
+    assert isinstance(grader, ScenarioGrader)
+    # Narrowed to the concrete adapter deliberately: the factory is not on the
+    # `Grader` port, and this test is about what the wiring point built.
+    assert grader._query_for is services.repo_query
+    assert services.inspect_repository.repo_query is services.repo_query
 
 
 def test_the_content_root_override_reaches_both_adapters() -> None:

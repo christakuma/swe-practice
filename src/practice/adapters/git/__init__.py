@@ -19,6 +19,11 @@ the port and live in `domain/checks/`, which is what makes "testable with no git
 installed" a structural fact rather than a happy accident (§6.2). A check
 function in this package would be a check function outside the coverage gate.
 
+`RepoQueryFactory` is no longer re-exported from here. It was a protocol declared
+in `grader.py` while the grader was the only thing that built a `RepoQuery`; Phase
+8's repo state panel is the second, and a port two layers need belongs in
+`domain/ports.py` rather than in the adapter one of them happens to live in.
+
 PLAN.md §10 also sketched a `graph.py` for ancestry walking. It is deliberately
 absent: `GitRepoQuery` asks `git merge-base --is-ancestor`, and the only code
 that walks a commit graph by hand is `FakeRepoQuery` in the test suite. A module
@@ -26,17 +31,12 @@ to hold one function nothing calls is the abstraction §13 says to delete rather
 than carry.
 """
 
-from practice.adapters.git.grader import (
-    RepoQueryFactory,
-    ScenarioGrader,
-    ScenarioGraderError,
-)
+from practice.adapters.git.grader import ScenarioGrader, ScenarioGraderError
 from practice.adapters.git.repo_query import GIT_TIMEOUT_SECONDS, GitRepoQuery
 
 __all__ = [
     "GIT_TIMEOUT_SECONDS",
     "GitRepoQuery",
-    "RepoQueryFactory",
     "ScenarioGrader",
     "ScenarioGraderError",
 ]

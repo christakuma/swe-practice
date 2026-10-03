@@ -37,7 +37,16 @@ from practice.domain.ports import CommitInfo, ReflogEntry, WorktreeStatus
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
 
-__all__ = ["Commit", "FakeRepoQuery", "RepoBuilder", "RepoState", "a_repo"]
+    from practice.domain.ports import Workspace
+
+__all__ = [
+    "BuilderRepoQueryFactory",
+    "Commit",
+    "FakeRepoQuery",
+    "RepoBuilder",
+    "RepoState",
+    "a_repo",
+]
 
 #: `<rev>~<n>` and `<rev>^<n>`, with the count optional.
 _ANCESTOR_STEP: Final = re.compile(r"^(?P<base>.+?)(?P<operator>[~^])(?P<count>\d*)$")
@@ -310,6 +319,31 @@ class RepoBuilder:
 def a_repo() -> RepoBuilder:
     """A fresh builder. Named as a sentence, like the other fake builders."""
     return RepoBuilder()
+
+
+@dataclass(frozen=True, slots=True)
+class BuilderRepoQueryFactory:
+    """Satisfies `practice.domain.ports.RepoQueryFactory` over a builder.
+
+    The second implementation of that port, and the one that pays for it: with this
+    in `Services.repo_query`, the repo state panel and the inspection use case are
+    testable with no git installed and no directory on disk.
+
+    **It rebuilds on every call rather than capturing one query.** Two reasons, and
+    the second is the one that matters. It lets a test arrange the repository after
+    the client already exists, which is how a web test wants to read — start the
+    attempt, then say what the repository looks like. And it holds this double to
+    the real factory's single important property: one query instance per call, never
+    one shared across a solver's commands, because `GitRepoQuery` caches for the
+    life of an instance and a shared one would answer with the repository as it was
+    before the command that prompted the question.
+    """
+
+    builder: RepoBuilder
+
+    def __call__(self, workspace: Workspace) -> FakeRepoQuery:
+        del workspace
+        return self.builder.build()
 
 
 class FakeRepoQuery:

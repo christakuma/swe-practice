@@ -30,11 +30,13 @@ from practice.composition import Services
 from practice.domain.exercise import ExerciseKind
 from practice.interface.web import create_app
 from tests.fakes import (
+    BuilderRepoQueryFactory,
     FakeClock,
     FakeContentRepository,
     FakeProvisioner,
     SequentialIdGenerator,
     a_kata,
+    a_repo,
     a_scenario,
 )
 from tests.unit.application.helpers import RecordingGrader
@@ -78,6 +80,12 @@ class Wiring:
         self.clock = FakeClock()
         self.ids = SequentialIdGenerator(start=0)
         self.grader = grader
+        #: The repository the state panel and the commit graph are drawn from. A
+        #: *builder* rather than a built query, so a test can start an attempt and
+        #: then say what its repository looks like -- which is the order a web test
+        #: reads in, and the order the real factory allows because it builds one
+        #: query per call.
+        self.repo = a_repo()
 
     @property
     def services(self) -> Services:
@@ -100,6 +108,7 @@ class Wiring:
             ),
             clock=self.clock,
             ids=self.ids,
+            repo_query=BuilderRepoQueryFactory(self.repo),
         )
 
 

@@ -34,6 +34,22 @@
 <ol class="console" id="console-log">
   {% for command in attempt.commands %}
     {% include "partials/console-command.html" %}
+  {% else %}
+    {#
+      A real element rather than `:empty::after` on the list, which was the first
+      attempt and does not work: a `for` loop leaves whitespace inside the `ol`, so
+      `:empty` never matches and the placeholder never appears. Found by looking at
+      the page -- no test asserting on the markup would have.
+
+      htmx appends the first real entry after it rather than replacing it, so the
+      stylesheet hides it once it is no longer the only child. CSS rather than a
+      swap target, because nothing about the response should have to know whether
+      the transcript it is landing in was empty.
+    #}
+    <li class="entry empty">
+      Nothing run yet. <code>git log</code> and <code>git status</code> are a good
+      first look.
+    </li>
   {% endfor %}
 </ol>
 

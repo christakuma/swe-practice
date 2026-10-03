@@ -405,3 +405,30 @@ def test_a_finished_scenario_shows_its_verdict_instead_of_the_console(
 
     assert 'id="console-log"' not in body
     assert "Verdict" in body
+
+
+def test_an_empty_console_says_where_to_start(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """A placeholder element, not a `:empty::after` rule.
+
+    The `for` loop leaves whitespace inside the `ol`, so `:empty` never matches
+    and the pseudo-element never appears -- found by looking at the page, which is
+    the only thing that could have.
+    """
+    attempt_id = a_scenario_attempt(wiring)
+
+    body = client.get(f"/attempt/{attempt_id}").text
+
+    assert 'class="entry empty"' in body
+
+
+def test_the_placeholder_is_gone_once_something_has_run(
+    client: TestClient, wiring: Wiring
+) -> None:
+    attempt_id = a_scenario_attempt(wiring)
+    run(client, attempt_id, "git status")
+
+    body = client.get(f"/attempt/{attempt_id}").text
+
+    assert 'class="entry empty"' not in body

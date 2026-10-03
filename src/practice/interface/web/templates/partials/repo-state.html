@@ -1,0 +1,139 @@
+{#
+  The repository, as it stands. The panel PLAN.md §8.4 calls the piece that makes
+  git scenarios teachable.
+
+  **Re-rendered whole on every command, out of band.** There is no diffing and no
+  client-side model of a repository: the server reads the repo again and sends the
+  panel back, and htmx replaces it by id. A panel that tried to patch itself would
+  need to know which commands move which refs, which is a second, worse copy of git.
+
+  **HEAD first, and loudly when it is detached.** Detached HEAD is the state these
+  exercises are mostly *about* and the one a terminal hides behind a paragraph of
+  advice nobody reads twice. The commit is named alongside it, because "detached" on
+  its own is a diagnosis with the evidence withheld.
+
+  Order is deliberate: where you are, then what the worktree looks like, then what
+  the refs say, then the stash. It is the order someone reads a broken repository in
+  — and the stash is last because it is the thing people forget, which is exactly
+  why it is on the page at all rather than behind a command.
+#}
+<section class="panel repo" id="repo-state"{% if oob is defined and oob %} hx-swap-oob="true"{% endif %}>
+  <h2>Repository</h2>
+
+  {% if repo is none %}
+    {# A finished attempt. Submission disposed of the workspace, which is the
+       lifecycle (§8.1) and not a failure, so the panel says so plainly. #}
+    <p class="empty">
+      The workspace was disposed of when this attempt was graded, so there is no
+      repository left to show.
+    </p>
+  {% else %}
+    <dl class="repo-facts">
+      <dt>HEAD</dt>
+      <dd>
+        {% if repo.is_detached %}
+          <span class="warn">detached</span>
+          {% if repo.head_sha %}at <code>{{ repo.head_sha.short }}</code>{% endif %}
+        {% elif repo.is_unborn %}
+          <code>{{ repo.head_branch }}</code>
+          <span class="warn">unborn — no commit on it yet</span>
+        {% else %}
+          <code>{{ repo.head_branch }}</code>
+          at <code>{{ repo.head_sha.short }}</code>
+        {% endif %}
+      </dd>
+
+      <dt>Worktree</dt>
+      <dd>
+        {% if repo.status.is_pristine %}
+          clean
+        {% else %}
+          {#
+            The four states separately, because they are four different problems
+            with four different fixes -- and because `worktree_clean` ignores
+            untracked files by default (§6.5), so a panel that lumped them together
+            would show a repository as dirty that the grader will call clean.
+          #}
+          <ul class="paths">
+            {% for path in repo.status.unmerged|sort %}
+              <li class="unmerged"><code>{{ path }}</code> unmerged</li>
+            {% endfor %}
+            {% for path in repo.status.staged|sort %}
+              <li class="staged"><code>{{ path }}</code> staged</li>
+            {% endfor %}
+            {% for path in repo.status.unstaged|sort %}
+              <li class="unstaged"><code>{{ path }}</code> modified</li>
+            {% endfor %}
+            {% for path in repo.status.untracked|sort %}
+              <li class="untracked"><code>{{ path }}</code> untracked</li>
+            {% endfor %}
+          </ul>
+          {% if repo.status.is_clean %}
+            <p class="meta">
+              Untracked files only, so this counts as clean — a scratch file you
+              made while looking around should not fail you.
+            </p>
+          {% endif %}
+        {% endif %}
+      </dd>
+
+      <dt>Branches</dt>
+      <dd>
+        {% if repo.branches %}
+          <ul class="paths">
+            {% for name, sha in repo.branches.items() %}
+              <li{% if name == repo.head_ref %} class="current"{% endif %}>
+                <code>{{ name|short_ref }}</code> <code>{{ sha.short }}</code>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <span class="meta">none</span>
+        {% endif %}
+      </dd>
+
+      {#
+        Remote-tracking refs get their own row rather than a badge on the branch
+        list. What `origin/main` points at is a different question from what `main`
+        points at -- it is the question "have you published this?" -- and the
+        flagship scenario's `fix-published` check is exactly that question.
+      #}
+      <dt>Remote</dt>
+      <dd>
+        {% if repo.remote_branches %}
+          <ul class="paths">
+            {% for name, sha in repo.remote_branches.items() %}
+              <li><code>{{ name|short_ref }}</code> <code>{{ sha.short }}</code></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <span class="meta">no remotes</span>
+        {% endif %}
+      </dd>
+
+      {% if repo.tags %}
+        <dt>Tags</dt>
+        <dd>
+          <ul class="paths">
+            {% for name, sha in repo.tags.items() %}
+              <li><code>{{ name|short_ref }}</code> <code>{{ sha.short }}</code></li>
+            {% endfor %}
+          </ul>
+        </dd>
+      {% endif %}
+
+      <dt>Stash</dt>
+      <dd>
+        {% if repo.stashes %}
+          <ul class="paths">
+            {% for message in repo.stashes %}
+              <li class="warn">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <span class="meta">empty</span>
+        {% endif %}
+      </dd>
+    </dl>
+  {% endif %}
+</section>

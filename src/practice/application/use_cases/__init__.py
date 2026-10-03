@@ -5,7 +5,7 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Nine of them, in three groups.
+Ten of them, in three groups.
 
 **Four about solving**, two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
@@ -25,7 +25,7 @@ Notice that none of the four is kind-specific. The lifecycle of an attempt is th
 same whether it is a kata or a git scenario, and the only use cases that have ever
 had to care about the difference are the ones that grade.
 
-**One about display**, added in Phase 7 with the web app. `OpenWorkbench` loads an
+**Two about display**, added with the web app. `OpenWorkbench` (Phase 7) loads an
 attempt for a *page* rather than for a session, which is a question the CLI never
 had to ask: `practice submit` prints a verdict and the attempt is done with, while
 `/attempt/{id}` is a tab someone left open across that submission and has to render
@@ -33,11 +33,17 @@ either way. `ResumeAttempt` refuses a finished attempt, correctly -- resuming on
 not a thing that can happen -- so bending it to cover this would have made it two
 use cases wearing one name.
 
+`InspectRepository` is Phase 8's addition and is the same kind of read.
+It answers the repo state panel *through the same `RepoQuery` the grader reads
+through*, so the panel a solver decides to submit from cannot disagree with the
+verdict they then get.
+
 `GradeReview` joins these in Phase 9.
 """
 
 from practice.application.use_cases.abandon_attempt import AbandonAttempt
 from practice.application.use_cases.collect_workspaces import CollectWorkspaces
+from practice.application.use_cases.inspect_repository import InspectRepository
 from practice.application.use_cases.list_open_attempts import ListOpenAttempts
 from practice.application.use_cases.open_workbench import OpenWorkbench
 from practice.application.use_cases.resume_attempt import ResumeAttempt
@@ -49,6 +55,7 @@ from practice.application.use_cases.submit_solution import SubmitSolution
 __all__ = [
     "AbandonAttempt",
     "CollectWorkspaces",
+    "InspectRepository",
     "ListOpenAttempts",
     "OpenWorkbench",
     "ResumeAttempt",

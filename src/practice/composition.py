@@ -47,7 +47,7 @@ from typing import TYPE_CHECKING
 
 from practice.adapters.clock import SystemClock
 from practice.adapters.content import FilesystemContentRepository
-from practice.adapters.git import ScenarioGrader
+from practice.adapters.git import GitRepoQuery, ScenarioGrader
 from practice.adapters.ids import Uuid4IdGenerator
 from practice.adapters.kata import KataGrader, PytestKataRunner
 from practice.adapters.persistence import (
@@ -60,6 +60,7 @@ from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
+    InspectRepository,
     ListOpenAttempts,
     OpenWorkbench,
     ResumeAttempt,
@@ -80,6 +81,7 @@ if TYPE_CHECKING:
         ContentRepository,
         Grader,
         IdGenerator,
+        RepoQueryFactory,
         ReviewRepository,
         SandboxProvisioner,
     )
@@ -104,6 +106,7 @@ class Services:
     graders: GraderRegistry
     clock: Clock
     ids: IdGenerator
+    repo_query: RepoQueryFactory
 
     @property
     def start_attempt(self) -> StartAttempt:
@@ -185,6 +188,21 @@ class Services:
         )
 
     @property
+    def inspect_repository(self) -> InspectRepository:
+        """No clock and no graders, like `open_workbench`: this only reads.
+
+        The `repo_query` factory is the one port here that no other use case
+        holds, and the reason it is on `Services` at all: it is the thing the
+        grader and the panel have to share for the two of them to agree.
+        """
+        return InspectRepository(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            repo_query=self.repo_query,
+        )
+
+    @property
     def abandon_attempt(self) -> AbandonAttempt:
         return AbandonAttempt(
             content=self.content,
@@ -240,23 +258,33 @@ def build_services(
             workspace_root=workspaces if workspaces is not None else workspace_root(),
             clock=clock,
         ),
-        graders=build_graders(),
+        graders=build_graders(GitRepoQuery),
         clock=clock if clock is not None else SystemClock(),
         ids=Uuid4IdGenerator(),
+        repo_query=GitRepoQuery,
     )
 
 
-def build_graders() -> GraderRegistry:
+def build_graders(query_for: RepoQueryFactory | None = None) -> GraderRegistry:
     """One grader per exercise kind, and as of Phase 5 that is both of them.
 
     Each is constructed with its own collaborator rather than reaching for one:
     `KataGrader` takes the pytest runner, `ScenarioGrader` takes the `RepoQuery`
-    factory it defaults to. That is what keeps both unit-testable against a double
-    -- and what makes this function the only place that decides which real
-    collaborator each one gets.
+    factory. That is what keeps both unit-testable against a double -- and what
+    makes this function the only place that decides which real collaborator each
+    one gets.
+
+    **`query_for` is passed in as of Phase 8 rather than left to the grader's own
+    default**, because the repo state panel became a second caller of that factory
+    and `Services` now holds it. Two places naming `GitRepoQuery` would be two
+    places to change, and the one that matters is the one where the grader and the
+    panel could come to read the repository differently -- which is the single
+    failure `InspectRepository` exists to make impossible. `None` still means the
+    grader's default, which is what keeps `build_graders()` usable from a test that
+    has no opinion about it.
     """
     graders: dict[ExerciseKind, Grader] = {
         ExerciseKind.KATA: KataGrader(PytestKataRunner()),
-        ExerciseKind.GIT_SCENARIO: ScenarioGrader(),
+        ExerciseKind.GIT_SCENARIO: ScenarioGrader(query_for),
     }
     return GraderRegistry(graders=graders)

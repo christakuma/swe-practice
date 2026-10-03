@@ -28,6 +28,7 @@ from practice.domain.exercise import ExerciseFilter, ExerciseKind, KataSpec
 from practice.domain.ids import AttemptId, ExerciseId, Sha
 from practice.domain.ports import CommitInfo, ReflogEntry, WorktreeStatus
 from tests.fakes import (
+    BuilderRepoQueryFactory,
     FakeClock,
     FakeContentRepository,
     FakeProvisioner,
@@ -49,6 +50,7 @@ if TYPE_CHECKING:
         ContentRepository,
         IdGenerator,
         RepoQuery,
+        RepoQueryFactory,
         SandboxProvisioner,
         Workspace,
     )
@@ -331,3 +333,42 @@ def test_the_fake_repo_query_satisfies_the_repo_query_port() -> None:
     assert query.is_ancestor(first, second) is True
     assert query.subject("main") == "add parser"
     assert query.aliases() == {"c1": first, "c2": second}
+
+
+# --- the Phase 8 factory ---------------------------------------------------
+
+
+def test_the_builder_factory_satisfies_the_repo_query_factory_port() -> None:
+    """The second implementation `RepoQueryFactory` needs to exist at all (§13).
+
+    The first is `GitRepoQuery` itself -- the class is the callable -- and this is
+    what makes the grader's assembly and the inspection use case unit-testable with
+    no git installed.
+    """
+    repo = a_repo()
+    (only,) = repo.chain("add parser")
+    repo.branch("main", only)
+
+    factory: RepoQueryFactory = BuilderRepoQueryFactory(repo)
+
+    assert factory(FakeWorkspace()).rev_parse("HEAD") == only
+
+
+def test_the_builder_factory_hands_out_a_fresh_query_each_call() -> None:
+    """The real factory's one load-bearing property, held by the double.
+
+    `GitRepoQuery` caches every answer for the life of an instance, which is what
+    makes six questions cost one `git` process. One instance shared across a
+    solver's commands would answer the repo state panel with the repository as it
+    was *before* the command that prompted the redraw -- a silent bug, and the
+    reason this is a factory rather than a `RepoQuery` argument.
+    """
+    repo = a_repo()
+    first, second = repo.chain("skeleton", "parser")
+    repo.branch("main", first)
+    factory = BuilderRepoQueryFactory(repo)
+    assert factory(FakeWorkspace()).rev_parse("HEAD") == first
+
+    repo.moved("refs/heads/main", second)
+
+    assert factory(FakeWorkspace()).rev_parse("HEAD") == second

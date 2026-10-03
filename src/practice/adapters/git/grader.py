@@ -21,6 +21,10 @@ instance not outliving the pass is what makes that safe — nothing runs a comma
 between two assertions. The factory is a callable rather than a `RepoQuery` argument
 because `Grader.grade` is handed a `Workspace`, and because that is what lets the
 assembly be unit-tested against `FakeRepoQuery` with no git and no filesystem.
+`RepoQueryFactory` is a port in `domain/ports.py` as of Phase 8, when the repo
+state panel became its second caller; it was declared here while this was the only
+module that needed it, and a protocol in an adapter is reachable only by that
+adapter's own collaborators.
 
 **It refuses an exercise of the wrong kind rather than grading it badly.** The kind
 registry should have refused first; this is the second gate, for the same reason
@@ -29,7 +33,7 @@ registry should have refused first; this is the second gate, for the same reason
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from practice.adapters.git.repo_query import GitRepoQuery
 from practice.domain.checks import registry
@@ -39,9 +43,9 @@ from practice.domain.verdict import Verdict
 if TYPE_CHECKING:
     from practice.domain.attempt import Attempt
     from practice.domain.exercise import Exercise
-    from practice.domain.ports import RepoQuery, Workspace
+    from practice.domain.ports import RepoQueryFactory, Workspace
 
-__all__ = ["RepoQueryFactory", "ScenarioGrader", "ScenarioGraderError"]
+__all__ = ["ScenarioGrader", "ScenarioGraderError"]
 
 
 class ScenarioGraderError(Exception):
@@ -52,19 +56,6 @@ class ScenarioGraderError(Exception):
     exception and not a failing check. Making it a check would put "this tool is
     wired up wrong" in a verdict the solver has no way to act on.
     """
-
-
-class RepoQueryFactory(Protocol):
-    """How the grader gets a `RepoQuery` for a workspace.
-
-    A protocol rather than taking `GitRepoQuery` directly, so the assembly — which
-    is the interesting part, and the part that owns check ordering and verdict
-    construction — can be unit-tested against the in-memory fake in milliseconds.
-    It earns its keep under the §13 rule on day one: two implementations, and the
-    second is what makes the first cheap to test.
-    """
-
-    def __call__(self, workspace: Workspace) -> RepoQuery: ...
 
 
 class ScenarioGrader:

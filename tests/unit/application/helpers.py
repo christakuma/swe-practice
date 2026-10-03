@@ -22,6 +22,7 @@ from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
+    InspectRepository,
     ListOpenAttempts,
     OpenWorkbench,
     ResumeAttempt,
@@ -34,11 +35,13 @@ from practice.domain.attempt import SolutionSaved
 from practice.domain.exercise import ExerciseKind
 from practice.domain.verdict import CheckReport, Severity, Verdict
 from tests.fakes import (
+    BuilderRepoQueryFactory,
     FakeClock,
     FakeContentRepository,
     FakeProvisioner,
     SequentialIdGenerator,
     a_kata,
+    a_repo,
     a_scenario,
 )
 
@@ -49,6 +52,7 @@ if TYPE_CHECKING:
     from practice.domain.exercise import ComplexityExpectation, Exercise
     from practice.domain.ids import AttemptId
     from practice.domain.ports import Grader, Workspace, WorkspaceSummary
+    from tests.fakes import RepoBuilder
 
 __all__ = [
     "ExplodingGrader",
@@ -66,6 +70,7 @@ __all__ = [
     "a_submit_solution",
     "an_abandon_attempt",
     "an_environment",
+    "an_inspect_repository",
     "an_open_workbench",
 ]
 
@@ -180,6 +185,10 @@ class World:
     ids: SequentialIdGenerator
     grader: Grader = field(default_factory=RecordingGrader)
     scenario_grader: Grader = field(default_factory=RecordingGrader)
+    #: The repository `InspectRepository` reads. A builder, so a test arranges the
+    #: shape it is about and the factory builds a query per call -- which is the
+    #: property the real factory has and the reason it is a factory at all.
+    repo: RepoBuilder = field(default_factory=a_repo)
 
     @property
     def scenario_recorder(self) -> RecordingGrader:
@@ -316,6 +325,20 @@ def an_open_workbench(world: World) -> OpenWorkbench:
         content=world.content,
         attempts=world.attempts,
         provisioner=world.provisioner,
+    )
+
+
+def an_inspect_repository(world: World) -> InspectRepository:
+    """No clock and no graders, like `an_open_workbench`: this only reads.
+
+    The factory is the one collaborator no other use case here takes, and it is
+    the one that makes the panel and the grader read the same repository.
+    """
+    return InspectRepository(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        repo_query=BuilderRepoQueryFactory(world.repo),
     )
 
 

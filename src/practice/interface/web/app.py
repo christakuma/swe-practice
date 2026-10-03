@@ -19,6 +19,12 @@ signature that holds one.
 load-bearing rather than hygiene: a verdict's `actual` field carries captured
 `stderr` from a command the solver wrote, so untrusted text reaches a template on
 the normal path and not the exotic one.
+
+**One filter, registered rather than reimplemented.** `short_ref` turns
+`refs/heads/main` into `main` for the repo state panel, and it is the application
+layer's function rather than a copy in Jinja: the prefix list it strips is the same
+one `RepoView.head_branch` uses, and two copies of it would be two places for
+`feature/parser` to come out as `parser`.
 """
 
 from __future__ import annotations
@@ -29,6 +35,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from practice.application.dto import short_ref
 from practice.interface.web.routes import attempt, browse, console, dashboard
 from practice.interface.web.security import SameOriginMiddleware
 from practice.interface.web.vendor import static_root
@@ -75,6 +82,7 @@ def create_app(services: Services) -> FastAPI:
 
     templates = Jinja2Templates(directory=templates_root())
     templates.env.globals["static"] = STATIC_URL
+    templates.env.filters["short_ref"] = short_ref
     app.include_router(dashboard.build_router(services, templates))
     app.include_router(browse.build_router(services, templates))
     app.include_router(attempt.build_router(services, templates))

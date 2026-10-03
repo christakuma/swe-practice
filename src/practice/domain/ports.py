@@ -40,6 +40,7 @@ __all__ = [
     "IdGenerator",
     "ReflogEntry",
     "RepoQuery",
+    "RepoQueryFactory",
     "ReviewRepository",
     "SandboxProvisioner",
     "Scheduler",
@@ -348,6 +349,33 @@ class RepoQuery(Protocol):
     def snapshot(self) -> Mapping[str, Sha]:
         """Every ref as it stood when the fixture finished, for `ref_unchanged`."""
         ...
+
+
+class RepoQueryFactory(Protocol):
+    """How a caller gets a `RepoQuery` for a workspace it is holding.
+
+    A port rather than a constructor reference, because two callers need one and
+    neither may import an adapter: `ScenarioGrader` builds one per grading pass,
+    and as of Phase 8 `InspectRepository` builds one per request that renders the
+    repo state panel. It began life as a protocol inside `adapters/git/grader.py`
+    and moved here when the second caller appeared — a protocol in an adapter is
+    only reachable by that adapter's own collaborators, which was true right up
+    until it was not.
+
+    **A call and not a singleton**, which is the whole reason this is shaped as a
+    factory. `GitRepoQuery` caches every answer for the life of the instance, so
+    six checks asking `status()` between them cost one `git` process; the cache is
+    only safe because the instance does not outlive the pass. One kept across a
+    solver's commands would answer the panel with the repository as it was before
+    the command that prompted the redraw.
+
+    Two implementations from the start, which is what PLAN.md §13 asks of a port:
+    `GitRepoQuery` itself — the class is the callable — and a test factory that
+    hands back `FakeRepoQuery`, which is what lets the grader's assembly and the
+    inspection use case be unit-tested with no git installed.
+    """
+
+    def __call__(self, workspace: Workspace) -> RepoQuery: ...
 
 
 # --- grading and scheduling -----------------------------------------------

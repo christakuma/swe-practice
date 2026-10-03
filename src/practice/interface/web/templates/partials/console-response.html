@@ -11,6 +11,13 @@
   template growing a flag: htmx only honours `hx-swap-oob` on a *top-level* element
   of the response, so whatever is swapped out of band has to be a sibling of the
   thing being appended, not nested inside it.
+
+  **The repo state panel is re-read and re-rendered whole, every time.** No diffing
+  and no client-side model of a repository: a panel that patched itself would have
+  to know which commands move which refs, which is a second and much worse copy of
+  git. Re-reading costs one `git` process per question on a three-commit repository
+  and buys the thing the phase is for — the refs visibly moving under each command.
 #}
 {% include "partials/console-command.html" %}
 {% include "partials/console-status.html" %}
+{% include "partials/repo-state.html" %}

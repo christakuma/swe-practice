@@ -83,13 +83,14 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
             )
 
         spec = opened.exercise.spec
+        is_kata = isinstance(spec, KataSpec)
         return templates.TemplateResponse(
             request=request,
             name="workbench.html",
             context={
                 "title": opened.exercise.title,
                 "workbench": opened,
-                "is_kata": isinstance(spec, KataSpec),
+                "is_kata": is_kata,
                 # The mode name CodeMirror knows this language by. From the spec
                 # rather than hardcoded, so a second language is a content change
                 # and a vendored mode file -- which is the whole claim of §15 Q3.
@@ -100,6 +101,11 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # constant the route is declared with, so the two cannot drift.
                 "command_url": COMMAND_URL.format(attempt_id=parsed),
                 "scenario_submit_url": SCENARIO_SUBMIT_URL.format(attempt_id=parsed),
+                # Only for a scenario, and not because it is wasted on a kata:
+                # `InspectRepository` *refuses* a kata, because a directory with a
+                # stub in it is not a repository in a strange state, it is a
+                # question that does not apply.
+                "repo": None if is_kata else services.inspect_repository(parsed),
             },
         )
 

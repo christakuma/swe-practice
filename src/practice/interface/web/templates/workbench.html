@@ -2,6 +2,8 @@
 {% set attempt = workbench.attempt %}
 {% set exercise = workbench.exercise %}
 
+{% block main_class %}{{ '' if is_kata else 'wide' }}{% endblock %}
+
 {% block main %}
 <h1>{{ exercise.title }}</h1>
 <p class="meta">
@@ -10,7 +12,7 @@
   attempt {{ attempt.id.short }}
 </p>
 
-<div class="workbench">
+<div class="workbench{{ ' scenario' if not is_kata }}">
   <section class="panel prompt">
     <h2>Prompt</h2>
     {#
@@ -69,6 +71,15 @@
       {% include "partials/console.html" %}
     {% endif %}
   </section>
+
+  {#
+    The third column, and only for a scenario: a kata has no repository, and
+    `InspectRepository` refuses to invent an empty one for it. Rendered inline
+    here and re-rendered out of band by every command, from the same file.
+  #}
+  {% if not is_kata %}
+    {% include "partials/repo-state.html" %}
+  {% endif %}
 </div>
 
 {% if workbench.is_active and is_kata %}

@@ -18,9 +18,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
     from practice.domain.attempt import Attempt, CommandRun
     from practice.domain.exercise import Exercise
-    from practice.domain.ports import Workspace, WorkspaceSummary
+    from practice.domain.ids import Sha
+    from practice.domain.ports import Workspace, WorkspaceSummary, WorktreeStatus
     from practice.domain.verdict import Outcome, Verdict
 
 __all__ = [
@@ -28,10 +31,12 @@ __all__ = [
     "Collection",
     "OpenAttempt",
     "RanCommand",
+    "RepoView",
     "StartedAttempt",
     "Submission",
     "Workbench",
     "WorkspaceState",
+    "short_ref",
 ]
 
 
@@ -181,6 +186,89 @@ class Workbench:
     @property
     def has_editor(self) -> bool:
         return self.editor_source is not None
+
+
+@dataclass(frozen=True, slots=True)
+class RepoView:
+    """One repository, as a panel needs to read it.
+
+    **The port's vocabulary, re-grouped — not reformatted.** `WorktreeStatus` and
+    `Sha` come through as they are, for the reason this module's docstring gives:
+    two adapters read these, and whichever formatted first would own the other's
+    formatting. What this adds is the grouping a reader of a repository wants and
+    `RepoQuery` has no opinion about — local branches apart from remote-tracking
+    ones apart from tags — because `refs()` answers with one flat map of full ref
+    names, correctly: `branch_exists {name: main}` and `tag_exists {name: main}`
+    have to be able to disagree.
+
+    **`head_ref` is `None` exactly when HEAD is detached**, which is the one fact
+    about a repository this panel exists to make unmissable. It is also why the
+    field is the ref name rather than a `bool`: a page showing "detached" and
+    nothing else has told you the diagnosis and withheld the evidence.
+
+    `stashes` is the list rather than a count. A stash's message is the only clue
+    to what is in it, and "1 stash" is the version of this that sends someone to
+    the terminal.
+    """
+
+    head_ref: str | None
+    head_sha: Sha | None
+    status: WorktreeStatus
+    branches: Mapping[str, Sha]
+    remote_branches: Mapping[str, Sha]
+    tags: Mapping[str, Sha]
+    stashes: Sequence[str]
+
+    @property
+    def is_detached(self) -> bool:
+        """Derived, never stored, for the same reason `Verdict.outcome` is: there
+        is then no code path that can claim a ref and a detached HEAD at once.
+        """
+        return self.head_ref is None
+
+    @property
+    def head_branch(self) -> str | None:
+        """`refs/heads/main` as `main`, or `None` when HEAD is detached.
+
+        Short here and full on the port, which is the division that keeps both
+        honest: the ref map has to be unambiguous because assertions read it, and
+        a panel has to be readable because people do.
+        """
+        if self.head_ref is None:
+            return None
+        return short_ref(self.head_ref)
+
+    @property
+    def is_unborn(self) -> bool:
+        """HEAD names a branch that has no commit yet.
+
+        A real state and a reachable one — `git init` followed by nothing, or a
+        fixture whose first commit a solver has just reset away — and one the panel
+        has to say out loud, because every other field being empty looks like a
+        panel that failed to load rather than a repository with nothing in it.
+        """
+        return self.head_sha is None
+
+
+def short_ref(name: str) -> str:
+    """`refs/heads/main` -> `main`, `refs/remotes/origin/main` -> `origin/main`.
+
+    **Prefix-stripping, never a split on the last slash.** A branch may legally be
+    called `feature/parser`, and taking the last segment would display two
+    different branches under one name — a panel actively lying about what is in the
+    repository, which is worse than no panel.
+
+    Public, and the only display helper in this module, because the ref *maps* keep
+    their full names: assertions read them and `branch_exists {name: main}` has to
+    be able to disagree with `tag_exists {name: main}`. So the shortening happens at
+    the point of display, where the kind is already known from which map it came
+    out of, and the web layer registers this as a Jinja filter rather than keeping
+    a second copy of the prefix list.
+    """
+    for prefix in ("refs/heads/", "refs/remotes/", "refs/tags/"):
+        if name.startswith(prefix):
+            return name.removeprefix(prefix)
+    return name
 
 
 @dataclass(frozen=True, slots=True)

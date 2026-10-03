@@ -62,6 +62,13 @@ main {
   padding: 1.5rem 1.25rem 4rem;
 }
 
+/* The git scenario workbench, and nothing else so far. Three columns do not fit
+   in 68rem, and the page cannot widen itself from the inside -- hence a class on
+   `main` rather than on the grid. */
+main.wide {
+  max-width: 86rem;
+}
+
 a {
   color: var(--accent);
 }
@@ -255,6 +262,35 @@ button[disabled] {
   }
 }
 
+/*
+ * A git scenario gets a third column, and the page gets wider for it. The three
+ * things being read are the prompt, what you have run, and what the repository
+ * now looks like -- and the panel only earns its keep if it is visible *while*
+ * you type the next command. Below it, stacking is the honest fallback: a repo
+ * panel squeezed into a phone-width column is a panel nobody can read a change
+ * out of.
+ */
+.workbench.scenario {
+  grid-template-columns: minmax(0, 26rem) minmax(0, 1fr) minmax(0, 19rem);
+}
+
+@media (max-width: 78rem) {
+  .workbench.scenario {
+    grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+  }
+
+  .workbench.scenario .repo {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 60rem) {
+  .workbench.scenario {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
 .panel {
   background: var(--bg-raised);
   border: 1px solid var(--line);
@@ -375,6 +411,83 @@ button[disabled] {
   color: var(--fail);
 }
 
+/* --- the repo state panel ----------------------------------------------- */
+
+/*
+ * A definition list, because that is what this is: five or six labelled facts
+ * about one repository. A table was the alternative and is wrong -- there is no
+ * second row to align against, and a one-column table is a list with borders.
+ */
+.repo-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.15rem;
+}
+
+.repo-facts dt {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-top: 0.6rem;
+}
+
+.repo-facts dt:first-child {
+  margin-top: 0;
+}
+
+.repo-facts dd {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.repo code {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  background: var(--bg-sunken);
+  border-radius: 3px;
+  padding: 0 0.25rem;
+}
+
+.paths {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.paths li {
+  padding: 0.05rem 0;
+}
+
+/* The branch HEAD is on, marked rather than reordered: a list that moved the
+   current branch to the top would reshuffle itself as HEAD moves, and the point
+   of this panel is to be read for what changed. */
+.paths li.current {
+  border-left: 2px solid var(--accent);
+  margin-left: -0.5rem;
+  padding-left: 0.4rem;
+}
+
+/* Four worktree states, four colours, because they are four different problems
+   with four different fixes -- and untracked is deliberately the quiet one,
+   since `worktree_clean` ignores it by default (PLAN.md §6.5). */
+.paths li.unmerged {
+  color: var(--fail);
+}
+
+.paths li.staged {
+  color: var(--pass);
+}
+
+.paths li.unstaged {
+  color: var(--note);
+}
+
+.paths li.untracked {
+  color: var(--ink-dim);
+}
+
 /* --- the git scenario console ------------------------------------------- */
 
 /*
@@ -400,10 +513,17 @@ button[disabled] {
   overflow-y: auto;
 }
 
-.console:empty::after {
-  content: "Nothing run yet. `git log` and `git status` are a good first look.";
+.console .entry.empty {
+  border-left-color: transparent;
   color: var(--ink-dim);
   font-family: var(--sans);
+}
+
+/* The placeholder stops being the only child the moment htmx appends a real
+   entry after it. Hiding it here means nothing about the command response has to
+   know whether the transcript it is landing in was empty. */
+.console .entry.empty:not(:last-child) {
+  display: none;
 }
 
 .console .entry {

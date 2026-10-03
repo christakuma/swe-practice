@@ -31,7 +31,13 @@
     <span class="bar-note">offline · loopback only</span>
   </header>
 
-  <main>
+  {#
+    `main_class` is empty for every page but the git scenario workbench, which
+    needs three columns and so needs a wider page than the reading measure the
+    rest of the app is set to. A page cannot widen its own container from the
+    inside, which is why this is a block here rather than a rule there.
+  #}
+  <main class="{% block main_class %}{% endblock %}">
     {% block main %}{% endblock %}
   </main>
 

@@ -28,6 +28,12 @@ teaches — so it is rendered where the teaching lands, with the line it is abou
 echoed above it, which is also what makes `parse_command_line`'s deliberately
 sentence-fragment messages ("is not a command") read correctly.
 
+**The repository is re-read after every command, not patched.** The response
+carries the appended entry and the whole repo state panel, and the panel is built
+from a fresh `RepoQuery` — which is also why `InspectRepository` is called here
+rather than the route assembling one itself: the panel a solver decides to submit
+from reads the repository through the same port the grader will.
+
 **Submitting a scenario is its own route with no body.** There is nothing to send:
 the thing being graded is the repository on disk, and the log already holds every
 command that put it there (`SubmitScenario` makes the same point about itself). A
@@ -91,7 +97,14 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         return templates.TemplateResponse(
             request=request,
             name="partials/console-response.html",
-            context={"command": ran.command, "attempt": ran.attempt, "oob": True},
+            context={
+                "command": ran.command,
+                "attempt": ran.attempt,
+                "repo": services.inspect_repository(parsed),
+                # Everything in this response is swapped by id except the entry
+                # itself, which is appended. One flag, read by both partials.
+                "oob": True,
+            },
         )
 
     @router.post(SCENARIO_SUBMIT_URL, response_class=HTMLResponse)
