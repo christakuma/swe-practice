@@ -1,0 +1,31 @@
+{#
+  Own-editor mode: the file is the solution, and here is where it is.
+
+  **The path is the content of this panel**, which is why it is a `<code>` block on
+  its own line rather than a sentence with a path in it: the one thing a solver
+  does with it is select it and paste it somewhere, and `RevealedFile` carries it
+  precisely so a page never has to reconstruct it.
+
+  **It says whether the editor opened, and it is still useful when it did not.**
+  `EditorLauncher` returns the problem rather than raising, so a machine with no
+  `code` on its PATH gets the path, the reason, and the variable that fixes it —
+  rather than an error page with none of the three on it. That is the whole shape
+  of the decision: the feature is the file, the launch is the convenience.
+#}
+<div class="file-mode">
+  <h3>Your editor</h3>
+
+  <p>The solution for this attempt is a real file. Edit and save it in whatever you
+  like:</p>
+
+  <p><code class="path">{{ revealed.path }}</code></p>
+
+  {% if revealed.launched %}
+    <p class="meta">Opened in your editor.</p>
+  {% else %}
+    <p class="problem">{{ revealed.detail }}</p>
+  {% endif %}
+
+  <p class="meta">Reload this page to pull <code>{{ revealed.name }}</code> back
+  into the editor above, then submit it from there.</p>
+</div>

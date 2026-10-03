@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from datetime import date
+    from pathlib import Path
 
     from practice.application.graph import CommitGraph
     from practice.domain.attempt import Attempt, CommandRun
@@ -37,6 +38,7 @@ __all__ = [
     "OpenAttempt",
     "RanCommand",
     "RepoView",
+    "RevealedFile",
     "RevealedHint",
     "ReviewOffer",
     "Reviewed",
@@ -142,6 +144,37 @@ class RevealedHint:
     @property
     def remaining(self) -> int:
         return self.attempt.remaining_hints
+
+
+@dataclass(frozen=True, slots=True)
+class RevealedFile:
+    """The solver's own file, and whether their editor was opened on it.
+
+    The DTO for own-editor mode (PLAN.md §11, Phase 10), and the one in this
+    module that carries a filesystem path. That is the subject: the whole feature
+    is *your solution is a real file, here is where it is*, and a path is the
+    only form of that a program this app did not write can act on.
+
+    **A failed launch is reported, not raised**, which is what makes this three
+    fields rather than one. `path` is always true and always useful; `launched`
+    says whether we managed to put it in front of them; `detail` is the sentence
+    explaining why not, straight from the `EditorLauncher` port, which returns
+    the problem rather than throwing it for exactly this reason. A page can then
+    say "here is the file, and I could not open it for you" — which is the
+    honest message, and strictly more useful than an error page with no path on
+    it.
+    """
+
+    attempt: Attempt
+    exercise: Exercise
+    path: Path
+    launched: bool
+    detail: str | None = None
+
+    @property
+    def name(self) -> str:
+        """Just the filename, for a sentence that does not want 90 characters."""
+        return self.path.name
 
 
 @dataclass(frozen=True, slots=True)

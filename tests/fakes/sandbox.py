@@ -23,6 +23,7 @@ exists to find.
 
 from __future__ import annotations
 
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 from practice.domain.attempt import CommandResult
@@ -46,7 +47,13 @@ class FakeWorkspace:
         *,
         aliases: Mapping[str, Sha] | None = None,
         snapshot: Mapping[str, Sha] | None = None,
+        repo: Path | None = None,
     ) -> None:
+        #: What `resolve` answers against. A path that exists nowhere: this fake
+        #: has no filesystem, so nothing ever opens one of them -- which is why a
+        #: test compares the paths it gets back against this rather than against
+        #: a literal, and stays platform-independent for free.
+        self.repo = repo if repo is not None else Path("ws", "00000000", "repo")
         self.files: dict[str, str] = dict(files or {})
         self.commands: list[tuple[str, ...]] = []
         self.tools: list[tuple[str, ...]] = []
@@ -84,6 +91,23 @@ class FakeWorkspace:
 
     def write_file(self, path: str, content: str) -> None:
         self.files[path] = content
+
+    def resolve(self, path: str) -> Path:
+        """Where a repository-relative path would be, without checking.
+
+        Confinement is enforced, because the real one enforces it and a fake
+        allowed to differ makes its tests prove nothing -- `RevealSolutionFile`
+        hands this straight to an editor, and "it escaped the repository" is the
+        one answer that must not come back as a path.
+
+        The argument is parsed as a POSIX path, because that is what it is:
+        `KataSpec.stub` is a forward-slashed name out of a YAML file, and the
+        real workspace reads it the same way on both platforms.
+        """
+        candidate = PurePosixPath(path)
+        if candidate.is_absolute() or ".." in candidate.parts:
+            raise ValueError(f"{path!r} points outside the repository")
+        return self.repo.joinpath(*candidate.parts)
 
     def aliases(self) -> Mapping[str, Sha]:
         """Empty by default, like a kata's workspace, where no fixture ran."""

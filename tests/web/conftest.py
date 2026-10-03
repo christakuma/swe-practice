@@ -33,6 +33,7 @@ from tests.fakes import (
     BuilderRepoQueryFactory,
     FakeClock,
     FakeContentRepository,
+    FakeEditorLauncher,
     FakeProvisioner,
     FixedScheduler,
     SequentialIdGenerator,
@@ -84,6 +85,10 @@ class Wiring:
         #: an interval it would have to keep in step with the scheduler.
         self.scheduler = FixedScheduler()
         self.ids = SequentialIdGenerator(start=0)
+        #: The editor the reveal endpoint drives. A fake, because the real one
+        #: starts a GUI program -- and a web test that opened VS Code would be a
+        #: web test nobody runs twice.
+        self.editor = FakeEditorLauncher()
         self.grader = grader
         #: The repository the state panel and the commit graph are drawn from. A
         #: *builder* rather than a built query, so a test can start an attempt and
@@ -115,6 +120,7 @@ class Wiring:
             ids=self.ids,
             repo_query=BuilderRepoQueryFactory(self.repo),
             scheduler=self.scheduler,
+            editor=self.editor,
         )
 
 

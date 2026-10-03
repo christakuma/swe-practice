@@ -1296,13 +1296,40 @@ def _report_history(services: Services, exercise_id: ExerciseId) -> None:
 
 
 def _next_step(resumed: StartedAttempt) -> str:
-    """What to type next, which depends only on the exercise kind."""
+    """What to type next, which depends only on the exercise kind.
+
+    **A kata names its file rather than saying `FILE`**, which is the CLI's half
+    of the own-editor mode Phase 10 adds: the stub has been copied into the
+    workspace since Phase 3, so the loop *already worked* — edit the file, then
+    `submit --source` it — and the only thing missing was ever its path. That is
+    the finding the phase opened with, and it cost one line here (PLAN.md §16).
+
+    Printed on two lines because a Windows workspace path plus a uuid plus
+    `--source` is well past 80 characters, and a wrapped instruction is an
+    instruction somebody mistypes.
+    """
     if isinstance(resumed.exercise.spec, GitScenarioSpec):
         return (
             f"Run more commands with `practice resume {resumed.attempt.id} "
             f"-c FILE`, or grade it with `practice submit {resumed.attempt.id}`."
         )
-    return f"Grade it with `practice submit {resumed.attempt.id} --source FILE`."
+    solution = _solution_path(resumed)
+    return (
+        f"Edit {solution} in your own editor, then grade it with\n"
+        f"`practice submit {resumed.attempt.id} --source {solution}`."
+    )
+
+
+def _solution_path(resumed: StartedAttempt) -> Path:
+    """Where this attempt's kata source lives on disk.
+
+    Through `Workspace.resolve` rather than by joining paths here: the interface
+    layer has no business knowing that a workspace keeps its repository in a
+    subdirectory, and the port exists to answer exactly this.
+    """
+    spec = resumed.exercise.spec
+    assert isinstance(spec, KataSpec)  # noqa: S101  (checked by the caller)
+    return resumed.workspace.resolve(spec.stub)
 
 
 def _describe(state: WorkspaceState) -> str:

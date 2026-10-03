@@ -1,6 +1,6 @@
 """The sandbox: a throwaway directory an attempt runs real commands inside.
 
-Seven modules, split by what each one knows about:
+Eight modules, split by what each one knows about:
 
 * `env` — the environment a sandboxed process gets, where git is installed, and
   the commit clock that spans the whole attempt. Knows about reproducibility.
@@ -11,6 +11,11 @@ Seven modules, split by what each one knows about:
 * `virtual_commands` — `write`, `cat`, `ls` and friends in Python, because user
   input never reaches a shell. Knows about files.
 * `workspace` — the directory, and the `Workspace` port over it.
+* `editor` — the solver's own editor, opened on a file in the workspace. The one
+  process start here that is deliberately *not* sandboxed, and it is here
+  anyway: the architecture test allows exactly one package to start a process,
+  and relaxing that to two would cost more than the oddity of this one living
+  next to the two that are scoped (PLAN.md §16, Phase 10).
 * `fixture_runner` — finds the bash git bundles, and runs a fixture under the
   pinned environment. Knows how Git for Windows lays itself out.
 * `provisioner` — builds a workspace, runs its fixture, finds the ones already
@@ -45,6 +50,12 @@ from practice.adapters.sandbox.command_policy import (
     CommandPolicy,
     CommandRejectedError,
 )
+from practice.adapters.sandbox.editor import (
+    DEFAULT_EDITOR,
+    EDITOR_ENV,
+    SubprocessEditorLauncher,
+    editor_argv,
+)
 from practice.adapters.sandbox.env import (
     SandboxClock,
     ToolNotFoundError,
@@ -75,6 +86,8 @@ from practice.adapters.sandbox.workspace import (
 )
 
 __all__ = [
+    "DEFAULT_EDITOR",
+    "EDITOR_ENV",
     "LOCK_FILENAME",
     "VIRTUAL_COMMANDS",
     "CommandPolicy",
@@ -84,12 +97,14 @@ __all__ = [
     "FixtureFingerprint",
     "FixtureResult",
     "SandboxClock",
+    "SubprocessEditorLauncher",
     "SubprocessSandboxProvisioner",
     "SubprocessWorkspace",
     "ToolNotFoundError",
     "WorkspaceExistsError",
     "WorkspaceLayout",
     "WorkspacePathError",
+    "editor_argv",
     "find_bash",
     "find_git",
     "fingerprint_library",

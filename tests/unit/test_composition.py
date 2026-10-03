@@ -28,7 +28,11 @@ from practice.adapters.persistence import (
     SqliteReviewRepository,
 )
 from practice.adapters.sandbox import SubprocessSandboxProvisioner
-from practice.application.use_cases import StartAttempt, SubmitSolution
+from practice.application.use_cases import (
+    RevealSolutionFile,
+    StartAttempt,
+    SubmitSolution,
+)
 from practice.composition import Services, build_services
 from practice.config import content_root, database_path
 from practice.domain.exercise import ExerciseKind
@@ -52,6 +56,7 @@ def test_the_real_graph_satisfies_every_port() -> None:
     assert services.content.get(ExerciseId("katas/two-sum")) is not None
     assert isinstance(services.start_attempt, StartAttempt)
     assert isinstance(services.submit_solution, SubmitSolution)
+    assert isinstance(services.reveal_solution_file, RevealSolutionFile)
 
 
 def test_building_the_graph_writes_nothing_to_disk(tmp_path: Path) -> None:

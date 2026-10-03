@@ -32,6 +32,7 @@ from practice.application.use_cases import (
     OpenWorkbench,
     ResumeAttempt,
     RevealHint,
+    RevealSolutionFile,
     ReviewQueue,
     RunScenarioCommand,
     StartAttempt,
@@ -46,6 +47,7 @@ from tests.fakes import (
     BuilderRepoQueryFactory,
     FakeClock,
     FakeContentRepository,
+    FakeEditorLauncher,
     FakeProvisioner,
     FixedScheduler,
     SequentialIdGenerator,
@@ -75,6 +77,7 @@ __all__ = [
     "a_passing_verdict",
     "a_resume_attempt",
     "a_reveal_hint",
+    "a_reveal_solution_file",
     "a_review_queue",
     "a_run_scenario_command",
     "a_start_attempt",
@@ -203,6 +206,9 @@ class World:
     scheduler: FixedScheduler = field(default_factory=FixedScheduler)
     grader: Grader = field(default_factory=RecordingGrader)
     scenario_grader: Grader = field(default_factory=RecordingGrader)
+    #: The editor own-editor mode opens. Records what it was asked for and can
+    #: be told to refuse, which is the branch `RevealedFile` has three fields for.
+    editor: FakeEditorLauncher = field(default_factory=FakeEditorLauncher)
     #: The repository `InspectRepository` reads. A builder, so a test arranges the
     #: shape it is about and the factory builds a query per call -- which is the
     #: property the real factory has and the reason it is a factory at all.
@@ -326,6 +332,16 @@ def a_reveal_hint(world: World) -> RevealHint:
     sandbox nor the repository.
     """
     return RevealHint(content=world.content, attempts=world.attempts, clock=world.clock)
+
+
+def a_reveal_solution_file(world: World) -> RevealSolutionFile:
+    """No clock and no graders: the handoff is a file write and nothing else."""
+    return RevealSolutionFile(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        editor=world.editor,
+    )
 
 
 def an_abandon_attempt(world: World) -> AbandonAttempt:

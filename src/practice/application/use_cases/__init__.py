@@ -5,7 +5,7 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Fifteen of them, in four groups.
+Sixteen of them, in five groups.
 
 **Four about solving**, two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
@@ -55,6 +55,13 @@ common due item there is.
 attempt log: what is *due* is a question about cards and the library, and how it
 is *going* is a question about everything that has been graded.
 
+**One about working somewhere else.** `RevealSolutionFile` is Phase 10's, and it
+is the only use case whose output is a filesystem path: own-editor mode's premise
+is that a kata's solution is a real file in the workspace, so the thing a page or
+a terminal needs is where it is. It refuses a git scenario, which is the mirror
+of `InspectRepository` refusing a kata — one kind has a file to edit and the
+other has a repository to interrogate, and neither question applies to both.
+
 `OfferReview` and `GradeReview` share `load_offer` rather than one calling the
 other. They have to agree about whether an attempt has already been reviewed --
 the panel hides the buttons on exactly the attempts the post refuses -- and a use
@@ -71,6 +78,7 @@ from practice.application.use_cases.offer_review import OfferReview
 from practice.application.use_cases.open_workbench import OpenWorkbench
 from practice.application.use_cases.resume_attempt import ResumeAttempt
 from practice.application.use_cases.reveal_hint import RevealHint
+from practice.application.use_cases.reveal_solution_file import RevealSolutionFile
 from practice.application.use_cases.review_queue import ReviewQueue
 from practice.application.use_cases.run_scenario_command import RunScenarioCommand
 from practice.application.use_cases.start_attempt import StartAttempt
@@ -88,6 +96,7 @@ __all__ = [
     "OpenWorkbench",
     "ResumeAttempt",
     "RevealHint",
+    "RevealSolutionFile",
     "ReviewQueue",
     "RunScenarioCommand",
     "StartAttempt",

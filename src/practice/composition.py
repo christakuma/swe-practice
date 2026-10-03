@@ -55,7 +55,10 @@ from practice.adapters.persistence import (
     SqliteAttemptRepository,
     SqliteReviewRepository,
 )
-from practice.adapters.sandbox import SubprocessSandboxProvisioner
+from practice.adapters.sandbox import (
+    SubprocessEditorLauncher,
+    SubprocessSandboxProvisioner,
+)
 from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
@@ -67,6 +70,7 @@ from practice.application.use_cases import (
     OpenWorkbench,
     ResumeAttempt,
     RevealHint,
+    RevealSolutionFile,
     ReviewQueue,
     RunScenarioCommand,
     StartAttempt,
@@ -85,6 +89,7 @@ if TYPE_CHECKING:
         AttemptRepository,
         Clock,
         ContentRepository,
+        EditorLauncher,
         Grader,
         IdGenerator,
         RepoQueryFactory,
@@ -115,6 +120,7 @@ class Services:
     ids: IdGenerator
     repo_query: RepoQueryFactory
     scheduler: Scheduler
+    editor: EditorLauncher
 
     @property
     def start_attempt(self) -> StartAttempt:
@@ -218,6 +224,20 @@ class Services:
         """
         return RevealHint(
             content=self.content, attempts=self.attempts, clock=self.clock
+        )
+
+    @property
+    def reveal_solution_file(self) -> RevealSolutionFile:
+        """No clock and no graders: writing the handoff records nothing and
+        grades nothing. The `EditorLauncher` has exactly one caller, which is
+        the point — one place decides how this machine opens a file, and it is
+        not a route handler.
+        """
+        return RevealSolutionFile(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            editor=self.editor,
         )
 
     @property
@@ -328,6 +348,7 @@ def build_services(
         ids=Uuid4IdGenerator(),
         repo_query=GitRepoQuery,
         scheduler=Sm2Scheduler(),
+        editor=SubprocessEditorLauncher(),
     )
 
 

@@ -59,6 +59,22 @@
         </div>
       </form>
 
+      {#
+        Own-editor mode. The button lives *inside* the slot the panel replaces,
+        which is deliberate: once the file is the working copy, pressing the
+        button again would write the browser editor's contents back over it, and
+        the safest way to stop that is for the button not to be there any more.
+        A reload brings it back -- by which point `OpenWorkbench` has re-seeded
+        the editor from the file, so a second reveal writes back what is already
+        there.
+      #}
+      <div id="file-mode">
+        <button type="button" id="open-editor" class="quiet">
+          Open in my editor
+        </button>
+        <span class="meta">writes what is above to a real file and opens it</span>
+      </div>
+
       {# Where the verdict fragment lands. Empty until something is submitted. #}
       <div id="verdict"></div>
 
@@ -126,6 +142,20 @@
       }).finally(function () {
         button.disabled = false;
         button.textContent = label;
+      });
+    });
+
+    // Own-editor mode, wired here for the reason the submission is: the thing
+    // that knows what is on screen is `editor`, not the textarea htmx would
+    // serialise. The response is a panel with no script in it, so the swap is
+    // plain HTML and everything that runs runs from this block.
+    document.getElementById("open-editor").addEventListener("click", function (event) {
+      var button = event.target;
+      button.disabled = true;
+      htmx.ajax("POST", {{ editor_url | tojson }}, {
+        target: "#file-mode",
+        swap: "innerHTML",
+        values: { source: window.practiceEditor.getValue() }
       });
     });
   </script>

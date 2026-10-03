@@ -18,6 +18,7 @@ it, and that ids are readable in a failure message.
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -33,6 +34,7 @@ from tests.fakes import (
     BuilderRepoQueryFactory,
     FakeClock,
     FakeContentRepository,
+    FakeEditorLauncher,
     FakeProvisioner,
     FakeWorkspace,
     FixedScheduler,
@@ -51,6 +53,7 @@ if TYPE_CHECKING:
         AttemptRepository,
         Clock,
         ContentRepository,
+        EditorLauncher,
         IdGenerator,
         RepoQuery,
         RepoQueryFactory,
@@ -172,6 +175,35 @@ def test_the_fake_workspace_satisfies_the_workspace_port() -> None:
     assert workspace.read_file("stub.py") == "..."
     assert workspace.run(["git", "status"], timeout=1).succeeded
     assert workspace.run_tool(["python", "-m", "pytest"], timeout=1).succeeded
+    assert workspace.resolve("stub.py").name == "stub.py"
+
+
+def test_the_fake_workspace_resolves_inside_its_repository() -> None:
+    """Phase 10's addition to the port, and the half worth asserting is the
+    confinement: `RevealSolutionFile` hands the result straight to an editor, so
+    a path that escaped the repository must come back as a refusal rather than
+    as a path. Held to the real adapter, which refuses rather than clamps.
+    """
+    workspace = FakeWorkspace()
+
+    assert workspace.resolve("stub.py") == workspace.repo / "stub.py"
+
+    with pytest.raises(ValueError, match="outside the repository"):
+        workspace.resolve("../../.bashrc")
+
+
+def test_the_fake_editor_launcher_satisfies_the_editor_port() -> None:
+    """Including the refusal, which is the branch the port is shaped around: it
+    returns the problem rather than raising, so a page can show the path anyway.
+    """
+    launcher: EditorLauncher = FakeEditorLauncher()
+    target = Path("ws", "00000000", "repo", "stub.py")
+
+    assert launcher.reveal(target) is None
+
+    refusing: EditorLauncher = FakeEditorLauncher(problem="no editor here")
+
+    assert refusing.reveal(target) == "no editor here"
 
 
 def test_the_fake_workspace_raises_an_oserror_for_a_missing_file() -> None:

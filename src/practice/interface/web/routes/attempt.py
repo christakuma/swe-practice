@@ -12,6 +12,11 @@ This module keeps the kata submission because that is the one that carries a bod
 -- the editor's source and a complexity claim. A scenario sends nothing, which is
 the argument `routes/console.py` makes for its own submit route.
 
+**Own-editor mode is drawn here and driven from `routes/editor.py`**, which is
+the third instance of the same division: this module owns the page, and the
+module beside it owns the endpoints under it. Phase 10's addition, and the one
+piece of the kata surface that is about something outside the browser.
+
 **The schedule control is drawn here and driven from `routes/review.py`**, which
 is the same division the console has: this module owns the page and the other
 owns the endpoints under it. It is a separate module rather than a third route
@@ -66,6 +71,7 @@ from practice.domain.exercise import KataSpec
 from practice.domain.ids import AttemptId
 from practice.interface.web.errors import render_problem
 from practice.interface.web.routes.console import COMMAND_URL, SCENARIO_SUBMIT_URL
+from practice.interface.web.routes.editor import EDITOR_URL
 from practice.interface.web.routes.review import REVIEW_URL
 
 if TYPE_CHECKING:
@@ -127,6 +133,11 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # stub in it is not a repository in a strange state, it is a
                 # question that does not apply.
                 "repo": None if is_kata else services.inspect_repository(parsed),
+                # Only meaningful for an active kata, and the template only
+                # draws the control for one -- formatted unconditionally for the
+                # same reason the console's two URLs are, so that there is one
+                # place a path can be got wrong.
+                "editor_url": EDITOR_URL.format(attempt_id=parsed),
                 "hint_url": HINT_URL.format(attempt_id=parsed),
                 "review_url": REVIEW_URL.format(attempt_id=parsed),
                 # Only for a finished attempt, because `OfferReview` refuses one

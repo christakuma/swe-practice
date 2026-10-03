@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from datetime import date, datetime
+    from pathlib import Path
 
     from practice.domain.attempt import Attempt, CommandResult
     from practice.domain.exercise import Exercise, ExerciseFilter
@@ -36,6 +37,7 @@ __all__ = [
     "Clock",
     "CommitInfo",
     "ContentRepository",
+    "EditorLauncher",
     "Grader",
     "IdGenerator",
     "ReflogEntry",
@@ -264,6 +266,23 @@ class Workspace(Protocol):
 
     def write_file(self, path: str, content: str) -> None: ...
 
+    def resolve(self, path: str) -> Path:
+        """Where a repository-relative path actually is on disk.
+
+        On the port as of Phase 10, and the one method here that hands out a
+        filesystem path rather than its contents. That is the feature and not a
+        leak: own-editor mode's whole premise is that the solver's file can be
+        opened by a program this app did not write, and an absolute path is the
+        only thing an editor, a file watcher or a terminal can be told.
+
+        Confinement is part of the contract. A path that is absolute, or that
+        escapes the repository with `..`, is refused rather than clamped — not
+        as a security boundary (the solver owns the machine, §8.1) but as a
+        blast-radius one: clamping would put a file somewhere the solver then
+        has to hunt for.
+        """
+        ...
+
     def aliases(self) -> Mapping[str, Sha]:
         """The fixture's `@c1`-style symbolic names, as it recorded them.
 
@@ -323,6 +342,29 @@ class SandboxProvisioner(Protocol):
         need — and must not need — the exercise required to attach to one.
         """
         ...
+
+
+class EditorLauncher(Protocol):
+    """Opens one file in whatever editor this machine is set up to use.
+
+    The outward edge of own-editor mode (PLAN.md §11, Phase 10): the solver works
+    in their own editor on a real file in the workspace, and this is the thing
+    that puts the file in front of them.
+
+    **It returns the problem rather than raising one**, which is the same call
+    `RepoQuery` makes and for the same reason: a missing editor is a normal
+    outcome a page has to render, not a fault. The feature is *the file is on
+    disk at this path* — writing it and saying where it is always works, and the
+    launch is the convenience on top. So a failed launch leaves the solver with a
+    path they can open themselves, and a traceback would leave them with
+    nothing.
+
+    `None` means it was launched. A string is a sentence saying why it was not,
+    written to be read — the same shape `interface/web/vendor.verify` uses for
+    the problems it reports.
+    """
+
+    def reveal(self, path: Path) -> str | None: ...
 
 
 class RepoQuery(Protocol):

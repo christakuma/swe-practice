@@ -54,6 +54,7 @@ from practice.interface.web.routes import (
     browse,
     console,
     dashboard,
+    editor,
     progress,
     review,
 )
@@ -114,8 +115,11 @@ def create_app(services: Services) -> FastAPI:
     # After `attempt`, which owns the page these endpoints drive. Order is not
     # load-bearing -- no two routers declare the same path -- but reading the
     # list top to bottom should follow a visitor: dashboard, browse, progress,
-    # workbench, and then the console and the schedule inside it.
+    # workbench, and then the console, the editor and the schedule inside it.
     app.include_router(console.build_router(services, templates))
+    # Beside the console, and for the same reason: the other half of the kata's
+    # surface, whose endpoints live under the page `attempt` owns.
+    app.include_router(editor.build_router(services, templates))
     # Last, and after both: it is the endpoint under the fragment they return.
     app.include_router(review.build_router(services, templates))
     return app
