@@ -50,6 +50,7 @@ __all__ = [
     "CheckResult",
     "CheckSpecError",
     "Params",
+    "alias_name",
     "compare",
     "describe",
     "matcher",
@@ -243,10 +244,25 @@ def resolve(query: RepoQuery, rev: str) -> Sha | None:
     syntax only.** It must not appear in `solution.cmds`, because a solver cannot
     type it — they only ever see real revisions.
     """
-    alias = _ALIAS.match(rev)
+    alias = alias_name(rev)
     if alias is not None:
-        return query.aliases().get(alias[1])
+        return query.aliases().get(alias)
     return query.rev_parse(rev)
+
+
+def alias_name(rev: str) -> str | None:
+    """The fixture alias `rev` refers to, or `None` if it is a git revision.
+
+    Exported so that `resolve` and the content suite share one definition of what
+    an alias *is*. They did not, and the difference was a real bug: the suite's
+    "every alias a check names exists" test treated any parameter starting with
+    `@` as an alias, which is wrong for every revision git spells with one —
+    `@{u}`, `@{upstream}`, `@{-1}`, `@~1`. `publish-a-branch-for-review` is the
+    first exercise to use `@{u}` (it is how "this branch has an upstream" is
+    expressible at all), and it failed a test about fixture aliases.
+    """
+    match = _ALIAS.match(rev)
+    return match[1] if match is not None else None
 
 
 def describe(sha: Sha | None) -> str:

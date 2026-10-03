@@ -40,6 +40,7 @@ from practice.adapters.sandbox.fixture_lock import (
     parse,
 )
 from practice.adapters.sandbox.provisioner import FIXTURE_LIB_PATH
+from practice.domain.checks.evaluation import alias_name
 from practice.domain.commands import parse_command_list
 from practice.domain.exercise import GitScenarioSpec
 from practice.domain.ids import AttemptId
@@ -174,12 +175,20 @@ def test_every_alias_its_checks_name_exists(
     """A check referring to `@c4` in a fixture that stops at `c3` can never
     pass, and nothing else would notice: the assertion simply fails every time,
     which looks exactly like a solver getting it wrong.
+
+    Which parameters *are* aliases comes from `alias_name`, the same function
+    `resolve` uses, rather than from a `startswith("@")` here. The two disagreed
+    until `publish-a-branch-for-review` wrote `{ref: "@{u}"}` — a git revision,
+    not an alias — and failed this test while grading correctly (§16).
     """
     available = set(provisioned.aliases())
     for check in spec.checks:
         for value in check.params.values():
-            if isinstance(value, str) and value.startswith("@"):
-                assert value[1:] in available, f"{check.id} names {value}"
+            if not isinstance(value, str):
+                continue
+            alias = alias_name(value)
+            if alias is not None:
+                assert alias in available, f"{check.id} names {value}"
 
 
 def test_its_commits_are_dated_by_the_pinned_clock(
