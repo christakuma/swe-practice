@@ -1,7 +1,7 @@
 """The assertion vocabulary, as a set of names.
 
 These tests are deliberately about the *contract* of the registry rather than its
-contents: a test that restates the 22 names in a second list only proves someone
+contents: a test that restates the 20 names in a second list only proves someone
 typed them twice. The two that do pin content are the ones whose value comes from
 being pinned — the count, and the fact that every assertion the shipped exercises
 already use is registered.
@@ -16,7 +16,11 @@ from practice.domain.checks import registry
 #: PLAN.md §6.3 enumerates the vocabulary in five groups. The number is asserted
 #: rather than derived so that adding an assertion is a deliberate act with a
 #: failing test attached, not something that happens by autocomplete.
-VOCABULARY_SIZE = 22
+#:
+#: Twenty-two until Phase 11, which deleted `reflog_contains` and `command_count`
+#: after twenty-four git scenarios wanted neither — so this test is also the
+#: tripwire on *removing* one, and it fired as intended.
+VOCABULARY_SIZE = 20
 
 
 def test_the_vocabulary_is_the_size_the_plan_enumerates() -> None:
@@ -34,13 +38,6 @@ def test_the_groups_partition_the_vocabulary() -> None:
         registry.ASSERTIONS
     )
     assert not (registry.CONTENT_ASSERTIONS & registry.PROCESS_ASSERTIONS)
-
-
-def test_the_unproven_assertions_are_registered_rather_than_merely_named() -> None:
-    """They are on probation, not removed; a name that is flagged but unusable
-    would fail the exercises that might yet justify it.
-    """
-    assert registry.UNPROVEN_ASSERTIONS <= registry.ASSERTIONS
 
 
 @pytest.mark.parametrize(

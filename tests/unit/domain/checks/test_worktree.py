@@ -1,7 +1,12 @@
-"""The four worktree, index, stash and reflog assertions.
+"""The worktree, index and stash assertions.
 
-The family that asks whether a solver finished, plus the two recovery assertions —
-one of which is on probation and says so in its own module.
+The family that asks whether a solver finished, plus `stash_count`, which asks
+the same question about work parked out of sight.
+
+It covered `reflog_contains` too, including a test asserting that the check was
+*vacuously true* on the one exercise that named it — evidence for deleting it,
+kept as a test so it could not be forgotten. Phase 11 deleted the assertion and
+that test went with it; the reasoning now lives in `domain/checks/recovery.py`.
 """
 
 from __future__ import annotations
@@ -198,94 +203,3 @@ class TestStashCount:
 
         assert report.passed is False
         assert "exactly one of" in (report.actual or "")
-
-
-class TestReflogContains:
-    """Implemented, and on probation. The module docstring says why: it is either
-    vacuously true where the fixture made the entry, or it grades *how* a solver got
-    somewhere — which is the thing PLAN.md §1 exists to reject. Deleted rather than
-    carried if no Phase 11 exercise needs it.
-    """
-
-    @staticmethod
-    def _recovery_repo() -> FakeRepoQuery:
-        """The recovery scenario's reflog, including the trap: the reset is not the
-        top entry, because two branch switches happened after it.
-        """
-        repo = a_repo()
-        skeleton, exporter, tests = repo.chain("skeleton", "exporter", "tests")
-        repo.branch("main", skeleton).branch("feature/csv-export", skeleton)
-        repo.reflog(
-            "HEAD",
-            [
-                (skeleton, "checkout: moving from main to feature/csv-export"),
-                (skeleton, "checkout: moving from feature/csv-export to main"),
-                (skeleton, "reset: moving to main"),
-                (tests, "commit: Add tests for CSV exporter"),
-                (exporter, "commit: Add CSV exporter"),
-            ],
-        )
-        return repo.build()
-
-    def test_it_finds_a_matching_entry_and_reports_its_position(self) -> None:
-        """The position, not the hash, because `HEAD@{3}` is the thing a solver can
-        type — and reading past the top entry is the lesson.
-        """
-        report = run(
-            self._recovery_repo(), "reflog_contains", ref="HEAD", pattern="^reset:"
-        )
-
-        assert report.passed is True
-        assert "HEAD@{2}" in (report.actual or "")
-
-    def test_a_pattern_that_matches_nothing_shows_what_was_there(self) -> None:
-        report = run(
-            self._recovery_repo(), "reflog_contains", ref="HEAD", pattern="^rebase:"
-        )
-
-        assert report.passed is False
-        assert "no match in 5 entries" in (report.actual or "")
-
-    def test_a_long_reflog_is_truncated_rather_than_dumped(self) -> None:
-        """A busy repository's reflog runs to hundreds of entries, and a verdict that
-        printed them all would bury every other check.
-        """
-        repo = a_repo()
-        (first,) = repo.chain("one")
-        repo.branch("main", first).reflog(
-            "HEAD", [(first, f"commit: number {index}") for index in range(12)]
-        )
-
-        report = run(repo.build(), "reflog_contains", pattern="^rebase:")
-
-        assert report.passed is False
-        assert "+7 more" in (report.actual or "")
-
-    def test_a_ref_with_no_reflog_fails_cleanly(self) -> None:
-        """A branch created with `git branch` and never moved has an empty reflog,
-        which is an ordinary repository state rather than a fault (§6.5).
-        """
-        report = run(
-            _repo_with(), "reflog_contains", ref="refs/heads/main", pattern="anything"
-        )
-
-        assert report.passed is False
-        assert report.actual == "refs/heads/main has no reflog"
-
-    def test_it_defaults_to_head(self) -> None:
-        assert (
-            run(self._recovery_repo(), "reflog_contains", pattern="^commit:").passed
-            is True
-        )
-
-    def test_it_is_vacuously_true_where_the_fixture_made_the_entry(self) -> None:
-        """The probation, as a test. Every attempt at `recover-a-lost-commit` passes
-        `reflog_contains {pattern: "^reset:"}` -- including one that never ran a
-        single command -- because the *fixture's* `reset --hard` wrote that entry.
-
-        This is not a bug to fix. It is the evidence for deleting the assertion, and
-        a test is where that evidence belongs so it cannot be forgotten.
-        """
-        untouched = self._recovery_repo()
-
-        assert run(untouched, "reflog_contains", pattern="^reset:").passed is True

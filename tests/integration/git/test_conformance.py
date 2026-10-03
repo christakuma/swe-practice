@@ -3,20 +3,29 @@
 The whole case for the port rests on this file. Twenty-two assertions are
 unit-tested against `FakeRepoQuery` in milliseconds, and that is only evidence
 about the real thing if the fake agrees with real git — otherwise the unit suite
-is 22 tests agreeing with each other and with nothing else.
+is 20 tests agreeing with each other and with nothing else.
 
 **How a fake can be compared to git at all.** It cannot produce git's hashes
 without being git, so the comparison cannot start from a shared literal. Instead
 the fake is *loaded* from a real repository's raw data — its refs, its full commit
-list, its status, its reflogs — and then both implementations are asked the
-questions neither was given the answer to:
+list, its status — and then both implementations are asked the questions neither
+was given the answer to:
 
 *Loaded, so agreement is trivial:* `refs`, `status`, `stash_list`, `aliases`,
-`snapshot`, `head_ref`, `reflog`.
+`snapshot`, `head_ref`, and the reflog positions behind `<ref>@{n}`.
 
-*Derived, so agreement is the test:* `rev_parse` over fourteen spellings,
+*Derived, so agreement is the test:* `rev_parse` over eleven spellings,
 `tree_sha`, `subject`, `is_ancestor` over every ordered pair of commits, `log`
 reachability, which commits are merges.
+
+**The reflog spellings moved from the second list to the first in Phase 11**, and
+it is a real if small loss worth recording. `RepoQuery.reflog` was deleted with
+`reflog_contains`, and it had been the channel this suite loaded reflog positions
+through — so the fake is now seeded by asking the real adapter to resolve each
+`<ref>@{n}` in turn, which makes comparing those three spellings circular. They
+are therefore no longer compared here. The real adapter's own resolution of
+`HEAD@{3}` is still covered directly by `test_repo_query.py`, and the fake's by
+`tests/unit/fakes/test_repo.py`; what is gone is the cross-check between them.
 
 Only the right-hand column proves anything, and it is the column every assertion
 in `domain/checks/` actually reads. The loaded fields are compared anyway, cheaply,
@@ -71,9 +80,6 @@ SPELLINGS = (
     "HEAD~1",
     "HEAD~2",
     "HEAD^",
-    "HEAD@{0}",
-    "HEAD@{1}",
-    "HEAD@{3}",
     "main",
     "refs/heads/main",
     "refs/remotes/origin/main",
@@ -121,7 +127,7 @@ def load(real: GitRepoQuery) -> FakeRepoQuery:
             refs=dict(real.refs()),
             aliases=dict(real.aliases()),
             snapshot=dict(real.snapshot()),
-            reflogs={ref: tuple(real.reflog(ref)) for ref in _REFLOGGED},
+            reflogs={ref: _reflog_positions(real, ref) for ref in _REFLOGGED},
             stashes=tuple(real.stash_list()),
             blobs=blobs,
             worktree=worktree,
@@ -132,10 +138,32 @@ def load(real: GitRepoQuery) -> FakeRepoQuery:
     )
 
 
-#: Refs whose reflogs are loaded. `HEAD`'s is the one assertions read; the two
-#: branch reflogs are here so a `reflog_contains {ref: refs/heads/main}` would be
-#: comparable too.
+#: Refs whose reflog positions are loaded, so that the fake can resolve
+#: `<ref>@{n}` at all. `HEAD`'s is the one a `.cmds` file ever names; the branch
+#: reflogs are loaded because real git has them and a fake that did not would
+#: differ from it in a way nothing here would notice.
 _REFLOGGED = ("HEAD", "refs/heads/main", "refs/heads/feature/csv-export")
+
+#: How far to probe a ref's reflog. Deeper than any fixture reaches, so the
+#: positions are loaded in full rather than truncated at a length that happens
+#: to be enough today.
+_REFLOG_DEPTH = 32
+
+
+def _reflog_positions(real: GitRepoQuery, ref: str) -> tuple[Sha, ...]:
+    """Every position `ref` has held, newest first, read through `rev_parse`.
+
+    The replacement for the deleted `RepoQuery.reflog`. It stops at the first
+    index that does not resolve, which is what git does too — `HEAD@{99}` on a
+    short reflog is an error, not an empty answer.
+    """
+    positions: list[Sha] = []
+    for index in range(_REFLOG_DEPTH):
+        found = real.rev_parse(f"{ref}@{{{index}}}")
+        if found is None:
+            break
+        positions.append(found)
+    return tuple(positions)
 
 
 def _every_commit(real: GitRepoQuery) -> Sequence[CommitInfo]:
@@ -396,17 +424,6 @@ def test_they_read_the_same_committed_blob(
     real, fake = pair
 
     assert fake.read_blob("HEAD", path) == real.read_blob("HEAD", path), path
-
-
-def test_they_read_the_same_reflog(
-    pair: tuple[GitRepoQuery, FakeRepoQuery],
-) -> None:
-    """Position for position, because `HEAD@{3}` being off by one is the whole
-    difficulty of `recover-a-lost-commit` — and the trap it sets on purpose.
-    """
-    real, fake = pair
-    for ref in _REFLOGGED:
-        assert tuple(fake.reflog(ref)) == tuple(real.reflog(ref)), ref
 
 
 # --- the suite's own tripwires ----------------------------------------------

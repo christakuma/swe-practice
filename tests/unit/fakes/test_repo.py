@@ -1,6 +1,6 @@
 """The fake repository's own derivations, tested before anything relies on them.
 
-`FakeRepoQuery` is the oracle for 22 assertion tests, so a bug in it would make
+`FakeRepoQuery` is the oracle for 20 assertion tests, so a bug in it would make
 all of them agree with each other and with nothing else. The conformance suite in
 `tests/integration/git/` is the other half of this — it proves the fake agrees
 with real git — but a conformance failure points at two implementations and says
@@ -96,12 +96,7 @@ class TestRevisionResolution:
         repo.branch("feature/csv-export", shas[0])
         repo.reflog(
             "HEAD",
-            [
-                (shas[0], "checkout: moving to feature/csv-export"),
-                (shas[0], "checkout: moving to main"),
-                (shas[0], "reset: moving to HEAD~2"),
-                (shas[2], "commit: Add tests for CSV exporter"),
-            ],
+            [shas[0], shas[0], shas[0], shas[2]],
         )
         query = repo.build()
 

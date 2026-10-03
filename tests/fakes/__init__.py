@@ -4,7 +4,7 @@ These are the second implementation each ambient port needs to justify existing
 (PLAN.md §13). `FakeRepoQuery` is the one that pays for the whole `RepoQuery`
 abstraction: it computes ancestry, revision resolution and reachability from an
 in-memory DAG rather than storing the answers, so it can be *wrong* — which is
-what makes both the 22 assertion tests and the conformance suite in
+what makes both the 20 assertion tests and the conformance suite in
 `tests/integration/git/` evidence rather than ceremony.
 
 `content`, `sandbox`, `kata`, `editor` and `watcher` are what make the

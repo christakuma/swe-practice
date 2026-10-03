@@ -1,4 +1,4 @@
-"""The two assertions that read the attempt, not the repository.
+"""The assertion that reads the attempt, not the repository.
 
 This is the only family that does not touch `RepoQuery` at all, and it is the
 reason `Attempt` keeps a full event log rather than a final state (PLAN.md §4.3).
@@ -14,15 +14,19 @@ is the cost*. The convention is deliberate rather than enforced: a Phase 11 exer
 whose entire subject is a command might legitimately require one, and a domain that
 refused would be legislating about content it has not seen.
 
-**One of the two is on probation, and this one fights an exercise.**
-`command_count` is worse than merely unproven. An efficiency budget counts
-*read-only* commands, so on `recover-a-lost-commit` it penalises exactly the
-inspection that the `used-the-reflog` advisory rewards — the two checks would be
-pulling in opposite directions on the same attempt. Making it useful needs a
-`mutating_only: true` filter, which needs a maintained list of read-only git
-subcommands, which is a list that is wrong the first time git adds one. Registered,
-implemented, flagged, and deleted rather than carried if Phase 11 does not find a
-use (§13).
+**`command_count` was deleted here in Phase 11**, and the reasoning is worth
+keeping because it is the §13 rule actually being applied rather than quoted. An
+efficiency budget counts *read-only* commands, so on `recover-a-lost-commit` it
+would have penalised exactly the inspection that the `used-the-reflog` advisory
+rewards -- two checks pulling in opposite directions on one attempt. Making it
+useful needs a `mutating_only: true` filter, which needs a maintained list of
+read-only git subcommands, which is a list that is wrong the first time git adds
+one. Twenty-four git scenarios were then written and not one of them wanted a
+command budget, so it went.
+
+What is left is one assertion, which is enough for the family to exist: `Attempt`
+keeps its event log either way, and `command_used` is what turns it into a
+verdict.
 """
 
 from __future__ import annotations
@@ -35,7 +39,7 @@ if TYPE_CHECKING:
     from practice.domain.attempt import CommandRun
     from practice.domain.checks.evaluation import CheckContext
 
-__all__ = ["command_count", "command_used"]
+__all__ = ["command_used"]
 
 #: How many matching command lines a report quotes. One is the useful number for a
 #: pass — "you did this, here it is" — and the first match is the one that decided
@@ -70,27 +74,6 @@ def command_used(context: CheckContext) -> CheckResult:
         passed=bool(matched),
         expected=f"a command matching /{pattern.pattern}/",
         actual=_describe(matched, context.attempt.commands),
-    )
-
-
-def command_count(context: CheckContext) -> CheckResult:
-    """`command_count {at_most}` — the solver stayed inside a budget.
-
-    **Unproven, and actively harmful on the one exercise that could use it.** See
-    the module docstring: the count includes read-only commands, so a budget
-    punishes the inspection that operational git is mostly made of.
-
-    `at_most` only. `equals` would be grading a solver for typing a specific number
-    of commands, and `at_least` would be rewarding thrashing — neither is a thing an
-    author means, so the general `comparison()` helper the counting assertions share
-    is deliberately not used here.
-    """
-    wanted = context.params.integer("at_most")
-    found = context.attempt.command_count
-    return CheckResult(
-        passed=found <= wanted,
-        expected=f"at most {wanted} {_commands(wanted)}",
-        actual=f"{found} {_commands(found)}",
     )
 
 

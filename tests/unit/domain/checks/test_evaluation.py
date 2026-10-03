@@ -1,6 +1,6 @@
 """`Params`, `resolve`, and the dispatcher's three failure modes.
 
-The machinery every assertion shares, tested once here rather than 22 times. What
+The machinery every assertion shares, tested once here rather than 20 times. What
 the per-family modules then test is the assertion's own logic, which is the thing
 that differs.
 """
@@ -28,7 +28,7 @@ from tests.unit.domain.checks.helpers import an_attempt, run, spec
 
 class TestNegation:
     """`not:` is a uniform modifier on every assertion (PLAN.md §6.3), applied in
-    exactly one place, so these cases cover all 22 at once.
+    exactly one place, so these cases cover all 20 at once.
     """
 
     def test_it_inverts_the_verdict(self) -> None:
@@ -210,7 +210,7 @@ class TestResolve:
         """
         repo = a_repo()
         (first,) = repo.chain("one")
-        repo.branch("main", first).reflog("HEAD", [(first, "commit: one")])
+        repo.branch("main", first).reflog("HEAD", [first])
 
         assert resolve(repo.build(), rev) != Sha("c" + "0" * 38 + "9")
 

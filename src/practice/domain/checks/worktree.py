@@ -1,4 +1,4 @@
-"""The working tree and the index. Four of the 22 assertions.
+"""The working tree and the index. Three of the 20 assertions.
 
 The family that asks whether a solver *finished*. A fix that only exists in a
 working directory is not a fix, and a half-applied `git checkout <sha> -- .` looks

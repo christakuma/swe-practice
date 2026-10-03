@@ -1,14 +1,14 @@
 """What an assertion is, what it is given, and what it hands back.
 
 The three types every check function in this package shares, and the two
-decisions that shape all 22 of them.
+decisions that shape all 20 of them.
 
 **An assertion returns a `CheckResult`, not a `CheckReport`.** It says what it
 expected, what it found, and whether those agree — and nothing about the
 exercise. One dispatcher (`registry.evaluate`) then applies `not:` and carries the
 author's label, severity and explanation across through `CheckReport.from_spec`.
 
-That split is what keeps negation a single mechanism rather than 22 copies of one.
+That split is what keeps negation a single mechanism rather than 20 copies of one.
 PLAN.md §6.3 made `not:` a uniform modifier instead of a set of paired opposites,
 and a function that built its own report would have to invert its own `passed`
 *and* rewrite its own `expected` string — twenty-two chances to get it wrong, and

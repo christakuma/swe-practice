@@ -1,4 +1,4 @@
-"""A repository in memory, so 22 assertions can be tested without git.
+"""A repository in memory, so 20 assertions can be tested without git.
 
 The fake that pays for the `RepoQuery` port. Every check function is a pure
 function over this protocol, so the whole assertion vocabulary gets full unit
@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Final
 
 from practice.domain.ids import Sha
-from practice.domain.ports import CommitInfo, ReflogEntry, WorktreeStatus
+from practice.domain.ports import CommitInfo, WorktreeStatus
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
@@ -51,7 +51,9 @@ __all__ = [
 #: `<rev>~<n>` and `<rev>^<n>`, with the count optional.
 _ANCESTOR_STEP: Final = re.compile(r"^(?P<base>.+?)(?P<operator>[~^])(?P<count>\d*)$")
 
-#: `<ref>@{<n>}` — a reflog position.
+#: `<ref>@{<n>}` — a reflog position. The only thing the fake keeps reflogs
+#: for: `RepoQuery.reflog` was deleted with `reflog_contains` in Phase 11,
+#: and `HEAD@{3}` remains a revision any exercise may name.
 _REFLOG_SELECTOR: Final = re.compile(r"^(?P<ref>.+)@\{(?P<index>\d+)\}$")
 
 _HEX: Final = re.compile(r"^[0-9a-f]+$")
@@ -117,7 +119,7 @@ class RepoState:
     refs: Mapping[str, Sha] = field(default_factory=dict)
     aliases: Mapping[str, Sha] = field(default_factory=dict)
     snapshot: Mapping[str, Sha] = field(default_factory=dict)
-    reflogs: Mapping[str, tuple[ReflogEntry, ...]] = field(default_factory=dict)
+    reflogs: Mapping[str, tuple[Sha, ...]] = field(default_factory=dict)
     stashes: tuple[str, ...] = ()
     blobs: Mapping[tuple[Sha, str], bytes] = field(default_factory=dict)
     worktree: Mapping[str, str] = field(default_factory=dict)
@@ -145,7 +147,7 @@ class RepoBuilder:
     _refs: dict[str, Sha] = field(default_factory=dict)
     _aliases: dict[str, Sha] = field(default_factory=dict)
     _snapshot: dict[str, Sha] = field(default_factory=dict)
-    _reflogs: dict[str, list[ReflogEntry]] = field(default_factory=dict)
+    _reflogs: dict[str, list[Sha]] = field(default_factory=dict)
     _stashes: list[str] = field(default_factory=list)
     _blobs: dict[tuple[Sha, str], bytes] = field(default_factory=dict)
     _worktree: dict[str, str] = field(default_factory=dict)
@@ -260,12 +262,15 @@ class RepoBuilder:
         self._detached_at = sha
         return self
 
-    def reflog(self, ref: str, entries: Iterable[tuple[Sha, str]]) -> RepoBuilder:
-        """Positions newest first; the index is the `n` in `<ref>@{n}`."""
-        self._reflogs[ref] = [
-            ReflogEntry(index=index, sha=sha, message=message)
-            for index, (sha, message) in enumerate(entries)
-        ]
+    def reflog(self, ref: str, positions: Iterable[Sha]) -> RepoBuilder:
+        """Positions newest first; the index is the `n` in `<ref>@{n}`.
+
+        Hashes only. The entries used to carry git's reflog message as well,
+        because `reflog_contains` matched a pattern against it; that assertion
+        and the `RepoQuery.reflog` method it was the only caller of both went in
+        Phase 11, and what is left is revision resolution.
+        """
+        self._reflogs[ref] = list(positions)
         return self
 
     def stash(self, *messages: str) -> RepoBuilder:
@@ -371,7 +376,7 @@ class FakeRepoQuery:
         if selector is not None:
             entries = self._state.reflogs.get(selector["ref"], ())
             index = int(selector["index"])
-            return entries[index].sha if index < len(entries) else None
+            return entries[index] if index < len(entries) else None
 
         step = _ANCESTOR_STEP.match(rev)
         if step is not None:
@@ -517,9 +522,6 @@ class FakeRepoQuery:
             ordered.append(commit.info())
             frontier.extend(commit.parents)
         return tuple(ordered)
-
-    def reflog(self, ref: str) -> Sequence[ReflogEntry]:
-        return self._state.reflogs.get(ref, ())
 
     def stash_list(self) -> Sequence[str]:
         return self._state.stashes

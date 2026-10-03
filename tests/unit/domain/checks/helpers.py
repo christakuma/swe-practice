@@ -1,4 +1,4 @@
-"""One way to run a check in a test, so 22 test modules do not each invent one.
+"""One way to run a check in a test, so 20 assertions do not each invent one.
 
 Every assertion is exercised through `run` — the same `registry.evaluate` the real
 grader calls — rather than by calling the function directly. That is deliberate:

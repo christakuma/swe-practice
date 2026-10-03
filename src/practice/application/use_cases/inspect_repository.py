@@ -9,7 +9,7 @@ derived from, and the one the solver is looking at while they decide whether to
 submit. A panel that disagrees with the grader is worse than no panel, because the
 solver cannot tell which of the two lied.
 
-So inspection goes through `RepoQuery` — the port the 22 assertions are pure
+So inspection goes through `RepoQuery` — the port the 20 assertions are pure
 functions over — and the panel is, structurally, the same reading of the repository
 that will grade it a moment later.
 

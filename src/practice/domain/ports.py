@@ -5,7 +5,7 @@ implements a port without importing it and without an inheritance relationship
 pointing the wrong way, and a fake needs no base class — `FakeClock` is five
 lines (ADR 0002).
 
-The port's own data vocabulary lives here too — `WorktreeStatus`, `ReflogEntry`,
+The port's own data vocabulary lives here too — `WorktreeStatus` and
 `CommitInfo`. They are pure value objects describing git state, and keeping them
 next to the protocol that returns them means `GitRepoQuery` and `FakeRepoQuery`
 cannot disagree about their shape, which is the drift that stops a fake being
@@ -41,7 +41,6 @@ __all__ = [
     "FileWatcher",
     "Grader",
     "IdGenerator",
-    "ReflogEntry",
     "RepoQuery",
     "RepoQueryFactory",
     "ReviewRepository",
@@ -119,15 +118,6 @@ class WorkspaceSummary:
         interrupted provision is exactly the kind of leftover it exists to find.
         """
         return self.attempt_id is not None
-
-
-@dataclass(frozen=True, slots=True)
-class ReflogEntry:
-    """One position a ref has held. `index` is the `n` in `HEAD@{n}`."""
-
-    index: int
-    sha: Sha
-    message: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -400,7 +390,7 @@ class RepoQuery(Protocol):
     """Read-only git interrogation. The port that makes the check engine pure.
 
     Every assertion depends on this rather than on a git process, which is what
-    lets all 22 of them be unit-tested in milliseconds against an in-memory fake
+    lets all 20 of them be unit-tested in milliseconds against an in-memory fake
     with no git installed and no filesystem touched (PLAN.md §6.2).
 
     Every lookup returns `None` rather than raising when a revision does not
@@ -430,8 +420,6 @@ class RepoQuery(Protocol):
         ...
 
     def status(self) -> WorktreeStatus: ...
-
-    def reflog(self, ref: str) -> Sequence[ReflogEntry]: ...
 
     def log(self, rev: str) -> Sequence[CommitInfo]: ...
 

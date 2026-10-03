@@ -14,7 +14,7 @@ Two modules:
   exercise's `CheckSpec`s against one of those and assembling the reports into a
   `Verdict`.
 
-Note what is *not* here: the 22 assertion functions. They are pure functions over
+Note what is *not* here: the 20 assertion functions. They are pure functions over
 the port and live in `domain/checks/`, which is what makes "testable with no git
 installed" a structural fact rather than a happy accident (§6.2). A check
 function in this package would be a check function outside the coverage gate.

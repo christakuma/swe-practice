@@ -14,7 +14,7 @@ it exists rather than each function doing its own:
 1. **Negation.** PLAN.md §6.3 made `not:` a uniform modifier on every assertion
    instead of a set of paired opposites. A function that built its own report
    would have to invert its own verdict *and* rewrite its own `expected` string —
-   22 chances to get it wrong, and the one that got it wrong would report a
+   20 chances to get it wrong, and the one that got it wrong would report a
    failure as a pass.
 2. **The author's words.** `CheckReport.from_spec` carries the label, the severity
    and the explanation across, so no assertion can forget to and none has to know
@@ -25,14 +25,15 @@ it exists rather than each function doing its own:
    fix the exercise. CI can, and the graded replay in the content suite is where
    that condition becomes a build failure.
 
-**Two of these are on probation.** `reflog_contains` has turned out to be either
-vacuously true (the fixture put the entry there) or a way of grading *how* the
-solver got somewhere, which is the thing PLAN.md §1 exists to reject.
-`command_count` actively fights the recovery scenario: an efficiency budget counts
-read-only commands, so it penalises exactly the inspection that the
-`used-the-reflog` advisory rewards. Both stay for now, both are flagged, and per
-the §13 rule about abstractions earning their keep, both get deleted rather than
-carried if no Phase 11 exercise needs them.
+**Two entries were deleted in Phase 11, which is the point of having flagged
+them.** `reflog_contains` and `command_count` shipped registered, implemented and
+labelled unproven, with a note that they would go rather than be carried if no
+Phase 11 exercise wanted them (§13). Twenty-four git scenarios later, none did —
+`reflog_contains` is vacuously true wherever the fixture created the entry, and a
+`command_count` budget counts the read-only commands that operational git is
+mostly made of. So the vocabulary is twenty assertions rather than twenty-two,
+and `UNPROVEN_ASSERTIONS` is gone with them. The reasoning for each sits in its
+own module, where someone proposing to add it back will read it.
 """
 
 from __future__ import annotations
@@ -57,7 +58,6 @@ __all__ = [
     "CHECKS",
     "CONTENT_ASSERTIONS",
     "PROCESS_ASSERTIONS",
-    "UNPROVEN_ASSERTIONS",
     "evaluate",
     "is_registered",
     "suggest",
@@ -95,15 +95,15 @@ _WORKTREE_AND_INDEX: Final[Mapping[str, CheckFunction]] = {
 
 #: Where git keeps the things you thought you had destroyed.
 _RECOVERY: Final[Mapping[str, CheckFunction]] = {
-    "reflog_contains": recovery.reflog_contains,
     "stash_count": recovery.stash_count,
 }
 
-#: Read the `Attempt` event log rather than the repository, which is why the
+#: Reads the `Attempt` event log rather than the repository, which is why the
 #: aggregate keeps every command instead of just a final state (PLAN.md §4.3).
-#: Advisory by convention: they grade craft, not correctness.
+#: Advisory by convention: it grades craft, not correctness. A family of one
+#: since Phase 11, and still a family — `PROCESS_ASSERTIONS` is what tells
+#: `CONTENT_ASSERTIONS` which names do not need a repository.
 _PROCESS: Final[Mapping[str, CheckFunction]] = {
-    "command_count": process.command_count,
     "command_used": process.command_used,
 }
 
@@ -128,11 +128,6 @@ ASSERTIONS: Final = frozenset(CHECKS)
 
 #: Everything that interrogates the repository through `RepoQuery`.
 CONTENT_ASSERTIONS: Final = ASSERTIONS - PROCESS_ASSERTIONS
-
-#: Registered, unproven, and deleted rather than carried if Phase 11 does not
-#: find an honest use for them. Named here rather than left as a comment so the
-#: decision is greppable when that review comes round.
-UNPROVEN_ASSERTIONS: Final = frozenset({"command_count", "reflog_contains"})
 
 
 #: Jaccard trigram overlap below which a candidate is noise rather than a

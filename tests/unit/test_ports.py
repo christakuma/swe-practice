@@ -27,7 +27,7 @@ from practice.adapters.persistence import InMemoryAttemptRepository
 from practice.domain.attempt import Attempt, AttemptPolicy
 from practice.domain.exercise import ExerciseFilter, ExerciseKind, KataSpec
 from practice.domain.ids import AttemptId, ExerciseId, Sha
-from practice.domain.ports import CommitInfo, ReflogEntry, WorktreeStatus
+from practice.domain.ports import CommitInfo, WorktreeStatus
 from practice.domain.review import Grade, ReviewCard
 from practice.domain.scheduling import Sm2Scheduler
 from tests.fakes import (
@@ -153,16 +153,6 @@ class TestCommitInfo:
         commit = CommitInfo(sha=C2, tree=T1, subject="add parser", parents=parents)
 
         assert commit.is_merge is False
-
-
-def test_a_reflog_entry_records_the_position_it_came_from() -> None:
-    entry = ReflogEntry(index=3, sha=C1, message="reset: moving to HEAD~2")
-
-    assert entry.index == 3
-    assert entry.sha == C1
-
-
-# --- the Phase 4 fakes -----------------------------------------------------
 
 
 def test_the_fake_workspace_satisfies_the_workspace_port() -> None:

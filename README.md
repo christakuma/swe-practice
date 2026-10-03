@@ -41,7 +41,7 @@ ancestry check is what tells the two apart. A tool grading on file content
 accepts this answer; a tool matching command text would have to guess which of
 two dozen correct phrasings to allow.
 
-Underneath it: 22 pure assertion functions over a read-only port, implemented
+Underneath it: 20 pure assertion functions over a read-only port, implemented
 twice (real git, in-memory fake) and proved to agree by a conformance suite, and
 a content suite that grades every reference solution in the library and holds
 every counter-example to exactly the checks it declares. See
@@ -394,7 +394,7 @@ without the flag, and there is no force option — the way to get rid of one is
 ```
 src/practice/
 ├── domain/        pure data and functions; zero I/O
-│   ├── checks/      the 22 assertions, as pure functions over a read-only port
+│   ├── checks/      the 20 assertions, as pure functions over a read-only port
 │   └── scheduling/  SM-2, and the grade the tool reads off a finished attempt
 ├── application/   use cases over ports, the kind registry, graph layout, progress
 ├── adapters/

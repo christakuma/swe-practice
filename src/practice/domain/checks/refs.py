@@ -1,4 +1,4 @@
-"""Refs, ancestry, and the shape of history. Ten of the 22 assertions.
+"""Refs, ancestry, and the shape of history. Ten of the 20 assertions.
 
 The family that does the actual discriminating. PLAN.md §6.6's central finding is
 that `content-restored` passes for a revert, a `reset --hard` *and* a forgotten

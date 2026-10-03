@@ -44,7 +44,7 @@ from typing import TYPE_CHECKING, Final
 
 from practice.domain.errors import InvalidValueError
 from practice.domain.ids import Sha
-from practice.domain.ports import CommitInfo, ReflogEntry, WorktreeStatus
+from practice.domain.ports import CommitInfo, WorktreeStatus
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -79,16 +79,10 @@ _LOG_FORMAT: Final = f"%H{_ASK_SEP}%T{_ASK_SEP}%P{_ASK_SEP}%s"
 #: not contain a space, so one field cannot swallow the other.
 _REF_FORMAT: Final = "%(objectname) %(refname)"
 
-#: `reflog --format`, for `reflog()`. `%gs` is the message git shows after the
-#: colon in `git reflog`'s own output — "commit: add parser", "reset: moving to
-#: HEAD@{3}" — which is what a `reflog_contains` pattern is written against.
-_REFLOG_FORMAT: Final = f"%H{_ASK_SEP}%gs"
-
 #: How many fields `_LOG_FORMAT` produces. A line with fewer is a format change,
 #: and skipping it beats half-building a `CommitInfo` out of the wrong columns.
 _LOG_FIELDS: Final = 4
 
-_REFLOG_FIELDS: Final = 2
 _REF_FIELDS: Final = 2
 
 #: `status --porcelain=v2` line kinds. `1` is an ordinary change, `2` a rename
@@ -116,14 +110,13 @@ class GitRepoQuery:
     """Satisfies `practice.domain.ports.RepoQuery` over one workspace.
 
     One instance per grading pass. The caches below are the reason: they make the
-    22 assertions cheap to run together without any of them having to know that
+    20 assertions cheap to run together without any of them having to know that
     another already asked the same question.
     """
 
     __slots__ = (
         "_blobs",
         "_logs",
-        "_reflogs",
         "_refs",
         "_revs",
         "_status",
@@ -139,7 +132,6 @@ class GitRepoQuery:
         self._refs: Mapping[str, Sha] | None = None
         self._status: WorktreeStatus | None = None
         self._logs: dict[str, tuple[CommitInfo, ...]] = {}
-        self._reflogs: dict[str, tuple[ReflogEntry, ...]] = {}
         self._blobs: dict[tuple[str, str], bytes | None] = {}
         self._worktree_files: dict[str, str | None] = {}
 
@@ -276,20 +268,6 @@ class GitRepoQuery:
             self._logs[rev] = self._parse_log(result.stdout) if result.succeeded else ()
         return self._logs[rev]
 
-    def reflog(self, ref: str) -> Sequence[ReflogEntry]:
-        """Every position `ref` has held, newest first and index 0 first.
-
-        The index is the position in this list rather than anything git prints,
-        which is what makes it the `n` in `HEAD@{n}` — git's own `%gd` renders
-        the whole selector and would have to be parsed back out.
-        """
-        if ref not in self._reflogs:
-            result = self._git(["reflog", "show", f"--format={_REFLOG_FORMAT}", ref])
-            self._reflogs[ref] = (
-                self._parse_reflog(result.stdout) if result.succeeded else ()
-            )
-        return self._reflogs[ref]
-
     def stash_list(self) -> Sequence[str]:
         """One line per stash entry, newest first. Empty when there are none.
 
@@ -382,19 +360,6 @@ class GitRepoQuery:
                 CommitInfo(sha=sha, tree=tree, subject=fields[3], parents=parents)
             )
         return tuple(commits)
-
-    @staticmethod
-    def _parse_reflog(text: str) -> tuple[ReflogEntry, ...]:
-        entries: list[ReflogEntry] = []
-        for index, line in enumerate(text.splitlines()):
-            fields = line.split(_SEP)
-            if len(fields) != _REFLOG_FIELDS:
-                continue
-            sha = _as_sha(fields[0])
-            if sha is None:
-                continue
-            entries.append(ReflogEntry(index=index, sha=sha, message=fields[1]))
-        return tuple(entries)
 
     @staticmethod
     def _parse_status(text: str) -> WorktreeStatus:

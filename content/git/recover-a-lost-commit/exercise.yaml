@@ -128,6 +128,8 @@ scenario:
         reflog is the thing to reach for first, and knowing it exists is the
         difference between a five-minute recovery and a lost afternoon.
 
-    # Deliberately NOT adding a command_count advisory here. A "found it
-    # efficiently" budget counts read-only commands too, so it would punish
-    # exactly the inspection that used-the-reflog rewards. See PLAN 6.5.
+    # There is deliberately no "found it efficiently" budget here: counting
+    # commands counts the read-only ones too, so a budget would punish exactly
+    # the inspection that used-the-reflog rewards. The `command_count`
+    # assertion that would have expressed one was deleted in Phase 11, for
+    # this reason among others -- see domain/checks/process.py.

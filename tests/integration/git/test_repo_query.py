@@ -1,6 +1,6 @@
 """`GitRepoQuery` against real git, in real repositories.
 
-The unit tests for the 22 assertions run against `FakeRepoQuery` and never touch
+The unit tests for the 20 assertions run against `FakeRepoQuery` and never touch
 a disk. These are the other end: proof that the adapter's parsing agrees with
 what git actually prints — porcelain v2's four line kinds, a NUL-separated log
 format, `symbolic-ref`'s exit code — on both platforms CI runs.
@@ -343,27 +343,6 @@ def test_it_reports_a_renames_new_path_and_not_its_old_one(
 
 
 # --- recovery surfaces ------------------------------------------------------
-
-
-def test_it_reads_the_reflog_with_index_zero_newest(
-    recovery: SubprocessWorkspace,
-) -> None:
-    """The index is the `n` in `HEAD@{n}`, and `recover-a-lost-commit` depends on
-    it being right past position 1 — the reset is deliberately not the top entry.
-    """
-    repo = query(recovery)
-    entries = repo.reflog("HEAD")
-
-    assert len(entries) > 3
-    assert [entry.index for entry in entries] == list(range(len(entries)))
-    assert entries[3].sha == repo.rev_parse("HEAD@{3}")
-    assert any("reset" in entry.message for entry in entries)
-
-
-def test_the_reflog_of_a_ref_that_has_none_is_empty(
-    flagship: SubprocessWorkspace,
-) -> None:
-    assert query(flagship).reflog("refs/heads/gone") == ()
 
 
 def test_it_recovers_a_commit_no_ref_points_at(

@@ -1,4 +1,4 @@
-"""Trees and content. Four of the 22 assertions.
+"""Trees and content. Five of the 20 assertions.
 
 The family that answers "is the right thing in the file", and the one PLAN.md §6.6
 warns hardest about: **content assertions alone cannot grade a git exercise.**

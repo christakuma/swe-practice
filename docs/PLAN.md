@@ -11,7 +11,7 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > scenario is graded end to end — `practice solve git/revert-a-pushed-commit
 > --reference` passes, and the same exercise replayed with `reset --hard` fails
 > `history-preserved` while passing `content-restored`, because the trees are
-> identical and the ancestry is not. Underneath: 22 pure assertions over a
+> identical and the ancestry is not. Underneath: 20 pure assertions over a
 > read-only port implemented twice and proved to agree, a content suite that
 > grades every reference solution and holds every counter-example to the checks
 > it declares, an attempt that lives in SQLite across four processes sharing one
@@ -1060,12 +1060,12 @@ Layered deliberately, fast at the bottom.
 
 1. **Domain / application unit tests** — pure, no I/O, whole suite in
    milliseconds. Coverage gate: **90% on `domain/` and `application/`.** Because
-   the check functions live in `domain/checks/` (§6.2), the 22 assertions fall
+   the check functions live in `domain/checks/` (§6.2), the 20 assertions fall
    inside this gate rather than outside it — which was the whole point of
    putting them there.
 2. **Architecture test** — AST-walks `domain/` and `application/`, fails on any
    import from `adapters/` or `interface/`. See §3.
-3. **Check-engine tests** — all 22 assert types against `FakeRepoQuery`. No git
+3. **Check-engine tests** — all 20 assert types against `FakeRepoQuery`. No git
    required.
 4. **Adapter integration tests** — real git in real temp dirs, real SQLite.
    Marked `@pytest.mark.integration`. Includes a conformance suite asserting
