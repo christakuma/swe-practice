@@ -1,0 +1,42 @@
+schema_version: 1
+id: katas/valid-parentheses
+kind: kata
+title: Balanced Brackets
+difficulty: easy
+tags: [strings, stack]
+estimated_minutes: 12
+
+prompt: |
+  Given a string containing only the characters `(`, `)`, `[`, `]`, `{` and
+  `}`, decide whether the brackets are balanced and correctly nested.
+
+  ```
+  is_balanced("()")        ->  True
+  is_balanced("{[()]}")    ->  True
+  is_balanced("([)]")      ->  False
+  is_balanced("((")        ->  False
+  ```
+
+  An empty string is balanced. The string may be long and deeply nested.
+
+hints:
+  - "Count the brackets of each kind first and see how far it gets you. Then try
+     `([)]`, which has one of each and is not valid."
+  - "So it is not about how many — it is about *order*. When you meet a closer,
+     only one opener can legitimately match it: the most recent one still
+     waiting."
+  - "\"Most recent thing still waiting\" is a stack. Push every opener; on a
+     closer, pop and check the two are a pair."
+  - "Two ways to fail, and both have to be checked: a closer that does not match
+     the top of the stack (or arrives with the stack empty), and a stack that is
+     not empty when the string ends."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"

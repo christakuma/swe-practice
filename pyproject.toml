@@ -125,7 +125,13 @@ ignore = [
 # pytest suite and `stub.py` is deliberately unimplemented. They are linted
 # rather than excluded, because a content author reads them as the example of
 # what a kata looks like.
-"content/**/tests.py" = ["S101"]
+#
+# `PLR2004` for the same reason `tests/**` gets it: the expected value of a
+# kata's assertion is the clearest thing in the test, and naming it
+# `EXPECTED_DEPTH = 3` to satisfy a linter makes the suite harder to read in
+# exactly the place a solver looks when a check fails. Phase 11 added it, once
+# the library had thirty katas rather than one whose answers were all tuples.
+"content/**/tests.py" = ["S101", "PLR2004"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]

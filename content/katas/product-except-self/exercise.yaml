@@ -1,0 +1,45 @@
+schema_version: 1
+id: katas/product-except-self
+kind: kata
+title: Product of Every Other Element
+difficulty: medium
+tags: [arrays, prefix-sums]
+estimated_minutes: 20
+
+prompt: |
+  Given a list of integers, return a list where position `i` holds the product
+  of every element except the one at `i`.
+
+  ```
+  product_except_self([1, 2, 3, 4])   ->  [24, 12, 8, 6]
+  product_except_self([1, 2, 0, 4])   ->  [0, 0, 8, 0]
+  ```
+
+  **Do not use division.** The list may contain zeros and negative numbers, and
+  it may be long enough that recomputing the product at each position is too
+  slow.
+
+  The returned list does not count towards your space budget.
+
+hints:
+  - "Try the division approach on paper first — total product divided by each
+     element. Then try it on `[1, 2, 0, 4]` and see what happens. That is what
+     the no-division rule is pointing at."
+  - "The answer at position `i` is (the product of everything to its left) times
+     (the product of everything to its right). Neither of those involves
+     `numbers[i]`."
+  - "A running product from the left gives you every left-product in one pass.
+     A running product from the right gives you every right-product in one more."
+  - "You do not need two extra arrays. Fill the result with the left-products on
+     the way up, then multiply each position by the running right-product on the
+     way down."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1) beyond the output"

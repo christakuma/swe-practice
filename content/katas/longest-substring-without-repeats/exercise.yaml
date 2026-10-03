@@ -1,0 +1,49 @@
+schema_version: 1
+id: katas/longest-substring-without-repeats
+kind: kata
+title: Longest Run Without a Repeated Character
+difficulty: medium
+tags: [strings, hash-map, sliding-window]
+estimated_minutes: 20
+
+prompt: |
+  Given a string, return the length of the longest substring in which every
+  character is distinct.
+
+  ```
+  longest_unique_run("pwwkew")   ->  3     ("wke")
+  longest_unique_run("abcdef")   ->  6     (the whole thing)
+  longest_unique_run("bbbbb")    ->  1
+  longest_unique_run("")         ->  0
+  ```
+
+  A substring is contiguous — `"pwke"` is not a substring of `"pwwkew"`.
+
+  Any character can appear: letters, digits, spaces, punctuation. The string
+  may be long enough that re-scanning it from each starting position is too
+  slow.
+
+hints:
+  - "Write the obvious version first: for every start position, extend until
+     you hit a repeat. It is correct, and it tells you what the fast version
+     has to avoid recomputing."
+  - "The answer is always a *window* — a start and an end. The end moves
+     forward one character at a time no matter what. So the only decision is
+     what the start does when the window becomes invalid."
+  - "Moving the start forward one character at a time until the duplicate is
+     gone is what makes the naive version quadratic. If you knew *where* the
+     duplicate was last seen, you could move the start past it in one step."
+  - "Keep a dict from character to the index you last saw it at. On a repeat,
+     the window cannot start earlier than one past that index — and take the
+     *maximum* of that and the current start, or an old index will drag your
+     window backwards. Try `abba` on a version without the max."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(k), k distinct characters"

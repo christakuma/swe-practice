@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/merge-intervals
+kind: kata
+title: Merge Overlapping Intervals
+difficulty: medium
+tags: [arrays, sorting, intervals, greedy]
+estimated_minutes: 20
+
+prompt: |
+  Given a list of `(start, end)` intervals, merge the ones that overlap and
+  return the fewest intervals that cover the same ground, sorted by start.
+
+  ```
+  merge_intervals([(1, 4), (2, 6)])             ->  [(1, 6)]
+  merge_intervals([(8, 10), (1, 3), (2, 6)])    ->  [(1, 6), (8, 10)]
+  merge_intervals([(1, 2), (5, 7)])             ->  [(1, 2), (5, 7)]
+  ```
+
+  The intervals arrive in no particular order. They are **closed**: `(1, 3)`
+  and `(3, 5)` share the point 3 and should merge into `(1, 5)`.
+
+  `start <= end` always holds, and a zero-length interval like `(2, 2)` is
+  legal.
+
+hints:
+  - "On unsorted input, \"does this interval overlap any of the ones I have
+     already seen?\" is a question about the whole set. Can you make it a
+     question about just one of them?"
+  - "Sort by start. Then the only interval a new one can possibly overlap is the
+     last one you kept — everything before it ends no later, so missing the last
+     means missing them all."
+  - "Merging means extending the last interval's end. Extend it to
+     `max(last_end, new_end)`, not to `new_end`: a short interval wholly inside
+     a long one would otherwise shrink it."
+  - "Decide `<` versus `<=` on purpose. These are closed intervals, so touching
+     counts as overlapping and the comparison is `start <= last_end`."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n) for the output"

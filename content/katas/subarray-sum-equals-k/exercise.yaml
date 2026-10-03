@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/subarray-sum-equals-k
+kind: kata
+title: Count Slices That Sum to K
+difficulty: medium
+tags: [arrays, hash-map, prefix-sums]
+estimated_minutes: 25
+
+prompt: |
+  Count the contiguous, non-empty slices of a list that add up to a target.
+
+  ```
+  count_subarrays([1, 1, 1], 2)     ->  2     ([1,1] twice, overlapping)
+  count_subarrays([1, -1, 0], 0)    ->  3
+  count_subarrays([0, 0, 0], 0)     ->  6
+  count_subarrays([1, 2, 3], 7)     ->  0
+  ```
+
+  Slices at different positions count separately, and they may overlap.
+
+  Values may be **negative or zero**, which rules out more approaches than it
+  looks like. The list may be long enough that trying every slice is too slow.
+
+hints:
+  - "Try every slice first — two nested loops with a running sum. It is O(n²)
+     and it is the version whose waste you can then see."
+  - "A sliding window does not work here. Widening a window usually increases
+     its sum, which is what lets you shrink from the left; with negatives,
+     widening can make the sum smaller, so there is nothing monotone to
+     exploit."
+  - "Write `sum(numbers[start:end])` as a difference of two prefix sums. Then a
+     slice sums to the target exactly when two prefix sums differ by the
+     target — and you are looking for one specific earlier value."
+  - "One pass, a running sum, and a dict counting how many times each prefix sum
+     has occurred. At each step add `seen[running - target]`. Seed the dict with
+     `{0: 1}`, for the empty prefix, or you miss every slice starting at index
+     0."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"

@@ -1,0 +1,42 @@
+schema_version: 1
+id: katas/top-k-frequent
+kind: kata
+title: Top K Most Frequent Words
+difficulty: medium
+tags: [hash-map, sorting, counting, heap]
+estimated_minutes: 18
+
+prompt: |
+  Return the `k` most frequent words in a list, most frequent first. Words that
+  appear the same number of times are ordered **alphabetically**.
+
+  ```
+  top_k_frequent(["b", "a", "a", "b", "a"], 2)      ->  ["a", "b"]
+  top_k_frequent(["pear", "apple", "fig"], 3)       ->  ["apple", "fig", "pear"]
+  top_k_frequent(["cat", "cat", "zebra", "ant"], 3) ->  ["cat", "ant", "zebra"]
+  ```
+
+  `k` is never larger than the number of distinct words. The list may be long.
+
+hints:
+  - "Two steps: count, then order. The counting is a dict from word to how many
+     times you saw it, in one pass."
+  - "The ordering is where the problem is. Counts go *down* and tied words go
+     *up*, so a single `reverse=True` cannot express it — it would reverse the
+     alphabetical half too."
+  - "Python sorts tuples element by element, ascending. So a key of
+     `(-count, word)` gives descending counts and ascending words from one
+     ordinary sort."
+  - "`collections.Counter` does the counting, but `most_common` breaks ties by
+     first-seen order, not alphabetically. Sort the keys yourself with the
+     explicit key."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n + d log d) for d distinct words"
+    expected_space: "O(d)"

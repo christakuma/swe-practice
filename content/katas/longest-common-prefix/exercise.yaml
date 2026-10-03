@@ -1,0 +1,41 @@
+schema_version: 1
+id: katas/longest-common-prefix
+kind: kata
+title: Longest Common Prefix
+difficulty: easy
+tags: [strings, scanning]
+estimated_minutes: 10
+
+prompt: |
+  Return the longest string that every word in the list starts with.
+
+  ```
+  longest_common_prefix(["flower", "flow", "flight"])     ->  "fl"
+  longest_common_prefix(["dog", "racecar", "car"])        ->  ""
+  longest_common_prefix(["interview", "inter"])           ->  "inter"
+  longest_common_prefix([])                               ->  ""
+  ```
+
+  Comparison is case sensitive. An empty list, and an empty string among the
+  words, both have the empty string as their answer.
+
+hints:
+  - "Whatever the answer is, it is a prefix of the first word — so it can never
+     be longer than the first word, and it only ever gets shorter as you look at
+     more words."
+  - "Start with the first word as your candidate and cut it back until it is a
+     prefix of the next word. Repeat for each word."
+  - "`str.startswith` does the comparison for you, and the loop ends early the
+     moment the candidate becomes empty — nothing can make it grow again."
+  - "Watch the word shorter than the others. A loop driven by the length of the
+     first word will read past the end of a shorter one unless you check."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n m) for n words with a shared prefix of length m"
+    expected_space: "O(m)"

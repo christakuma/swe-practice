@@ -1,0 +1,45 @@
+schema_version: 1
+id: katas/group-anagrams
+kind: kata
+title: Group Anagrams
+difficulty: medium
+tags: [strings, hash-map, grouping]
+estimated_minutes: 15
+
+prompt: |
+  Group a list of words so that words which are anagrams of one another end up
+  in the same group.
+
+  ```
+  group_anagrams(["eat", "tea", "tan", "ate", "nat", "bat"])
+    ->  [["eat", "tea", "ate"], ["tan", "nat"], ["bat"]]
+  ```
+
+  Order matters, in both directions: within a group, the words appear in the
+  order they appeared in the input; the groups appear in the order their first
+  word appeared.
+
+  Duplicates are words too — `["ab", "ab"]` is one group of two.
+
+hints:
+  - "Comparing every pair of words is the version to write first. It tells you
+     what the question really is: what makes two words anagrams, and can you
+     decide it without looking at the other word?"
+  - "You want a *key*: something you can compute from one word alone, that is
+     equal for two words exactly when they are anagrams."
+  - "Sorting a word's letters gives such a key. `eat` and `tea` both become
+     `aet`. Careful with keys built from `set(word)` — that loses letter counts,
+     so `aab` and `abb` collide."
+  - "A dict from key to list of words, built in one pass. Python dicts keep
+     insertion order, so `list(groups.values())` already has the ordering the
+     task asks for."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n k log k) for n words of length k"
+    expected_space: "O(n k)"

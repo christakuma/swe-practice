@@ -1,0 +1,43 @@
+schema_version: 1
+id: katas/move-zeroes
+kind: kata
+title: Move Zeroes to the End
+difficulty: easy
+tags: [arrays, two-pointers, in-place]
+estimated_minutes: 12
+
+prompt: |
+  Move every zero in a list to the end, keeping the non-zero elements in their
+  original relative order.
+
+  ```
+  [0, 1, 0, 3, 12]  ->  [1, 3, 12, 0, 0]
+  [1, 0, 3, 0, 4]   ->  [1, 3, 4, 0, 0]
+  ```
+
+  Do it **in place**: the function returns `None`, and the caller reads the
+  result from the list it passed in.
+
+  The list may be long enough that shifting elements one at a time is too slow.
+
+hints:
+  - "Building a new list of the non-zeros and padding it with zeros is correct
+     and uses O(n) extra space. Since the function returns nothing, it also has
+     no way to give the caller the answer."
+  - "Two indices over the one list: one reading, one marking where the next
+     non-zero element belongs."
+  - "Walk forward. Every time you read a non-zero, write it at the write
+     position and advance that position. Everything before it is then the
+     non-zero prefix, in order."
+  - "After that pass, the write position is where the zeros start. Fill from
+     there to the end — the old values are still sitting in those slots."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
