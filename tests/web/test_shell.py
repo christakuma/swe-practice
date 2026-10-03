@@ -91,14 +91,17 @@ def test_the_dashboard_says_so_when_nothing_is_open(client: TestClient) -> None:
     assert "Nothing open" in body
 
 
-def test_the_dashboard_does_not_pretend_to_have_phase_9(client: TestClient) -> None:
-    """PLAN.md §8.4 wants due-today and a streak here, and both need the scheduler.
+def test_the_dashboard_no_longer_promises_a_later_phase(client: TestClient) -> None:
+    """The tripwire that was here until Phase 9, inverted.
 
-    Pinned as a test rather than left as a comment for the reason the Phase 2
-    tripwire exists: when Phase 9 lands and this section is replaced, the build
-    fails and someone has to come back and delete the promise rather than leaving
-    it next to a working one.
+    Until the scheduler existed this page carried a section saying due-today and
+    a streak were *"phase 9"*, and a test asserted that sentence was present —
+    so that when the phase landed the build would fail and somebody would have to
+    come back and delete the promise rather than leave it beside a working queue.
+    It did fail, which is the whole value of the device; what is left is the other
+    half, so the promise cannot come back.
     """
     body = client.get("/").text
 
-    assert "phase 9" in body
+    assert "phase 9" not in body.lower()
+    assert "Due today" in body

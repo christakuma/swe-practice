@@ -19,11 +19,16 @@ result. It is also the only mutating route in this phase that is not an HTMX
 fragment, because what follows it is a different page rather than a piece of this
 one.
 
-PLAN.md §8.4 also lists *status* as a filter dimension. It is not here: a
-meaningful one is "passed / failed / never attempted", which is the progress model
-Phase 9 builds. What this page can say now without inventing anything is which
-exercises have an attempt still open, and it says it as a **Resume** link rather
-than a filter.
+PLAN.md §8.4 also lists *status* as a filter dimension, and it is still not here
+after Phase 9 built the progress model it was waiting for. The reason changed
+rather than went away: status is a property of *attempts and cards*, so an
+`ExerciseFilter` carrying it would be a domain value object the content
+repository cannot answer — the filtering would have to happen in this route,
+after the query, which is the one thing this module's first paragraph says it
+does not do. The two questions the dimension was for are both answered better
+elsewhere: *what should I do now* is the dashboard's due queue, and *where am I
+losing it* is `/progress`. What this page says without inventing anything is
+which exercises have an attempt still open, as a **Resume** link.
 """
 
 from __future__ import annotations

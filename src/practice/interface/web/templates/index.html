@@ -3,10 +3,104 @@
 {% block main %}
 <h1>Practice</h1>
 
-<p class="lede">
-  {{ exercise_count }} exercise{{ '' if exercise_count == 1 else 's' }} in the
-  library. <a href="/browse">Browse them</a>.
-</p>
+<section>
+  <h2>Due today</h2>
+  {#
+    The question PLAN.md §11 makes Phase 9's exit — *"what should I practice
+    today?" is answered by the tool, not by you* — so it is the first thing on
+    the page and it is a list of things you can start, not a number.
+
+    An exercise that has never been scheduled is offered beside one whose card
+    has come due, with no visual hierarchy between them beyond the order: both
+    are things to do now, and marking the new ones as lesser would hide the whole
+    library behind two cards on a fresh install.
+  #}
+  {% if queue %}
+    <ul class="library queue">
+      {% for row in queue %}
+        {% set open = open_by_exercise.get(row.exercise.id) %}
+        <li>
+          <span class="title">{{ row.exercise.title }}</span>
+          {% if open %}
+            <a href="/attempt/{{ open.attempt.id }}">Resume</a>
+          {% else %}
+            <form method="post" action="/attempt">
+              <input type="hidden" name="exercise_id" value="{{ row.exercise.id }}">
+              <button type="submit">Start</button>
+            </form>
+          {% endif %}
+          <span class="tags">
+            {% if row.is_new %}
+              <span class="chip new">new</span>
+            {% elif row.days_overdue %}
+              <span class="chip overdue">{{ row.days_overdue }} day{{ '' if row.days_overdue == 1 else 's' }} overdue</span>
+            {% else %}
+              <span class="chip due">due today</span>
+            {% endif %}
+            <span class="chip">{{ row.exercise.difficulty.value }}</span>
+            <span class="chip">~{{ row.exercise.estimated_minutes }} min</span>
+            {% for one in row.exercise.tags %}<span class="tag">{{ one }}</span>{% endfor %}
+          </span>
+          <span class="meta">{{ row.exercise.id }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+    {% if queue_total > queue | length %}
+      <p class="meta">
+        {{ queue_total }} waiting in all. <a href="/browse">Browse the library</a>
+        to pick something else.
+      </p>
+    {% endif %}
+  {% else %}
+    <p class="empty">
+      Nothing due. Every exercise in the library is scheduled for later —
+      <a href="/browse">browse them</a> if you want to practise anyway, which
+      costs nothing but will move the schedule.
+    </p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>How it is going</h2>
+  {#
+    The streak is said in words rather than drawn, because one number drawn is a
+    chart with one bar. The window chart lives on `/progress`, where there is
+    room for it to be read rather than glanced at.
+  #}
+  <p class="lede">
+    {% if progress.streak_days %}
+      <strong>{{ progress.streak_days }} day{{ '' if progress.streak_days == 1 else 's' }}</strong> running.
+    {% else %}
+      No streak yet — one attempt today starts one.
+    {% endif %}
+    {% if progress.total %}
+      {{ progress.passed }} of {{ progress.total }} attempt{{ '' if progress.total == 1 else 's' }} passed,
+      {{ progress.scheduled }} exercise{{ '' if progress.scheduled == 1 else 's' }} scheduled.
+      <a href="/progress">See the detail</a>.
+    {% else %}
+      Nothing graded yet, so there is nothing to report.
+    {% endif %}
+  </p>
+
+  {% if progress.weakest %}
+    <h3>Weakest tags</h3>
+    {#
+      Only tags something has gone wrong with — a panel listing your best tag as
+      your worst is a panel you learn to ignore. So this section disappears
+      entirely rather than filling with the least-good of a clean record.
+    #}
+    <ul class="mastery">
+      {% for row in progress.weakest %}
+        <li>
+          <span class="tag">{{ row.tag }}</span>
+          <span class="meta">
+            {{ row.passed }}/{{ row.attempted }} passed{% if row.lapses %} · {{ row.lapses }} lapse{{ '' if row.lapses == 1 else 's' }}{% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>
 
 <section>
   <h2>Open attempts</h2>
@@ -50,11 +144,8 @@
   {% endif %}
 </section>
 
-<section>
-  <h2>Not here yet</h2>
-  <p class="empty">
-    Due today, streak and weakest tags need the spaced-repetition model, which is
-    phase 9. This page says what it knows rather than holding space for it.
-  </p>
-</section>
+<p class="meta">
+  {{ exercise_count }} exercise{{ '' if exercise_count == 1 else 's' }} in the
+  library. <a href="/browse">Browse them</a>.
+</p>
 {% endblock %}

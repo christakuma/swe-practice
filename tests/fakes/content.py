@@ -123,6 +123,16 @@ class FakeContentRepository:
     def get(self, exercise_id: ExerciseId) -> Exercise | None:
         return self._exercises.get(exercise_id)
 
+    def add(self, *exercises: Exercise) -> None:
+        """Put more exercises in the library.
+
+        For the tests that need a library bigger than the two shipped fakes --
+        a dashboard that cuts its queue cannot be tested against a queue that is
+        shorter than the cut.
+        """
+        for exercise in exercises:
+            self._exercises[exercise.id] = exercise
+
     def forget(self, exercise_id: ExerciseId) -> None:
         """Remove an exercise, for the test about a library that changed under a
         live attempt — the one case `SubmitSolution` cannot recover from.

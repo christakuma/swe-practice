@@ -842,3 +842,44 @@ button[disabled] {
 .grades button[disabled] {
   opacity: 0.5;
 }
+
+/* --- the dashboard's due queue ------------------------------------------ */
+
+/*
+ * The queue reuses `.library`, because a queue row and a browse row are the same
+ * thing listed for a different reason, and two stylesheets for one layout is how
+ * they come to look like two kinds of object.
+ *
+ * What it adds is one chip saying *why* this row is here. Colour carries it only
+ * as reinforcement -- the chip says "new", "due today" or "3 days overdue" in
+ * words, because a status told only in a hue is one a printout loses.
+ */
+.chip.new {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.chip.due {
+  border-color: var(--pass);
+  color: var(--pass);
+}
+
+.chip.overdue {
+  border-color: var(--note);
+  color: var(--note);
+}
+
+/* Mastery rows: a tag and its record, listed rather than charted. The chart is
+   on /progress, where there is room to read it. */
+.mastery {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+}
+
+.mastery li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+}

@@ -1,20 +1,31 @@
-"""`/` — what the library holds, and what is still open.
+"""`/` — what to practise now, how it is going, and what is still open.
 
-PLAN.md §8.4 wants due-today, a streak and the weakest tags on this page, and all
-three are Phase 9's progress model. What it can honestly show now is the two
-things that exist: how large the library is, and which attempts have been neither
-submitted nor abandoned.
+PLAN.md §8.4 asks this page for due-today, a streak and the weakest tags, and as
+of Phase 9 all three exist. The order they are rendered in is the order of the
+questions somebody opening the tool actually has: *what should I do*, then *am I
+keeping this up*, then *where am I losing it*.
 
-That second half is not filler. It is the web form of the resume-or-abandon rule
-of §8.1, and it is a better form than the CLI's: `practice attempts` prints a uuid
-nobody can type, and the reason §11 gave for deferring prefix matching was that
-*"the web app, where the id is in a link nobody types, is Phase 7."* This is that
-link.
+**The queue is the whole answer and the page shows the top of it.** `ReviewQueue`
+returns every exercise that is due or has never been scheduled, which on a fresh
+install is the entire library; a dashboard that printed all of it would bury the
+rest of the page under a list that is also one click away on `/browse`. So the
+page takes the first few and says how many there are — the cut is here rather
+than in the use case, because *how much fits on a panel* is a question about this
+page and nothing else.
+
+**Two reads, not one.** The queue and the progress summary both touch the card
+store, and merging them was tempting until the shapes disagreed: a queue row is
+an exercise with a card, and a summary row is a tag with a rate. One use case
+answering both would be two use cases sharing a name.
+
+The resume-or-abandon half stays, and stays *below* the queue. It is the web form
+of §8.1's rule and it is also, usually, empty — a section whose normal state is
+"nothing here" does not belong at the top of a page somebody opens every day.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from fastapi import APIRouter
 from starlette.requests import Request  # noqa: TC002  (FastAPI reads this at runtime)
@@ -25,7 +36,12 @@ if TYPE_CHECKING:
 
     from practice.composition import Services
 
-__all__ = ["build_router"]
+__all__ = ["QUEUE_LIMIT", "build_router"]
+
+#: How many queue rows the dashboard shows. Six is about a screen's worth beside
+#: the progress panel, and the page prints the total either way so the cut never
+#: hides the size of what is waiting.
+QUEUE_LIMIT: Final = 6
 
 
 def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
@@ -42,14 +58,27 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         (`subprocess`, `sqlite3`), and wrapping blocking work in a coroutine is
         the one way to make a single-user local app unresponsive.
         """
-        exercises = services.content.list_exercises()
+        queue = services.review_queue()
+        open_attempts = services.list_open_attempts()
         return templates.TemplateResponse(
             request=request,
             name="index.html",
             context={
                 "title": "Practice",
-                "exercise_count": len(exercises),
-                "open_attempts": services.list_open_attempts(),
+                "exercise_count": len(services.content.list_exercises()),
+                "open_attempts": open_attempts,
+                "queue": queue[:QUEUE_LIMIT],
+                "queue_total": len(queue),
+                "progress": services.summarise_progress(),
+                # The same join `/browse` makes, for the same reason: starting a
+                # second attempt at an exercise that already has one open would
+                # provision a second workspace and split the budget across two
+                # attempts that look like one piece of work.
+                "open_by_exercise": {
+                    open_attempt.attempt.exercise_id: open_attempt
+                    for open_attempt in open_attempts
+                    if open_attempt.can_resume
+                },
             },
         )
 
