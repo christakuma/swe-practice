@@ -107,6 +107,16 @@ def write_exercise(library: Path) -> WriteExercise:
     Defaulting them is what keeps the failure tests honest: a test about a
     missing `notes.md` has to be the *only* thing wrong with that exercise, or
     it proves nothing about which problem was detected.
+
+    **It appends to `curriculum.yaml` too**, because adding an exercise without
+    placing it in the curriculum is a validation failure by design (Phase 11),
+    and a harness that did not would make every test here fail for that one
+    reason. The manifest is written in *insertion* order, which is what lets
+    `test_listing_follows_the_curriculum` write two exercises in reverse id
+    order and prove that the manifest rather than the sort decides the listing.
+
+    `curriculum=False` opts out, for the one test whose exercise is deliberately
+    in the wrong place on disk and therefore cannot be placed in a track.
     """
 
     def write(
@@ -116,6 +126,7 @@ def write_exercise(library: Path) -> WriteExercise:
         notes: str | None = "Why revert and not reset.",
         files: Mapping[str, str] | None = None,
         raw: str | None = None,
+        curriculum: bool = True,
     ) -> Path:
         path = library / (directory if directory is not None else str(document["id"]))
         path.mkdir(parents=True, exist_ok=True)
@@ -137,6 +148,33 @@ def write_exercise(library: Path) -> WriteExercise:
         for name, content in {**defaults, **(files or {})}.items():
             if content:
                 (path / name).write_text(content, encoding="utf-8")
+        if curriculum:
+            _place_in_curriculum(library, str(document["id"]))
         return path
 
     return write
+
+
+def _place_in_curriculum(library: Path, exercise_id: str) -> None:
+    """Append an exercise to the temp library's one-track manifest."""
+    manifest = library / "curriculum.yaml"
+    listed = []
+    if manifest.is_file():
+        document = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+        listed = list(document["tracks"][0]["exercises"])
+    listed.append(exercise_id)
+    manifest.write_text(
+        yaml.safe_dump(
+            {
+                "tracks": [
+                    {
+                        "name": "everything",
+                        "title": "Everything in this test library",
+                        "exercises": listed,
+                    }
+                ]
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )

@@ -24,8 +24,10 @@ if TYPE_CHECKING:
 def stocked(library: Path, write_exercise: WriteExercise) -> Path:
     """Two exercises, one of each kind, written in reverse id order.
 
-    Reverse on purpose: a repository that happens to return them in filesystem
-    order would pass an ordering assertion written against insertion order.
+    Reverse on purpose, and now for a better reason than when it was written:
+    the harness places each exercise in `curriculum.yaml` as it writes it, so
+    curriculum order and id order disagree — and an assertion on the listing
+    says which one the repository obeys.
     """
     write_exercise(a_kata())
     write_exercise(a_scenario())
@@ -41,15 +43,19 @@ def test_it_satisfies_the_content_repository_port(stocked: Path) -> None:
     assert len(repository.list_exercises()) == 2
 
 
-def test_listing_is_ordered_by_id(stocked: Path) -> None:
-    """Deterministic without the caller inventing a sort key, which is why
-    `ExerciseId` is `order=True`.
+def test_listing_follows_the_curriculum(stocked: Path) -> None:
+    """The manifest decides the order, not the id (Phase 11).
+
+    `stocked` writes the kata first and the scenario second, so curriculum order
+    and id order are opposites here — which is the point. Before the manifest
+    this test asserted the id sort and passed for the wrong reason, because
+    alphabetical happened to be the only order anything produced.
     """
     repository = FilesystemContentRepository(stocked)
 
     assert [str(exercise.id) for exercise in repository.list_exercises()] == [
-        "git/undo-a-commit",
         "katas/two-sum",
+        "git/undo-a-commit",
     ]
 
 

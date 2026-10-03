@@ -19,10 +19,18 @@ queue's first half, so re-deriving it here would be a second opinion about what
 scheduled, which is the only way to recognise the ones that have not.
 
 **Order inside the new half is the library's**, which is the content
-repository's: `ExerciseId` sorts `git/...` before `katas/...` and intro before
-the rest only by accident. Something better — by difficulty, or by the
-prerequisite graph §15 parks — is the curriculum question, and inventing half an
-answer to it here would make the real one harder to add.
+repository's — and as of Phase 11 that is a real order rather than an accident.
+It used to be `sorted(ExerciseId)`, which put `git/...` before `katas/...` and
+intro before the rest only by coincidence; it is now `content/curriculum.yaml`,
+a hand-ordered manifest the content repository reads (ADR 0014). Nothing changed
+here to get that, which is the point of having declined to invent half an answer
+locally: the queue asks the library for the library's order, and the library's
+order got better underneath it.
+
+What is still parked is the prerequisite-graph half of §15 question 4 — unlocking
+an exercise only once its predecessors are passed. That needs the attempt history
+as an input to the queue, not just the card store, and a hand-ordered list is a
+fine answer until someone wants to be stopped rather than merely advised.
 """
 
 from __future__ import annotations

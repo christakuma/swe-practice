@@ -1,0 +1,108 @@
+# The order the library is offered in.
+#
+# Hand-ordered, which is the answer PLAN.md section 15 question 4 said to start
+# with and section 16 records revisiting at fifty-four exercises: still hand
+# ordered, now written down (docs/adr/0014-a-hand-ordered-curriculum-manifest.md).
+#
+# Tracks here are pedagogical and finer than the two directories on disk. An
+# exercise id is exactly <track>/<slug> and the loader enforces two path
+# segments, so `git/` and `katas/` are all the filesystem can express; the nine
+# runs below are a second grouping over the same files, and nothing is moved to
+# express them.
+#
+# Within a track the order is difficulty and dependency: an exercise should only
+# need ideas the ones above it have already introduced. Across tracks it is
+# interleaved on purpose -- git and katas alternate, because the point of the
+# tool is to practise both and a solver working down the list should not spend a
+# fortnight on one before meeting the other.
+#
+# `practice validate` requires this file to name every exercise exactly once and
+# nothing that is not on disk, so an exercise added without a line here fails
+# rather than quietly appearing at the end.
+
+tracks:
+  - name: git-foundations
+    title: "Git: the operations you undo things with"
+    exercises:
+      - git/publish-a-branch-for-review
+      - git/amend-the-last-commit
+      - git/move-commits-off-main
+      - git/squash-fixups-before-pushing
+      - git/drop-a-secret-from-a-commit
+      - git/split-a-commit-into-two
+
+  - name: arrays-strings-hashing
+    title: "Katas: arrays, strings and hashing"
+    exercises:
+      - katas/two-sum
+      - katas/valid-parentheses
+      - katas/move-zeroes
+      - katas/longest-common-prefix
+      - katas/group-anagrams
+      - katas/longest-substring-without-repeats
+      - katas/merge-intervals
+      - katas/top-k-frequent
+      - katas/product-except-self
+      - katas/subarray-sum-equals-k
+
+  - name: git-recovery
+    title: "Git: getting work back"
+    exercises:
+      - git/restore-a-file-deleted-long-ago
+      - git/rescue-a-forgotten-stash
+      - git/recover-a-lost-commit
+      - git/restore-a-deleted-branch
+      - git/rescue-commits-from-a-detached-head
+      - git/undo-a-merge-you-have-not-pushed
+      - git/undo-a-rebase-with-orig-head
+
+  - name: trees-and-graphs
+    title: "Katas: trees and graphs"
+    exercises:
+      - katas/max-depth-of-a-binary-tree
+      - katas/level-order-traversal
+      - katas/validate-a-binary-search-tree
+      - katas/lowest-common-ancestor
+      - katas/detect-a-cycle-in-a-linked-list
+      - katas/flood-fill
+      - katas/count-islands
+      - katas/shortest-path-in-a-grid
+      - katas/detect-a-dependency-cycle
+      - katas/topological-order
+
+  - name: git-collaboration
+    title: "Git: working with other people"
+    exercises:
+      - git/pull-without-a-merge-bubble
+      - git/revert-a-pushed-commit
+      - git/revert-a-pushed-merge
+      - git/rebase-a-feature-branch
+      - git/cherry-pick-a-fix-to-a-release-branch
+
+  - name: dynamic-programming
+    title: "Katas: dynamic programming and greedy"
+    exercises:
+      - katas/climbing-stairs
+      - katas/maximum-subarray
+      - katas/jump-game
+      - katas/house-robber
+      - katas/coin-change
+      - katas/meeting-rooms
+      - katas/word-break
+      - katas/longest-increasing-subsequence
+      - katas/knapsack
+      - katas/edit-distance
+
+  - name: git-conflicts
+    title: "Git: conflicts and rewrites other people can see"
+    exercises:
+      - git/resolve-a-merge-conflict
+      - git/resolve-a-conflict-during-a-rebase
+      - git/force-push-your-own-branch-safely
+      - git/recover-after-a-colleague-force-pushed
+
+  - name: git-search
+    title: "Git: finding out what happened"
+    exercises:
+      - git/find-the-commit-that-removed-a-line
+      - git/find-the-first-bad-commit-with-bisect

@@ -37,6 +37,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
+from practice.adapters.content.curriculum import (
+    CURRICULUM_FILENAME,
+    load_curriculum,
+)
 from practice.adapters.content.errors import ContentError
 from practice.adapters.content.loader import (
     EXERCISE_FILENAME,
@@ -49,7 +53,7 @@ from practice.domain.errors import InvalidValueError
 from practice.domain.exercise import GitScenarioSpec
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
     from pathlib import Path
 
     from practice.domain.exercise import Exercise
@@ -176,11 +180,54 @@ def validate_library(root: Path) -> LibraryReport:
     if not directories and not problems:
         problems.append("holds no exercises")
 
+    problems.extend(_audit_curriculum(root, directories))
+
     return LibraryReport(
         root=root,
         exercises=tuple(validate_exercise(directory) for directory in directories),
         problems=tuple(problems),
     )
+
+
+def _audit_curriculum(root: Path, directories: Sequence[Path]) -> Iterator[str]:
+    """The manifest must name every exercise exactly once and nothing else.
+
+    A library-level rule rather than a per-exercise one, because no single
+    exercise can fail it: "listed twice" and "not listed" are both statements
+    about the whole file.
+
+    **This is what stops the manifest rotting.** An ordering that silently omits
+    the exercise someone added last week is worse than no ordering, because it
+    looks deliberate — the new exercise appears at the end of the library and
+    nothing anywhere says it was never placed. Phase 11 added fifty-one
+    exercises; an unchecked manifest would have been wrong within a week.
+    """
+    if not directories:
+        return
+    try:
+        curriculum = load_curriculum(root)
+    except ContentError as exc:
+        yield from (f"{CURRICULUM_FILENAME}: {problem}" for problem in exc.problems)
+        return
+
+    listed = curriculum.exercise_ids
+    on_disk = {directory.relative_to(root).as_posix() for directory in directories}
+    named = [str(exercise_id) for exercise_id in listed]
+
+    repeated = sorted({name for name in named if named.count(name) > 1})
+    if repeated:
+        yield f"{CURRICULUM_FILENAME}: lists twice: {', '.join(repeated)}"
+
+    missing = sorted(on_disk - set(named))
+    if missing:
+        yield f"{CURRICULUM_FILENAME}: does not list: {', '.join(missing)}"
+
+    unknown = sorted(set(named) - on_disk)
+    if unknown:
+        yield (
+            f"{CURRICULUM_FILENAME}: lists exercise(s) that are not on disk: "
+            f"{', '.join(unknown)}"
+        )
 
 
 def validate_exercise(directory: Path) -> ExerciseReport:

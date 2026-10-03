@@ -40,6 +40,7 @@ from practice.adapters.content import (
     validate_exercise,
     validate_library,
 )
+from practice.adapters.content.curriculum import load_curriculum
 from practice.adapters.content.validation import discover, unproven_by_design
 from practice.config import content_root
 from practice.domain.checks import registry
@@ -341,11 +342,32 @@ def test_the_repository_loads_the_whole_library() -> None:
     """`FilesystemContentRepository` and the validation walk must agree about
     what is in the library. They share `discover`, and this is the test that
     notices if one of them ever stops.
+
+    Compared as sets, because the listing is in curriculum order since Phase 11
+    and the walk is in filesystem order. What the two have to agree about is
+    *membership* — `test_the_curriculum_orders_the_whole_library` is what holds
+    the order to the manifest.
     """
     repository = FilesystemContentRepository(CONTENT_ROOT)
 
-    assert [str(exercise.id) for exercise in repository.list_exercises()] == sorted(
+    assert {str(exercise.id) for exercise in repository.list_exercises()} == {
         _identify(directory) for directory in EXERCISE_DIRECTORIES
+    }
+
+
+def test_the_curriculum_orders_the_whole_library() -> None:
+    """The listing is the manifest, in the manifest's order.
+
+    Stated as an equality of *lists* so it fails on a reordering as well as on a
+    missing exercise — `validate_library` already refuses a manifest that omits
+    one, and this is the half that proves the order is actually used rather than
+    merely declared.
+    """
+    repository = FilesystemContentRepository(CONTENT_ROOT)
+    curriculum = load_curriculum(CONTENT_ROOT)
+
+    assert [exercise.id for exercise in repository.list_exercises()] == list(
+        curriculum.exercise_ids
     )
 
 

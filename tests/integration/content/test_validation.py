@@ -264,7 +264,12 @@ def test_an_exercise_nested_too_deep_is_reported_rather_than_skipped(
     would make this file invisible, and "the exercise I added does not appear
     and nothing says why" is a worse half hour than a validation error.
     """
-    write_exercise(a_scenario(), directory="git/advanced/undo-a-commit")
+    # Not placed in the curriculum: it is not at `<track>/<slug>`, so there
+    # is nowhere legitimate to place it, and listing it would add a second
+    # problem to a test about the first.
+    write_exercise(
+        a_scenario(), directory="git/advanced/undo-a-commit", curriculum=False
+    )
     write_exercise(a_scenario())
 
     report = validate_library(library)
