@@ -1,0 +1,13 @@
+# Counter-example: keep our side wholesale.
+#
+# `git checkout --ours` is a real tool and the fast way out of a conflict you
+# understand. Here it throws away the only number in the file that was
+# measured rather than guessed, and leaves a merge commit claiming the branch
+# was incorporated.
+
+git merge feature/tune
+git status --short
+git checkout --ours settings.ini
+git add settings.ini
+git commit --no-edit
+cat settings.ini

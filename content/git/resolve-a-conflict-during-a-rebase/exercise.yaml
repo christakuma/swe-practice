@@ -1,0 +1,165 @@
+schema_version: 1
+id: git/resolve-a-conflict-during-a-rebase
+kind: git_scenario
+title: Finish a rebase that stopped on a conflict
+difficulty: hard
+tags: [rebase, conflicts, history, rewriting]
+estimated_minutes: 15
+
+prompt: |
+  `feature/backoff` is two commits long: exponential backoff with five
+  attempts, then jitter. While it was open, `main` changed the same block of
+  constants — four attempts, and a list of statuses worth retrying.
+
+  Rebase `feature/backoff` onto `main`. It will stop on the first commit.
+
+  The finished branch should have **all four things**: five attempts,
+  `backoff_seconds`, main's `RETRY_ON` list, and the jitter commit. `main`
+  itself must not move.
+
+  Write the resolved file with `write retry.py <line> <line> ...`.
+
+hints:
+  - "`git rebase main` replays your commits one at a time and stops at the
+     first one that does not apply. `git status` then shows a detached HEAD
+     part-way through, with the conflicted file unmerged."
+  - "Resolve it the same way as a merge conflict: write the file you want, then
+     `git add` it. The difference is what comes next — the rebase has more
+     commits to apply."
+  - "`git commit --no-edit` commits the resolution keeping the original commit's
+     message, and then `git rebase --continue` carries on to the second commit.
+     Be careful with `git rebase --skip`: it drops the commit entirely."
+  - "Beware `--ours` and `--theirs` here. A rebase checks out the *upstream* and
+     replays your commits onto it, so `--ours` is `main` and `--theirs` is the
+     commit being applied — the opposite way round from a merge."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  # The rebase stopping on f1. One command, declared.
+  reference_failing_commands: 1
+  counter_examples:
+    - file: naive-skip-the-conflict.cmds
+      expect_failures: [branch-attempts-kept, backoff-kept]
+    - file: naive-take-theirs.cmds
+      expect_failures: [mains-retry-list-kept]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: rebased-onto-main
+      label: main's commit is in the branch's history
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "refs/heads/main", descendant: "refs/heads/feature/backoff"}
+      explanation: |
+        What the rebase was for. Aborting and giving up leaves the branch where
+        it started, which passes every content check below — the branch's own
+        files are untouched by an abort.
+
+    - id: linear-history
+      label: No merge commit in the branch
+      severity: required
+      assert: linear_history
+      with: {ref: "refs/heads/feature/backoff"}
+      explanation: |
+        Aborting the rebase and merging `main` instead resolves the same
+        conflict and reaches the same files. It records the integration as a
+        merge, which is the thing a rebase exists to avoid.
+
+    - id: branch-attempts-kept
+      label: Five attempts, from the branch
+      severity: required
+      assert: file_at_ref_matches
+      with:
+        ref: "refs/heads/feature/backoff"
+        path: retry.py
+        pattern: '(?m)^MAX_ATTEMPTS = 5$'
+      explanation: |
+        Anchored to a whole line with `(?m)`, so it cannot be satisfied by the
+        inside of a leftover conflict block. `git rebase --skip` fails this by
+        dropping the commit that set it — and reports the rebase as successful
+        on the way out.
+
+    - id: backoff-kept
+      label: The backoff function survived
+      severity: required
+      assert: file_at_ref_matches
+      with:
+        ref: "refs/heads/feature/backoff"
+        path: retry.py
+        pattern: 'def backoff_seconds'
+      explanation: |
+        Stated separately from the attempt count because a `--skip` loses both
+        and a careless hand-resolution loses only this one: it is further down
+        the file, outside the block the eye is drawn to.
+
+    - id: mains-retry-list-kept
+      label: main's gateway-error list survived
+      severity: required
+      assert: file_at_ref_matches
+      with: {ref: "refs/heads/feature/backoff", path: retry.py, pattern: 'RETRY_ON'}
+      explanation: |
+        The half that `git checkout --theirs` loses here — and the reason that
+        flag is worth being careful with during a rebase, where it means the
+        commit being replayed rather than the branch you started from.
+
+    - id: second-commit-applied
+      label: The jitter commit made it across too
+      severity: required
+      assert: file_at_ref_matches
+      with: {ref: "refs/heads/feature/backoff", path: jitter.py, pattern: 'def jitter'}
+      explanation: |
+        A rebase replays every commit, and stopping at the first conflict is
+        easy to mistake for finishing. Leaving it unfinished means the branch
+        is missing its second commit entirely, which no check on `retry.py`
+        would notice.
+
+    - id: no-markers-committed
+      label: No conflict markers in the committed file
+      severity: required
+      assert: no_conflict_markers
+      with: {paths: retry.py, ref: "refs/heads/feature/backoff"}
+      explanation: |
+        `git add` is a claim that the file is resolved and git does not read it
+        to check. With both blocks still in the file, every pattern check above
+        passes — the lines they look for are all in there.
+
+    - id: rebase-finished
+      label: HEAD is attached again
+      severity: required
+      assert: head_detached
+      not: true
+      explanation: |
+        A rebase keeps HEAD detached while it works through its todo list and
+        reattaches at the end. Still detached means `git rebase --continue` is
+        waiting, or the resolution was committed and the rebase never resumed.
+
+    - id: main-untouched
+      label: main is exactly where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        Rebase moves the branch you are standing on, so this is the check that
+        catches running it from the wrong one. It also catches "fixing" the
+        conflict by moving `main` onto the feature work.
+
+    - id: clean-worktree
+      label: Nothing left staged or unmerged
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        The state the rebase leaves you in mid-conflict. A clean tree at the end
+        is what distinguishes a finished rebase from one that is still waiting
+        for you.
+
+    - id: read-the-conflict
+      label: You looked at what the two sides said
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^(git (status|diff|log)\b|cat\b)'}
+      explanation: |
+        Four things have to survive this rebase and they come from two different
+        places. `git status --short` and `cat retry.py` are what turn the
+        conflict into a list of decisions rather than a choice of flag.

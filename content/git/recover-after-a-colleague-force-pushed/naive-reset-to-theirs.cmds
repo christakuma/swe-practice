@@ -1,0 +1,11 @@
+# Counter-example: take their version and move on.
+#
+# The branch matches the remote exactly, which makes every check about THEIR
+# history pass. The signing commit was never pushed anywhere, so it is now
+# reachable only from the reflog -- and nothing in `git status` or `git log`
+# says anything is missing.
+
+git fetch origin
+git reset --hard origin/feature/webhooks
+git log --oneline --decorate --all
+ls

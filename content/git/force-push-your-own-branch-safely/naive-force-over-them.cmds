@@ -1,0 +1,13 @@
+# Counter-example: the push was rejected, so stop asking.
+#
+# `--force` does not check anything. origin/feature/search-ui becomes your
+# squashed commit, and the colleague's test is reachable from nothing on the
+# remote. They wrote it this morning, in response to your review request, and
+# nobody is told.
+#
+# This is the exact push --force-with-lease refused to make.
+
+git push origin feature/search-ui
+git push --force origin feature/search-ui
+git log --oneline --decorate --all
+ls

@@ -1,0 +1,27 @@
+# Reference solution. The push is rejected, which is the first you hear of the
+# divergence -- the remote-tracking ref was a day out of date.
+
+git log --oneline --decorate --all
+git status --short --branch
+
+# Rejected: non-fast-forward. origin has a commit this clone has never seen.
+git push origin main
+
+# Update the remote-tracking refs. fetch changes nothing about your branch.
+git fetch origin
+git log --oneline --graph --decorate --all
+
+# What each side has that the other does not.
+git log --oneline HEAD..origin/main
+git log --oneline origin/main..HEAD
+
+# Replay my commit on top of theirs. Nothing of theirs is rewritten -- only
+# my own unpushed commit moves.
+git rebase origin/main
+
+git log --oneline --graph --decorate --all
+cat validate.py
+
+# Now a fast-forward, so a plain push is enough.
+git push origin main
+git status --short --branch

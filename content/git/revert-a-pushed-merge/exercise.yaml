@@ -1,0 +1,125 @@
+schema_version: 1
+id: git/revert-a-pushed-merge
+kind: git_scenario
+title: Back a merged feature out of main after it has been pushed
+difficulty: medium
+tags: [revert, merge, collaboration, remotes]
+estimated_minutes: 12
+
+prompt: |
+  `feature/discounts` was merged into `main` and pushed. The discount tiers are
+  wrong — they are being applied before tax — and the feature has to come off
+  `main` today.
+
+  The branch itself is fine. It will be fixed and merged again next week, so
+  leave it alone.
+
+  Get `main` back to pricing without discounts, on your machine **and** on
+  `origin`, without rewriting anything that has been published.
+
+  `git show --stat HEAD` is the merge. Look at how many parents it has before
+  you try to undo it.
+
+hints:
+  - "The merge is on `origin`. So the branch pointer cannot move — whatever you
+     do has to be a new commit that leaves the merge in history."
+  - "`git revert <merge>` refuses, and the error is the lesson: a merge commit
+     has two parents, so \"the inverse of this commit\" is ambiguous until you
+     say which side to keep."
+  - "`-m <parent number>` picks the mainline. `-m 1` is the first parent, which
+     for a merge made while standing on `main` is `main` itself — so it undoes
+     everything the branch brought in."
+  - "`git revert --no-edit -m 1 HEAD`, then `git push origin main`. No force is
+     needed: the revert is a new commit on top, so the push fast-forwards."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-reset-and-force.cmds
+      expect_failures: [history-preserved]
+    # Note what this one *passes*: `backout-published`. Nothing changed, so
+    # HEAD is still the merge and origin/main still points at it — the two
+    # agree, vacuously. A check that only compares your branch to the remote
+    # cannot tell "published the fix" from "did nothing at all".
+    - file: naive-revert-without-the-mainline.cmds
+      expect_failures: [discounts-are-off-main]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: discounts-are-off-main
+      label: main no longer applies discounts to line totals
+      severity: required
+      assert: file_at_ref_matches
+      not: true
+      with: {ref: HEAD, path: pricing.py, pattern: 'discount_for'}
+      explanation: |
+        The thing production needs. Negated, so it passes when the import and
+        the call are both gone from the committed file — which is what reverting
+        the whole merge does, rather than just deleting `discounts.py` and
+        leaving `pricing.py` importing it.
+
+    - id: history-preserved
+      label: The merge is still in main's history
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "@d2", descendant: HEAD}
+      explanation: |
+        `@d2` is the feature branch's tip, and it is an ancestor of `main`
+        exactly while the merge is still there. `git reset --hard HEAD~1`
+        followed by a force-push produces the right files and takes the merge —
+        and both of the colleague's commits — out of the published history.
+        Anyone who pulled gets a divergence; anyone who branched off is stranded.
+
+    - id: branch-untouched
+      label: feature/discounts still points at its own work
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/heads/feature/discounts", target: "@d2"}
+      explanation: |
+        The feature is coming back next week. Reverting a merge on `main` must
+        not touch the branch — and it does not, which is worth checking because
+        the tempting cleanup is to "undo the whole thing" including the branch
+        it came from.
+
+    - id: backout-published
+      label: origin/main points at your revert
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/remotes/origin/main", target: HEAD}
+      explanation: |
+        Discounts are live for everyone, not just for you. A revert that is not
+        pushed has changed nothing about the problem, and this is the check that
+        catches the half-finished answer — which is also what you get when the
+        `revert` itself failed and you did not read the error.
+
+    - id: clean-worktree
+      label: Nothing left staged or half-reverted
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        `git revert` of a merge can conflict, and then it stops with the files
+        staged and the commit unmade, waiting for `git revert --continue`. That
+        state has the right content and has committed nothing.
+
+    - id: no-force-push
+      label: You did not force-update a shared branch
+      severity: advisory
+      assert: command_used
+      not: true
+      with: {pattern: 'push\b.*(--force|--force-with-lease|-f)\b'}
+      explanation: |
+        A revert is a new commit, so the push is a fast-forward and no force is
+        possible to need. Reaching for one means the branch pointer was moved
+        backwards, which is the mistake this exercise exists to rule out.
+
+    - id: looked-at-the-merge
+      label: You inspected the merge before undoing it
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|status|diff)\b'}
+      explanation: |
+        Everything about this answer follows from the merge having two parents
+        and from it being published. One `git show --stat HEAD` and one
+        `git log --oneline --decorate --all` establish both.

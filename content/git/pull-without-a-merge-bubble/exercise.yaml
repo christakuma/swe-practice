@@ -1,0 +1,133 @@
+schema_version: 1
+id: git/pull-without-a-merge-bubble
+kind: git_scenario
+title: Your push was rejected because someone else pushed first
+difficulty: medium
+tags: [collaboration, remotes, rebase, pull]
+estimated_minutes: 12
+
+prompt: |
+  You committed a batching change to `main` and went to push it. The push is
+  rejected: a colleague pushed row validation while you were working, and your
+  clone has never seen it.
+
+  Get both commits onto `origin/main` — theirs underneath, yours on top — with
+  **no merge commit** in `main`'s history, and without losing anything either
+  of you wrote.
+
+  Start by running the push and reading what git says. `git log --decorate
+  --all` is showing you a remote-tracking ref that is out of date.
+
+hints:
+  - "`refs/remotes/origin/main` is a cache of where `origin/main` was the last
+     time you fetched. `git fetch` updates it and touches nothing else — it is
+     the safe command to run at any time."
+  - "After fetching, `git log --oneline HEAD..origin/main` lists what they have
+     that you do not, and swapping the two names lists the reverse. One commit
+     each way is a divergence."
+  - "`git pull` would fix the rejection by merging, which works and leaves a
+     merge commit behind. You want your commit replayed on top of theirs
+     instead."
+  - "`git fetch origin`, then `git rebase origin/main`, then `git push origin
+     main` — a fast-forward by then, so no force is needed. `git pull --rebase`
+     does the first two in one step."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  # The rejected push. It is the first line of the answer, not an accident.
+  reference_failing_commands: 1
+  counter_examples:
+    - file: naive-plain-pull.cmds
+      expect_failures: [linear-history]
+    - file: naive-force-past-them.cmds
+      expect_failures: [their-work-survived]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: their-work-survived
+      label: The colleague's commit is in main's history
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "@r1", descendant: HEAD}
+      explanation: |
+        The one that matters. `git push --force` makes the rejection go away by
+        making their commit unreachable on the remote, and nothing anywhere
+        warns about it — not your terminal, not theirs. They find out when their
+        next pull rewrites their own history.
+
+    - id: your-work-survived
+      label: Your batching change is still there
+      severity: required
+      assert: file_at_ref_matches
+      with: {ref: HEAD, path: importer.py, pattern: 'BATCH_SIZE'}
+      explanation: |
+        The symmetric failure, and the one you are more likely to inflict on
+        yourself: `git reset --hard origin/main` resolves the divergence by
+        discarding your side, and it is the shortest command that makes the
+        push succeed.
+
+    - id: linear-history
+      label: No merge commit in main
+      severity: required
+      assert: linear_history
+      with: {ref: "refs/heads/main"}
+      explanation: |
+        `git pull` merges by default, so the fix for a rejected push is
+        habitually a merge commit — one per person per day on a busy branch,
+        each recording nothing but the fact that two people worked at once.
+        Rebasing your own unpushed commit onto theirs records the same work as a
+        straight line that someone can read.
+
+    - id: published
+      label: origin/main points at your branch
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/remotes/origin/main", target: HEAD}
+      explanation: |
+        A rebase that is never pushed has solved nothing — the remote still has
+        only their commit, and the next person to push hits the same rejection
+        you did. Note this must be *their* commit plus yours, which is what
+        makes the pair of this and `their-work-survived` meaningful.
+
+    - id: clean-worktree
+      label: Nothing left staged or mid-rebase
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        The two sides touch different files here, so the rebase cannot conflict.
+        A dirty tree means something else happened — usually an attempt to merge
+        the content by hand after the rejection.
+
+    - id: on-a-branch
+      label: HEAD is attached to main
+      severity: required
+      assert: head_detached
+      not: true
+      explanation: |
+        A rebase detaches HEAD while it replays commits and reattaches at the
+        end. Still being detached means the rebase never finished, which also
+        means the push went somewhere other than you think.
+
+    - id: no-force-push
+      label: You did not force-push
+      severity: advisory
+      assert: command_used
+      not: true
+      with: {pattern: 'push\b.*(--force|--force-with-lease|-f)\b'}
+      explanation: |
+        Correctly integrating their work makes your push a fast-forward, so no
+        force is needed. A rejected push is information, and `--force` is the
+        button that discards it — on a shared branch it is how someone else's
+        afternoon disappears.
+
+    - id: fetched-before-reasoning
+      label: You updated the remote-tracking refs before acting
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (fetch|pull)\b'}
+      explanation: |
+        Everything `git log --decorate` tells you about `origin` is a cache from
+        the last fetch. Reasoning about a divergence from a stale cache is how
+        people conclude the remote is in a state it is not.

@@ -1,0 +1,10 @@
+# Counter-example: the push was rejected, so make it not be.
+#
+# --force does exactly what it says: origin/main becomes your main, and the
+# colleague's validation commit is no longer reachable from any branch on the
+# remote. Nothing warns anyone. They find out when their next pull rewrites
+# their own history, or when the import starts accepting bad rows.
+
+git push origin main
+git push --force origin main
+git log --oneline --decorate --all

@@ -1,0 +1,10 @@
+# Counter-example: push it, and skip the -u.
+#
+# The branch is on origin and the review can start, so this is nearly right.
+# What is missing is the tracking configuration: `git status` will not tell you
+# whether you are ahead or behind, `git pull` on this branch has nothing to
+# pull from, and every future push has to name the remote and branch again.
+
+git push origin feature/csv-upload
+git branch -vv
+git status --short --branch

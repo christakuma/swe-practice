@@ -1,0 +1,10 @@
+# Counter-example: the conservative retreat. Fetch, throw your rewrite away,
+# and take whatever origin has.
+#
+# Nothing is lost and nothing is gained: their test is back, and so are the
+# two commits you squashed. It is the right instinct in a real emergency and
+# it is not an answer to the task, which was to publish the tidied-up branch.
+
+git fetch origin
+git reset --hard origin/feature/search-ui
+git log --oneline --decorate --all

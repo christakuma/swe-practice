@@ -1,0 +1,27 @@
+# Reference solution. The merge stopping is not the problem -- it is git
+# telling you that this is a decision only you can make.
+
+git log --oneline --graph --decorate --all
+git status --short --branch
+cat settings.ini
+
+# Conflicts, and exits non-zero. Everything after this point is the answer.
+git merge feature/tune
+
+# What is unmerged, and what both sides wanted.
+git status --short
+cat settings.ini
+git diff
+
+# Resolve by hand: the branch's measured worker count AND main's timeout.
+write settings.ini '[server]' 'host = 0.0.0.0' 'port = 8080' 'workers = 8' 'timeout_seconds = 30'
+
+# Staging the file is how you tell git the conflict is resolved.
+git add settings.ini
+git status --short
+
+git commit --no-edit
+
+git log --oneline --graph --decorate --all
+cat settings.ini
+git status --short --branch

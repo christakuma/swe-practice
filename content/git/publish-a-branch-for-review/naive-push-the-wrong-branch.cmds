@@ -1,0 +1,10 @@
+# Counter-example: push the branch you were thinking about rather than the one
+# you are on.
+#
+# `git push -u origin main` succeeds and does nothing: main is already on
+# origin and unchanged. The output is reassuring -- "Everything up-to-date" --
+# and the feature branch is still nowhere but this laptop.
+
+git status --short --branch
+git push --set-upstream origin main
+git log --oneline --decorate --all

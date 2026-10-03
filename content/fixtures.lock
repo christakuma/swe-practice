@@ -66,6 +66,20 @@ git/find-the-first-bad-commit-with-bisect:
   refs:
     HEAD: 0de2417af482ff833ceed1929360ea6c04fe6084
     refs/heads/main: 0de2417af482ff833ceed1929360ea6c04fe6084
+git/force-push-your-own-branch-safely:
+  aliases:
+    c1: a42d0b34294ae55edc0160be970d62b9bbabe2d2
+    c2: dcdca8f28b302d006a505664a57c609cddd21930
+    r1: 33b582f4cbdc02772bbfbad9fc6d6afb1a6cf4d2
+    s1: c9499df7d40ded46de717ecee33ba384b7512486
+    s12: f49e7f70e74ea4da53c94d1fcea2416ba4f4b8b1
+    s2: 0ad7f3595d07e45ddb36d260cddd45a39246dd84
+  refs:
+    HEAD: f49e7f70e74ea4da53c94d1fcea2416ba4f4b8b1
+    refs/heads/feature/search-ui: f49e7f70e74ea4da53c94d1fcea2416ba4f4b8b1
+    refs/heads/main: dcdca8f28b302d006a505664a57c609cddd21930
+    refs/remotes/origin/feature/search-ui: 0ad7f3595d07e45ddb36d260cddd45a39246dd84
+    refs/remotes/origin/main: dcdca8f28b302d006a505664a57c609cddd21930
 git/move-commits-off-main:
   aliases:
     c1: 206fc666e74dda8cb6591c96d71c1c1d5635bda9
@@ -75,6 +89,27 @@ git/move-commits-off-main:
     HEAD: 3c1a66d88b6f8d8aeba6d7e61488063a31448f55
     refs/heads/main: 3c1a66d88b6f8d8aeba6d7e61488063a31448f55
     refs/remotes/origin/main: 206fc666e74dda8cb6591c96d71c1c1d5635bda9
+git/publish-a-branch-for-review:
+  aliases:
+    c1: e0ed72d253e2f59d9170c354ae70d38185735b06
+    c2: c31685454d169adcb3ba780fa550d078bcc19297
+    u1: 6a8f0940b96e421fd98c9be0e0ab41bc6e4cc06f
+    u2: d450e5814cad418cd14187cad4cab435d87108c7
+  refs:
+    HEAD: d450e5814cad418cd14187cad4cab435d87108c7
+    refs/heads/feature/csv-upload: d450e5814cad418cd14187cad4cab435d87108c7
+    refs/heads/main: c31685454d169adcb3ba780fa550d078bcc19297
+    refs/remotes/origin/main: c31685454d169adcb3ba780fa550d078bcc19297
+git/pull-without-a-merge-bubble:
+  aliases:
+    c1: f1ee78f0653a522ce41e81741588a7d2499a2321
+    c2: d8591cc83d6294643a0f015538c70b2a7fc0f496
+    m1: 1aa122bbc86d1f7c9c783c581e85754d52de0fb5
+    r1: f9816345f0dd56c8d9aa8eb3348f2ae8931ed1d3
+  refs:
+    HEAD: 1aa122bbc86d1f7c9c783c581e85754d52de0fb5
+    refs/heads/main: 1aa122bbc86d1f7c9c783c581e85754d52de0fb5
+    refs/remotes/origin/main: d8591cc83d6294643a0f015538c70b2a7fc0f496
 git/rebase-a-feature-branch:
   aliases:
     c1: c83a98c9a84b161d65e7d7b66a56664c0048e093
@@ -96,6 +131,20 @@ git/recover-a-lost-commit:
     HEAD: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
     refs/heads/feature/csv-export: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
     refs/heads/main: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
+git/recover-after-a-colleague-force-pushed:
+  aliases:
+    c1: 48503540f2c9ecdafeab015779b58295c1dda13c
+    c2: 763f0b4c6c3919f3288bb8ad6ab64f77713e8013
+    k1: 712ecc35eda837a484116622bcadee8d377d33a8
+    k2: 1d32ab4a17d178ed7822bda0fc944b9fe6cfe2fa
+    kr1: f087f1d664743ecd26dbe49a756e6776239704df
+    y1: 0d03eb0f2caa4c005b2b286a444680236d6d0ab4
+  refs:
+    HEAD: 0d03eb0f2caa4c005b2b286a444680236d6d0ab4
+    refs/heads/feature/webhooks: 0d03eb0f2caa4c005b2b286a444680236d6d0ab4
+    refs/heads/main: 763f0b4c6c3919f3288bb8ad6ab64f77713e8013
+    refs/remotes/origin/feature/webhooks: f087f1d664743ecd26dbe49a756e6776239704df
+    refs/remotes/origin/main: 763f0b4c6c3919f3288bb8ad6ab64f77713e8013
 git/rescue-a-forgotten-stash:
   aliases:
     c1: 216cd1ab4b91694e0c5e9bb5e3d864ed861e270c
@@ -114,6 +163,25 @@ git/rescue-commits-from-a-detached-head:
   refs:
     HEAD: dcb9e5eaf3e16e92391298b232a92449e6063a89
     refs/heads/main: dcb9e5eaf3e16e92391298b232a92449e6063a89
+git/resolve-a-conflict-during-a-rebase:
+  aliases:
+    c1: e83c13ea8b4d349090d2534071c08f8728e7688f
+    f1: 9d148e7497433c08223c0e2d570d053a26f76a36
+    f2: c9cdc4326f4c6aece94e93234d5b46defc9dd900
+    m1: 821847c558f521e1b337a8907e316d6a9d7c77f2
+  refs:
+    HEAD: 821847c558f521e1b337a8907e316d6a9d7c77f2
+    refs/heads/feature/backoff: c9cdc4326f4c6aece94e93234d5b46defc9dd900
+    refs/heads/main: 821847c558f521e1b337a8907e316d6a9d7c77f2
+git/resolve-a-merge-conflict:
+  aliases:
+    c1: 8c8d491e88f858736052a55d0270f875f6c2801f
+    f1: 50a64f299924d92ca221f4fc5be2ff1ccfdda593
+    m1: 617e4f94b5bca5ed1b4302a46c8f07f61f24af3d
+  refs:
+    HEAD: 617e4f94b5bca5ed1b4302a46c8f07f61f24af3d
+    refs/heads/feature/tune: 50a64f299924d92ca221f4fc5be2ff1ccfdda593
+    refs/heads/main: 617e4f94b5bca5ed1b4302a46c8f07f61f24af3d
 git/restore-a-deleted-branch:
   aliases:
     c1: b73eed0ef1fc5f12b78c3582115a9fa53f2a11aa
@@ -142,6 +210,17 @@ git/revert-a-pushed-commit:
     HEAD: bab6eca47d367d3e004324e903a6ac75c6f7e861
     refs/heads/main: bab6eca47d367d3e004324e903a6ac75c6f7e861
     refs/remotes/origin/main: bab6eca47d367d3e004324e903a6ac75c6f7e861
+git/revert-a-pushed-merge:
+  aliases:
+    c1: ecea19e859c6fb692837d56491a42bfd80062002
+    c2: aba8bceaee35e50058a687c5739ac010a2534d5a
+    d1: 49fe8e586b8747b446867d91b1df56bb0cefd42c
+    d2: ab02acb5541894da943ae7a4957b63e25db75503
+  refs:
+    HEAD: ea11305400d7604becdc662b5fd7fa761abd7485
+    refs/heads/feature/discounts: ab02acb5541894da943ae7a4957b63e25db75503
+    refs/heads/main: ea11305400d7604becdc662b5fd7fa761abd7485
+    refs/remotes/origin/main: ea11305400d7604becdc662b5fd7fa761abd7485
 git/split-a-commit-into-two:
   aliases:
     c1: 84ca1aef4fc79219c9884de3a7104830f1e18f8b

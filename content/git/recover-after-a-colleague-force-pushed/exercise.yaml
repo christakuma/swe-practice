@@ -1,0 +1,141 @@
+schema_version: 1
+id: git/recover-after-a-colleague-force-pushed
+kind: git_scenario
+title: Rescue your commit after someone force-pushed the branch under you
+difficulty: hard
+tags: [rebase, collaboration, remotes, recovery]
+estimated_minutes: 15
+
+prompt: |
+  `feature/webhooks` had two commits on it. A colleague squashed them into one
+  and force-pushed. You had already added a commit of your own on top of the
+  originals, and have not pushed it.
+
+  You have fetched, so `git log --decorate --all` shows the two histories side
+  by side.
+
+  Get your signing commit on top of **their** squashed commit, with no trace of
+  the two commits they replaced and no merge commit, and push it.
+
+  `git log --oneline origin/feature/webhooks..HEAD` lists what you have that
+  they do not — and two of those three commits are not yours.
+
+hints:
+  - "Their history is published and yours is one unpushed commit, so yours is
+     the one that moves. Nothing you do should put the commits they deleted
+     back on the remote."
+  - "`git merge origin/feature/webhooks` would work and would give you their
+     squashed commit *and* the two originals it replaced — every change of
+     theirs applied twice."
+  - "A plain `git rebase origin/feature/webhooks` replays everything in
+     `origin/feature/webhooks..HEAD`, which is three commits: their two old
+     ones and your one. You want only yours."
+  - "`git rebase --onto <new base> <upstream>` replays `<upstream>..HEAD`.
+     So `git rebase --onto origin/feature/webhooks HEAD~1` takes just the
+     commit after `HEAD~1` — yours — and puts it on their tip."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-merge-their-rewrite.cmds
+      expect_failures: [replaced-commits-are-gone, linear-history, published]
+    - file: naive-reset-to-theirs.cmds
+      expect_failures: [your-commit-survived]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 30
+
+  checks:
+    - id: on-their-new-base
+      label: Their squashed commit is in your branch's history
+      severity: required
+      assert: is_ancestor
+      with:
+        ancestor: "@kr1"
+        descendant: "refs/heads/feature/webhooks"
+      explanation: |
+        Their rewrite is the published history now, so it is the base everything
+        else sits on. Ignoring it and force-pushing your side back would undo
+        their squash and start the whole exchange again from their end.
+
+    - id: replaced-commits-are-gone
+      label: The two commits their squash replaced are not in the branch
+      severity: required
+      assert: is_ancestor
+      not: true
+      with: {ancestor: "@k2", descendant: "refs/heads/feature/webhooks"}
+      explanation: |
+        The check that makes a merge the wrong answer. Merging their rewrite in
+        gets correct *files* and a branch containing both versions of their
+        work; pushing that puts the commits they deliberately removed back on
+        the remote, which is the one outcome worse than doing nothing.
+
+    - id: your-commit-survived
+      label: Your signing commit is still there
+      severity: required
+      assert: file_at_ref_matches
+      with:
+        ref: "refs/heads/feature/webhooks"
+        path: signing.py
+        pattern: 'def sign'
+      explanation: |
+        `git reset --hard origin/feature/webhooks` makes the divergence vanish
+        and takes your unpushed commit with it. Nothing in `git status` or `git
+        log` mentions the loss afterwards, because there is no longer anything
+        pointing at it.
+
+    - id: linear-history
+      label: No merge commit in the branch
+      severity: required
+      assert: linear_history
+      with: {ref: "refs/heads/feature/webhooks"}
+      explanation: |
+        Your commit is unpushed, so replaying it is free and leaves a history
+        that reads as one line. A merge here records that two versions of the
+        same two commits met, which is true and is not something anyone wants
+        to read in six weeks.
+
+    - id: published
+      label: origin/feature/webhooks points at your branch
+      severity: required
+      assert: ref_points_at
+      with:
+        ref: "refs/remotes/origin/feature/webhooks"
+        target: "refs/heads/feature/webhooks"
+      explanation: |
+        Done correctly, the push is a fast-forward: their tip plus your one
+        commit on top. If it is rejected, the rebase put something other than
+        your single commit on top of their work — which is the signal to look
+        again rather than to add `--force`.
+
+    - id: clean-worktree
+      label: Nothing left staged or mid-rebase
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        Your commit adds a new file, so the rebase cannot conflict. A dirty tree
+        means the content was moved across by hand, which gets the files right
+        and loses the commit.
+
+    - id: no-force-push
+      label: You did not force-push
+      severity: advisory
+      assert: command_used
+      not: true
+      with: {pattern: 'push\b.*(--force|--force-with-lease|-f)\b'}
+      explanation: |
+        Replaying your own commit onto their tip makes the push a fast-forward,
+        so no force is needed or possible to need. Answering a colleague's
+        force-push with one of your own is how two people spend an afternoon
+        overwriting each other.
+
+    - id: compared-both-sides
+      label: You looked at what each side had
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|diff|status)\b'}
+      explanation: |
+        The whole answer turns on one observation: of the three commits you have
+        and they do not, two are *theirs*. `git log --oneline
+        origin/feature/webhooks..HEAD` is where that is visible, and without it
+        there is no reason to reach for `--onto`.

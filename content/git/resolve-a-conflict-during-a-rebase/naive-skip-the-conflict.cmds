@@ -1,0 +1,12 @@
+# Counter-example: the option that makes the conflict go away.
+#
+# `git rebase --skip` drops the commit being replayed. The rebase then
+# completes, reports success, and the branch has lost the whole of f1 -- the
+# backoff function and the five attempts both. The jitter commit is still
+# there, now calling a function nobody defines.
+
+git checkout feature/backoff
+git rebase main
+git rebase --skip
+git log --oneline --decorate --all
+cat retry.py

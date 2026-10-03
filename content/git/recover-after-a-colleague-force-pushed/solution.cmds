@@ -1,0 +1,26 @@
+# Reference solution. Their rewrite is published and mine is one unpushed
+# commit, so mine is the one that moves.
+
+git log --oneline --graph --decorate --all
+git status --short --branch
+
+# What each side has. Mine has three commits they do not; two of those are
+# their own old commits, which their squash replaced.
+git log --oneline origin/feature/webhooks..HEAD
+git log --oneline HEAD..origin/feature/webhooks
+
+# Confirm their squashed commit holds both of the originals' changes.
+git show --stat origin/feature/webhooks
+
+# Replay only what is after HEAD~1 -- my commit -- onto their new tip. The
+# three-argument form: --onto <new base> <upstream>, where <upstream> names
+# the commit my work starts from rather than the branch it ends at.
+git rebase --onto origin/feature/webhooks HEAD~1
+
+git log --oneline --graph --decorate --all
+ls
+cat webhook.py
+
+# A fast-forward now, so no force is needed.
+git push origin feature/webhooks
+git status --short --branch

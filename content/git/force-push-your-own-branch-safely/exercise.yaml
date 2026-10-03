@@ -1,0 +1,144 @@
+schema_version: 1
+id: git/force-push-your-own-branch-safely
+kind: git_scenario
+title: Force-push a rewritten branch without losing a colleagues commit
+difficulty: hard
+tags: [remotes, collaboration, force-push, rewriting]
+estimated_minutes: 15
+
+prompt: |
+  You pushed `feature/search-ui` with two commits, then squashed them into one
+  — reasonable, on a branch you believed was yours alone.
+
+  While you were doing that, a colleague pushed a test to the same branch in
+  response to your review request. Your clone has not fetched since.
+
+  Publish your squashed branch to `origin` **with their test still in it**, and
+  leave `main` alone.
+
+  Run the plain push first and read the rejection. Then try it with
+  `--force-with-lease` and read that rejection too — they say different things,
+  and the second one is the interesting one.
+
+hints:
+  - "The first rejection is `non-fast-forward`: you rewrote history, so the
+     remote cannot move forward onto your branch. That is expected."
+  - "`--force-with-lease` is rejected as `stale info`. It means: the remote is
+     not where this clone last saw it, so a force-push would overwrite
+     something I have never seen. Plain `--force` does not make that check."
+  - "`git fetch origin` and then `git log --oneline feature/search-ui..origin/feature/search-ui`
+     shows you the one commit you are missing."
+  - "Their commit sat on the two commits you squashed, so those parents no
+     longer exist and there is nothing to rebase onto.
+     `git cherry-pick origin/feature/search-ui` copies it onto your squashed
+     branch, and then `--force-with-lease` passes."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  # Two: the plain push, then the leased push that correctly refuses. Both are
+  # part of the answer rather than accidents on the way to it.
+  reference_failing_commands: 2
+  counter_examples:
+    - file: naive-force-over-them.cmds
+      # Also one commit short, because it never picked their test up. The
+      # first id is the one this counter-example is about.
+      expect_failures: [colleagues-test-survived, branch-is-still-squashed]
+    - file: naive-give-up-the-squash.cmds
+      expect_failures: [branch-is-still-squashed]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 30
+
+  checks:
+    - id: colleagues-test-survived
+      label: The colleague's test is on the branch
+      severity: required
+      assert: file_at_ref_matches
+      with:
+        ref: "refs/heads/feature/search-ui"
+        path: test_search_ui.py
+        pattern: 'test_the_search_box_announces_its_hotkey'
+      explanation: |
+        Checked by content and not by ancestry, which is the honest shape here:
+        their *commit* cannot survive. It had the two squashed commits as
+        parents and those no longer exist, so the only way to keep the work is
+        to copy it — a cherry-pick, with a new hash. That is a real cost of
+        rewriting a branch somebody else has pushed to, and no flag avoids it.
+
+    - id: branch-is-still-squashed
+      label: Your two commits are still squashed into one
+      severity: required
+      assert: commit_count
+      with: {ref: "refs/heads/feature/search-ui", equals: 4}
+      explanation: |
+        Two from `main`, your squashed commit, and their cherry-picked test.
+        Five means the squash was abandoned — `git reset --hard
+        origin/feature/search-ui` is the conservative retreat, and it answers a
+        different question than the one asked.
+
+    - id: your-work-survived
+      label: The squashed commit still does both things
+      severity: required
+      assert: file_at_ref_matches
+      with:
+        ref: "refs/heads/feature/search-ui"
+        path: search_ui.py
+        pattern: 'SHORTCUT'
+      explanation: |
+        A squash is a rewrite, and a rewrite can quietly drop the second
+        commit's contribution — which is exactly what happened if the branch
+        now has one commit holding only the search box.
+
+    - id: published
+      label: origin/feature/search-ui points at your branch
+      severity: required
+      assert: ref_points_at
+      with:
+        ref: "refs/remotes/origin/feature/search-ui"
+        target: "refs/heads/feature/search-ui"
+      explanation: |
+        The task was to publish it. A branch that is locally perfect and
+        unpushed leaves the colleague's next pull looking at the old history,
+        and leaves the review request unanswered.
+
+    - id: main-untouched
+      label: main is exactly where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        Everything in this exercise happens on a feature branch. A `git push
+        --force` typed without a refspec pushes the current branch, which is
+        fine — but the same habit on the wrong branch is how a shared `main`
+        gets rewritten.
+
+    - id: clean-worktree
+      label: Nothing left staged or mid-cherry-pick
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        A cherry-pick that conflicts stops with the files staged and the commit
+        unmade. Here it cannot conflict — their commit adds a new file — so a
+        dirty tree means something else was being done by hand.
+
+    - id: used-the-lease
+      label: You tried the leased force-push
+      severity: advisory
+      assert: command_used
+      with: {pattern: 'push\b.*--force-with-lease'}
+      explanation: |
+        The whole exercise is built around that rejection. It is the only thing
+        that told you a colleague had pushed — without it, the first you would
+        have known is them asking where their test went.
+
+    - id: no-blind-force
+      label: You never force-pushed without the lease
+      severity: advisory
+      assert: command_used
+      not: true
+      with: {pattern: 'push\b.*--force(?!-with-lease)'}
+      explanation: |
+        The lookahead matters: `--force-with-lease` starts with `--force`, and a
+        pattern that did not exclude it would flag the right answer. Plain
+        `--force` makes no check at all, and here it is precisely the push the
+        lease refused — it would have taken their test off the remote.

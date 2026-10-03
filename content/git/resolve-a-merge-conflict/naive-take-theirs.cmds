@@ -1,0 +1,11 @@
+# Counter-example: keep their side wholesale.
+#
+# The opposite reflex and the opposite loss: the measured worker count
+# survives and main's request timeout silently vanishes, because it lived in
+# the same conflicted region.
+
+git merge feature/tune
+git checkout --theirs settings.ini
+git add settings.ini
+git commit --no-edit
+cat settings.ini

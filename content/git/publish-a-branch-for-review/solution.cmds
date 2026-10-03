@@ -1,0 +1,17 @@
+# Reference solution. One command, and the flag that makes the next five
+# shorter.
+
+git log --oneline --decorate --all
+git status --short --branch
+
+# No upstream yet, so git has nothing to compare against -- note the status
+# line says "## feature/csv-upload" with no "...origin/..." after it.
+git branch -vv
+
+# -u records origin/feature/csv-upload as this branch's upstream, so later
+# `git push`, `git pull` and `git status` all know where it belongs.
+git push --set-upstream origin feature/csv-upload
+
+git branch -vv
+git status --short --branch
+git log --oneline --decorate --all

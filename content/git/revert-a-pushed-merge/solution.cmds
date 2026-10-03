@@ -1,0 +1,21 @@
+# Reference solution. The merge is published, so it cannot be unmade -- only
+# undone by a new commit that inverts it.
+
+git log --oneline --graph --decorate --all
+git status --short --branch
+
+# The merge commit has two parents. -m says which side to keep.
+git show --stat HEAD
+git log --oneline -1 --format=%p
+
+# -m 1 means "keep the first parent's line of history", which is main, and
+# undo everything the second parent brought in.
+git revert --no-edit -m 1 HEAD
+
+git log --oneline --graph --decorate --all
+cat pricing.py
+ls
+
+# Publish the backout. A revert nobody can pull has not fixed production.
+git push origin main
+git status --short --branch

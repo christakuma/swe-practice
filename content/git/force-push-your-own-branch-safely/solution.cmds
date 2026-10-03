@@ -1,0 +1,30 @@
+# Reference solution. Two rejections, each telling you something different,
+# and the second one is the lease doing its job.
+
+git log --oneline --decorate --all
+git status --short --branch
+
+# Rejected: non-fast-forward. Expected -- the squash rewrote the branch.
+git push origin feature/search-ui
+
+# Rejected again, and for a different reason: "stale info". The lease checked
+# the remote against what this clone last saw, and they disagree. Something
+# has been pushed that is not in my history.
+git push --force-with-lease origin feature/search-ui
+
+# Find out what.
+git fetch origin
+git log --oneline --graph --decorate --all
+git log --oneline feature/search-ui..origin/feature/search-ui
+git show --stat origin/feature/search-ui
+
+# Their commit is a new file, so it applies on top of the squash cleanly.
+# Copying it across is the only option: the commits it sat on no longer exist.
+git cherry-pick origin/feature/search-ui
+
+git log --oneline --decorate --all
+ls
+
+# Now the lease passes: the remote is where the fetch said it was.
+git push --force-with-lease origin feature/search-ui
+git status --short --branch

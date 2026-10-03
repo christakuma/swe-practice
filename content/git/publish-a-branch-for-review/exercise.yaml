@@ -1,0 +1,114 @@
+schema_version: 1
+id: git/publish-a-branch-for-review
+kind: git_scenario
+title: Publish a finished branch so somebody can review it
+difficulty: intro
+tags: [remotes, collaboration, branches]
+estimated_minutes: 8
+
+prompt: |
+  `feature/csv-upload` is finished and exists only on this machine. `origin`
+  has `main` and nothing else.
+
+  Publish the branch under the same name, with its upstream recorded, so that
+  `git status` and a bare `git push` work on it from now on.
+
+  Do **not** merge it into `main` — the whole point is that somebody reviews it
+  first.
+
+  `git branch -vv` shows which of your branches have an upstream. Run it before
+  and after.
+
+hints:
+  - "`git push <remote> <branch>` publishes a branch. That is most of the
+     answer, and it leaves out the part that makes every later command
+     shorter."
+  - "An *upstream* is the remote branch git should compare yours against. Set
+     it, and `git status` starts saying \"ahead 2\" and a bare `git push`
+     knows where to go."
+  - "`git push -u origin <branch>` — `-u` is short for `--set-upstream`. Watch
+     that you name the branch you are *on*, not the one you were thinking
+     about."
+  - "`git push --set-upstream origin feature/csv-upload`, then `git branch -vv`
+     to see the tracking recorded."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-push-without-upstream.cmds
+      expect_failures: [upstream-is-recorded]
+    - file: naive-push-the-wrong-branch.cmds
+      expect_failures: [branch-is-published, upstream-is-recorded]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: branch-is-published
+      label: origin has the branch, at your commit
+      severity: required
+      assert: ref_points_at
+      with:
+        ref: "refs/remotes/origin/feature/csv-upload"
+        target: "refs/heads/feature/csv-upload"
+      explanation: |
+        Under the same name, which is worth being literal about: `git push
+        origin feature/csv-upload:csv-upload` also publishes the work, under a
+        name nobody will look for, and reports success.
+
+    - id: upstream-is-recorded
+      label: The branch has an upstream
+      severity: required
+      assert: ref_points_at
+      with: {ref: "@{u}", target: HEAD}
+      explanation: |
+        `@{u}` is git's own name for "the upstream of the current branch", so it
+        resolves to nothing at all when no upstream is set — which is what makes
+        this a check on the *configuration* rather than on the remote. Without
+        it, `git status` cannot say whether you are ahead or behind, `git pull`
+        on this branch has nowhere to pull from, and every push has to name the
+        remote and the branch again.
+
+    - id: not-merged-into-main
+      label: The branch has not been merged into main
+      severity: required
+      assert: is_ancestor
+      not: true
+      with:
+        ancestor: "refs/heads/feature/csv-upload"
+        descendant: "refs/heads/main"
+      explanation: |
+        Publishing a branch is how you *ask* for a review. Merging it into
+        `main` first and pushing that is how you skip one — and it is the
+        shortest route to "it is on origin", which is what the task literally
+        asked for.
+
+    - id: main-untouched
+      label: main is exactly where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        Nothing in this exercise involves `main`. It is here because the branch
+        you are standing on is the thing most easily got wrong, and a push with
+        the wrong refspec is how feature work arrives on a shared branch without
+        anyone deciding to put it there.
+
+    - id: clean-worktree
+      label: Nothing left uncommitted
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        Publishing pushes commits, not your working directory. An uncommitted
+        change here is work the reviewer cannot see and will not be reviewing.
+
+    - id: set-the-upstream-explicitly
+      label: You used the flag that records the upstream
+      severity: advisory
+      assert: command_used
+      with: {pattern: 'push\b.*(-u\b|--set-upstream\b)'}
+      explanation: |
+        `git config --global push.autoSetupRemote true` makes this the default
+        and is worth turning on. Until then, `-u` on the first push of a branch
+        is the habit — it is the one push where it matters and the easiest one
+        to forget.

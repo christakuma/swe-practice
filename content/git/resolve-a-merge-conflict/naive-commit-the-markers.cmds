@@ -1,0 +1,11 @@
+# Counter-example: stage the conflicted file as it stands and commit.
+#
+# `git add` means "this file is resolved", and git takes you at your word
+# without reading it. Both values are now in the file, along with three lines
+# of markers, and both content checks still pass -- the lines they look for
+# are in there. Only no-markers-committed notices.
+
+git merge feature/tune
+git add settings.ini
+git commit --no-edit
+cat settings.ini

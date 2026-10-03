@@ -1,0 +1,11 @@
+# Counter-example: wind main back past the merge and force it upstream.
+#
+# Produces exactly the right files and the tidiest possible history, which is
+# why it is tempting. It also rewrites a merge that is already on origin and
+# that anyone on the team may have pulled -- and takes two commits of the
+# colleague's branch out of the shared history along with it.
+
+git log --oneline --graph --decorate
+git reset --hard HEAD~1
+git push --force origin main
+git log --oneline --decorate --all

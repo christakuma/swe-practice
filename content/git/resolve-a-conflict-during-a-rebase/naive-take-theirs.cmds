@@ -1,0 +1,16 @@
+# Counter-example: resolve with --theirs, which during a rebase is not the
+# side you would guess.
+#
+# A rebase replays YOUR commits onto the upstream, so the upstream is checked
+# out as "ours" and the commit being applied is "theirs". So --theirs here is
+# the feature branch's version: five attempts and the backoff survive, and
+# main's gateway-error list disappears -- which is the reverse of the mistake
+# the same flag makes during a merge.
+
+git checkout feature/backoff
+git rebase main
+git checkout --theirs retry.py
+git add retry.py
+git commit --no-edit
+git rebase --continue
+cat retry.py

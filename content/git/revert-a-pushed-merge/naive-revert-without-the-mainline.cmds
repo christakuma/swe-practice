@@ -1,0 +1,11 @@
+# Counter-example: revert the merge the way you would revert any commit.
+#
+# git refuses: a merge has two parents, so "the inverse of this commit" is not
+# a well-defined diff until you say which side to keep. The command exits
+# non-zero, nothing changes, and the discounts are still live -- which is the
+# failure mode of reading the error as noise and moving on.
+
+git log --oneline --graph --decorate
+git revert --no-edit HEAD
+git log --oneline --decorate
+cat pricing.py

@@ -1,0 +1,10 @@
+# Counter-example: merge their new history into yours.
+#
+# The merge resolves, the files come out right, and the branch now contains
+# both their squashed commit AND the two originals it replaced -- every change
+# of theirs applied twice, joined by a merge commit. Pushing it puts the
+# history they just deleted back on the remote.
+
+git log --oneline --graph --decorate --all
+git merge --no-edit origin/feature/webhooks
+git log --oneline --graph --decorate --all

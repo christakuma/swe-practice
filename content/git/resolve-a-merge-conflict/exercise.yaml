@@ -1,0 +1,128 @@
+schema_version: 1
+id: git/resolve-a-merge-conflict
+kind: git_scenario
+title: Resolve a conflict where neither side is right
+difficulty: medium
+tags: [merge, conflicts, collaboration]
+estimated_minutes: 12
+
+prompt: |
+  `feature/tune` raises the worker count to 8, which a colleague arrived at by
+  load testing. Meanwhile `main` raised it to 4 — a guess — and added a request
+  timeout in the same part of the file.
+
+  Merge `feature/tune` into `main`. The merge will stop with a conflict, which
+  is git saying that this one is yours to decide.
+
+  The result should keep **both** things that matter: `workers = 8` and
+  `timeout_seconds = 30`.
+
+  Write the resolved file with `write settings.ini <line> <line> ...` — one
+  argument per line.
+
+hints:
+  - "`git merge feature/tune` exits non-zero and stops. That is not a failure
+     to recover from; it is the start of the exercise. `git status --short`
+     shows the file as `UU`, meaning unmerged on both sides."
+  - "`cat settings.ini` shows both versions separated by `<<<<<<<`, `=======`
+     and `>>>>>>>`. Above the `=======` is HEAD — your side, `main`. Below it
+     is the branch being merged in."
+  - "Neither block is the answer on its own: one has the measured worker count,
+     the other has the timeout. The resolved file is the four unconflicted
+     lines plus one value from each side."
+  - "Write the file with the content you want, markers and all removed, then
+     `git add settings.ini` — staging is how you tell git it is resolved — then
+     `git commit --no-edit` to accept the prepared merge message."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  # The merge itself. Declared rather than tolerated: an exercise whose answer
+  # starts with a command that fails has to say how many fail, and the content
+  # suite holds it to exactly that (PLAN.md §16).
+  reference_failing_commands: 1
+  counter_examples:
+    - file: naive-take-ours.cmds
+      expect_failures: [kept-the-measured-value]
+    - file: naive-take-theirs.cmds
+      expect_failures: [kept-mains-timeout]
+    - file: naive-commit-the-markers.cmds
+      expect_failures: [no-markers-committed]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: branch-is-merged
+      label: feature/tune is in main's history
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "refs/heads/feature/tune", descendant: HEAD}
+      explanation: |
+        A merge has to actually record that the branch was incorporated.
+        Copying the value across by hand and committing it gets the same file
+        and leaves `feature/tune` unmerged, so git will offer it again — and
+        the colleague's commit never appears in `main`'s history at all.
+
+    - id: conflict-is-resolved
+      label: No paths are left unmerged
+      severity: required
+      assert: unmerged_paths_empty
+      explanation: |
+        A merge in progress is a real state: the index holds three versions of
+        the file and git is waiting. Until every unmerged path is staged, the
+        merge is unfinished — and `git commit` will refuse, which is the one
+        guard rail this exercise has.
+
+    - id: no-markers-committed
+      label: No conflict markers in the committed file
+      severity: required
+      assert: no_conflict_markers
+      with: {paths: settings.ini, ref: HEAD}
+      explanation: |
+        `git add` means "I have resolved this file", and git does not read it to
+        check. Both values and three lines of `<<<<<<<` then end up committed —
+        which passes every check that looks for a value, because both values are
+        in there. Reads `HEAD` rather than the working tree, because committing
+        the markers is the mistake and a dirty working tree is a different one.
+
+    - id: kept-the-measured-value
+      label: workers is the branch's measured 8
+      severity: required
+      assert: file_at_ref_matches
+      with: {ref: HEAD, path: settings.ini, pattern: '(?m)^workers = 8$'}
+      explanation: |
+        Anchored with `(?m)` so it matches a whole line, which matters here:
+        an unanchored `workers = 8` would also match the inside of a conflict
+        block. Taking `--ours` wholesale is what fails this — the fast way out
+        of a conflict, discarding the one number in the file that was measured.
+
+    - id: kept-mains-timeout
+      label: main's request timeout survived
+      severity: required
+      assert: file_at_ref_matches
+      with: {ref: HEAD, path: settings.ini, pattern: '(?m)^timeout_seconds = 30$'}
+      explanation: |
+        The half that `--theirs` loses. The timeout was not in conflict with
+        anything — it was simply adjacent to the line that was, so it got
+        swallowed by the conflicted region. That is the usual way a clean-looking
+        one-sided resolution loses something nobody was arguing about.
+
+    - id: clean-worktree
+      label: Nothing left staged or half-merged
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        Resolving the file and staging it leaves a merge that has not been
+        committed, which is easy to walk away from — `git status` says
+        "All conflicts fixed but you are still merging".
+
+    - id: read-the-conflict
+      label: You looked at what the two sides actually said
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^(git (status|diff|log)\b|cat\b)'}
+      explanation: |
+        The whole skill here is reading a conflict rather than picking a side to
+        make it go away. `git status --short`, `cat`, and `git diff` are the
+        three commands that turn `UU settings.ini` into a decision you can make
+        on purpose.

@@ -1,0 +1,12 @@
+# Counter-example: pull and push.
+#
+# This is correct in every way except the shape of the history. `git pull`
+# defaults to merging, so main gains a merge commit whose only content is
+# "these two lines of work met" -- and on a busy branch you get one of those
+# per person per day, until `git log --graph` is unreadable and no commit on
+# main was ever tested in the state it records.
+
+git push origin main
+git pull --no-rebase --no-edit origin main
+git log --oneline --graph --decorate --all
+git push origin main
