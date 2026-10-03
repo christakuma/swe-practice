@@ -30,12 +30,17 @@ an afternoon do not need one.
 | [0006](0006-sqlite-without-an-orm.md) | SQLite with hand-written SQL and explicit mappers, not an ORM | accepted |
 | [0007](0007-htmx-over-a-single-page-app.md) | HTMX and server-rendered fragments, not a single-page app | accepted |
 | [0008](0008-sm2-first-with-fsrs-behind-a-port.md) | SM-2 first, with FSRS behind the same port | accepted |
+| [0009](0009-ship-our-own-prompts.md) | Ship our own prompts; never redistribute problem text | accepted |
 | [0010](0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | accepted |
 | [0011](0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
 | [0012](0012-inspect-the-repository-through-the-grading-port.md) | The repo state panel reads through the grading port, not a second git path | accepted |
 | [0013](0013-grade-on-save-is-a-preview.md) | Grade-on-save is a preview that persists nothing | accepted |
+| [0014](0014-a-hand-ordered-curriculum-manifest.md) | A hand-ordered curriculum manifest, not a prerequisite graph | accepted |
 
-0010 and 0011 are out of sequence because their numbers were reserved in
+0009, 0010 and 0011 are out of sequence because their numbers were reserved in
 PLAN.md §12 before the decisions were written up, and numbers are never reused.
+0009 waited longest: it is about what `content/` ships, so it could not honestly
+be written until Phase 11 had shipped fifty-one exercises and found out what
+writing them cost.
 
-Planned, not yet written (PLAN.md §12): ship our own prompts (0009).
+Every number reserved in PLAN.md §12 is now written.

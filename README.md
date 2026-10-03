@@ -15,10 +15,12 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 10 complete — **the MVP is done.** The core bet works, a
-session survives the terminal it was opened in, both exercise kinds are solved
-in a browser *or in your own editor*, and the tool now answers *what should I
-practise today?* instead of leaving it to you. A git scenario is graded on what your commands actually did,
+**Status:** Phase 11 complete — **54 exercises, 24 git scenarios and 30 katas,
+every one of them graded.** The engine was finished in Phase 10; this is the
+library that makes it worth opening. The core bet works, a session survives the
+terminal it was opened in, both exercise kinds are solved in a browser *or in
+your own editor*, and the tool answers *what should I practise today?* instead of
+leaving it to you. A git scenario is graded on what your commands actually did,
 from a console or from the terminal:
 
 ```
@@ -44,8 +46,15 @@ two dozen correct phrasings to allow.
 Underneath it: 20 pure assertion functions over a read-only port, implemented
 twice (real git, in-memory fake) and proved to agree by a conformance suite, and
 a content suite that grades every reference solution in the library and holds
-every counter-example to exactly the checks it declares. See
-[docs/PLAN.md](docs/PLAN.md) for the full design and the phase plan, and
+every counter-example to exactly the checks it declares.
+
+**Nothing in `content/` is borrowed.** Every prompt, hint, note, hidden test and
+reference solution is written for this repository
+([ADR 0009](docs/adr/0009-ship-our-own-prompts.md)) — which is what lets a prompt
+state exactly what the grader checks, and what makes the notes the product rather
+than a restatement of someone else's problem statement.
+
+See [docs/PLAN.md](docs/PLAN.md) for the full design and the phase plan, and
 [docs/adr/](docs/adr/) for the decisions and the alternatives that were
 rejected.
 
@@ -357,10 +366,17 @@ against a plain dict with no database in the test.
 uv run practice validate
 ```
 
-Reports every problem in every exercise in one pass, located to the field, and
+Reports every problem in all 54 exercises in one pass, located to the field, and
 exits non-zero if anything is wrong — so CI depends on it. It runs nothing, so
 it works on a machine with no git, and it prints what a passing run does **not**
 prove.
+
+It also audits `content/curriculum.yaml`, the hand-written manifest that decides
+what order the library is offered in
+([ADR 0014](docs/adr/0014-a-hand-ordered-curriculum-manifest.md)). It has to name
+every exercise exactly once and nothing that is not on disk, so an exercise added
+without a line in it fails here rather than quietly appearing at the end of the
+list.
 
 ```bash
 uv run practice fixtures --check
@@ -408,7 +424,8 @@ src/practice/
 │   └── cli/         Typer: the second driving adapter over the same use cases
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
-content/           exercises as declarative data — adding one needs no code
+content/           54 exercises as declarative data — adding one needs no code
+├── curriculum.yaml nine tracks in order; validate holds it to covering them all
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform
 tools/             the one module that opens a socket, deliberately outside the wheel
 docs/adr/          architecture decision records
@@ -435,7 +452,7 @@ The assertion functions are in `domain/checks/` rather than under `adapters/`
 for the same kind of reason. They are pure functions over a `RepoQuery` port and
 never shell out, so putting them inside the layer the coverage gate and the
 architecture test police makes "testable with no git installed" a structural
-fact rather than a happy accident. All 22 are unit-tested against an in-memory
+fact rather than a happy accident. All 20 are unit-tested against an in-memory
 fake in milliseconds; a conformance suite then proves that fake answers the same
 questions real git does, which is the only thing that makes the fast tests
 evidence about anything.

@@ -4,8 +4,15 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 10 complete — **the MVP is done and you can leave the
-> browser.** Phases 0–9 are a complete product: the core bet works, an attempt survives the process that
+> **Status:** Phase 11 complete — **the library is the product now: 54
+> exercises, 24 git scenarios and 30 katas, every one of them graded.** Phases
+> 0–10 built the engine; this phase is the content that makes it worth opening,
+> and the exit bar was never "they load" — `uv run pytest -m content` replays
+> every reference solution through the real use cases, holds all 52
+> counter-examples to failing **exactly** the checks they declare, grades every
+> kata's stub to prove the suite rejects it, and pins all 24 fixtures to
+> `content/fixtures.lock` on both platforms. Phases 0–9 are a complete product:
+> the core bet works, an attempt survives the process that
 > started it, both exercise kinds are solved in a browser, and the tool now
 > answers *what should I practise today?* instead of leaving it to you. A git
 > scenario is graded end to end — `practice solve git/revert-a-pushed-commit
@@ -37,6 +44,21 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > ([ADR 0013](adr/0013-grade-on-save-is-a-preview.md)): the attempt is handed
 > the file's contents in memory, graded, and never saved, so the event log stays
 > a record of what the solver did rather than of what they typed.
+>
+> **Phase 11 is the library, and three findings the library forced.** Every
+> prompt, hint, note and test is written here rather than borrowed
+> ([ADR 0009](adr/0009-ship-our-own-prompts.md)), which is what lets a prompt
+> state exactly what the grader checks. The content then found three gaps in the
+> engine it was written against: a conflict scenario's answer *begins* with a
+> command that exits 1, so a reference solution can now declare how many of its
+> commands fail — counted, not flagged, so a typo in the same file is still
+> caught; `@{u}` is a git revision and the content suite had been treating any
+> `@`-prefixed parameter as a fixture alias; and the two assertions Phase 5
+> shipped flagged as unproven went unused across all 24 scenarios, so they are
+> **deleted** and the vocabulary is twenty. The order the library is offered in
+> is now a hand-written manifest that `validate` holds to covering it exactly
+> ([ADR 0014](adr/0014-a-hand-ordered-curriculum-manifest.md)) — it had been
+> `sorted(ExerciseId)`, which put the hardest kata fifth.
 >
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30
 
@@ -1261,6 +1283,21 @@ is a type. So: **after changing any user-facing string, grep for it** before
 trusting a green cheap tier. One `grep -rn` is cheaper than either the full suite or
 the attribution loop, and it is the only check that covers this case directly.
 
+**And a commit that only adds content runs no tests at all.** Found in Phase 11,
+where seven of the thirteen commits touch nothing but `content/`: `paths` comes from
+the test directories a commit touches, so those commits get lint, format and
+`mypy` over data none of the three reads, and then nothing. The cheap tier
+reported green on all six while an e2e test was failing — the dashboard offers
+the top six queue rows, and a library that had grown from 3 exercises to 54 had
+moved the one that test asks for off the first screen.
+
+So for a content commit the two tiers collapse into one: **`uv run pytest -m
+content` is the cheap tier**, which is seconds per exercise with `-k <slug>` and
+about nine minutes for the library, and the pre-push run is still the only thing
+that covers the e2e suite — which is the only suite that reads the real library
+through the real web app, and therefore the only one that can notice a change in
+what the library *offers*.
+
 **Effort** is in *sessions* ≈ 2–3 focused hours, at entry-level pace.
 **Phases 0–9 (the MVP) total ~40 sessions, so on the order of 100 focused
 hours.** That is a real project, not a weekend. Phase 11 roughly doubles it.
@@ -1676,25 +1713,64 @@ because the stub already is the working copy" finding is in §16.
 
 ---
 
-### Phase 11 — Content build-out · 8+ sessions
+### Phase 11 — Content build-out · 8+ sessions — **complete**
 
-The phase that determines whether you actually use this thing. Pure authoring,
-no code changes — which is the payoff of §5.
+The phase that determines whether you actually use this thing. Planned as pure
+authoring with no code changes — the payoff of §5 — and it was *nearly* that:
+51 exercises, 3 small code commits, and the three code commits are the
+interesting part of the record (§16).
 
-Git tracks (~24 scenarios): history rewriting · recovery & bisect ·
+Git tracks (24 scenarios): history rewriting · recovery & bisect ·
 collaboration & conflicts.
-Kata tracks (~30 katas): arrays/strings/hashing · trees & graphs · DP & greedy.
+Kata tracks (30 katas): arrays/strings/hashing · trees & graphs · DP & greedy.
 
-**Commits**
+**Commits** — thirteen, where the plan sketched seven
 1. `content(git): add history rewriting track`
 2. `content(git): add recovery and bisect track`
-3. `content(git): add collaboration and conflict track`
-4. `content(katas): add arrays, strings and hashing track`
-5. `content(katas): add trees and graphs track`
-6. `content(katas): add dynamic programming track`
-7. `content: add curriculum manifest with track ordering`
+3. `feat(content): let a reference solution declare its failing commands`
+4. `fix(checks): share one definition of what a fixture alias is`
+5. `content(git): add collaboration and conflict track`
+6. `content(katas): add arrays, strings and hashing track`
+7. `content(katas): add trees and graphs track`
+8. `content(katas): add dynamic programming and greedy track`
+9. `refactor(checks): delete the two assertions Phase 11 did not need`
+10. `content: add curriculum manifest with track ordering`
+11. `fix(content): put both kinds on the curriculum's first screen`
+12. `docs(content): correct three claims found reviewing the notes`
+13. `docs: add ADRs 0009 and 0014 and mark phase 11 complete`
 
-**Exit:** ≥ 50 exercises, all green under the content integrity suite.
+Commits 11 and 12 are the pre-push run and a read-through finding things the
+per-exercise tier could not: one about what the *library* offers rather than
+what any exercise does, and three claims in notes that were wrong rather than
+unproven (§16).
+
+**Exit:** ≥ 50 exercises, all green under the content integrity suite. **Met** at
+**54** — 24 git scenarios and 30 katas — by `uv run pytest -m content`, which is
+936 cases over the real `content/` directory. Per exercise it is the four files
+of §9 doing the work, and each criterion has a named owner:
+
+- *solvable* — `tests/content/test_scenarios.py` replays every `solution.cmds`
+  through the real use cases and requires every required check to pass;
+  `tests/content/test_katas.py` grades every `solution.py` with a real pytest
+  run.
+- *discriminating* — the same scenario suite requires each counter-example to
+  fail **exactly** its declared checks, in both directions. 52 counter-examples
+  across 24 scenarios, and it corrected five of my own predicted failure sets.
+- *not vacuous* — per kata, `test_its_stub_fails` and
+  `test_its_hidden_suite_holds_more_than_one_test`; per scenario,
+  `test_at_least_one_required_check_is_proven_to_discriminate`.
+- *reproducible* — `practice fixtures --check` holds all 24 fixtures to
+  `content/fixtures.lock`, on Linux and Windows.
+- *well-formed* — `practice validate` audits all 54 without executing anything,
+  and now also requires `content/curriculum.yaml` to place every one of them.
+
+The three unplanned code commits are each a case of content finding a gap in the
+engine rather than a change of direction: `reference_failing_commands` exists
+because a conflict scenario's answer *starts* with a command that exits 1;
+`alias_name` because `@{u}` is a git revision and the content suite thought it
+was a fixture alias; and the deletion because the two assertions Phase 5 flagged
+as unproven stayed unused across all 24 scenarios, which is what §13 said to do
+about them.
 
 ---
 
@@ -1751,11 +1827,12 @@ changed"* is worth more than any code sample.
 | [0006](adr/0006-sqlite-without-an-orm.md) | SQLite with hand-written SQL and explicit mappers, not an ORM | accepted |
 | [0007](adr/0007-htmx-over-a-single-page-app.md) | HTMX and server-rendered fragments, not a single-page app | accepted |
 | [0008](adr/0008-sm2-first-with-fsrs-behind-a-port.md) | SM-2 first, with FSRS behind the same port | accepted |
-| 0009 | Ship our own prompts; never redistribute problem text | not yet written |
+| [0009](adr/0009-ship-our-own-prompts.md) | Ship our own prompts; never redistribute problem text | accepted |
 | [0010](adr/0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | accepted |
 | [0011](adr/0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
 | [0012](adr/0012-inspect-the-repository-through-the-grading-port.md) | The repo state panel reads through the grading port, not a second git path | accepted |
 | [0013](adr/0013-grade-on-save-is-a-preview.md) | Grade-on-save is a preview that persists nothing | accepted |
+| [0014](adr/0014-a-hand-ordered-curriculum-manifest.md) | A hand-ordered curriculum manifest, not a prerequisite graph | accepted |
 
 ---
 
@@ -1767,9 +1844,9 @@ changed"* is worth more than any code sample.
 | Non-deterministic fixture SHAs | Medium | The full pinned set in §6.1 — identity, dates, `fileMode`, `autocrlf`, `eol`, `defaultBranch` — verified against `content/fixtures.lock` on both platforms |
 | Assertions too loose to tell right from wrong | **High** | Mandatory `naive.cmds` counter-examples that CI requires to fail, replayed through the real policy |
 | Reference solutions validated through a path users cannot use | Medium | §5.3 — solutions are command lists replayed through `RunScenarioCommand`, never shell scripts |
-| Content authoring stalls | **High** | This is the real failure mode. Content-as-data plus a documented authoring guide; Phase 2 proves the loop with three exercises before any UI exists |
+| Content authoring stalls | **High — retired in Phase 11** | This was the real failure mode and it did not happen: 51 exercises authored, 54 in the library. Content-as-data plus Phase 2 proving the loop with three exercises before any UI existed. What it cost was a fortnight, and what made it survivable was the content suite catching five wrong counter-example declarations and three wrong expected values before any of them shipped |
 | Scope creep into SQL/k8s/system design | High | Phase 13 exists precisely to park these |
-| Over-abstracting for the interview story | Medium | Every port must have ≥ 2 real or test implementations, or it gets deleted |
+| Over-abstracting for the interview story | Medium — **exercised in Phase 11** | Every port must have ≥ 2 real or test implementations, or it gets deleted. The rule was applied to two *assertions* rather than a port: `reflog_contains` and `command_count` shipped flagged as unproven in Phase 5 and were deleted once 24 scenarios wanted neither, taking `RepoQuery.reflog` with them |
 | CodeMirror 5 being legacy | Low | Isolated to one template; CM6 + esbuild is a contained swap if needed |
 
 That second-to-last row is worth taking seriously. The fastest way to ruin this
@@ -1867,8 +1944,20 @@ Not blockers — decide when the phase arrives.
 3. **Kata languages beyond Python.** The runner is already behind a port, so
    adding TypeScript means a `vitest` adapter. Worth it only if you interview
    in TS.
-4. **Curriculum sequencing** — hand-ordered tracks, or prerequisite-graph
-   unlocking? Start hand-ordered; revisit once there are 50 exercises.
+4. **Curriculum sequencing — answered in Phase 11 at fifty-four exercises, and
+   the revisit found that "hand-ordered" had never actually happened.** The
+   library's order was `sorted(ExerciseId)`, so it was ordered by spelling:
+   `edit-distance` fifth, before `climbing-stairs`. `content/curriculum.yaml`
+   now declares nine tracks in order and `validate_library` requires it to cover
+   the library exactly ([ADR 0014](adr/0014-a-hand-ordered-curriculum-manifest.md)).
+
+   **Prerequisite-graph unlocking stays parked, and now for a product reason
+   rather than a sequencing one.** It needs the attempt history as an input to
+   the review queue rather than just the card store, and it changes the tool from
+   advising to *gating* — a solver who wants `edit-distance` today should be able
+   to have it. Revisit if `practice progress` ever shows that everybody fails X
+   before Y and succeeds after, which is a measurable claim the attempt table
+   already holds the data for.
 
 ---
 
@@ -3108,3 +3197,204 @@ the only test asserting on `--source FILE`, and it is about a different message
 (`submit`'s refusal when a kata is submitted without one), which is unchanged.
 Both commits passed the cheap tier on their own and the pre-push run found
 nothing new, which is the second phase in a row where that is true.
+
+**2026-10-03 — Phase 11: the content build-out. Fifty-four exercises.**
+Eight-plus sessions budgeted, seven commits sketched, thirteen written. The plan
+said "pure authoring, no code changes — which is the payoff of §5", and it was
+nearly right: four of the thirteen commits touch code — three of them the content
+finding a gap in the engine it was written against rather than a change of
+direction, and the fourth a guard test for a property of the *library* that no
+single exercise could carry. That is the phase's shape, and it is the opposite of the
+one the plan feared — the risk register had "content authoring stalls" at
+**high**, and what actually happened is that authoring kept finding bugs in the
+grader.
+
+**The §5 bet held, with one exception that is now written down.** 51 exercises
+were added as data — 24 git scenarios, 30 katas, 283 new files under `content/` —
+with no change to the loader, the graders or either driving adapter. The
+exception is `reference_failing_commands`, which *is* a schema field, and the
+reason it exists is the most useful finding in the phase.
+
+**Three findings that cost code.**
+
+- **A conflict scenario's answer begins with a command that fails.** `git merge`
+  on a conflict exits 1, so does a `git rebase` that stops partway, and so does a
+  push rejected as non-fast-forward. `test_its_reference_solution_replays_without_errors`
+  required *every* reference line to succeed, which made the single
+  most-requested git skill unauthorable — and the strictness was right, because
+  it catches a mistyped flag and names the line. §15 question 1 had parked
+  merge-conflict scenarios for this phase expecting the problem to be the editing
+  surface; the editing surface turned out to be fine (the virtual `write` takes
+  one argument per line) and the exit code was the blocker. Resolved by
+  **counting** rather than flagging: `reference_failing_commands: 1`, and the
+  suite holds the reference to exactly that number. A boolean "this reference may
+  fail" was rejected because it excuses every *other* failure in the same file,
+  which is precisely the defect the assertion exists to catch. Three scenarios
+  use it.
+- **`@{u}` is a git revision and the content suite thought it was an alias.**
+  `publish-a-branch-for-review` asserts that a branch has an upstream, and
+  `ref_points_at {ref: "@{u}", target: HEAD}` is the only way the vocabulary can
+  say so — `@{u}` resolves to nothing when no upstream is configured, so it is a
+  check on `.git/config` rather than on the remote. It graded correctly and failed
+  a test about *fixture aliases*, because that test treated any parameter starting
+  with `@` as one while the domain's rule is narrower by design
+  (`^@([A-Za-z][A-Za-z0-9_-]*)$`, so `@c2` can never collide with git's own `@`
+  syntax — §6.5). Two definitions of alias syntax, one `startswith` apart.
+  `alias_name` is now exported from `domain/checks/evaluation.py` and both call it.
+- **The two unproven assertions were deleted, and the flag is why it happened.**
+  `reflog_contains` and `command_count` shipped in Phase 5 registered,
+  implemented, and labelled in three docstrings as deleted-rather-than-carried if
+  no Phase 11 exercise found a use (§13). Twenty-four scenarios later — eight
+  about recovery, three turning entirely on the reflog — neither was wanted once.
+  `reflog_contains` is vacuously true wherever the fixture created the entry
+  (every attempt at `recover-a-lost-commit` passes `{pattern: "^reset:"}`,
+  including one that ran no commands) and otherwise grades *how* a solver arrived
+  somewhere, which §1 rejects. `command_count` counts read-only commands, so a
+  budget punishes the inspection operational git is mostly made of. **The
+  vocabulary is twenty.** `test_registry.py`'s `VOCABULARY_SIZE` fired as a
+  tripwire in the direction nobody plans for — removal — which is what it is for.
+
+  `RepoQuery.reflog` and `ReflogEntry` went with them, and that part has a real
+  cost recorded rather than glossed: the conformance suite loaded the fake's
+  reflog positions *through* that method, so `HEAD@{0}`, `HEAD@{1}` and
+  `HEAD@{3}` moved from its derived-and-therefore-tested list to its
+  loaded-and-therefore-trivial one. Both sides are still tested individually; the
+  cross-check between them is gone. Keeping a port method whose only consumer is
+  the suite that proves it would have been worse — agreement with git about a
+  method nothing calls is worth nothing.
+
+**The oracle earned its keep eight times, which is the number worth keeping.**
+Five counter-example failure sets were predicted wrong and corrected by
+`test_scenarios.py`'s exactly-these-checks rule; three expected values in katas
+were wrong arithmetic, caught by `test_katas.py` grading the reference. Two of
+the three were in `house-robber`, where an "adjacent is illegal" example reached
+a test, a prompt *and* the notes before anything ran, so the fix changed all
+three. The practice that followed is now the rule for this kind of content:
+**compute every expected value, do not reason about it.** The counter-example
+corrections were all one shape — collateral from a check reading `HEAD~1` or a
+remote-tracking ref — and the declaring-exactly rule caught every one on first
+contact.
+
+**Two authoring constraints nobody had written down.**
+
+- **`SHELL_METACHARACTERS` are rejected inside quotes too.** `|<>&;` anywhere in
+  a `.cmds` line is refused, so any file content a solution *writes* cannot
+  contain them. It shaped two fixtures and broke one on first run:
+  `resolve-a-conflict-during-a-rebase` resolved to `attempt < MAX_ATTEMPTS` and
+  now reads `attempt in range(MAX_ATTEMPTS)`. This is the first thing to know
+  before authoring a scenario whose answer edits a file.
+- **A fixture must leave a clean worktree** (`test_its_fixture_leaves_a_clean_worktree`),
+  so no scenario can *start* mid-conflict or with uncommitted work. The conflict
+  track is authored around it — the solver runs the merge — and "recover
+  uncommitted changes" is simply not expressible, which is honest, because git
+  cannot do it either.
+
+Two smaller ones: a fixture's own `git push` updates its remote-tracking refs as
+a side effect, so "you have not fetched since yesterday" has to be restored
+deliberately with `git update-ref` — two fixtures do, and without it the
+stale-cache lesson in `pull-without-a-merge-bubble` was prose describing a state
+the fixture did not have. And `git rebase --continue` needs an editor, which the
+sandbox pins to `false`; `git commit --no-edit` first works, keeps the original
+message, and is a real technique rather than a workaround, verified against a
+live rebase before the exercise was written.
+
+**The curriculum question was answered, and the revisit found the premise was
+false.** §15 question 4 said "start hand-ordered; revisit once there are 50
+exercises". Nothing was ever hand-ordered: `list_exercises()` returned
+`sorted(ExerciseId)`, so the library was ordered by spelling —
+`katas/edit-distance`, the hardest kata in it, appeared fifth, before
+`climbing-stairs`. Invisible at three exercises; the first thing a solver sees at
+fifty-four. `content/curriculum.yaml` now declares nine tracks in order and
+`validate_library` requires it to name every exercise exactly once
+([ADR 0014](adr/0014-a-hand-ordered-curriculum-manifest.md)). **No caller
+changed** — the browse page and the unscheduled half of the review queue both ask
+the library for the library's order, and `review_queue.py` had explicitly declined
+to invent a local one on the grounds that "inventing half an answer to it here
+would make the real one harder to add". It was right, and the payment arrived one
+phase later. The tracks are a manifest rather than directories because they have
+to be: an `ExerciseId` is exactly `<track>/<slug>` (§4.1), so the filesystem can
+express two tracks and the phase has nine.
+
+**ADR 0009 waited eleven phases and was worth waiting for.** Its number was
+reserved in §12 before Phase 0 shipped, and it is about what `content/` contains,
+so it could not honestly be written until there was content. The decision — every
+prompt, hint, note, test and reference solution written here, nothing borrowed —
+has a consequence that only shows up after authoring thirty katas: **writing the
+prompt is what finds the discriminating test.** The tree a per-node BST check
+accepts, the flood fill that loops forever on a no-op, the `abba` that breaks an
+unguarded sliding window, `cars` with `["car", "ca", "rs"]` — none came from
+reading a problem statement. They came from writing one and asking what a wrong
+answer would look like, which is the step a copied statement skips. Every number
+reserved in §12 is now written.
+
+**The content suite is the slowest thing in the project, and the cost is worth
+stating.** 936 cases over the real library: two pytest subprocesses per kata,
+and per git scenario a provisioned workspace and a bash fixture per graded replay
+— one for the reference and one for each of its counter-examples. Nine minutes on
+its own. The per-exercise filter (`-k <slug>`) is what made authoring possible at
+all: each exercise was graded in about four seconds while being written, and the
+whole suite only before each commit.
+
+**The cheap tier cannot see a content commit at all, and this is the phase that
+proved it.** §11's per-commit loop derives its test paths from the test
+*directories a commit touches*, and a commit that adds only `content/` touches
+none — so it runs lint, format and `mypy` over data those three tools do not
+read, and then nothing. Which means the loop reported green on six content
+commits while an e2e test was failing.
+
+What it was: the dashboard offers the **top six rows** of the queue, and
+`tests/e2e/test_schedule_a_review.py` asks for Two Sum there, solves it, and
+asserts it is no longer offered. At three exercises Two Sum was always visible.
+At fifty-four it was the fifty-second row alphabetically, and then the *seventh*
+under the first draft of the curriculum — a first track of six git exercises
+pushed every kata off the first screen. So the manifest was wrong in a way the
+test was right about: interleaving at track granularity does not interleave the
+first thing anybody sees. The fix is a four-long `start-here` track of two git
+exercises and two katas, which is a better curriculum as well as a passing test.
+
+Two things worth taking from it. The cheap tier's caveat list needs a sixth
+entry — *a commit that only adds content runs no tests at all, so the pre-push
+run is the only tier that covers it*, now in §11 and in CLAUDE.md — and the e2e
+suite is the one that notices, because it is the only suite that reads the real
+library through the real web app. Both other content-shaped defects this phase
+(the metacharacter rejection, the fixture's clean-worktree rule) were caught by
+`-m content` within seconds; this one needed the whole thing.
+
+The durable fix is a content test rather than a careful manifest:
+`test_the_first_screen_of_the_curriculum_offers_both_kinds` asserts that the
+top `QUEUE_LIMIT` entries of the curriculum include at least one of each kind,
+which is the property the e2e depends on, checked in milliseconds where the
+author will see it.
+
+**And §11's "every commit in a phase must be green on its own" is broken by this
+phase's history. Recorded rather than papered over.** Six content commits fail
+`tests/e2e/test_schedule_a_review.py`, starting with the first one: it took the
+library from 3 exercises to 11, which pushed Two Sum out of the dashboard's top
+six rows, and nothing was green on that test again until the manifest's
+`start-here` track landed in commit 10. The rule was not broken by carelessness
+about *running* the tier — it was run on every commit — but because the tier
+cannot see a content commit at all, which is the finding above.
+
+Making the history comply would mean rewriting six commits to carry a fix for a
+file that does not exist yet in most of them (`curriculum.yaml` arrives in
+commit 10), or rewriting the e2e in commit 1 to not depend on what the library
+offers. Both are a rebase across ten commits with a twenty-five-minute suite per
+commit, for a bisect that nobody is going to run across this phase looking for
+*that* test. So: not done, stated here, and the mechanism that would have caught
+it on commit 1 is now in place for next time.
+
+The phase closed at **3,095 tests** — 747 more than Phase 10, and 862 of those
+are the content suite growing from 74 cases to 936 as it walked a library that
+went from 3 exercises to 54 — with `domain/` and `application/` at **100%**
+statement and branch coverage against the 90% gate.
+The covered surface **shrank**: 1,977 statements and 384 branches, against Phase
+10's 1,996 and 386. That is the arithmetic of the phase in one line. It added 51
+exercises and four lines of domain code (`reference_failing_commands` and its
+bound, `alias_name`), and deleted two assertions, a port method and a value
+object — so the thing the coverage gate polices got *smaller* while the library
+it exists to grade got eighteen times bigger. `practice validate` reports 54 exercises valid and
+`practice fixtures --check` matches all 24 fixtures against `fixtures.lock`.
+
+The whole suite now takes **17 minutes**, of which the content suite is nine.
+That is the real cost of this phase and it is charged to the right place: the
+pre-push tier. Nothing else got slower, because nothing else grew.

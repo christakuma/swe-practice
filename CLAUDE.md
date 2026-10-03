@@ -43,7 +43,7 @@ adds fails the type check in isolation, by name and line, with nothing executed.
 **Before a push** — the whole suite with the coverage gate, once, over the final
 tree. This is the one that decides.
 
-Five things the cheap tier cannot do, all found by using it:
+Six things the cheap tier cannot do, all found by using it:
 
 - **Nothing else may be running.** Two pytest runs compete for temp dirs, SQLite
   files and subprocesses, and `--cov` makes it worse — one `.coverage` in the
@@ -60,6 +60,13 @@ Five things the cheap tier cannot do, all found by using it:
 - **After changing any user-facing string, `grep -rn` for it.** The defect this tier
   has missed in two consecutive phases is a test asserting on a message, in a
   directory the commit did not touch. `mypy` cannot see it.
+- **A commit that only adds content runs no tests at all**, because `paths` comes
+  from the test directories a commit touches. For a content commit the cheap tier
+  is `uv run pytest -m content` (seconds per exercise with `-k <slug>`), and the
+  pre-push run is still the only thing that covers `tests/e2e` — the only suite
+  that reads the real library through the real web app, and so the only one that
+  notices a change in what the library *offers*. Phase 11 shipped six content
+  commits green over a failing e2e test this way.
 
 **Every commit in a phase must be green on its own.** A phase's commit list is a
 dependency order, and narrative order is not dependency order — check it against the
@@ -90,8 +97,10 @@ Two rules that shape what to add:
 
 The coverage gate covers `domain/` and `application/` only — 90% required, currently
 **100%** statement and branch. That is where the correctness-critical code lives,
-which is why the 22 assertion functions are in `domain/checks/` rather than under
-`adapters/`.
+which is why the 20 assertion functions are in `domain/checks/` rather than under
+`adapters/`. Twenty, not twenty-two: Phase 11 deleted `reflog_contains` and
+`command_count` after 24 git scenarios wanted neither, which is §13's rule about
+abstractions earning their keep being applied rather than quoted.
 
 ## Writing code here
 
@@ -142,7 +151,14 @@ A phase ends with a `docs:` commit that:
   points `PRACTICE_DATABASE_PATH` at a per-test path; pass `--workspace-root`
   explicitly in CLI tests. A suite that wrote to the real cache would collide with
   an open session, and `practice gc` would report test leftovers as real attempts.
-- **Content is data.** Adding an exercise under `content/` needs no code. After
-  editing a fixture, regenerate with `practice fixtures --write` and review the diff
-  — an unexpected line means the edit changed more history than you thought.
+- **Content is data.** Adding an exercise under `content/` needs no code — but it
+  does need a line in `content/curriculum.yaml`, which `practice validate`
+  requires to name every exercise exactly once ([ADR 0014](docs/adr/0014-a-hand-ordered-curriculum-manifest.md)).
+  After editing a fixture, regenerate with `practice fixtures --write` and review
+  the diff — an unexpected line means the edit changed more history than you
+  thought.
+- **Two authoring constraints that are not obvious.** `|<>&;` are rejected
+  anywhere in a `.cmds` line, *including inside quotes*, so file content a
+  solution writes cannot contain them. And a fixture must leave a clean worktree,
+  so no scenario can start mid-conflict — the solver runs the merge.
 - `uv sync` installs; `uv run` uses the locked environment. Don't re-resolve.
