@@ -1,0 +1,20 @@
+# Reference solution. A branch is a pointer, so "moving work to a branch" is
+# two pointer operations and no file ever changes.
+
+git log --oneline --decorate --all
+git status --short --branch
+
+# Exactly which commits are on main and not on origin.
+git log --oneline origin/main..HEAD
+
+# Name the current tip. This creates the branch and does NOT switch to it,
+# which is what leaves main free to move next.
+git branch feature/export
+git log --oneline --decorate --all
+
+# Now wind main back to what is published. feature/export still points at c3,
+# so nothing is lost.
+git reset --hard origin/main
+
+git log --oneline --decorate --all
+git status --short --branch

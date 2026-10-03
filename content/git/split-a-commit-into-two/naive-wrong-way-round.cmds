@@ -1,0 +1,12 @@
+# Counter-example: split it, but commit the changelog first.
+#
+# Two commits, identical final tree, and the first commit announces a fix that
+# is not in the repository yet. Anyone bisecting or cherry-picking the fix gets
+# a commit that only edits markdown.
+
+git reset HEAD~1
+git add CHANGELOG.md
+git commit -m "Start a changelog"
+git add convert.py
+git commit -m "Fix the sign of the timezone offset"
+git log --oneline

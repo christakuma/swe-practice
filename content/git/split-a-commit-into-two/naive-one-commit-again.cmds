@@ -1,0 +1,9 @@
+# Counter-example: reset, then stage everything and commit it once. The files
+# are right, the history is exactly what it was, and the reset accomplished
+# nothing except a new hash for the same mistake.
+
+git reset HEAD~1
+git status --short
+git add -A
+git commit -m "Fix offset sign and start a changelog"
+git log --oneline

@@ -1,0 +1,13 @@
+# Counter-example: type the fix again on the release branch. The files end up
+# identical and the commit count is right, so every content check passes.
+#
+# What is lost is the link between the two commits. `git log` on the release
+# branch no longer shows the subject anyone searching for the fix would
+# recognise, and `git cherry` can no longer tell you whether the backport
+# happened at all.
+
+git checkout release/1.x
+write billing.py '"""Invoice totals."""' '' '' 'def total(lines):' '    """Sum of the line amounts, rounded to the penny."""' '    amount = sum(line["amount"] for line in lines)' '    return round(amount, 2)'
+git add billing.py
+git commit -m "Patch the rounding in billing"
+git log --oneline --decorate --all

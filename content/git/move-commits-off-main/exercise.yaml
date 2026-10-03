@@ -1,0 +1,109 @@
+schema_version: 1
+id: git/move-commits-off-main
+kind: git_scenario
+title: Move two commits off main onto the branch they belong on
+difficulty: medium
+tags: [branches, history, reset, local-only]
+estimated_minutes: 12
+
+prompt: |
+  You meant to start a branch for the CSV exporter and did not. Two commits of
+  feature work are sitting on `main`.
+
+  `origin/main` is still at the project skeleton, so nothing has been
+  published.
+
+  Put that work on a branch called `feature/export`, and leave `main` pointing
+  at what `origin/main` points at. No commit should be lost on the way.
+
+  Nothing in this exercise needs to touch a file. A branch is a pointer to a
+  commit, so the whole job is done with pointers.
+
+hints:
+  - "`git log --oneline --decorate --all` shows one line of history with two
+     labels on it: `main` at the tip and `origin/main` two commits down. You
+     need a third label, and then you need to move one of the first two."
+  - "`git branch <name>` creates a branch at the current commit *without*
+     switching to it. `git checkout -b <name>` creates it and switches. Only
+     one of those leaves you standing somewhere you can still move `main`
+     from."
+  - "Create the branch first. Once `main` has moved, the commits you wanted to
+     name are no longer the current commit, and you would have to find them in
+     the reflog to name them at all."
+  - "`git branch feature/export`, then `git reset --hard origin/main`. The
+     first makes the work reachable from a second name; the second moves only
+     `main`, because that is the branch you are standing on."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-branch-but-no-reset.cmds
+      expect_failures: [main-matches-origin]
+    - file: naive-reset-before-branching.cmds
+      expect_failures: [work-moved]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: branch-created
+      label: A branch called feature/export exists
+      severity: required
+      assert: branch_exists
+      with: {name: feature/export}
+      explanation: |
+        The work needs a name of its own, or it is reachable only from `main` —
+        and the second half of this exercise moves `main`.
+
+    - id: work-moved
+      label: feature/export points at the commit that was on main
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/heads/feature/export", target: "@c3"}
+      explanation: |
+        Where the branch points is the whole exercise. A `feature/export` that
+        exists and sits at the skeleton commit is an empty branch with a
+        promising name: the work is then reachable from nothing, and finding it
+        again means going through the reflog.
+
+    - id: main-matches-origin
+      label: main is back to what is published
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/heads/main", target: "refs/remotes/origin/main"}
+      explanation: |
+        Creating the branch is only half the job. Until `main` moves back, the
+        feature work is still on `main` as well — so the next person to merge
+        your branch gets a no-op, and anything you build on `main` is built on
+        top of unreviewed feature commits.
+
+    - id: on-a-branch
+      label: HEAD is attached to a branch
+      severity: required
+      assert: head_detached
+      not: true
+      explanation: |
+        It is easy to get the two pointers right and end up detached, usually
+        via `git checkout <sha>` as a way of looking around. Commits made from
+        there belong to no branch, which is how this situation happens in the
+        first place.
+
+    - id: clean-worktree
+      label: No files were changed in the process
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        Moving work between branches is a pointer operation and should leave
+        your files untouched. A dirty worktree here means something copied
+        content around — which gets you the same files under different commits,
+        and loses the history you were trying to preserve.
+
+    - id: looked-before-leaping
+      label: You established where the refs were before moving them
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|status|diff|branch)\b'}
+      explanation: |
+        Both commands in this answer move a pointer, and which pointer they
+        move depends on where you are standing. `git log --oneline --decorate
+        --all` and `git status --short --branch` each answer that in one line.

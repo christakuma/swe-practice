@@ -1,0 +1,9 @@
+# Counter-example: bring the original commits back by merging them in.
+#
+# It works, in the sense that f1 and f2 are reachable again. The branch now
+# contains both the originals AND the rewritten copies of them, every change
+# applied twice, joined by a merge commit nobody intended.
+
+git log --oneline --decorate --all
+git merge --no-edit origin/feature/mfa
+git log --oneline --graph --decorate --all

@@ -1,0 +1,10 @@
+# Counter-example: the tempting answer. Fix the file in a new commit on top.
+#
+# Produces exactly the right FILES and the right published state, so every
+# content check passes. What it leaves behind is a history where "WIP median"
+# is permanent and the next commit exists only to apologise for it.
+
+git log --oneline
+write metrics.py '"""Summary statistics for a list of numbers."""' '' '' 'def average(values):' '    """The arithmetic mean."""' '    return sum(values) / len(values)' '' '' 'def median(values):' '    """The middle value, averaging the two middle ones when even."""' '    ordered = sorted(values)' '    middle = len(ordered) // 2' '    if len(ordered) % 2 == 1:' '        return ordered[middle]' '    return (ordered[middle - 1] + ordered[middle]) / 2'
+git add metrics.py
+git commit -m "Remove debug print"

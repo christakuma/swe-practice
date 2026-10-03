@@ -1,0 +1,121 @@
+schema_version: 1
+id: git/squash-fixups-before-pushing
+kind: git_scenario
+title: Squash three local commits into the one you meant to make
+difficulty: medium
+tags: [history, rewriting, reset, local-only]
+estimated_minutes: 12
+
+prompt: |
+  You wrote the rate limiter, pushed nothing, and then made two more commits
+  called `fix typo` and `fix typo again`. The code is right. The history is
+  three commits where one would do.
+
+  `origin/main` is still at the project skeleton, so none of this is published.
+
+  Leave `main` with **one** commit on top of `origin/main` containing exactly
+  the files you have now, and leave `origin` alone.
+
+  `git log origin/main..HEAD` is a good first command: it lists precisely the
+  commits that are yours and unpushed.
+
+hints:
+  - "You want the branch pointer to move back to where `origin/main` is, while
+     the *files* stay exactly as they are now. One of `git reset`'s modes does
+     that and the others do not."
+  - "`--hard` resets the branch, the index and the working tree. `--mixed`
+     resets the branch and the index. `--soft` resets only the branch — which
+     leaves everything the three commits did sitting in the index, staged."
+  - "After `git reset --soft origin/main`, run `git status`. Everything the
+     three commits changed is staged and ready to be committed once."
+  - "`git reset --soft origin/main`, then `git commit -m 'Add rate limiter'`.
+     Do not push before you squash: that is the one ordering that turns this
+     from a tidy-up into a rewrite of published history."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-reset-hard.cmds
+      expect_failures: [content-unchanged, one-commit-on-top]
+    - file: naive-push-then-squash.cmds
+      expect_failures: [origin-untouched, still-ahead-of-origin]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: content-unchanged
+      label: The files are byte-identical to what you had before squashing
+      severity: required
+      assert: tree_equals
+      with: {ref: HEAD, target: "@c4"}
+      explanation: |
+        Squashing is a statement about history, not about content: the tree you
+        end with must be the tree you started with. Comparing tree hashes rather
+        than a list of files is what makes this airtight — a `--hard` where a
+        `--soft` belonged loses changes that no pattern a content author thought
+        to write would have caught.
+
+    - id: one-commit-on-top
+      label: There is exactly one commit above origin/main
+      severity: required
+      assert: commit_count
+      with: {ref: HEAD, equals: 2}
+      explanation: |
+        The skeleton commit plus yours. Three commits means the squash did not
+        happen; one means the branch went back too far and took the work with
+        it. This counts everything reachable from `HEAD`, which is the number
+        `git log --oneline` prints.
+
+    - id: still-ahead-of-origin
+      label: origin/main can still fast-forward to your branch
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "refs/remotes/origin/main", descendant: HEAD}
+      explanation: |
+        The property that makes a rewrite safe, stated directly. While every
+        commit `origin` has is still an ancestor of yours, your next push is an
+        ordinary fast-forward and nobody else has to do anything. Rewrite one
+        commit that `origin` already holds and this is false for good — the push
+        needs `--force`, and anyone who pulled gets a divergence.
+
+    - id: origin-untouched
+      label: You did not publish the mess on the way past
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/remotes/origin/main", since: fixture}
+      explanation: |
+        `origin/main` was at the skeleton commit when you started and should
+        still be. Pushing the three commits and squashing afterwards gets to the
+        same local history by a route that cannot be undone: the fixups are on
+        the remote, and taking them off is a force-push.
+
+    - id: clean-worktree
+      label: Nothing left staged or uncommitted
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        `reset --soft` deliberately leaves the whole change staged — that is the
+        mechanism — so the squash is only finished once you have committed it. A
+        staged-but-uncommitted index here means you stopped one command short.
+
+    - id: no-force-push
+      label: You did not force-push anything
+      severity: advisory
+      assert: command_used
+      not: true
+      with: {pattern: 'push\b.*(--force|--force-with-lease|-f)\b'}
+      explanation: |
+        No force is needed anywhere in this exercise, and needing one is the
+        signal that you squashed something you had already published. If you
+        find yourself reaching for it, the mistake was earlier.
+
+    - id: looked-before-leaping
+      label: You established what was unpushed before rewriting it
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|status|diff)\b'}
+      explanation: |
+        Whether this is a safe tidy-up or an incident depends entirely on which
+        commits `origin` already has. `git log --oneline origin/main..HEAD`
+        answers it in one line.

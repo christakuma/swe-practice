@@ -1,0 +1,12 @@
+# Counter-example: merge main into the feature branch. Gets you a branch that
+# contains main's work and can be merged back cleanly -- at the cost of a merge
+# commit in the middle of a two-commit feature, and a history that no longer
+# reads as a sequence of changes.
+#
+# Must fail linear-history. The commit count gives it away too: a merge adds a
+# commit that is not a change.
+
+git log --oneline --decorate --all
+git checkout feature/report
+git merge --no-edit main
+git log --oneline --graph --decorate --all

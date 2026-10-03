@@ -1,0 +1,135 @@
+schema_version: 1
+id: git/rebase-a-feature-branch
+kind: git_scenario
+title: Get a feature branch back on top of main
+difficulty: medium
+tags: [rebase, branches, history, rewriting]
+estimated_minutes: 12
+
+prompt: |
+  `feature/report` is two commits long and was cut from `main` before `main`
+  picked up a fix of its own. Your branch is behind.
+
+  Nobody else has `feature/report` — it has never been pushed. `main` is
+  published and must not move.
+
+  Put your two commits on top of `main`, with no merge commit anywhere in the
+  branch, and both of them still doing what they did.
+
+  The two sides touch different files, so nothing will conflict.
+
+hints:
+  - "`git log --oneline --decorate --all` shows the fork. `git log --oneline
+     main..feature/report` lists exactly the two commits that are yours."
+  - "There are two ways to get `main`'s work into your branch. One records that
+     the two histories met; the other rewrites your commits as if you had
+     started from where `main` is now."
+  - "`git rebase <upstream>` replays the commits of **the branch you are
+     standing on** onto `<upstream>`. Read that twice — the argument is the
+     destination, not the thing being moved."
+  - "`git checkout feature/report`, then `git rebase main`. Running
+     `git rebase feature/report` from `main` does the exact opposite and is the
+     mistake worth making once."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-merge-instead.cmds
+      expect_failures: [linear-history, replayed-not-merged]
+    - file: naive-rebase-the-wrong-way.cmds
+      expect_failures: [rebased-onto-main, replayed-not-merged, main-untouched]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: rebased-onto-main
+      label: Every commit on main is now in the branch's history
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "refs/heads/main", descendant: "refs/heads/feature/report"}
+      explanation: |
+        What "up to date with main" actually means: `main`'s tip is an ancestor
+        of yours, so merging the branch back is a fast-forward and the next
+        person to review it is reviewing it against current code. This passes
+        for a merge too — on its own it cannot tell the two approaches apart,
+        which is why `linear-history` is here as well.
+
+    - id: linear-history
+      label: No merge commit anywhere in the branch
+      severity: required
+      assert: linear_history
+      with: {ref: "refs/heads/feature/report"}
+      explanation: |
+        A merge commit records that two lines of development met. In a
+        two-commit feature branch that is noise: it makes `git log` a graph
+        instead of a list, it makes `git bisect` step through commits nobody
+        ever had checked out, and it tells a reviewer nothing they wanted to
+        know. Rebasing produces the history you would have written if you had
+        started an hour later.
+
+    - id: replayed-not-merged
+      label: The branch holds five commits — three from main and your two
+      severity: required
+      assert: commit_count
+      with: {ref: "refs/heads/feature/report", equals: 5}
+      explanation: |
+        Three commits from `main`, two of yours, and nothing else. A merge makes
+        six, because the merge commit is a commit that is not a change. Rebasing
+        `main` onto the feature branch instead makes four, because the branch
+        never moved.
+
+    - id: work-survived
+      label: Both of your commits still do what they did
+      severity: required
+      assert: file_at_ref_matches
+      with:
+        ref: "refs/heads/feature/report"
+        path: report.py
+        pattern: 'sorted\(counts.items\(\), reverse=True\)'
+      explanation: |
+        A rebase replays each commit as a new one, and replaying can go wrong —
+        a conflict resolved by taking the wrong side silently drops a change.
+        This reads the second commit's contribution specifically, because the
+        first one surviving does not prove the second did.
+
+    - id: main-untouched
+      label: main is exactly where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        `main` is published. Rebasing it — which is what `git rebase
+        feature/report` does when you are standing on `main` — rewrites commits
+        other people already have, and the end state looks superficially fine
+        from your machine.
+
+    - id: on-a-branch
+      label: HEAD is attached, not left mid-rebase or detached
+      severity: required
+      assert: head_detached
+      not: true
+      explanation: |
+        A rebase that stops for a conflict leaves HEAD detached while it works
+        through the todo list. Reaching the end of this exercise detached means
+        the rebase never finished: either `git rebase --continue` is still
+        waiting for you, or an `--abort` is.
+
+    - id: clean-worktree
+      label: Nothing left staged or unmerged
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        The rebase here cannot conflict, so a dirty worktree means something
+        else changed files — usually an attempt to copy content between branches
+        by hand, which gets the files right and the history wrong.
+
+    - id: looked-before-leaping
+      label: You established which commits were yours before replaying them
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|status|diff)\b'}
+      explanation: |
+        `git log --oneline main..feature/report` is the command that tells you
+        what a rebase is about to replay. If that list holds commits you did not
+        write, you are about to rebase the wrong branch.

@@ -1,0 +1,123 @@
+schema_version: 1
+id: git/amend-the-last-commit
+kind: git_scenario
+title: Finish a commit you have not pushed yet
+difficulty: easy
+tags: [history, amend, local-only, rewriting]
+estimated_minutes: 8
+
+prompt: |
+  You committed `median` ten minutes ago and then noticed two things: there is
+  a `print("DEBUG", ...)` line still in it, and the commit subject says
+  `WIP median`, which is what you typed when it did not work yet.
+
+  Nothing is pushed. `origin/main` is one commit behind you.
+
+  Finish the commit that is already there: no debug line, a subject that
+  describes the change, and still exactly three commits on `main`.
+
+  `git log`, `git status`, `git show` and `cat` are all available. Look before
+  you type.
+
+hints:
+  - "`git log --oneline --decorate --all` shows where `main` is and where
+     `origin/main` is. The gap between them is what makes this exercise safe."
+  - "A new commit that removes the debug line would get you the right files and
+     leave `WIP median` in the history forever. There is a way to change the
+     commit that is already there instead."
+  - "`git commit --amend` replaces the tip commit with a new one built from the
+     current index. So stage the fixed file *first* — amending with nothing
+     staged rewrites only the message, and succeeds either way."
+  - "`write metrics.py ...` to drop the print line, `git add metrics.py`, then
+     `git commit --amend -m 'Add median'`. Do not push first: amending
+     something already published is the one way to get this wrong."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-a-second-commit.cmds
+      expect_failures: [tip-was-amended]
+    - file: naive-message-only.cmds
+      expect_failures: [debug-line-gone]
+    - file: naive-push-then-amend.cmds
+      expect_failures: [nothing-published-was-rewritten]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: debug-line-gone
+      label: The committed file has no debug print left in it
+      severity: required
+      assert: file_at_ref_matches
+      not: true
+      with: {ref: HEAD, path: metrics.py, pattern: 'print\('}
+      explanation: |
+        This reads the *committed* copy, not your working directory. A fix you
+        made and did not stage is not in the commit, and `--amend` with nothing
+        staged rewrites only the message — which is the most common way to do
+        half of this exercise and believe you did all of it.
+
+    - id: median-still-there
+      label: The work itself survived
+      severity: required
+      assert: file_at_ref_matches
+      with: {ref: HEAD, path: metrics.py, pattern: 'def median'}
+      explanation: |
+        Rewriting a commit means replacing it, and a `reset` or an amend of an
+        empty index can replace it with less than you had. The function you
+        spent the morning on still has to be in the commit afterwards.
+
+    - id: no-wip-subject
+      label: The commit subject describes the change
+      severity: required
+      assert: commit_subject_matches
+      not: true
+      with: {ref: HEAD, pattern: '^WIP'}
+      explanation: |
+        `WIP` is a note to yourself from before the code worked. The subject is
+        the part every git tool shows — `log`, `blame`, the branch list, the
+        output of a bisect — so it is the one piece of a commit worth ten
+        seconds of attention.
+
+    - id: tip-was-amended
+      label: You replaced the commit rather than adding another one
+      severity: required
+      assert: commit_count
+      with: {ref: HEAD, equals: 3}
+      explanation: |
+        A follow-up commit gets you the same files and a history that records
+        an accident and an apology. Both then appear in every log, every blame
+        and every review of this branch forever. Amending is available here for
+        one reason: the commit never left your machine.
+
+    - id: nothing-published-was-rewritten
+      label: origin/main is where it was — you rewrote only what you had not pushed
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/remotes/origin/main", since: fixture}
+      explanation: |
+        `--amend` is safe here for exactly one reason: the commit it replaces is
+        not on `origin`. Push first and the same command becomes a rewrite of
+        published history, which then needs a force-push and breaks the next
+        person to pull. The rule is not "never amend", it is "never amend
+        something someone else can already see".
+
+    - id: clean-worktree
+      label: Nothing left staged or half-finished
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        A fix that only exists in your working directory is not a fix. Stage it
+        and amend, or discard it — but do not leave the tip commit and the files
+        disagreeing about what the code is.
+
+    - id: looked-before-leaping
+      label: You inspected the repository before changing it
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|status|diff)\b'}
+      explanation: |
+        What makes amending safe is knowing whether the commit is published, and
+        the only way to know is to look. One `git log --oneline --decorate
+        --all` answers it.

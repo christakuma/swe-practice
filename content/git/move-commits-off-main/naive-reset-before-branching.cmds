@@ -1,0 +1,11 @@
+# Counter-example: the right two commands in the wrong order. Reset main
+# first, and the commits are unreferenced by the time you go to name them --
+# so the branch gets created at the skeleton commit instead.
+#
+# Note the branch DOES exist afterwards, and the working tree IS clean. Only
+# where the branch points says anything is wrong.
+
+git log --oneline
+git reset --hard origin/main
+git branch feature/export
+git log --oneline --decorate --all

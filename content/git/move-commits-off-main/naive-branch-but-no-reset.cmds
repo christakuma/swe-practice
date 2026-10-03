@@ -1,0 +1,7 @@
+# Counter-example: half the job. The branch now exists and points at the right
+# commit -- and main is still carrying the feature work, which is the thing
+# that was wrong in the first place.
+
+git log --oneline --decorate --all
+git branch feature/export
+git log --oneline --decorate --all

@@ -1,0 +1,132 @@
+schema_version: 1
+id: git/cherry-pick-a-fix-to-a-release-branch
+kind: git_scenario
+title: Backport one fix to a release branch, and nothing else
+difficulty: medium
+tags: [cherry-pick, branches, releases, collaboration]
+estimated_minutes: 12
+
+prompt: |
+  `release/1.x` is what production runs. It was cut three commits ago and has
+  not moved since.
+
+  `main` has picked up two features that are not ready to ship and one bug fix
+  that is: invoice totals were not being rounded, so production has been
+  under-billing every customer by fractions of a penny per line.
+
+  Get **that one commit** onto `release/1.x`. Neither feature may come with it,
+  `main` must not move, and the commit on the release branch should be
+  recognisable as the same change.
+
+  `git log --oneline release/1.x..main` lists the candidates.
+
+hints:
+  - "`git merge main` would bring the fix. It would also bring everything else
+     on `main`, which is the thing you are being asked not to do."
+  - "You want one commit's *diff* applied somewhere else, as a new commit.
+     `git cherry-pick <revision>` does exactly that."
+  - "Cherry-pick applies the change to the branch you are standing on, so
+     check out `release/1.x` first. And you can name the commit relatively —
+     `main~1` is the commit before `main`'s tip — rather than copying a hash."
+  - "`git checkout release/1.x`, then `git cherry-pick main~1`. The new commit
+     keeps the original's subject and author, which is what makes the backport
+     findable later."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-merge-main.cmds
+      expect_failures: [features-stayed-behind, one-commit-added, same-change]
+    - file: naive-retype-the-fix.cmds
+      expect_failures: [same-change]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: fix-is-on-the-release
+      label: The release branch rounds invoice totals
+      severity: required
+      assert: file_at_ref_matches
+      with:
+        ref: "refs/heads/release/1.x"
+        path: billing.py
+        pattern: 'round\(amount, 2\)'
+      explanation: |
+        The point of the exercise, read off the committed file on the release
+        branch rather than from your working directory — a cherry-pick you left
+        unfinished leaves the change in the working tree and not in a commit.
+
+    - id: features-stayed-behind
+      label: Neither unreleased feature came along
+      severity: required
+      assert: file_at_ref_matches
+      not: true
+      with: {ref: "refs/heads/release/1.x", path: feature_flags.py, pattern: '.'}
+      explanation: |
+        A patch release should contain the patch. This is negated and matches
+        any character at all, so it passes only when the file is absent from the
+        release branch entirely — which is the honest way to ask "did anything
+        else sneak in".
+
+    - id: one-commit-added
+      label: The release branch is exactly one commit longer
+      severity: required
+      assert: commit_count
+      with: {ref: "refs/heads/release/1.x", equals: 2}
+      explanation: |
+        One commit before, two now. Merging `main` makes it four, and because
+        `release/1.x` has not moved since it was cut, that merge is a
+        fast-forward — so there is no merge commit in the log to make the
+        mistake visible. The count is what notices.
+
+    - id: same-change
+      label: The commit on the release branch is recognisably the same fix
+      severity: required
+      assert: commit_subject_matches
+      with: {ref: "refs/heads/release/1.x", pattern: 'Fix rounding'}
+      explanation: |
+        A cherry-pick carries the original subject and author across. Retyping
+        the change by hand gets identical files and breaks the trail: nobody can
+        grep the release log for the fix they are looking for, and `git cherry
+        main release/1.x` can no longer tell you which commits have been
+        backported and which are still outstanding.
+
+    - id: main-untouched
+      label: main is exactly where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        Backporting is a one-way operation. Anything that moved `main` —
+        resetting it to the release branch, rebasing it — has fixed production
+        by breaking development.
+
+    - id: clean-worktree
+      label: Nothing left staged or half-applied
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        A cherry-pick that hits a conflict stops with the files staged and the
+        commit unmade, waiting for `git cherry-pick --continue`. That state
+        passes a check on file contents and has not actually committed anything.
+
+    - id: on-a-branch
+      label: HEAD is attached to the release branch
+      severity: required
+      assert: head_detached
+      not: true
+      explanation: |
+        `git checkout <sha>` is a common way to go and look at the fix, and
+        cherry-picking from there puts the new commit on no branch at all. The
+        change then exists, is correct, and is reachable from nothing.
+
+    - id: looked-before-leaping
+      label: You checked what the fix actually touched
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|status|diff)\b'}
+      explanation: |
+        `git show --stat main~1` confirms both that you have the right commit
+        and that it touches only the file you expect. A cherry-pick of the wrong
+        commit is a feature shipped in a patch release.

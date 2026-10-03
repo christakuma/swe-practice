@@ -1,0 +1,9 @@
+# Counter-example: decide the rebase was fine and make origin agree.
+#
+# The local history is tidy, the push succeeds, and the colleague who pulled
+# this morning now holds two commits that are no longer in the branch -- their
+# next pull either conflicts or quietly reinstates them.
+
+git log --oneline --decorate --all
+git push --force origin feature/mfa
+git log --oneline --decorate --all

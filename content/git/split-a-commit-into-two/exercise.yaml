@@ -1,0 +1,123 @@
+schema_version: 1
+id: git/split-a-commit-into-two
+kind: git_scenario
+title: Split one commit into the two commits it should have been
+difficulty: hard
+tags: [history, rewriting, staging, reset, local-only]
+estimated_minutes: 15
+
+prompt: |
+  The commit at the tip does two unrelated things: it fixes the sign of the
+  timezone offset, and it starts a `CHANGELOG.md`.
+
+  It has not been pushed — `origin/main` is one commit behind.
+
+  Leave `main` with **two** commits in place of that one: the bug fix first,
+  the changelog second, and the files at the end exactly what they are now.
+
+  `git show --stat HEAD` shows you what you are taking apart.
+
+hints:
+  - "You want the commit gone and its *changes* still on disk, unstaged, so you
+     can pick them up one at a time. One of `git reset`'s three modes does
+     exactly that — and it is the default."
+  - "`git reset HEAD~1` moves the branch back one commit and resets the index
+     to match, leaving your working tree untouched. `git status` afterwards
+     shows both changes as unstaged."
+  - "From there it is ordinary work: `git add` one path, commit, `git add` the
+     other, commit. The index is what lets you commit a subset of what has
+     changed."
+  - "`git reset HEAD~1`, then `git add convert.py` and commit the fix, then
+     `git add CHANGELOG.md` and commit that. Order matters: the fix is the
+     commit someone will want to cherry-pick."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  # The first id in each list is what the counter-example exists to
+  # demonstrate; the rest is collateral, declared because CI asserts the set
+  # exactly. `naive-one-commit-again` also fails `fix-came-first` for a reason
+  # worth knowing: with the split undone, HEAD~1 is the fixture's own commit,
+  # which still has the bug in it.
+  counter_examples:
+    - file: naive-wrong-way-round.cmds
+      expect_failures: [fix-came-first, changelog-not-in-the-fix]
+    - file: naive-one-commit-again.cmds
+      expect_failures: [two-commits-now, fix-came-first]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: content-unchanged
+      label: The files at the tip are exactly what they were
+      severity: required
+      assert: tree_equals
+      with: {ref: HEAD, target: "@c3"}
+      explanation: |
+        Splitting a commit must not change what the code *is*. Comparing tree
+        hashes catches the whole class of mistake at once: a `--hard` where a
+        `--mixed` belonged, a file left unstaged, a `git add -p` hunk nobody
+        committed.
+
+    - id: two-commits-now
+      label: There are two commits where there was one
+      severity: required
+      assert: commit_count
+      with: {ref: HEAD, equals: 4}
+      explanation: |
+        Two from the fixture plus your two. Three means the split did not
+        happen — which is what you get by resetting and then committing
+        everything again, an answer that leaves the history identical and the
+        tip's hash different.
+
+    - id: fix-came-first
+      label: The first of the two commits is the bug fix
+      severity: required
+      assert: file_at_ref_matches
+      with: {ref: "HEAD~1", path: convert.py, pattern: 'naive - offset_hours'}
+      explanation: |
+        The order is the reason to split at all. A bug fix that stands alone can
+        be cherry-picked to a release branch, reverted on its own, and found by
+        a bisect; one bundled behind a changelog edit cannot. This reads the
+        *parent* of the tip, which is the first of your two commits.
+
+    - id: changelog-not-in-the-fix
+      label: The changelog is not in the bug-fix commit
+      severity: required
+      assert: file_at_ref_matches
+      not: true
+      with: {ref: "HEAD~1", path: CHANGELOG.md, pattern: '.'}
+      explanation: |
+        The other half of "the fix came first", and the half a check on
+        `convert.py` alone would miss: a commit containing both files passes
+        `fix-came-first` while being the thing the exercise exists to undo.
+
+    - id: nothing-published-was-rewritten
+      label: origin/main is where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/remotes/origin/main", since: fixture}
+      explanation: |
+        Splitting a commit is a rewrite: the original is replaced by two new
+        commits. That is available because the commit is unpushed, and the
+        moment `origin` has it the answer becomes "leave it alone".
+
+    - id: clean-worktree
+      label: Nothing left unstaged or half-committed
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        `git reset HEAD~1` deliberately leaves both changes in the working tree
+        — that is the mechanism — so the job is finished only once both have
+        been committed. Stopping after the first commit leaves the changelog
+        sitting there uncommitted.
+
+    - id: looked-before-leaping
+      label: You looked at what the commit contained before taking it apart
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^git (log|show|status|diff)\b'}
+      explanation: |
+        `git show --stat HEAD` names the two files, and `git status --short`
+        after the reset confirms they are both still there. Resetting without
+        looking is how `--hard` gets typed by mistake.

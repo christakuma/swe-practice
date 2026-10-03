@@ -1,0 +1,12 @@
+# Counter-example: the answer that looks right in `git status` and leaves the
+# token in the repository forever.
+#
+# HEAD's tree has no .env in it, .gitignore is correct, the file is still on
+# disk. And the commit that added the secret is still reachable from HEAD, so
+# the token is one `git show HEAD~1` away for anyone who ever clones this.
+
+git log --oneline
+git rm --cached .env
+write .gitignore '.env'
+git add .gitignore
+git commit -m "Stop tracking .env"

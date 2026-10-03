@@ -1,0 +1,20 @@
+# Reference solution. The commits are unpublished, so the branch pointer can
+# move: wind it back to where origin is, keeping every change staged, and make
+# the one commit that should have been there.
+
+git log --oneline --decorate --all
+git status --short --branch
+
+# Exactly which commits are mine and unpushed.
+git log --oneline origin/main..HEAD
+
+# --soft moves the branch and leaves the index alone, so all three commits'
+# changes are now staged as one.
+git reset --soft origin/main
+git status --short
+
+git commit -m "Add rate limiter"
+
+# Verify: two commits, same files, origin untouched.
+git log --oneline --decorate --all
+git diff origin/main --stat

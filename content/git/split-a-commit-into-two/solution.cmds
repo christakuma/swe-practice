@@ -1,0 +1,22 @@
+# Reference solution. Undo the commit but keep the files, then stage the two
+# changes separately and commit them one at a time.
+
+git log --oneline --decorate --all
+git show --stat HEAD
+
+# --mixed (the default) moves the branch and resets the index, and leaves the
+# working tree alone -- so both changes are still on disk, now unstaged.
+git reset HEAD~1
+git status --short
+
+# The fix, on its own.
+git add convert.py
+git commit -m "Fix the sign of the timezone offset"
+
+# Then the changelog.
+git add CHANGELOG.md
+git commit -m "Start a changelog"
+
+git log --oneline --decorate --all
+git status --short --branch
+git diff origin/main --stat

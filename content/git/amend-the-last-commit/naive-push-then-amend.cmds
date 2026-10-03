@@ -1,0 +1,10 @@
+# Counter-example: the right fix in the wrong order. Publish first, amend
+# second -- which rewrites a commit that is now on origin.
+#
+# Everything about the end state looks right: one commit, no debug line, a real
+# subject. The damage is invisible locally and lands on whoever pulls next.
+
+git push origin main
+write metrics.py '"""Summary statistics for a list of numbers."""' '' '' 'def average(values):' '    """The arithmetic mean."""' '    return sum(values) / len(values)' '' '' 'def median(values):' '    """The middle value, averaging the two middle ones when even."""' '    ordered = sorted(values)' '    middle = len(ordered) // 2' '    if len(ordered) % 2 == 1:' '        return ordered[middle]' '    return (ordered[middle - 1] + ordered[middle]) / 2'
+git add metrics.py
+git commit --amend -m "Add median"

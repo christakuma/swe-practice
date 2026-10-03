@@ -1,0 +1,10 @@
+# Counter-example: the right command from the wrong branch. `git rebase
+# feature/report` while standing on main replays MAIN onto the feature branch.
+#
+# It is one of the easiest mistakes to make, because the command looks like it
+# names what you want to happen and it names the opposite: rebase always moves
+# the branch you are on.
+
+git log --oneline --decorate --all
+git rebase feature/report
+git log --oneline --decorate --all

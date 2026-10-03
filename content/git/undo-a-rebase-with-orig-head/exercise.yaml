@@ -1,0 +1,131 @@
+schema_version: 1
+id: git/undo-a-rebase-with-orig-head
+kind: git_scenario
+title: Undo a rebase you should not have done
+difficulty: medium
+tags: [rebase, recovery, orig-head, collaboration]
+estimated_minutes: 12
+
+prompt: |
+  You pushed `feature/mfa` yesterday and a colleague pulled it this morning.
+  Then you rebased it onto `main` — which rewrote both of its commits.
+
+  Nothing has been force-pushed yet, so `origin/feature/mfa` still holds the
+  commits your colleague has.
+
+  Put `feature/mfa` back on the commits `origin` has. Do not force-push, and do
+  not move `main`.
+
+  Start with `git log --oneline --decorate --all`: your branch and
+  `origin/feature/mfa` have diverged, and the shape of that divergence is the
+  whole problem.
+
+hints:
+  - "Your two commits were not deleted. A rebase *copies* each commit to a new
+     one; the originals are unreferenced, and `origin/feature/mfa` still points
+     at the last of them."
+  - "Every command that moves a branch wholesale — `rebase`, `merge`, `reset`,
+     `pull` — writes the previous position to a ref called `ORIG_HEAD` first.
+     `git show ORIG_HEAD` will tell you whether it is what you want."
+  - "You need the branch pointer to go back, and the files with it. That is
+     `git reset --hard <revision>`, and the revision is one you do not have to
+     look up."
+  - "`git reset --hard ORIG_HEAD`. `git reset --hard origin/feature/mfa` works
+     too and says the same thing a different way — the two are the same commit
+     here, which is worth verifying with `git rev-parse` before you trust it."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  # The first id in each list is what the counter-example exists to
+  # demonstrate; the rest is collateral, declared because CI asserts the set
+  # exactly. Note that `naive-force-push-it-anyway` *passes*
+  # `matches-what-origin-has` — it made origin agree with the rewrite, which is
+  # precisely why that check is not sufficient on its own.
+  counter_examples:
+    - file: naive-force-push-it-anyway.cmds
+      expect_failures: [branch-restored, originals-recovered]
+    - file: naive-merge-the-old-tip-back.cmds
+      expect_failures: [branch-restored, matches-what-origin-has]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: branch-restored
+      label: feature/mfa points at the commit origin has
+      severity: required
+      assert: ref_points_at
+      with: {ref: "refs/heads/feature/mfa", target: "@f2"}
+      explanation: |
+        Not "contains the same changes" — *is* that commit. Anything else leaves
+        your branch and your colleague's clone disagreeing about which commits
+        exist, which is the condition that makes their next pull a problem
+        rather than a fast-forward.
+
+    - id: originals-recovered
+      label: The original commits are back in the branch, not copies of them
+      severity: required
+      assert: is_ancestor
+      with: {ancestor: "@f1", descendant: "refs/heads/feature/mfa"}
+      explanation: |
+        A rebase leaves you with commits that have the same diffs, the same
+        messages and different hashes. Everything that refers to a commit by
+        hash — your colleague's clone, a review, a CI run, a bisect someone is
+        halfway through — refers to the original. Recovery means the original
+        being reachable again.
+
+    - id: matches-what-origin-has
+      label: Your branch and origin/feature/mfa agree
+      severity: required
+      assert: ref_points_at
+      with:
+        ref: "refs/heads/feature/mfa"
+        target: "refs/remotes/origin/feature/mfa"
+      explanation: |
+        The same claim as `branch-restored`, made against the remote-tracking
+        ref instead of a fixture alias — which is how you would check it in a
+        real repository, where there is no alias to compare with. When these
+        agree, the force-push you were about to need is not needed.
+
+    - id: main-untouched
+      label: main is where it was
+      severity: required
+      assert: ref_unchanged
+      with: {ref: "refs/heads/main", since: fixture}
+      explanation: |
+        The rebase was onto `main` and `main` is published. Undoing it should
+        not involve moving `main` — if it did, you would be fixing one rewrite
+        of shared history with another.
+
+    - id: clean-worktree
+      label: Nothing left staged or half-applied
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        `reset --hard` rewrites your files along with the pointer, so the
+        worktree should be clean afterwards by construction. A dirty one here
+        means a `--soft` or `--mixed` reset left the rebased content staged.
+
+    - id: no-force-push
+      label: You did not force-push the rewrite
+      severity: advisory
+      assert: command_used
+      not: true
+      with: {pattern: 'push\b.*(--force|--force-with-lease|-f)\b'}
+      explanation: |
+        Force-pushing is the one action in this exercise that cannot be undone
+        from your machine: it replaces the only remaining copy of the commits
+        your colleague is working from. Advisory rather than required because
+        the repository state is what is graded — but if you reached for it, the
+        exercise did not happen.
+
+    - id: found-the-previous-position
+      label: You looked up where the branch had been
+      severity: advisory
+      assert: command_used
+      with: {pattern: '(ORIG_HEAD|reflog|origin/feature/mfa)'}
+      explanation: |
+        The tool is the lesson here. `ORIG_HEAD`, the reflog and the
+        remote-tracking ref are three ways to the same commit, and knowing that
+        any of them exists is the difference between a one-line recovery and
+        retyping an afternoon of work.

@@ -1,0 +1,8 @@
+# Counter-example: right tool, half the job. Amends the subject and forgets
+# that the debug print is the other half of what was unfinished.
+#
+# Exercises a different check than naive-a-second-commit: this one must fail
+# debug-line-gone while keeping the commit count correct.
+
+git log --oneline
+git commit --amend -m "Add median"

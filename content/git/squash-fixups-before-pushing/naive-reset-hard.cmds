@@ -1,0 +1,8 @@
+# Counter-example: the wrong reset. --hard discards the work along with the
+# commits, which is the one difference between the two flags that matters.
+#
+# Must fail both content-unchanged and one-commit-on-top: there is nothing
+# left to have squashed.
+
+git log --oneline
+git reset --hard origin/main

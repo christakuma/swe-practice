@@ -1,0 +1,17 @@
+# Reference solution. One commit, copied onto the release branch. Naming it as
+# main~1 rather than as a hash is deliberate -- it survives the history moving.
+
+git log --oneline --decorate --all
+
+# What is on main and not on the release?
+git log --oneline release/1.x..main
+
+# Confirm which of those is the fix, and that it touches nothing else.
+git show --stat main~1
+
+git checkout release/1.x
+git cherry-pick main~1
+
+git log --oneline --decorate --all
+cat billing.py
+git status --short --branch

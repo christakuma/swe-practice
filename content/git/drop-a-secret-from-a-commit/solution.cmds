@@ -1,0 +1,23 @@
+# Reference solution. Stop tracking the file, start ignoring it, and replace
+# the commit that contained it -- in that order, so the amend picks all three
+# changes up at once.
+
+git log --oneline --decorate --all
+git status --short --branch
+git show --stat HEAD
+cat .env
+
+# Remove it from the index only. The file itself stays on disk, which matters:
+# deploy.sh sources it.
+git rm --cached .env
+
+# Ignore it, so the next `git add -A` cannot put it back.
+write .gitignore '.env'
+git add .gitignore
+
+# Replace c2 rather than adding a commit on top of it.
+git commit --amend --no-edit
+
+git show --stat HEAD
+git status --short --branch
+ls -a

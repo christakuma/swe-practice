@@ -1,0 +1,130 @@
+schema_version: 1
+id: git/drop-a-secret-from-a-commit
+kind: git_scenario
+title: Take a secret back out of a commit you have not pushed
+difficulty: medium
+tags: [history, amend, secrets, rewriting, local-only]
+estimated_minutes: 12
+
+prompt: |
+  You committed `deploy.sh` and, in the same commit, the `.env` file next to it
+  — which holds a live API token.
+
+  You have not pushed. `origin/main` is one commit behind.
+
+  End up with: the deploy script still committed, the token in no commit
+  reachable from `main`, `.env` still on your disk because `deploy.sh` reads
+  it, and a `.gitignore` that stops this happening again. Still two commits.
+
+  `cat .env` to see what you are dealing with.
+
+hints:
+  - "Two different operations get confused here. One stops git tracking a file.
+     The other deletes it. You want the first and not the second."
+  - "`git rm --cached <path>` removes a file from the index and leaves it in
+     your working directory. Plain `git rm` removes it from both."
+  - "Getting the file out of the *next* commit is not enough — the token is in
+     the commit that is already there. Since it is unpushed, you can replace
+     that commit instead of adding another."
+  - "`git rm --cached .env`, then `write .gitignore '.env'` and
+     `git add .gitignore`, then `git commit --amend --no-edit`. The amend is
+     what makes the old commit — and the token in it — unreachable."
+
+scenario:
+  fixture: fixture.sh
+  reference: solution.cmds
+  counter_examples:
+    - file: naive-delete-the-file.cmds
+      expect_failures: [secret-still-on-disk]
+    - file: naive-a-new-commit.cmds
+      expect_failures: [secret-not-in-history, two-commits-still]
+  allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
+  max_commands: 25
+
+  checks:
+    - id: secret-not-committed
+      label: The token is not in the commit at the tip
+      severity: required
+      assert: file_at_ref_matches
+      not: true
+      with: {ref: HEAD, path: .env, pattern: 'API_TOKEN'}
+      explanation: |
+        The first thing to get right and the least interesting: HEAD's tree must
+        not carry `.env`. Note this is negated, so it also passes when the file
+        is absent entirely — which is the state you want.
+
+    - id: secret-not-in-history
+      label: No commit reachable from main contains the token
+      severity: required
+      assert: is_ancestor
+      not: true
+      with: {ancestor: "@c2", descendant: HEAD}
+      explanation: |
+        The check that distinguishes a fix from a cosmetic one. Removing the
+        file in a *new* commit leaves the old commit reachable from `main`, so
+        `git show HEAD~1` still prints the token, and so does a fresh clone.
+        Amending replaces that commit, which is why this exercise is only
+        solvable while nothing has been pushed.
+
+    - id: deploy-script-kept
+      label: The deploy script is still committed
+      severity: required
+      assert: file_at_ref_matches
+      with: {ref: HEAD, path: deploy.sh, pattern: 'rsync'}
+      explanation: |
+        The commit contained two things and only one of them was a mistake. An
+        answer that drops both — `git reset --hard HEAD~1` is the tempting
+        shape — removes the secret by removing the afternoon's work with it.
+
+    - id: secret-still-on-disk
+      label: .env is still in your working directory
+      severity: required
+      assert: file_exists
+      with: {path: .env}
+      explanation: |
+        `deploy.sh` sources this file: deleting it does not fix a leak, it
+        breaks the deploy. This is the distinction between `git rm` and `git rm
+        --cached`, and it is the one worth internalising, because the
+        destructive version is the shorter command.
+
+    - id: ignored-from-now-on
+      label: .gitignore lists .env
+      severity: required
+      assert: file_at_ref_matches
+      with: {ref: HEAD, path: .gitignore, pattern: '(?m)^\.env$'}
+      explanation: |
+        Without this the file is untracked and one `git add -A` away from being
+        committed again — by you, next week, or by anyone who clones the
+        repository and runs the same command. Untracking a file and ignoring it
+        are two steps, and the second is the one that lasts.
+
+    - id: two-commits-still
+      label: There are still exactly two commits
+      severity: required
+      assert: commit_count
+      with: {ref: HEAD, equals: 2}
+      explanation: |
+        A third commit means you added one rather than replacing the one that
+        was wrong — which is the same defect `secret-not-in-history` catches,
+        counted a different way. Both are here because they fail together for
+        the common mistake and apart for the unusual ones.
+
+    - id: clean-worktree
+      label: Nothing left staged
+      severity: required
+      assert: worktree_clean
+      explanation: |
+        Untracked files are ignored by this check, which is exactly right here —
+        `.env` is supposed to be sitting there untracked. What would fail is a
+        staged removal you never committed, which is the state `git rm --cached`
+        leaves you in until you amend.
+
+    - id: looked-before-leaping
+      label: You looked at what the commit contained
+      severity: advisory
+      assert: command_used
+      with: {pattern: '^(git (log|show|status|diff)\b|cat\b)'}
+      explanation: |
+        `git show --stat HEAD` tells you the commit has two files in it, which
+        is the fact the whole answer turns on. Guessing which files are involved
+        is how the work gets thrown out with the secret.

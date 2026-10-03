@@ -1,0 +1,17 @@
+# Reference solution. A rebase records where the branch was in ORIG_HEAD before
+# it starts, so undoing one is a single reset -- no hashes to copy.
+
+git log --oneline --decorate --all
+git status --short --branch
+
+# What the branch was before the rebase, and what origin still has.
+git show --stat ORIG_HEAD
+git log --oneline origin/feature/mfa
+
+# Confirm they are the same commit.
+git rev-parse ORIG_HEAD origin/feature/mfa
+
+git reset --hard ORIG_HEAD
+
+git log --oneline --decorate --all
+git status --short --branch

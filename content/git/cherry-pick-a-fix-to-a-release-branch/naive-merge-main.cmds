@@ -1,0 +1,11 @@
+# Counter-example: merge main into the release branch. The fix arrives, and so
+# do both unreleased features -- and because the release branch has not moved
+# since it was cut, the merge is a fast-forward, so there is not even a merge
+# commit to make it obvious.
+#
+# This is how an unrelated feature ships in a patch release.
+
+git log --oneline --decorate --all
+git checkout release/1.x
+git merge --no-edit main
+git log --oneline --decorate --all

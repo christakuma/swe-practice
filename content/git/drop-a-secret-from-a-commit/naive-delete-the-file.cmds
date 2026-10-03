@@ -1,0 +1,11 @@
+# Counter-example: over-correction. Deleting the file does get it out of the
+# commit, and it also deletes the credentials you need to deploy -- and
+# deploy.sh still sources it.
+#
+# Must fail still-on-disk while getting everything else right.
+
+git log --oneline
+write .gitignore '.env'
+rm .env
+git add -A
+git commit --amend --no-edit

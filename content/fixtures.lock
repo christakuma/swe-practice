@@ -12,6 +12,54 @@
 # One platform disagreeing means the pinned environment broke. EVERYTHING
 # moving at once means git changed how it hashes -- most likely a new default
 # object format -- and that is a decision to make, not a build to fix.
+git/amend-the-last-commit:
+  aliases:
+    c1: 97cd7a26b2a4abe2fad14ebcf2bc121aecc73c01
+    c2: 7a60ff72c7c241ece43f530071b6b9c9916c9cd5
+    c3: cda31cfb1ef02925bab7ee69f2207d969a68f46a
+  refs:
+    HEAD: cda31cfb1ef02925bab7ee69f2207d969a68f46a
+    refs/heads/main: cda31cfb1ef02925bab7ee69f2207d969a68f46a
+    refs/remotes/origin/main: 7a60ff72c7c241ece43f530071b6b9c9916c9cd5
+git/cherry-pick-a-fix-to-a-release-branch:
+  aliases:
+    c1: 5e1ab87a40db49e92adc8d820bc83bb8de057479
+    c2: b1bf8bc76cd6966f4cc70d1677a50eecd392b167
+    c3: d15b7c6f099374858f8a63ad96a5d9c95a399a75
+    c4: 5bddcb8d28b14aa0726a44287bd44d574a89fd0d
+  refs:
+    HEAD: 5bddcb8d28b14aa0726a44287bd44d574a89fd0d
+    refs/heads/main: 5bddcb8d28b14aa0726a44287bd44d574a89fd0d
+    refs/heads/release/1.x: 5e1ab87a40db49e92adc8d820bc83bb8de057479
+git/drop-a-secret-from-a-commit:
+  aliases:
+    c1: 18b17d2ea39c4e5231767ca9f4706c4f8b69f9c3
+    c2: ccebde83e8e14c274d417a6ba4a55cfd78a300f2
+  refs:
+    HEAD: ccebde83e8e14c274d417a6ba4a55cfd78a300f2
+    refs/heads/main: ccebde83e8e14c274d417a6ba4a55cfd78a300f2
+    refs/remotes/origin/main: 18b17d2ea39c4e5231767ca9f4706c4f8b69f9c3
+git/move-commits-off-main:
+  aliases:
+    c1: 206fc666e74dda8cb6591c96d71c1c1d5635bda9
+    c2: f6e66f15f769e7160d674d73398876a77dd94c33
+    c3: 3c1a66d88b6f8d8aeba6d7e61488063a31448f55
+  refs:
+    HEAD: 3c1a66d88b6f8d8aeba6d7e61488063a31448f55
+    refs/heads/main: 3c1a66d88b6f8d8aeba6d7e61488063a31448f55
+    refs/remotes/origin/main: 206fc666e74dda8cb6591c96d71c1c1d5635bda9
+git/rebase-a-feature-branch:
+  aliases:
+    c1: c83a98c9a84b161d65e7d7b66a56664c0048e093
+    c2: eef6be065e22ae8bf64d10097d16544600fd0a90
+    f1: ad791007d35589f4129c767760138bf37a0f2fc3
+    f2: 3ee9a5ce12f5c16cb26e65a2175812efa11e7967
+    m1: b1252a266a4742a54246b23be2ef285df4f2966b
+  refs:
+    HEAD: b1252a266a4742a54246b23be2ef285df4f2966b
+    refs/heads/feature/report: 3ee9a5ce12f5c16cb26e65a2175812efa11e7967
+    refs/heads/main: b1252a266a4742a54246b23be2ef285df4f2966b
+    refs/remotes/origin/main: b1252a266a4742a54246b23be2ef285df4f2966b
 git/recover-a-lost-commit:
   aliases:
     c1: cf49f67ebfc216d3871ec70e56f8dbaa84bc5cfb
@@ -30,3 +78,35 @@ git/revert-a-pushed-commit:
     HEAD: bab6eca47d367d3e004324e903a6ac75c6f7e861
     refs/heads/main: bab6eca47d367d3e004324e903a6ac75c6f7e861
     refs/remotes/origin/main: bab6eca47d367d3e004324e903a6ac75c6f7e861
+git/split-a-commit-into-two:
+  aliases:
+    c1: 84ca1aef4fc79219c9884de3a7104830f1e18f8b
+    c2: f411e3cbccdaf6a34ce21d245807fe45e24ea424
+    c3: 29b67b794101f0880693299727f04da817614066
+  refs:
+    HEAD: 29b67b794101f0880693299727f04da817614066
+    refs/heads/main: 29b67b794101f0880693299727f04da817614066
+    refs/remotes/origin/main: f411e3cbccdaf6a34ce21d245807fe45e24ea424
+git/squash-fixups-before-pushing:
+  aliases:
+    c1: 9d67bb6a7156870bf899dabf0ea21dbb997d0788
+    c2: 330307496dac0eb056f0ea95f5fc2a8959df25a7
+    c3: 441f788e7203b71f5b39c0e1df31a0163fc3bcd4
+    c4: 315a37e113aa56069f1b15647db0aba6401386f4
+  refs:
+    HEAD: 315a37e113aa56069f1b15647db0aba6401386f4
+    refs/heads/main: 315a37e113aa56069f1b15647db0aba6401386f4
+    refs/remotes/origin/main: 9d67bb6a7156870bf899dabf0ea21dbb997d0788
+git/undo-a-rebase-with-orig-head:
+  aliases:
+    c1: 1bb0e7e37b9f12134b7218a97869c52686da691f
+    c2: e3ee80d1747afbc7d39dcd6e9d784b65c3c2961b
+    f1: bcddc59b3cb36b5a2868dd5dafd9bcad0c13eeec
+    f2: e1c865e730a26cfc66f80abae85eb5092f263faf
+    m1: d6985e0bd39e05f5992b268f95ed68e7261b3855
+  refs:
+    HEAD: a0eb04ff635d920b7ea6d2f222cc09a6f458b0f5
+    refs/heads/feature/mfa: a0eb04ff635d920b7ea6d2f222cc09a6f458b0f5
+    refs/heads/main: d6985e0bd39e05f5992b268f95ed68e7261b3855
+    refs/remotes/origin/feature/mfa: e1c865e730a26cfc66f80abae85eb5092f263faf
+    refs/remotes/origin/main: d6985e0bd39e05f5992b268f95ed68e7261b3855

@@ -1,0 +1,10 @@
+# Counter-example: the right technique, one command too late. Publishing first
+# makes the squash a rewrite of history origin already has.
+#
+# The local end state is indistinguishable from the correct answer -- two
+# commits, identical files -- and origin can no longer fast-forward to it.
+
+git push origin main
+git log --oneline --decorate --all
+git reset --soft HEAD~3
+git commit -m "Add rate limiter"
