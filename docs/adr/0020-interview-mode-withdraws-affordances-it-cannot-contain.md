@@ -77,11 +77,15 @@ attempt, and is readable in the database as the word `interview`.
 2. **Migration 0003**, and the asterisk ADR 0008 predicted for a scheduler holds
    for a mode: a new field on a stored aggregate has to be named where rows are
    built. Two lines in the mapper, two in the column tuple.
-3. **The menu's "application-layer policy" is not quite right.** Nothing under
-   `adapters/` changed, so it is closer to right than ADR 0019's prediction was
-   — but the reason nothing changed is that the sandbox clause was *dropped*,
-   not that it was free. An honest reading is that the cheap version of this
-   feature is application-layer and the version the menu described is not.
+3. **The menu's "application-layer policy" is not quite right, in two ways.**
+   `adapters/persistence/` changed, because a field on a stored aggregate has to
+   be named where rows are built — so the column is the same asterisk ADR 0008
+   wrote for a scheduler, and "application-layer" was never going to cover a
+   policy that is persisted. And nothing under `adapters/sandbox/` changed only
+   because the clause that would have reached it was *dropped*, not because it
+   was free. An honest reading is that the cheap version of this feature is
+   application-layer plus two columns, and the version the menu described is
+   neither.
 4. **One existing message became a lie and had to be fixed.** `"no hints left:
    this exercise has 0"` is false under interview mode, where the exercise has
    four and the mode is keeping them.

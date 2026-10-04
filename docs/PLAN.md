@@ -4529,9 +4529,10 @@ denominator.
 **What this bought, and what it did not.** It bought the user a second way to sit
 all 62 exercises, which is the first stretch item to improve the whole library
 rather than extend it. It bought the architecture its cleanest result yet —
-nothing under `adapters/` changed, no port widened, no grader touched — and that
-result has an asterisk on it, because the clause that would have reached the
-sandbox was dropped rather than paid for. **The menu's `Touches` column is right
+no port widened, no grader touched, and the only adapter it reached is
+`adapters/persistence/` for the two columns — and that result has an asterisk on
+it, because the clause that would have reached the sandbox was dropped rather
+than paid for. **The menu's `Touches` column is right
 about the feature that was built and wrong about the feature it described**, and
 the honest summary is that the cheap version of interview mode is
 application-layer and the version in the menu is not. The remaining five items
