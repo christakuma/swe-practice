@@ -41,6 +41,7 @@ an afternoon do not need one.
 | [0017](0017-a-front-door-separate-from-the-server.md) | A front door (`practice up`) separate from the server | accepted |
 | [0018](0018-fsrs-as-a-second-scheduler-not-a-replacement.md) | FSRS as a second scheduler, not a replacement | accepted |
 | [0019](0019-sql-drills-as-a-third-exercise-kind.md) | SQL drills as a third exercise kind | accepted |
+| [0020](0020-interview-mode-withdraws-affordances-it-cannot-contain.md) | Interview mode withdraws affordances it cannot contain | accepted |
 
 0015 is the one record here that was not written on the day the decision was
 made — it was decided in Phase 11 and written up in Phase 12. Its own first
@@ -70,3 +71,14 @@ kinds is the number at which *is this a kata* and *does this have a file to
 edit* are indistinguishable. Five call sites had been asking the first and
 meaning the second. An ADR that said the prediction held would have been a
 worse record than one that says where it did not.
+
+0020 is the third, and the first to report a prediction that could not be met
+rather than one that was only partly met. PLAN.md's menu said interview mode
+touches *application-layer policy*; two of its three clauses do, and the third
+-- *no test peeking* -- turned out to be asking for containment, which PLAN.md
+§8.1 had already ruled out in Phase 3 on the grounds that the solver owns the
+machine. So 0020 records a feature that ships *less* than its own menu entry
+promised, names the weaker thing it ships instead, and spends its longest
+alternative on the stronger version it rejected and what would justify building
+it. A record that quietly redefined "no test peeking" to mean what was built
+would have been the easier document and a useless one.

@@ -4,7 +4,7 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** **v1.0.0, and two stretch items taken — Phases 13 and 14.**
+> **Status:** **v1.0.0, and three stretch items taken — Phases 13, 14 and 15.**
 > Phases 0–10 built the engine, Phase 11 filled it with 54 exercises, and Phase
 > 12 is the front door and the portfolio artifacts: `uv sync && uv run practice
 > up` is the whole of getting started, and it refuses with an instruction rather
@@ -144,8 +144,37 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > dash in the first line a stranger reads arrives as a replacement character on
 > a fresh Windows console.
 >
+> **Phase 15 took the third item, and it is the first whose prediction is in the
+> menu itself.** §11's table said interview mode touches *application-layer
+> policy*; Phase 14's log called it the cheapest item on the menu. Two of its
+> three clauses are exactly that, and one of them cost **nothing at all** — an
+> empty `hints` tuple makes `Attempt.reveal_next_hint` refuse on the first
+> request and the workbench already drew its panel on `hint_count`, which is
+> §4.3's claim about `AttemptPolicy` paying off as stated. The clock needed no
+> new rule either: `suggest_grade` has compared elapsed time against
+> `estimated_minutes` since Phase 9, and an interview's deadline *is*
+> `estimated_minutes`, so a timed attempt was already graded from its end state.
+>
+> **The third clause could not be built, and that is the phase's value.** "No
+> test peeking" asks for containment, and §8.1 ruled containment out in Phase 3:
+> a kata's `tests.py` is in the workspace because `pytest` must run it from
+> there, and the solver owns the machine. So what ships is the weaker and honest
+> thing — `AttemptPolicy.reveals_workspace` withdraws every affordance the tool
+> provides for peeking and says that is what it did
+> ([ADR 0020](adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md)).
+> The record spends its longest alternative rejecting the stronger version,
+> because it would widen `SandboxProvisioner.provision` to buy a boundary that
+> still would not be one.
+>
+> **And the Phase 13 ease-factor finding repeated in a second place.** The review
+> panel printed "passed clean, inside the estimate, no hints" for an attempt that
+> was never offered one — present, correctly formatted and meaningless, exactly as
+> invisible to a fragment assertion as the ease factor was. It had also always
+> been wrong for an exercise authored without hints, latent only because the
+> content suite requires every shipped exercise to carry some.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 13 (FSRS), 2026-10-04
+> · **Last phase:** 15 (interview mode), 2026-10-04
 
 ---
 
@@ -2142,6 +2171,93 @@ it was written against.
 
 ---
 
+### Phase 15 — Interview mode: a policy over everything already shipped · **1 session**
+
+The third item from Phase 13's menu, and the first taken for a different reason
+than the two before it. FSRS and SQL drills were both chosen because a
+*prediction* was attached; this one was chosen because its prediction is in the
+menu itself. The **Touches** column says `application-layer policy`, Phase 14's
+log called it "the cheapest item and the most self-contained", and neither claim
+had been tested. It is also the only row that changes nothing about what the
+library contains and everything about how it can be sat — 62 exercises, a second
+way to do all of them.
+
+| Idea | Touches | Status |
+|---|---|---|
+| FSRS scheduler | a new `Scheduler` implementation only | **done** ([ADR 0018](adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)) |
+| SQL drills against seeded SQLite | new exercise kind | **done** ([ADR 0019](adr/0019-sql-drills-as-a-third-exercise-kind.md)) |
+| Interview mode (timed, no hints, no test peeking) | application-layer policy | **done, with one clause scoped down** ([ADR 0020](adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md)) |
+| Docker sandbox adapter | a new `SandboxProvisioner` implementation only | open |
+| Shell/CLI drills (grep, awk, jq, logs) | new exercise kind + content | open |
+| Concept recall with rubric self-grading | new exercise kind + content | open |
+| Embedded terminal (xterm.js + pty) | a new interaction adapter | open |
+| Exportable content packs | a content repository adapter | open |
+
+**Commits** — six, in dependency order
+1. `feat(domain): interview mode as a mode on the attempt policy`
+2. `feat(domain): give the grade suggestion the denominator it never had`
+3. `feat: start an attempt in interview mode, and stop handing over its workspace`
+4. `feat(interface): offer the mode where it can be chosen, and withdraw what it withdraws`
+5. `test(e2e): sit an interview, and prove the mode is not re-chosen`
+6. `docs: close phase 15 with ADR 0020`
+
+Six rather than the five the phase was sketched with, and the extra one is the
+e2e test standing alone because it is the only thing in the phase that asserts
+the claim the whole design rests on — see the exit criteria below.
+
+**Exit:** interview conditions are selectable on every shipped exercise, and the
+mode is decided once rather than re-read. **Met on both clauses, and the menu's
+own description is what needed scoping** — which is the phase's value. Each
+clause has a named owner:
+
+- *selectable, in both surfaces* —
+  `tests/integration/test_cli_lifecycle.py` for `practice start --interview`
+  (nine tests, including that `solve` has no such flag and why), and
+  `tests/web/test_workbench.py::test_starting_with_the_box_ticked_opens_an_interview`
+  for the Start form. ADR 0018's lesson applied again: a mode nobody can select
+  is written, not shipped.
+- *decided once rather than re-read* —
+  `tests/e2e/test_sit_an_interview.py` is the only test that can hold this, and
+  it is why that commit is its own. Four invocations, one `--interview`:
+  `resume` and `submit` are never told about the mode and must still apply it. A
+  mode read from a flag each time would pass every other test in the phase.
+  `tests/integration/persistence/test_attempts.py` holds the other half — the
+  policy comes back off the row under the rules it was stored with.
+- *an addition rather than a change* — closer than Phase 14 managed, and for an
+  uncomfortable reason. Nothing under `adapters/sandbox/`, `adapters/kata/`,
+  `adapters/git/`, `adapters/sql/`, `domain/checks/` or `domain/drills/` changed
+  at all; no port was widened; no grader, fixture or exercise was touched. But
+  the sandbox is untouched because the clause that would have reached it was
+  **dropped**, not because it was free — see the asterisk.
+- *the invariants are enforced twice, as the project's pattern requires* —
+  `AttemptPolicy.__post_init__` refuses to *reach* a half-configured mode and
+  migration 0003's CHECKs refuse to *store* one, in both directions.
+  `tests/integration/persistence/test_attempts.py` exercises the schema's half
+  in raw SQL, because there is no way to get there through the domain.
+
+**The asterisk, and it is the whole reason this phase was worth taking.** "No
+test peeking" is not implementable, by this project or any other. A kata's
+`tests.py` is copied into the workspace because `pytest` must run it from there,
+the workspace is a directory on the solver's own machine, and §8.1 settled in
+Phase 3 that the solver owns the machine — the sentence
+`adapters/sandbox/command_policy.py` opens with. So what shipped is the weaker
+and honest thing: every affordance the tool provides for peeking is withdrawn,
+and the tool says that is what it did.
+`AttemptPolicy.reveals_workspace` is named for what it does rather than for what
+would have sounded better. ADR 0020 spends its longest alternative on the
+stronger version — move the tests outside `repo/` — and rejects it for widening
+`SandboxProvisioner.provision` to buy a boundary that still would not be one.
+
+**Five findings, all in §16.** Withholding hints cost no code path and one
+sentence, which is §4.3 paying off exactly as claimed; the grade rule needed no
+new deadline comparison because it was already making it; the review panel had
+been printing "no hints" as though it were restraint, which is the Phase 13
+ease-factor defect repeating in a second place; `practice solve` cannot be put
+into interview mode at all; and flooring the clock greeted a fresh fifteen-minute
+interview with "14 minutes left of 15", which only running it could find.
+
+---
+
 ## 12. Architecture decision records
 
 Written as they are decided, not retrofitted. These are the artifacts to bring
@@ -2170,6 +2286,7 @@ changed"* is worth more than any code sample.
 | [0017](adr/0017-a-front-door-separate-from-the-server.md) | A front door (`practice up`) separate from the server | accepted |
 | [0018](adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md) | FSRS as a second scheduler, not a replacement | accepted |
 | [0019](adr/0019-sql-drills-as-a-third-exercise-kind.md) | SQL drills as a third exercise kind | accepted |
+| [0020](adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md) | Interview mode withdraws affordances it cannot contain | accepted |
 
 ---
 
@@ -4293,3 +4410,132 @@ kind cost an abstraction that a third would not pay for again, and
 kind follows. Interview mode is still the cheapest item and the most
 self-contained. Docker still cannot be verified offline on both platforms, and
 still stays open as a sketch.
+
+---
+
+**2026-10-04 — Phase 15: interview mode, and a prediction that could not be
+met.** Six commits, one session. The third item from Phase 13's menu, taken
+because its prediction is written in the menu itself: the **Touches** column says
+`application-layer policy` and Phase 14's log called it "the cheapest item and
+the most self-contained". Two of its three clauses are exactly that. The third
+is not implementable at all, and finding out *why* is worth more than the feature
+([ADR 0020](adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md)).
+
+**"No test peeking" was asking for containment, and §8.1 ruled containment out in
+Phase 3.** A kata's `tests.py` is copied into the workspace because `pytest` must
+run it from there (`adapters/kata/pytest_runner.py` runs
+`pytest <spec.tests>` with the workspace as rootdir), the workspace is a
+directory on the solver's own machine, and
+`adapters/sandbox/command_policy.py` opens with the sentence that settles it:
+*"Two jobs, and neither is security. The solver authored the content and owns the
+machine."* The clause could not be delivered as written, and the two available
+responses were to deliver something weaker under the same name or to rename it.
+What shipped is `AttemptPolicy.reveals_workspace` — **every affordance the tool
+provides for peeking is withdrawn, and the tool says that is what it did.** Two
+of them: own-editor mode (refused in `load_solution_file`, so the browser and the
+watch stream cannot disagree) and `practice start`'s next-step line, which stops
+naming the path. A solver who goes looking for the cache directory will still
+find the tests.
+
+ADR 0020 spends its longest alternative on the stronger version — move the tests
+out of `repo/` and point `pytest` at them — and rejects it for a specific reason
+worth keeping: it needs `SandboxProvisioner.provision` to take the policy, which
+is **a widened port, for one caller, to buy a boundary that still would not be
+one**, because `pytest` has to be able to read the file either way. That is the
+worst trade available in the phase, and the record says what evidence would
+change it: somebody actually being tempted to read the tests.
+
+**The two clauses that did fit cost almost nothing, and one of them cost
+nothing.** Withholding hints needed no new code path anywhere: an empty `hints`
+tuple makes `Attempt.reveal_next_hint`'s existing guard fire on the first
+request, `remaining_hints` is already 0, and `workbench.html` already drew the
+panel on `hint_count`. That is §4.3's claim about `AttemptPolicy` — *copy the
+limits in and the aggregate enforces its own rules* — paying off as stated, and
+the clearest single thing this phase can point at. What it did cost is one
+sentence: the refusal said *"no hints left: this exercise has 0"*, which is false
+when the exercise has four and the mode is keeping them.
+
+**The clock needed no new grading rule, because the rule was already making the
+comparison.** `suggest_grade` has read `elapsed > timedelta(minutes=
+estimated_minutes)` since Phase 9, and an interview's deadline *is*
+`estimated_minutes` — so a timed attempt was already graded from its end state
+and a second comparison would have been two spellings of one number. Phase 15
+went in expecting to add one and deleted the plan instead, which is §13's rule
+about abstractions applied to a line of arithmetic.
+
+**The Phase 13 ease-factor finding repeated, in a second place, and nothing could
+have caught it.** `hints_used` is 0 for every interview attempt because none was
+ever offered, and `review.html` printed *"passed clean, inside the estimate, no
+hints"* — crediting the solver for restraint they had no opportunity to show.
+Present, correctly formatted, meaningless: exactly what the schedule panel's
+ease factor was under FSRS, and exactly as invisible to a fragment assertion.
+`GradeSuggestion.hints_offered` is the denominator `hints_used` had always needed
+and `declined_a_hint` is the question that sentence was always asking. It also
+makes honest a case that was **always wrong and never visible**: an exercise
+authored with no hints at all got the same undeserved credit, latent only because
+the content suite requires every shipped exercise to carry some. Interview mode is
+the first thing that produces a zero-hint attempt against an exercise that has
+them.
+
+**`practice solve` cannot be put into interview mode, and the flag is deliberately
+absent.** Interview mode is about what happens *during* an attempt — a clock
+running, a hint refused, a path withheld — and `solve` has no during: it opens an
+attempt, grades the answer already written, and exits. A flag there would record
+a set of rules nothing could have applied.
+`test_solve_has_no_interview_flag` pins the absence, because an omission nobody
+asserted is an omission somebody will fix.
+
+**And one defect only running it could find.** Flooring the remaining minutes
+greeted a fresh fifteen-minute interview with *"14 minutes left of 15"* — the
+clock is read microseconds after `started_at`, and 14:59.9 floors to 14. It reads
+as a bug and is not one. Fixed in three places and the leans are now opposite on
+purpose: time left rounds **up** (a clock face does, and flooring would announce
+"0 minutes left" to somebody with fifty seconds in hand), overrun rounds **down**
+(two and a half minutes late is not three), and `practice start` prints the
+*limit* rather than a countdown, because an attempt created a moment ago has its
+whole limit left by definition. §11's "run the content, do not read it" gotcha
+generalises: this was invisible on the page and obvious the moment
+`practice start --interview` ran once.
+
+**Two cleanups the phase forced rather than chose.** The dashboard and the browse
+list each held their own copy of a two-line start form; adding the checkbox to
+both would have been the first time those copies could disagree about what
+starting an exercise means, so they became `partials/start-attempt.html`. And a
+`noqa: TC003` in `domain/attempt.py` became genuinely unused once `deadline` and
+`remaining` started constructing a `timedelta`, so the runtime import is now
+load-bearing on its own rather than by argument.
+
+**Migration 0003, and ADR 0008's asterisk holding for a third thing.** Two
+columns, `NOT NULL DEFAULT 'practice'` and a nullable `deadline_seconds`. It
+differs from 0002 in one way worth stating: 0002's columns are nullable because
+NULL *means* something there (no FSRS has touched this card), while `mode` has no
+such reading — every attempt already in the table ran under the only rules that
+existed, so there is a correct value to backfill with. A nullable mode would have
+invented a third state nothing can interpret. The pairing CHECK is enforced in
+both directions, which is what a `bool` column could not have expressed, and the
+prediction ADR 0008 made for a scheduler holds again: a new field on a stored
+aggregate has to be named where rows are built. Two lines in the mapper, two in
+the column tuple, and nothing else.
+
+**Final numbers.** **3,656 passing and one skipped, in 3m52s on four workers** —
+63 more tests than Phase 14 left it, which is the smallest increment of any
+phase since Phase 0 and the right size for a phase that added no engine.
+**100% statement and branch coverage** over `domain/` and `application/` against
+the 90% gate, with the covered surface at 2,419 statements and 496 branches
+against Phase 14's 2,372 and 480. Forty-seven statements and sixteen branches of
+new domain code: a mode, a pairing guard, three clock accessors and a
+denominator.
+
+**What this bought, and what it did not.** It bought the user a second way to sit
+all 62 exercises, which is the first stretch item to improve the whole library
+rather than extend it. It bought the architecture its cleanest result yet —
+nothing under `adapters/` changed, no port widened, no grader touched — and that
+result has an asterisk on it, because the clause that would have reached the
+sandbox was dropped rather than paid for. **The menu's `Touches` column is right
+about the feature that was built and wrong about the feature it described**, and
+the honest summary is that the cheap version of interview mode is
+application-layer and the version in the menu is not. The remaining five items
+are unchanged. Shell drills and concept recall are still cheaper than they look
+for Phase 14's reason; Docker still cannot be verified offline on both platforms;
+exportable content packs are now the cheapest item on the menu and the only one
+that would give a port its second real implementation.

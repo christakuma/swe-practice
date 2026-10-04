@@ -15,22 +15,25 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status: v1.0.0, plus two stretch items.** All twelve planned phases are done —
+**Status: v1.0.0, plus three stretch items.** All twelve planned phases are done —
 **62 exercises: 24 git scenarios, 30 katas and 8 SQL drills, every one of them
 graded.** The core bet works, a session survives the terminal it was opened in,
 every exercise kind is solved in a browser *or in your own editor*, and the tool
 answers *what should I practise today?* instead of leaving it to you.
 
-Phases 13 and 14 are post-v1, taken from a menu by appetite, and both were
-chosen for the same reason: they were the only items with a **prediction**
+Phases 13, 14 and 15 are post-v1, taken from a menu by appetite, and all three
+were chosen for the same reason: they were the items with a **prediction**
 attached. **FSRS behind the same `Scheduler` port as SM-2**, and the prediction
 held ([ADR 0018](docs/adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)).
 Then **SQL drills as a third exercise kind** — seed a database, write the SQL,
 and get graded on the rows you returned *and the state you left the database in*
 — where the prediction was half right, which was the more useful outcome
-([ADR 0019](docs/adr/0019-sql-drills-as-a-third-exercise-kind.md)). A git
-scenario is graded on what your commands actually did, from a console or from
-the terminal:
+([ADR 0019](docs/adr/0019-sql-drills-as-a-third-exercise-kind.md)). Then
+**interview mode**, where the prediction was in the menu entry itself and one of
+its three clauses turned out not to be buildable at all
+([ADR 0020](docs/adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md)).
+A git scenario is graded on what your commands actually did, from a console or
+from the terminal:
 
 ![A terminal replaying `practice solve git/revert-a-pushed-commit`: three commands run, the content check passes, and the history check fails.](docs/demo.svg)
 
@@ -57,7 +60,7 @@ state exactly what the grader checks, and what makes the notes the product rathe
 than a restatement of someone else's problem statement.
 
 See [docs/PLAN.md](docs/PLAN.md) for the full design and the phase plan, and
-[docs/adr/](docs/adr/) for the seventeen decisions and the alternatives that were
+[docs/adr/](docs/adr/) for the twenty decisions and the alternatives that were
 rejected — the rejected half is usually the half worth reading.
 [docs/postmortem.md](docs/postmortem.md) is the honest version: what the bet
 bought, six things that would be done differently, and five that are still
@@ -235,6 +238,54 @@ crosses the wire is the same `partials/verdict.html` fragment a submission
 returns, plus the file's own text, so the browser editor goes read-only and
 mirrors what is on disk. That is what makes Submit unambiguous with two editors
 open: it sends the source the verdict on screen was computed from.
+
+## Sitting one under interview conditions
+
+Every exercise can be opened a second way, and the choice is made once:
+
+```bash
+uv run practice start katas/two-sum --interview
+#   ok   attempt 35ee1ef4-fee3-4ea1-9638-e330757dc01b
+#          started 2026-10-04T18:10:57+00:00, 0 events, no hints, 15 minute limit
+#
+# Write your answer in a file of your own, then grade it with
+# `practice submit 35ee1ef4-... --source FILE`.
+```
+
+Three things change: **the hints are withheld**, **a clock starts** at the
+author's own estimate, and **the path to the workspace is not printed** — nor is
+"Open in my editor" drawn in the browser. The mode is a field on the attempt's
+stored policy, so `resume` and `submit` apply it without being told, and it
+cannot be renegotiated halfway through.
+
+Two of those cost almost nothing, which is the interesting part. Withholding the
+hints needed **no new code path at all**: the policy is built with an empty hint
+list, which is a state the aggregate already refused to hand a hint out of and
+the workbench already declined to draw a panel for. And the clock needed no new
+grading rule, because the schedule control has compared your time against
+`estimated_minutes` since Phase 9 — an interview's deadline *is*
+`estimated_minutes`, so a timed attempt was already graded from its end state.
+
+**The third one is not what the plan said it would be, and this is the honest
+version.** The menu entry said *"no test peeking"*. That is not implementable: a
+kata's hidden suite has to be in the workspace for `pytest` to run it, the
+workspace is a directory on your own machine, and this project settled in Phase 3
+that you own the machine — the sandbox is a blast-radius boundary, not a security
+one. So what interview mode actually does is **withdraw every affordance the tool
+provides for peeking**, and say so. The predicate in the code is called
+`reveals_workspace`, not `hides_tests`. If you go looking for the cache
+directory, the tests are there.
+[ADR 0020](docs/adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md)
+spends its longest section on the stronger version — move the suite out of the
+workspace and point `pytest` at it elsewhere — and rejects it for widening a port
+to buy a boundary that still would not be one.
+
+**Running over the clock does not refuse the submission.** Grading the end state
+is the whole bet; a gate that threw away a working answer for being four minutes
+late would be enforcing a rule the verdict can simply read. And the clock in the
+browser is rendered when the page loads, with *"as of this page load"* next to
+it, rather than ticking — a countdown that ran to zero and changed nothing would
+be the one number on the page that nothing grades.
 
 ## What to practise today
 
