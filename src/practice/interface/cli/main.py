@@ -63,6 +63,7 @@ would be worse at that job. Picking an attempt up across processes is what
 
 from __future__ import annotations
 
+from importlib.metadata import version
 from pathlib import Path  # noqa: TC003  (Typer reads this annotation at runtime)
 from typing import TYPE_CHECKING, Annotated, Final
 
@@ -185,8 +186,36 @@ _KB = 1024
 _TRANSCRIPT_LINES: Final = 12
 
 
+def _show_version(requested: bool) -> None:
+    """Print the installed version and stop, before any command runs.
+
+    Read from the package metadata rather than from a constant in this module,
+    so `pyproject.toml` is the only place a version number is written. The
+    alternative — a `__version__` here — is two numbers that agree until the
+    day somebody bumps one of them.
+
+    `PackageNotFoundError` is not caught. It means `practice` is being run
+    against a source tree that was never installed, in which case the editable
+    install is broken and every other command is about to fail in a less
+    informative way.
+    """
+    if requested:
+        typer.echo(f"practice {version('swe-practice')}")
+        raise typer.Exit
+
+
 @app.callback()
-def main() -> None:
+def main(
+    _version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            callback=_show_version,
+            is_eager=True,
+            help="Print the version and exit.",
+        ),
+    ] = False,
+) -> None:
     """Offline practice for data-structure katas and operational git."""
 
 

@@ -41,7 +41,7 @@ an afternoon do not need one.
 | [0017](0017-a-front-door-separate-from-the-server.md) | A front door (`practice up`) separate from the server | accepted |
 
 0015 is the one record here that was not written on the day the decision was
-made -- it was decided in Phase 11 and written up in Phase 12. Its own first
+made — it was decided in Phase 11 and written up in Phase 12. Its own first
 section says so and says why it is an exception rather than a precedent: the
 reasoning and the measurements were recorded contemporaneously in PLAN.md, so
 what the ADR adds is the alternatives section, not a reconstruction.

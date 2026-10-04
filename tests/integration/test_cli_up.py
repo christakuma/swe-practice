@@ -21,6 +21,7 @@ is a tool that looks fine until the moment the solver has done the work.
 from __future__ import annotations
 
 import webbrowser
+from importlib.metadata import version
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -385,6 +386,21 @@ def test_prepare_reports_a_second_run_as_not_fresh(
     assert second.fresh is False
     assert first.ok
     assert second.ok
+
+
+def test_it_reports_the_installed_version() -> None:
+    """`--version` on the app itself, not on `up`, and eager.
+
+    Here because this file is already about the commands somebody runs *at*
+    the tool rather than through it. The assertion is against the package
+    metadata rather than a literal, which is the claim: there is one version
+    number in this project and it is in `pyproject.toml`. A test matching
+    "1.0.0" would pass on the next release and be wrong.
+    """
+    result = runner.invoke(app, ["--version"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == f"practice {version('swe-practice')}"
 
 
 @pytest.mark.usefixtures("stocked")

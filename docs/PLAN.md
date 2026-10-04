@@ -3628,7 +3628,19 @@ saying why. **The general shape:** a test suite asserts on the string the
 program *produced*, and the console is a second encoder between that string and
 the reader.
 
-**Final numbers.** 3,138 tests, 100% statement and branch coverage over
+**A fourth small thing the plan did not list, and it is the same genre as the
+other two.** §11's commit list for this phase ends at "tag `v1.0.0`", and a tool
+that claims a version with no way to ask it for one is the third instance of the
+omission §16 already records for `practice start` and `practice serve`: the
+thing a *user* types keeps being the thing left out. `practice --version` reads
+the installed package metadata rather than a constant, so `pyproject.toml` stays
+the only place a version number is written — and the test asserts against that
+metadata rather than against `1.0.0`, which would pass on the next release and
+be wrong.
+
+**Final numbers.** 3,138 passing and one skipped, in 7m40s on four workers --
+twenty seconds slower than Phase 11 left it, which is this phase's seventeen
+integration tests and nothing else. 100% statement and branch coverage over
 `domain/` and `application/` against the 90% gate, 54 exercises, 24 fixtures
 pinned on both platforms, 17 ADRs. Seventeen use cases, 13 ports, 20 assertions.
 `uv run practice up` is the whole of getting started.

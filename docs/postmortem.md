@@ -1,6 +1,6 @@
 # Postmortem
 
-Written at v1.0.0, after twelve phases, 98 commits, 3,138 tests and 54
+Written at v1.0.0, after twelve phases, 98 commits, 3,138 passing tests and 54
 exercises. The interesting half of a postmortem is the part that is not a
 humble-brag, so the structure is: what the bet was, whether it paid, and the six
 things that would be done differently — three of them things that worked and
