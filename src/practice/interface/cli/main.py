@@ -4,7 +4,7 @@ A second driving adapter over the same core as the web app, which is the point
 of it: if the core were secretly coupled to HTTP, this would not work. It also
 keeps `practice validate` runnable in CI without booting a server (PLAN.md §2).
 
-Ten commands, in four groups.
+Eleven commands, in four groups.
 
 **One front door.** `up` is the command a stranger runs: it checks what a fresh
 machine is missing, migrates the database, opens a browser and then serves. It
@@ -13,13 +13,20 @@ recorded in ADR 0017 -- `serve` starting a server and nothing else is a property
 the test suite depends on (`test_building_the_app_reads_no_database`), so the
 setup went into a second command rather than into that one.
 
-**Three tools, all in CI, each for a different reason.** `validate` audits the
-library without running anything. `fixtures` runs every fixture and checks what it
-built against `content/fixtures.lock`, which is how the cross-platform determinism
-claim is tested rather than asserted. `gc` reports the workspaces left on disk —
-and as of Phase 6 can collect them, because an orphan is *a workspace directory
-with no corresponding `active` attempt row* (PLAN.md §8.1) and there is finally a
-table to ask.
+**Four tools, three of them in CI, each for a different reason.** `validate`
+audits the library without running anything. `fixtures` runs every fixture and
+checks what it built against `content/fixtures.lock`, which is how the
+cross-platform determinism claim is tested rather than asserted. `gc` reports
+the workspaces left on disk — and as of Phase 6 can collect them, because an
+orphan is *a workspace directory with no corresponding `active` attempt row*
+(PLAN.md §8.1) and there is finally a table to ask.
+
+`pack` is Phase 16's, and the one tool here aimed at somebody other than the
+author: it exports the library as a single verifiable file, checks one that
+arrived, and installs one as a content root. It is not in CI, because what it
+would be testing is covered twice over already — `tests/content/test_pack.py`
+round-trips the real library, and the two commands above are what the installed
+root is then held to.
 
 **`solve`**, the first command that is a *product* rather than a tool: it starts an
 attempt, grades it and prints the verdict. It is also the reason the composition
@@ -64,18 +71,29 @@ would be worse at that job. Picking an attempt up across processes is what
 from __future__ import annotations
 
 from importlib.metadata import version
-from pathlib import Path  # noqa: TC003  (Typer reads this annotation at runtime)
+
+# Imported at runtime, not under TYPE_CHECKING: Typer reads these annotations
+# when it builds the commands. It carried a `noqa: TC003` for that until Phase
+# 16, when `pack` gave the module a runtime `Path(...)` call and the rule
+# stopped firing on its own. If that call ever goes, the suppression comes back
+# rather than the import moving.
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Final
 
 import typer
 import uvicorn
 
 from practice.adapters.content import (
+    PACK_SUFFIX,
+    ContentError,
     ExerciseReport,
     FilesystemContentRepository,
-    validate_library,
+    PackContentRepository,
+    install_pack,
+    verify_pack,
+    write_pack,
 )
-from practice.adapters.content.validation import unproven_by_design
+from practice.adapters.content.validation import unproven_by_design, validate_library
 from practice.adapters.sandbox import CommandRejectedError, open_in_browser
 from practice.adapters.sandbox.env import ToolNotFoundError
 from practice.adapters.sandbox.fixture_lock import (
@@ -101,7 +119,13 @@ from practice.config import (
 from practice.domain.attempt import AttemptMode, ComplexityClaim
 from practice.domain.commands import parse_command_list
 from practice.domain.errors import DomainError, InvalidValueError
-from practice.domain.exercise import GitScenarioSpec, editable_source
+from practice.domain.exercise import (
+    Difficulty,
+    ExerciseFilter,
+    ExerciseKind,
+    GitScenarioSpec,
+    editable_source,
+)
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.verdict import Outcome
 from practice.interface.cli.launcher import prepare
@@ -132,6 +156,7 @@ __all__ = [
     "attempts",
     "fixtures",
     "gc",
+    "pack",
     "resume",
     "serve",
     "solve",
@@ -470,6 +495,223 @@ def fixtures(
         )
     typer.echo("")
     typer.echo(f"{len(found)} {_plural('fixture', len(found))} match {LOCK_FILENAME}.")
+
+
+@app.command()
+def pack(
+    out: Annotated[
+        Path | None,
+        typer.Option(
+            "--out",
+            help=f"Write a pack here. Defaults to ./library{PACK_SUFFIX}.",
+        ),
+    ] = None,
+    check: Annotated[
+        Path | None,
+        typer.Option(
+            "--check",
+            help="Verify an existing pack and list what is in it, instead of "
+            "writing one.",
+        ),
+    ] = None,
+    install: Annotated[
+        Path | None,
+        typer.Option(
+            "--install",
+            help="Unpack a verified pack into a content root, instead of writing one.",
+        ),
+    ] = None,
+    into: Annotated[
+        Path | None,
+        typer.Option("--into", help="Where --install puts the library."),
+    ] = None,
+    content: Annotated[
+        Path | None,
+        typer.Option(
+            "--content-root",
+            envvar=CONTENT_ROOT_ENV,
+            help="The exercise library to export. Defaults to this project's.",
+        ),
+    ] = None,
+    kinds: Annotated[
+        list[ExerciseKind] | None,
+        typer.Option("--kind", help="Export only this kind. Repeatable."),
+    ] = None,
+    difficulties: Annotated[
+        list[Difficulty] | None,
+        typer.Option("--difficulty", help="Export only this difficulty. Repeatable."),
+    ] = None,
+) -> None:
+    """Export the library as one file, check one, or install one.
+
+    Three modes on one command rather than three commands, which is the shape
+    `fixtures` already uses for `--check`/`--write`: they are one subject read
+    three ways, and `practice export`, `practice verify` and `practice install`
+    would put three unrelated verbs in `--help` for one noun.
+
+    **`--check` is the mode worth running on a pack somebody sent you.** It
+    hashes every file against the manifest and then opens the pack through the
+    real `ContentRepository`, so a pass means both that the archive arrived
+    intact and that the library inside it loads. Those are different claims,
+    and the second is the one `validate` makes about a directory.
+
+    **`--install` is how a pack becomes solvable.** A pack-backed library can
+    be listed and filtered, and nothing can be attempted from it: the sandbox
+    copies a fixture, a stub or a `seed.sql` out of a content *root* by path,
+    because a workspace is a real directory (ADR 0021). So the last step is
+    always a directory, and `--into` is where it goes.
+    """
+    if check is not None and install is not None:
+        typer.secho(
+            "--check and --install are different jobs; run one at a time",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=2)
+
+    if check is not None:
+        _check_pack(check)
+        return
+    if install is not None:
+        _install_pack(install, into)
+        return
+    _write_pack(
+        out if out is not None else Path(f"library{PACK_SUFFIX}"),
+        content.resolve() if content is not None else content_root(),
+        ExerciseFilter(
+            kinds=frozenset(kinds or ()),
+            difficulties=frozenset(difficulties or ()),
+        ),
+    )
+
+
+def _write_pack(destination: Path, root: Path, criteria: ExerciseFilter) -> None:
+    """Export the selection, then read the pack back before calling it good.
+
+    **The read-back is not belt and braces.** Writing an archive is the easy
+    half; the claim a pack makes is that somebody else can open it, and the
+    cheapest honest way to make that claim is to open it. It also catches the
+    one failure the writer cannot see in itself -- a derived `curriculum.yaml`
+    or `fixtures.lock` that the parser which produced it would reject.
+    """
+    selected = FilesystemContentRepository(root).list_exercises(criteria)
+    try:
+        manifest = write_pack(
+            destination.resolve(),
+            content_root=root,
+            exercises=selected,
+            created_with=version("swe-practice"),
+        )
+    except ContentError as exc:
+        typer.secho(f"{_BAD}{exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    try:
+        inside = PackContentRepository(destination.resolve()).list_exercises()
+    except ContentError as exc:
+        typer.secho(
+            f"{_BAD}the pack was written and cannot be read back:\n{exc}",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(destination)
+    for exercise in inside:
+        typer.secho(f"{_OK}{exercise.id}", fg=typer.colors.GREEN)
+    typer.echo("")
+    typer.echo(
+        f"{len(manifest.exercises)} "
+        f"{_plural('exercise', len(manifest.exercises))} and "
+        f"{len(manifest.digests)} files, "
+        f"{_size(destination.resolve().stat().st_size)}."
+    )
+    typer.echo(f"Install it with `practice pack --install {destination} --into DIR`.")
+
+
+def _check_pack(archive: Path) -> None:
+    """Hash every file against the manifest, then open the library inside it."""
+    try:
+        problems = verify_pack(archive.resolve())
+    except ContentError as exc:
+        typer.secho(f"{_BAD}{exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(archive)
+    for problem in problems:
+        typer.secho(f"{_BAD}{problem}", fg=typer.colors.RED)
+    if problems:
+        typer.echo("")
+        typer.secho(
+            "This pack does not match its own manifest. A pack is not signed, "
+            "so this says the file was damaged in transit rather than that "
+            "nobody edited it -- fetch it again.",
+            fg=typer.colors.YELLOW,
+        )
+        raise typer.Exit(code=1)
+
+    repository = PackContentRepository(archive.resolve())
+    try:
+        inside = repository.list_exercises()
+        manifest = repository.manifest()
+    except ContentError as exc:
+        typer.secho(
+            f"{_BAD}every file matches its digest and the library will not "
+            f"load:\n{exc}",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1) from exc
+
+    for exercise in inside:
+        typer.secho(
+            f"{_OK}{exercise.id} ({exercise.kind}, {exercise.difficulty})",
+            fg=typer.colors.GREEN,
+        )
+    typer.echo("")
+    written_by = manifest.created_with or "an unrecorded version"
+    typer.echo(
+        f"{len(inside)} {_plural('exercise', len(inside))}, "
+        f"{len(manifest.digests)} files, all matching. Written by {written_by}."
+    )
+
+
+def _install_pack(archive: Path, into: Path | None) -> None:
+    """Verify, then lay the pack out as a content root.
+
+    `--into` is required rather than defaulting to the working directory. An
+    install writes a tree of several hundred files, and guessing where is the
+    one thing it must not do.
+    """
+    if into is None:
+        typer.secho(
+            "--install needs --into DIR, the content root to create",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=2)
+
+    destination = into.resolve()
+    if destination.is_dir() and any(destination.iterdir()):
+        typer.secho(
+            f"{destination} is not empty; installing into it would mix two "
+            f"libraries and leave neither valid",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=2)
+
+    try:
+        manifest = install_pack(archive.resolve(), destination)
+    except ContentError as exc:
+        typer.secho(f"{_BAD}{exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(destination)
+    typer.secho(
+        f"{_OK}{len(manifest.exercises)} "
+        f"{_plural('exercise', len(manifest.exercises))} installed",
+        fg=typer.colors.GREEN,
+    )
+    typer.echo("")
+    typer.echo("Check it, and then use it:")
+    typer.echo(f"  uv run practice validate --content-root {destination}")
+    typer.echo(f"  uv run practice up --content-root {destination}")
 
 
 @app.command()
