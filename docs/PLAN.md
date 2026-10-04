@@ -1183,120 +1183,116 @@ Sequenced so every phase ends with something runnable. Commits follow
 [Conventional Commits](https://www.conventionalcommits.org/) — worth doing
 because it makes the git history itself part of the portfolio.
 
-**Each phase's commit list is a dependency order, and every commit in it has to
-be green on its own.** Not a style preference: a history where commit 3 cannot
-import commit 1 is a history you cannot bisect, cannot review one commit at a
-time, and cannot use as the portfolio artifact this project is partly for.
+**Each phase's commit list is a dependency order.** A commit whose module
+imports something a later commit adds is a commit nobody can read on its own,
+and the list below reads as a sensible *narrative* order — foundations, then the
+interesting part — which is not the same thing. So check each list against the
+actual imports before committing to it, and reorder rather than reaching for a
+`--no-verify`-shaped workaround. `mypy` over the working tree does most of this
+for free: it names the missing import, by line, without running anything.
 
-The rule is here because Phase 3's list broke it and nobody noticed until the
-commits were written. Its commit 1, "workspace provisioning with a scoped git
-environment", needed the fixture runner from its commit 4; two of its test files
-needed fixtures that the list placed two commits later. The lists below read as
-a sensible narrative order — foundations, then the interesting part — and
-narrative order is not dependency order. **So check each list against the actual
-imports before committing to it, and reorder rather than reaching for a
-`--no-verify`-shaped workaround.**
+**What this used to say, and why it does not any more.** Until Phase 11 the rule
+was stronger — *every commit in a phase must be green on its own* — enforced by
+a loop that checked out each commit in turn and ran lint, types and that
+commit's own test directories against it. It was dropped, deliberately, and the
+reasoning is worth keeping because the rule sounds unarguable:
 
-**Verify it in two tiers.** The first draft of this rule ran the whole suite
-against every commit, which is thorough and costs about four minutes per commit
-— half an hour for a seven-commit phase, every time the split is adjusted. That
-is enough friction to make the check something you skip, which is worse than a
-cheaper check you actually run. So:
+- **It priced bisectability at more than bisectability is worth here.** The loop
+  is seconds per commit only when a commit's tests are fast; with a content
+  suite that walks 54 exercises it is minutes per commit, and the attribution
+  loop that runs when it goes red is minutes per commit again. Phase 11 spent
+  well over an hour of wall clock on verification runs, most of it re-running
+  work that the pre-push suite then ran once more.
+- **It cannot see a content commit at all**, because the loop derives its test
+  paths from the test *directories* a commit touches and a content commit
+  touches none. So the rule was already not holding for seven of Phase 11's
+  thirteen commits, and claiming it did would have been the worst of both.
+- **The failure it guards against is cheap to find and cheap to fix.** A commit
+  that cannot stand alone is discovered the moment anyone checks it out, and the
+  fix is a reorder or a squash. Nothing downstream depends on the property —
+  there is no release process, no cherry-picking between branches, no bisect
+  across phase boundaries.
+- **`git bisect` still works.** It needs commits that *build*, which `mypy`
+  gives, far more than it needs every commit to pass every test — and a bisect
+  over this history would be looking for a regression in the last few commits,
+  not across a phase that added fifty-one exercises.
 
-*Per commit* — lint, format, types, and only the tests that commit touches:
+What replaced it is one tier plus a gate, with no checkouts anywhere.
 
-```bash
-for sha in $(git rev-list --reverse <base>..HEAD); do
-  git checkout --quiet --detach "$sha"
-  paths=$(git show --name-only --format= "$sha" | grep '^tests/' | xargs -r dirname | sort -u)
-  uv run ruff check . && uv run ruff format --check . && uv run mypy \
-    && { [ -z "$paths" ] || uv run pytest -q --no-cov $paths | tail -1; }
-done
-```
-
-Seconds rather than minutes, and it still catches the defect the rule exists
-for. **`mypy` is what does most of that work**: a commit whose module imports
-something a later commit adds fails the type check in isolation, by name and
-line, without running anything. A targeted `pytest` over that commit's own test
-directories catches the rest — a collection error in a file the commit added.
-
-*Before a push* — the whole suite with the coverage gate, once, over the final
-tree:
+**Per commit — on the working tree, not a checkout:**
 
 ```bash
-uv run pytest --cov --cov-report=term-missing
+uv run ruff check . && uv run ruff format --check . && uv run mypy
+uv run pytest -q --no-cov <the tests this change touches>
 ```
 
-That is also exactly what CI runs on both platforms, so the per-commit tier is
-a bisectability check and the pre-push tier is the correctness one. Neither
-substitutes for the other, and only one of them needs to be fast.
+Seconds. No `git checkout`, so no clean-tree requirement, no editable-install
+confusion, and no re-running of commits that were already fine. For a content
+change the second line is `uv run pytest -q --no-cov -m content -k <slug>`,
+which is about four seconds per exercise.
 
-Four caveats on the per-commit loop. **Nothing else may be running**, which
-sounds obvious and is the one that wasted the most time: the loop was started
-seconds after two full-suite runs were killed, and commit 1 came back with 29
-failures that did not reproduce on either of two re-runs. A suite competing with
-another for temp directories, SQLite files and subprocesses fails in ways that
-look like real defects and are not — and `--cov` makes it worse, because two
-runs share one `.coverage` in the project root and will report a module at 60%
-that is fully covered. Run one thing at a time, and suspect this before
-debugging a failure that only appears under the loop.
-
-Run it in the working tree rather than in a
-`git worktree`: an editable install resolves `practice` to the path it was
-installed from, so a worktree runs the *working tree's* source against the
-*commit's* tests and reports failures that are artifacts of the method. (This
-applies to `pytest`; `ruff` and `mypy` are static and are safe in a worktree.) And
-the tree must be clean — an untracked file from a later commit is still on disk
-after `git checkout` and contaminates the run the same way.
-
-The third was found in Phase 5 and is the one that changes how the output should
-be read. **The commit the loop blames is not necessarily the commit at fault.**
-`paths` is derived from the test directories a commit *touches*, so a commit that
-breaks a test somewhere it did not touch passes its own check in silence, and the
-failure surfaces on the next commit that happens to touch that directory. Phase
-5's commit 7 changed an error message and broke an integration test two
-directories away; the loop reported it against commits 8 and 9. `mypy` cannot
-help — the break was a string assertion, not a type.
-
-So when the cheap tier goes red, **re-run the failing files across the whole
-range** before amending anything:
+**Before a push — the whole suite with the coverage gate, once:**
 
 ```bash
-for sha in $(git rev-list --reverse <base>..HEAD); do
-  git checkout --quiet --detach "$sha"
-  echo "$(git log --format='%h %s' -1)"
-  uv run pytest -q --no-cov <the files that failed> 2>&1 | tail -1
-done
+uv run pytest --cov --cov-report=term-missing -n 4 --dist loadfile
 ```
 
-That is seconds per commit and it is what attributes the defect. Widening `paths`
-instead — running every suite a changed *source* module could reach — is the
-obvious alternative and the wrong one: working out which suites a module reaches
-is the problem the pre-push tier already solves by running all of them.
+This is the tier that decides, and it is exactly what CI runs on both platforms.
 
-**The shape it misses is always the same one**, now that it has happened in two
-consecutive phases: a test asserting on a *string* — an error message, a refusal, a
-caveat — in a directory the commit did not touch. Phase 5's commit 7 changed an
-error message; Phase 6's commit 5 turned a `gc` refusal into a collection and left
-a test matching the literal `"phase 6"`. `mypy` cannot see either, because neither
-is a type. So: **after changing any user-facing string, grep for it** before
-trusting a green cheap tier. One `grep -rn` is cheaper than either the full suite or
-the attribution loop, and it is the only check that covers this case directly.
+**Four workers, and the number is measured rather than chosen.** Every worker
+spawns its own subprocesses — a bash fixture and a dozen `git` invocations per
+scenario, a `pytest` per kata — so the useful worker count tracks subprocess
+load, not cores. On a twelve-core machine, with the coverage gate:
 
-**And a commit that only adds content runs no tests at all.** Found in Phase 11,
-where seven of the thirteen commits touch nothing but `content/`: `paths` comes from
-the test directories a commit touches, so those commits get lint, format and
-`mypy` over data none of the three reads, and then nothing. The cheap tier
-reported green on all six while an e2e test was failing — the dashboard offers
-the top six queue rows, and a library that had grown from 3 exercises to 54 had
-moved the one that test asks for off the first screen.
+| workers | wall clock | repeatable? |
+|---|---|---|
+| serial | 10m10s | yes |
+| `-n 4` | **7m20s** | yes |
+| `-n auto` (12) | 3m42s, then 7m36s, then 8m41s | **no** |
 
-So for a content commit the two tiers collapse into one: **`uv run pytest -m
-content` is the cheap tier**, which is seconds per exercise with `-k <slug>` and
-about nine minutes for the library, and the pre-push run is still the only thing
-that covers the e2e suite — which is the only suite that reads the real library
-through the real web app, and therefore the only one that can notice a change in
-what the library *offers*.
+`-n auto` is the trap. Its best run is the fastest number here and its times
+swing by more than a factor of two, because twelve workers each starting
+processes oversubscribe a twelve-core machine — and one of those runs *failed*,
+by taking a kata's grading past the ten-second wall-clock limit the suite holds
+it to on purpose (§16). Four workers are faster on average and repeatable, which
+is the property that matters in the tier that decides.
+
+`--dist loadfile` rather than the default `load`, because every test in a file
+then lands on one worker, which is what keeps the content suite's module-scoped
+workspaces and memoised verdicts shared instead of rebuilt per worker.
+
+Deliberately **not** in `addopts`: four workers to run one file is slower than
+one, and the fast tier runs one file. `-n0` turns it off. CI uses `-n auto`
+rather than `-n 4` for the same reason this machine does not — a GitHub runner
+has two cores, so `auto` is two workers there and matches the principle instead
+of fighting it.
+
+Three things worth knowing about the fast tier, all found by using it.
+
+**Nothing else may be running.** The one that wasted the most time: a suite
+competing with another for temp directories, SQLite files and subprocesses fails
+in ways that look like real defects and are not — and `--cov` makes it worse,
+because two runs share one `.coverage` in the project root and will report a
+module at 60% that is fully covered. Run one thing at a time, and suspect this
+before debugging a failure you cannot reproduce.
+
+**After changing any user-facing string, `grep -rn` for it.** The defect the
+fast tier reliably misses is a test asserting on a *string* — an error message, a
+refusal, a caveat — in a directory the change did not touch. Phase 5 changed an
+error message; Phase 6 turned a `gc` refusal into a collection and left a test
+matching the literal `"phase 6"`. `mypy` cannot see either, because neither is a
+type. One `grep -rn` is cheaper than the full suite and is the only check that
+covers this case directly.
+
+**A content change is only covered by `-m content` and `tests/e2e`.** Phase 11's
+one escaped defect was neither a schema error nor a wrong check: the dashboard
+offers the top six rows of the queue, and a library that grew from 3 exercises to
+54 moved the exercise an e2e test asks for off the first screen. Nothing but the
+e2e suite reads the real library through the real web app, so nothing else could
+have noticed. The durable fix was a content test asserting the property directly
+(`test_the_first_screen_of_the_curriculum_offers_both_kinds`), which is the
+general move: when the full suite catches something, push the claim down into the
+fastest suite that can hold it.
 
 **Effort** is in *sessions* ≈ 2–3 focused hours, at entry-level pace.
 **Phases 0–9 (the MVP) total ~40 sessions, so on the order of 100 focused
@@ -3366,22 +3362,13 @@ top `QUEUE_LIMIT` entries of the curriculum include at least one of each kind,
 which is the property the e2e depends on, checked in milliseconds where the
 author will see it.
 
-**And §11's "every commit in a phase must be green on its own" is broken by this
-phase's history. Recorded rather than papered over.** Six content commits fail
-`tests/e2e/test_schedule_a_review.py`, starting with the first one: it took the
-library from 3 exercises to 11, which pushed Two Sum out of the dashboard's top
-six rows, and nothing was green on that test again until the manifest's
-`start-here` track landed in commit 10. The rule was not broken by carelessness
-about *running* the tier — it was run on every commit — but because the tier
-cannot see a content commit at all, which is the finding above.
-
-Making the history comply would mean rewriting six commits to carry a fix for a
-file that does not exist yet in most of them (`curriculum.yaml` arrives in
-commit 10), or rewriting the e2e in commit 1 to not depend on what the library
-offers. Both are a rebase across ten commits with a twenty-five-minute suite per
-commit, for a bisect that nobody is going to run across this phase looking for
-*that* test. So: not done, stated here, and the mechanism that would have caught
-it on commit 1 is now in place for next time.
+**Six of this phase's commits do not pass that e2e test, and that is what
+retired §11's per-commit greenness rule** (see the entry below). It failed from
+content commit 1 — which took the library from 3 exercises to 11, pushing Two Sum
+out of the dashboard's top six rows — and nothing was green on it again until the
+manifest's `start-here` track landed in commit 11. The rule was not broken by
+skipping the tier; the tier was run on every commit and *cannot see a content
+commit at all*, which is the finding above.
 
 The phase closed at **3,095 tests** — 747 more than Phase 10, and 862 of those
 are the content suite growing from 74 cases to 936 as it walked a library that
@@ -3398,3 +3385,128 @@ it exists to grade got eighteen times bigger. `practice validate` reports 54 exe
 The whole suite now takes **17 minutes**, of which the content suite is nine.
 That is the real cost of this phase and it is charged to the right place: the
 pre-push tier. Nothing else got slower, because nothing else grew.
+
+**2026-10-03 — the per-commit greenness rule is removed, and the suite is
+17m21s → 3m42s.** Two changes, prompted by the same complaint: Phase 11 spent
+over two hours of wall clock waiting for tests, which is not a price this
+project can pay again.
+
+**The rule went first, because it was the thing generating the waiting.** §11
+had said *every commit in a phase must be green on its own*, enforced by a loop
+that checked out each commit and ran its test directories against it — plus a
+second loop to attribute a failure when the first went red. The reasoning for
+removing it is in §11 and worth summarising: it priced bisectability above what
+bisectability is worth here, it could not see a content commit at all (so it was
+already not holding for seven of Phase 11's thirteen commits), and the failure
+it guards against is cheap to find and cheap to fix. What survives is the weaker
+claim that **a commit list is a dependency order** — checked by `mypy` over the
+working tree, which names a missing import for free. The two tiers are now one
+fast tier on the working tree and one gate before a push, with no `git checkout`
+anywhere.
+
+**Then the suite was measured rather than guessed about, and the result was not
+where anyone was looking.** `pytest --durations=40` over the whole run:
+
+```
+49.13s  tests/integration/test_cli_sandbox.py::test_write_then_check_agree
+48.92s  tests/integration/test_cli_sandbox.py::test_write_is_reproducible
+37.78s  tests/integration/test_cli_sandbox.py::test_it_names_every_exercise_it_checked
+31.21s  tests/integration/test_cli_sandbox.py::test_the_shipped_fixtures_match_the_lock_file
+28.90s  tests/integration/test_cli_sandbox.py::test_a_changed_fixture_fails_the_check
+26.51s  tests/content/test_fixtures.py::test_the_lock_file_matches_the_library
+...
+```
+
+**Nine tests in one file cost 288 of the 1,053 seconds — 27% of the suite.**
+Not the content suite, which is where the suspicion was. `practice fixtures`
+runs every git scenario's fixture, and the tests that needed a library they
+could *break* copied the whole shipped one — so the library was fingerprinted
+nine times over. At two scenarios that cost a couple of seconds each and nobody
+noticed; at twenty-four it is five minutes. **A cost that was invisible at the
+size the test was written for and linear in content the tests do not care
+about.** That is the shape to look for next time.
+
+Four changes, all of them removing duplicated work rather than hiding it:
+
+- **`test_cli_sandbox` breaks a two-exercise subset**, built once per session
+  and copied per test, instead of copying all fifty-four. They are still real
+  exercises — that was the point of copying rather than hand-building — and what
+  is dropped is twenty-two repetitions of the same evidence. The two tests that
+  must see the shipped library share one invocation. **288s → 41s.**
+- **`test_the_lock_file_matches_the_library` became
+  `test_its_fixture_matches_the_lock_file`.** This file provisions every
+  scenario anyway, and a `FixtureFingerprint` is just the workspace's aliases
+  and refs — so the comparison costs nothing where `fingerprint_library` over
+  the library cost twenty-four more fixture runs. Same claim, per-exercise
+  failure message, **−27s**.
+- **One pristine workspace per scenario** in `test_fixtures`, shared by the six
+  tests that only read it. Six fixture runs to look at the same end state was
+  five wasted. The two tests that *mutate* a repository still take their own,
+  which is the invariant to keep: if a test changes the repository it does not
+  belong on that fixture.
+- **Reference and stub verdicts are memoised** in `test_scenarios` and
+  `test_katas`, where two tests each read one verdict and were each paying for
+  it. Memoised rather than `scope="module"` for a reason worth recording: the
+  autouse `_own_database` fixture monkeypatches the database path *per test*, so
+  a module-scoped `Services` would outlive the environment it was built under.
+  Caching the resulting `Submission` has no such problem — it is data.
+
+That took the suite from **17m21s to 10m10s** with the content suite falling from
+527s to 298s, and 3,118 tests passing against 3,095 before (the per-scenario lock
+check is twenty-four tests where the library-wide one was one). Every second of
+that is work that was being done more than once.
+
+**Then `pytest-xdist`, where the obvious setting turned out to be the wrong
+one.** The suite is subprocess-bound — a bash fixture and a dozen `git`
+invocations per scenario, a `pytest` per kata — so it ought to parallelise well,
+and `-n auto --dist loadfile` on twelve cores first ran in **3m42s** with the
+coverage gate. That number is real and it is not reproducible:
+
+| workers | wall clock, with the gate | repeatable? |
+|---|---|---|
+| serial | 10m10s | yes |
+| `-n 4` | **7m20s** | yes (twice) |
+| `-n auto` (12) | 3m42s, then 7m36s, then 8m41s | **no** |
+
+Twelve workers each starting their own processes oversubscribe a twelve-core
+machine, and the times swing by more than a factor of two. **One of those runs
+failed**, which is the part worth having: two tests in
+`tests/integration/kata/test_pytest_runner.py` reported *no test failures* for a
+deliberately wrong solution. Not a parsing bug — the inner `pytest` had been
+killed by its ten-second wall-clock limit, no report was written, and
+`_read_report` correctly returned `None`. A suite that grades against real time
+limits cannot be run on a saturated machine.
+
+Half of that is a genuine fragility and is now fixed: every test on that file's
+`spec` fixture is about what the runner *reports* — parsed records, docstring
+labels, ANSI escapes, which config it obeyed — and none is about the limit, which
+has its own `kata_spec_with_a_short_limit`. They inherited two-sum's real ten
+seconds for no reason, so `spec` now lifts it to two minutes. A loaded CI runner
+could have flaked those at any point in the last seven phases.
+
+The other half is not a bug: `tests/content/test_katas.py` grades every kata
+against its **real** declared limit, deliberately, because that is the limit a
+solver is held to. So the suite stays wall-clock sensitive by design, and the
+answer is to stop oversubscribing rather than to stop asserting. **`-n 4`**,
+measured and repeatable, is what the documented command uses. CI uses `-n auto`
+for the same reason this machine does not: a GitHub runner has two cores, so
+`auto` is two workers there.
+
+Deliberately **not** in `addopts`. Four workers to run one file is slower than
+one, and the fast tier runs one file; the flags live on the documented pre-push
+command and in CI, where the whole suite is what runs. `-n0` turns it off.
+
+**What was not done, and why.** No test was deleted and no coverage was given
+up: the suite still grades every reference solution, every counter-example
+against exactly its declared checks, every stub, and every fixture against the
+lock. The 17 minutes were not the price of that evidence — they were the price
+of collecting some of it nine times. Worth saying plainly, because "the suite is
+too slow" invites deleting tests, and deleting tests was never the cheapest
+thing available here.
+
+**Where the remaining time is, if this comes up again.** `--dist loadgroup` with
+a group per `(module, exercise)` would balance far better than `loadfile`, which
+currently leaves the longest file — `test_scenarios` at 138s — setting the floor
+for the whole run. That is the next lever and it needs a
+`pytest_collection_modifyitems` hook to assign the groups, which is why it was
+not taken today.

@@ -18,7 +18,7 @@ phase; this file only covers the conventions you would otherwise have to derive.
 uv run ruff check .                        # lint
 uv run ruff format --check .               # format (use `ruff format .` to fix)
 uv run mypy                                # strict, over src/ and tests/
-uv run pytest --cov --cov-report=term-missing
+uv run pytest --cov --cov-report=term-missing -n 4 --dist loadfile
 ```
 
 Those four are what CI runs, on Linux **and** Windows. Two more it also runs:
@@ -34,44 +34,68 @@ can fall out of every selector by being forgotten.
 
 ## Verifying work (PLAN.md §11)
 
-Two tiers, and neither substitutes for the other.
+One fast tier, one gate, and **no `git checkout` anywhere**.
 
-**Per commit** — lint, format, types, and only the tests that commit touches.
-Seconds. `mypy` does most of the work: a commit importing something a later commit
-adds fails the type check in isolation, by name and line, with nothing executed.
+**Per commit**, on the working tree:
 
-**Before a push** — the whole suite with the coverage gate, once, over the final
-tree. This is the one that decides.
+```bash
+uv run ruff check . && uv run ruff format --check . && uv run mypy
+uv run pytest -q --no-cov <the tests this change touches>
+```
 
-Six things the cheap tier cannot do, all found by using it:
+Seconds. For content, the second line is `-m content -k <slug>` — about four
+seconds per exercise.
+
+**Before a push** — the whole suite with the coverage gate, once. This is the one
+that decides, and it is what CI runs on both platforms:
+
+```bash
+uv run pytest --cov --cov-report=term-missing -n 4 --dist loadfile
+```
+
+**Four workers, not `-n auto`.** Every worker spawns its own subprocesses — a
+bash fixture, a dozen `git` calls, a `pytest` per kata — so the useful worker
+count tracks subprocess load rather than cores. Measured on this twelve-core
+machine, with the coverage gate:
+
+| workers | time | stable? |
+|---|---|---|
+| serial | 10m10s | yes |
+| `-n 4` | **7m20s** | yes |
+| `-n auto` (12) | 3m42s / 7m36s / 8m41s | **no** — and one run failed |
+
+`-n auto` thrashes: the times swing by a factor of two and one run breached a
+kata's wall-clock time limit, which the suite grades against on purpose. Four is
+faster on average *and* repeatable. `--dist loadfile` so every test in a file
+lands on one worker, which is what keeps the content suite's module-scoped
+workspaces and memoised verdicts shared rather than rebuilt per worker.
+
+Not in `addopts`, deliberately: four workers to run one file is slower than one,
+and the fast tier runs one file. `-n0` turns it off.
+
+**There is no "every commit must be green on its own" rule.** There was until
+Phase 11, enforced by a loop that checked out every commit and re-ran its tests;
+it was dropped because it cost more than bisectability is worth here, could not
+see a content commit at all, and was re-running work the pre-push suite runs
+anyway. §11 has the full reasoning. What survives is the weaker and still useful
+claim: **a commit list is a dependency order** — check it against the actual
+imports, because narrative order is not dependency order, and `mypy` names a
+missing import for free.
+
+Three things the fast tier cannot do:
 
 - **Nothing else may be running.** Two pytest runs compete for temp dirs, SQLite
   files and subprocesses, and `--cov` makes it worse — one `.coverage` in the
   project root, shared. A run started beside another reports failures that do
   not reproduce. Suspect this before debugging one.
-- Run it in the working tree, not a `git worktree`. An editable install resolves
-  `practice` to the path it was installed from, so a worktree runs the *working
-  tree's* source against the *commit's* tests.
-- The tree must be clean. An untracked file from a later commit survives
-  `git checkout` and contaminates the run.
-- **The commit it blames is not necessarily the commit at fault**, because the test
-  paths come from the directories a commit *touches*. Re-run the failing files
-  across the whole range to attribute a failure before amending anything.
-- **After changing any user-facing string, `grep -rn` for it.** The defect this tier
-  has missed in two consecutive phases is a test asserting on a message, in a
-  directory the commit did not touch. `mypy` cannot see it.
-- **A commit that only adds content runs no tests at all**, because `paths` comes
-  from the test directories a commit touches. For a content commit the cheap tier
-  is `uv run pytest -m content` (seconds per exercise with `-k <slug>`), and the
-  pre-push run is still the only thing that covers `tests/e2e` — the only suite
-  that reads the real library through the real web app, and so the only one that
-  notices a change in what the library *offers*. Phase 11 shipped six content
-  commits green over a failing e2e test this way.
-
-**Every commit in a phase must be green on its own.** A phase's commit list is a
-dependency order, and narrative order is not dependency order — check it against the
-actual imports, *and* against the states the commands can reach. Reorder rather than
-reaching for a `--no-verify`-shaped workaround.
+- **After changing any user-facing string, `grep -rn` for it.** The defect this
+  tier reliably misses is a test asserting on a message, in a directory the
+  change did not touch. `mypy` cannot see it.
+- **A content change is only covered by `-m content` and `tests/e2e`.** Phase
+  11's one escaped defect was a library that grew past the number of rows the
+  dashboard offers, which only the e2e suite could see. When the full suite
+  catches something, push the claim down into the fastest suite that can hold
+  it — that one is now a content test.
 
 ## Architecture, enforced by tests
 
