@@ -28,7 +28,8 @@ from practice.application.errors import (
     WorkspaceGoneError,
 )
 from practice.application.use_cases import RevealSolutionFile
-from practice.domain.errors import AttemptStateError
+from practice.domain.attempt import AttemptMode
+from practice.domain.errors import AttemptStateError, PolicyViolationError
 from practice.domain.ids import AttemptId, ExerciseId
 from tests.unit.application.helpers import (
     a_reveal_solution_file,
@@ -192,6 +193,41 @@ def test_it_refuses_a_git_scenario() -> None:
 
     with pytest.raises(UnsupportedExerciseKindError, match="no solution file"):
         a_reveal_solution_file(world)(started.attempt.id)
+
+
+def test_it_refuses_an_attempt_opened_in_interview_mode() -> None:
+    """Phase 15's third clause, enforced in the use case rather than the route.
+
+    `reveals_workspace` is asked of the *attempt's* policy, so this refusal
+    survives the process that started the attempt and cannot be talked out of by
+    a later invocation choosing a different mode.
+    """
+    world = an_environment()
+    started = a_start_attempt(world)(KATA, mode=AttemptMode.INTERVIEW)
+
+    with pytest.raises(PolicyViolationError, match="interview mode"):
+        a_reveal_solution_file(world)(started.attempt.id)
+
+
+def test_the_interview_refusal_says_what_to_do_instead() -> None:
+    """A withdrawn affordance with no alternative named is a dead end: the
+    browser editor is still there, and the message has to say so.
+    """
+    world = an_environment()
+    started = a_start_attempt(world)(KATA, mode=AttemptMode.INTERVIEW)
+
+    with pytest.raises(PolicyViolationError, match="submit it"):
+        a_reveal_solution_file(world)(started.attempt.id)
+
+
+def test_a_practice_attempt_is_still_handed_its_file() -> None:
+    """The regression that keeps own-editor mode working for everybody else."""
+    world = an_environment()
+    started = a_start_attempt(world)(KATA, mode=AttemptMode.PRACTICE)
+
+    revealed = a_reveal_solution_file(world)(started.attempt.id)
+
+    assert revealed.name == "stub.py"
 
 
 def test_it_refuses_an_attempt_whose_workspace_has_been_collected() -> None:

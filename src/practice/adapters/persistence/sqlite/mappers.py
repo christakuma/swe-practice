@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Final
 
 from practice.domain.attempt import (
     Attempt,
+    AttemptMode,
     AttemptPolicy,
     AttemptStatus,
     CommandResult,
@@ -108,6 +109,12 @@ def attempt_row(attempt: Attempt) -> dict[str, object]:
         # process wrote it.
         "allowed_commands": _dump(sorted(attempt.policy.allowed_commands)),
         "hints": _dump([hint.text for hint in attempt.policy.hints]),
+        # The two columns 0003 added, and the second place Phase 15 cost
+        # anything. ADR 0008 predicted this shape for FSRS and it holds for a
+        # mode too: a new field on a stored aggregate has to be named where
+        # rows are built, however little the rest of the stack notices.
+        "mode": attempt.policy.mode.value,
+        "deadline_seconds": attempt.policy.deadline_seconds,
         "declared_time": claim.time if claim is not None else None,
         "declared_space": claim.space if claim is not None else None,
         "verdict": (
@@ -217,6 +224,8 @@ def to_attempt(
             max_commands=_integer(row, "max_commands"),
             hints=tuple(Hint(text) for text in _strings(row, "hints")),
             allowed_commands=frozenset(_strings(row, "allowed_commands")),
+            mode=AttemptMode(_text(row, "mode")),
+            deadline_seconds=_optional_integer(row, "deadline_seconds"),
         ),
         started_at=_timestamp(row, "started_at"),
         status=status,
@@ -391,6 +400,22 @@ def _number(row: Mapping[str, object], column: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise RowError(f"{column} must be a number, got {type(value).__name__}")
     return float(value)
+
+
+def _optional_integer(row: Mapping[str, object], column: str) -> int | None:
+    """A nullable INTEGER column. `None` is the value, not a missing one.
+
+    `deadline_seconds` is NULL for every practice attempt, which is most of the
+    table, so this is the common path rather than the degenerate one.
+    `AttemptPolicy` is what holds NULL to meaning *untimed* — the mapper's job
+    is to refuse a row that is the wrong type, not to decide what absence means.
+    """
+    value = _required(row, column, optional=True)
+    if value is None:
+        return None
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise RowError(f"{column} must be an integer, got {type(value).__name__}")
+    return value
 
 
 def _optional_number(row: Mapping[str, object], column: str) -> float | None:

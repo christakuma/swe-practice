@@ -17,6 +17,14 @@ fail halfway and the asymmetry decides it: a workspace with no attempt row is
 precisely what `practice gc` is built to find and collect (§8.1), while an
 attempt row with no workspace is an active attempt the resume prompt will offer
 and nothing can resume. So the recoverable leftover is the one to risk.
+
+**And the mode is an argument here and nowhere else**, which is Phase 15's whole
+application-layer footprint. Interview mode is chosen once, when the attempt is
+opened, and from then on it is a field on the stored policy — so no other use
+case takes it, asks for it, or could be passed it. `resume`, `submit` and
+`abandon` read the attempt they were given and get the rules with it. A setting
+read at each of those would be a setting that could differ between them
+(ADR 0020).
 """
 
 from __future__ import annotations
@@ -26,7 +34,7 @@ from typing import TYPE_CHECKING
 
 from practice.application.dto import StartedAttempt
 from practice.application.errors import ExerciseNotFoundError
-from practice.domain.attempt import Attempt, AttemptPolicy
+from practice.domain.attempt import Attempt, AttemptMode, AttemptPolicy
 
 if TYPE_CHECKING:
     from practice.application.registry import GraderRegistry
@@ -53,7 +61,9 @@ class StartAttempt:
     clock: Clock
     ids: IdGenerator
 
-    def __call__(self, exercise_id: ExerciseId) -> StartedAttempt:
+    def __call__(
+        self, exercise_id: ExerciseId, *, mode: AttemptMode = AttemptMode.PRACTICE
+    ) -> StartedAttempt:
         exercise = self.content.get(exercise_id)
         if exercise is None:
             raise ExerciseNotFoundError(f"no exercise with id {exercise_id}")
@@ -66,7 +76,7 @@ class StartAttempt:
         attempt = Attempt(
             attempt_id=attempt_id,
             exercise_id=exercise.id,
-            policy=AttemptPolicy.for_exercise(exercise),
+            policy=AttemptPolicy.for_exercise(exercise, mode=mode),
             started_at=self.clock.now(),
         )
 

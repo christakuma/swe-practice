@@ -25,6 +25,20 @@ learn to ignore a kind of entry. The file is the state; the log is the story.
 mirror of `InspectRepository` refusing a kata. A scenario's surface is a console
 over a repository and there is no file to open — the repository is already on
 disk, and `cd` is the whole of "work on it in your own tools".
+
+**And an interview is refused for a different reason, in the same place.** Phase
+15's third clause is that the tool stops handing over the workspace path, and
+this module is one of the two places it does (the other is `practice start`'s
+next-step line). Both refusals land in `load_solution_file` rather than in the
+route and the command, so the browser and the CLI cannot disagree about what
+interview mode withdraws — the same argument `SolutionFile` already makes for
+sharing the other four failures with `WatchSolutionFile`. A page offering a
+button the use case refuses is a page with a button that does nothing.
+
+**What this is not is containment**, and `AttemptPolicy.reveals_workspace` says
+so at length. The file is on the solver's own disk and §8.1 settled in Phase 3
+that the solver owns the machine; what is withdrawn is the tool's offer, not the
+access.
 """
 
 from __future__ import annotations
@@ -39,7 +53,7 @@ from practice.application.errors import (
     UnsupportedExerciseKindError,
     WorkspaceGoneError,
 )
-from practice.domain.errors import AttemptStateError
+from practice.domain.errors import AttemptStateError, PolicyViolationError
 from practice.domain.exercise import editable_source
 
 if TYPE_CHECKING:
@@ -119,6 +133,17 @@ def load_solution_file(
         raise UnsupportedExerciseKindError(
             f"{exercise.id} is a {exercise.kind.value}: it is graded on the "
             f"repository in its workspace, so there is no solution file to open"
+        )
+
+    # Asked of the *attempt's* policy rather than of a setting, so an attempt
+    # opened under interview rules keeps refusing for as long as it exists —
+    # including from a second process, and including after the mode anyone would
+    # have read a setting from has changed.
+    if not attempt.policy.reveals_workspace:
+        raise PolicyViolationError(
+            f"attempt {attempt.id.short} was opened in interview mode, which does "
+            f"not hand over the workspace; type your answer in the editor and "
+            f"submit it"
         )
 
     workspace = provisioner.attach(exercise, attempt_id)

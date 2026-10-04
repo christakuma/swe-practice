@@ -35,6 +35,7 @@ from practice.adapters.persistence.sqlite.mappers import (
 )
 from practice.domain.attempt import (
     Attempt,
+    AttemptMode,
     AttemptPolicy,
     AttemptStatus,
     CommandResult,
@@ -63,6 +64,17 @@ def a_policy() -> AttemptPolicy:
         max_commands=25,
         hints=(Hint("Read build.sh first."), Hint("Your teammate has this commit.")),
         allowed_commands=frozenset({"git", "cat", "write"}),
+    )
+
+
+def an_interview_policy() -> AttemptPolicy:
+    """The same scenario policy, opened under interview rules."""
+    return AttemptPolicy(
+        max_commands=25,
+        hints=(),
+        allowed_commands=frozenset({"git", "cat", "write"}),
+        mode=AttemptMode.INTERVIEW,
+        deadline_seconds=900,
     )
 
 
@@ -166,6 +178,75 @@ def test_an_untouched_active_attempt_survives_too() -> None:
     assert equivalent(restored, original)
     assert restored.status is AttemptStatus.ACTIVE
     assert restored.events == ()
+
+
+def test_an_interview_attempt_keeps_its_mode_and_its_deadline() -> None:
+    """`equivalent` compares the whole policy, so this covers both columns 0003
+    added — and it is the test that would fail if the mapper wrote the mode and
+    dropped the deadline, which the schema's pairing CHECK also refuses.
+    """
+    original = Attempt(
+        attempt_id=ATTEMPT_ID,
+        exercise_id=EXERCISE_ID,
+        policy=an_interview_policy(),
+        started_at=STARTED_AT,
+    )
+
+    restored = roundtrip(original)
+
+    assert equivalent(restored, original)
+    assert restored.policy.mode is AttemptMode.INTERVIEW
+    assert restored.policy.deadline_seconds == 900
+    assert restored.deadline == at(15)
+
+
+def test_a_practice_attempt_stores_the_mode_by_name_and_no_deadline() -> None:
+    """The stored form is readable: `'practice'` rather than a `0` nobody can
+    interpret, which is why `AttemptMode` is a `StrEnum`.
+    """
+    row = attempt_row(
+        Attempt(
+            attempt_id=ATTEMPT_ID,
+            exercise_id=EXERCISE_ID,
+            policy=a_policy(),
+            started_at=STARTED_AT,
+        )
+    )
+
+    assert row["mode"] == "practice"
+    assert row["deadline_seconds"] is None
+
+
+def test_a_deadline_that_is_not_an_integer_names_itself() -> None:
+    original = Attempt(
+        attempt_id=ATTEMPT_ID,
+        exercise_id=EXERCISE_ID,
+        policy=an_interview_policy(),
+        started_at=STARTED_AT,
+    )
+    row = dict(attempt_row(original))
+    row["deadline_seconds"] = "900"
+
+    with pytest.raises(RowError, match="deadline_seconds must be an integer"):
+        to_attempt(row, ())
+
+
+def test_a_mode_the_vocabulary_does_not_have_is_refused() -> None:
+    """The enum is the gate. A row saying `'exam'` is a column written by
+    something that is not this version, and guessing at it would produce an
+    attempt whose rules nothing can state.
+    """
+    original = Attempt(
+        attempt_id=ATTEMPT_ID,
+        exercise_id=EXERCISE_ID,
+        policy=a_policy(),
+        started_at=STARTED_AT,
+    )
+    row = dict(attempt_row(original))
+    row["mode"] = "exam"
+
+    with pytest.raises(ValueError, match="exam"):
+        to_attempt(row, ())
 
 
 def test_an_abandoned_attempt_keeps_its_log_and_has_no_verdict() -> None:

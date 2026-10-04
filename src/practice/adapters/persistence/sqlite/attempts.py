@@ -68,6 +68,8 @@ _COLUMNS: Final = (
     "max_commands",
     "allowed_commands",
     "hints",
+    "mode",
+    "deadline_seconds",
     "declared_time",
     "declared_space",
     "verdict",

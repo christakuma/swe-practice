@@ -25,8 +25,8 @@ from practice.application.errors import (
     UnsupportedExerciseKindError,
     WorkspaceGoneError,
 )
-from practice.domain.attempt import SolutionSaved
-from practice.domain.errors import AttemptStateError
+from practice.domain.attempt import AttemptMode, SolutionSaved
+from practice.domain.errors import AttemptStateError, PolicyViolationError
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.verdict import Outcome
 from tests.unit.application.helpers import (
@@ -297,6 +297,19 @@ class TestItRefusesBeforeStreamingAnything:
         world.content.forget(KATA)
 
         with pytest.raises(ExerciseNotFoundError):
+            a_watch_solution_file(world)(started.attempt.id)
+
+    def test_an_attempt_opened_in_interview_mode(self) -> None:
+        """The refusal lands here as well as in `RevealSolutionFile` because
+        both share `load_solution_file`, which is the whole reason that function
+        exists: a page that offered the watch stream for an attempt whose file
+        the other use case refuses would be a page with a button that does
+        nothing.
+        """
+        world = an_environment()
+        started = a_start_attempt(world)(KATA, mode=AttemptMode.INTERVIEW)
+
+        with pytest.raises(PolicyViolationError, match="interview mode"):
             a_watch_solution_file(world)(started.attempt.id)
 
     def test_a_git_scenario(self) -> None:

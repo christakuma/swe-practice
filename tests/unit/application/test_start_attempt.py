@@ -16,7 +16,7 @@ from practice.application.errors import (
 )
 from practice.application.registry import GraderRegistry
 from practice.application.use_cases import StartAttempt
-from practice.domain.attempt import AttemptStatus
+from practice.domain.attempt import AttemptMode, AttemptStatus
 from practice.domain.exercise import ExerciseKind
 from practice.domain.ids import ExerciseId
 from tests.unit.application.helpers import (
@@ -50,6 +50,48 @@ def test_the_attempt_carries_the_exercise_policy() -> None:
     assert started.attempt.policy.max_commands == 0
     assert started.attempt.policy.allowed_commands == frozenset()
     assert started.attempt.policy.hint_count == 1
+
+
+def test_practice_is_the_mode_an_attempt_starts_in_unasked() -> None:
+    """The default is what keeps Phase 15 an addition: every caller that existed
+    before interview mode passes no mode and gets exactly what it got.
+    """
+    started = a_start_attempt(an_environment())(ExerciseId("katas/two-sum"))
+
+    assert started.attempt.policy.mode is AttemptMode.PRACTICE
+    assert started.attempt.deadline is None
+
+
+def test_an_interview_is_chosen_here_and_recorded_on_the_attempt() -> None:
+    """The mode is an argument to this use case and to no other, because this is
+    the only moment at which it can be decided (ADR 0020). What the rest of the
+    stack reads is the stored policy.
+    """
+    world = an_environment()
+
+    started = a_start_attempt(world)(
+        ExerciseId("katas/two-sum"), mode=AttemptMode.INTERVIEW
+    )
+
+    assert started.attempt.policy.is_interview is True
+    assert started.attempt.policy.hint_count == 0
+    assert started.attempt.deadline is not None
+
+    # And it is on the *saved* attempt, not only the returned one.
+    stored = world.attempts.get(started.attempt.id)
+    assert stored is not None
+    assert stored.policy.is_interview is True
+
+
+def test_an_interview_deadline_is_the_exercises_own_estimate() -> None:
+    world = an_environment()
+    exercise = world.content.get(ExerciseId("katas/two-sum"))
+    assert exercise is not None
+
+    started = a_start_attempt(world)(exercise.id, mode=AttemptMode.INTERVIEW)
+
+    assert started.attempt.policy.deadline_seconds == exercise.estimated_minutes * 60
+    assert started.attempt.remaining(world.clock.now()) is not None
 
 
 def test_it_starts_the_attempt_at_the_clock_it_was_given() -> None:

@@ -14,6 +14,7 @@ survive a restart", at the lowest layer that can state it.
 
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -23,6 +24,7 @@ import pytest
 from practice.adapters.persistence.sqlite import Database, SqliteAttemptRepository
 from practice.domain.attempt import (
     Attempt,
+    AttemptMode,
     AttemptPolicy,
     AttemptStatus,
     CommandResult,
@@ -399,3 +401,125 @@ def test_the_repository_describes_which_database_it_is_over(
     that cannot find an attempt is which database it was looking in.
     """
     assert str(database.path) in repr(SqliteAttemptRepository(database))
+
+
+# --- interview mode, through the real database ------------------------------
+
+
+def an_interview_policy() -> AttemptPolicy:
+    return AttemptPolicy(
+        max_commands=25,
+        hints=(),
+        allowed_commands=frozenset({"git", "cat"}),
+        mode=AttemptMode.INTERVIEW,
+        deadline_seconds=1200,
+    )
+
+
+def test_an_interview_attempt_comes_back_under_the_rules_it_was_opened_under(
+    attempts: AttemptRepository,
+) -> None:
+    """The point of storing the mode rather than reading it from a setting: a
+    second process loading this attempt gets the interview, not whatever mode
+    its own invocation would have chosen (§4.3, ADR 0020).
+    """
+    attempt = Attempt(
+        attempt_id=an_id(1),
+        exercise_id=REVERT,
+        policy=an_interview_policy(),
+        started_at=STARTED_AT,
+    )
+    attempts.save(attempt)
+
+    loaded = attempts.get(an_id(1))
+
+    assert loaded is not None
+    assert loaded.policy.mode is AttemptMode.INTERVIEW
+    assert loaded.policy.is_interview is True
+    assert loaded.policy.reveals_workspace is False
+    assert loaded.policy.hints == ()
+    assert loaded.policy.deadline_seconds == 1200
+    assert loaded.deadline == at(20)
+
+
+def test_a_practice_attempt_still_comes_back_untimed(
+    attempts: AttemptRepository,
+) -> None:
+    """0003 backfills `'practice'`, so every attempt written before interview
+    mode existed loads as exactly what it was.
+    """
+    attempts.save(
+        Attempt(
+            attempt_id=an_id(2),
+            exercise_id=TWO_SUM,
+            policy=a_policy(),
+            started_at=STARTED_AT,
+        )
+    )
+
+    loaded = attempts.get(an_id(2))
+
+    assert loaded is not None
+    assert loaded.policy.mode is AttemptMode.PRACTICE
+    assert loaded.deadline is None
+    assert loaded.overran(at(999)) is False
+
+
+def test_the_schema_refuses_an_interview_with_no_deadline(database: Database) -> None:
+    """The schema's half of `AttemptPolicy`'s pairing invariant (0003).
+
+    The same deliberate duplication 0001 names and `test_reviews.py` already
+    exercises for 0002: the policy refuses to *reach* the state and the schema
+    refuses to *store* it, so a mapper that wrote the mode and dropped the
+    deadline fails on the INSERT rather than on the read. Raw SQL because there
+    is no way to get here through the domain, which is the hole this closes.
+    """
+    database.migrate()
+    columns = (
+        "id, exercise_id, status, started_at, max_commands, "
+        "allowed_commands, hints, mode"
+    )
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="CHECK constraint failed"),
+        database.connect() as connection,
+    ):
+        connection.execute(
+            f"INSERT INTO attempts ({columns}) "  # noqa: S608  (a literal)
+            "VALUES ('a', 'katas/two-sum', 'active', '2026-10-02T09:00:00+00:00', "
+            "0, '[]', '[]', 'interview')"
+        )
+
+
+def test_the_schema_refuses_a_timed_practice_run(database: Database) -> None:
+    """The other direction, which is the one a `bool` column could not express."""
+    database.migrate()
+    columns = (
+        "id, exercise_id, status, started_at, max_commands, "
+        "allowed_commands, hints, mode, deadline_seconds"
+    )
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="CHECK constraint failed"),
+        database.connect() as connection,
+    ):
+        connection.execute(
+            f"INSERT INTO attempts ({columns}) "  # noqa: S608  (a literal)
+            "VALUES ('a', 'katas/two-sum', 'active', '2026-10-02T09:00:00+00:00', "
+            "0, '[]', '[]', 'practice', 600)"
+        )
+
+
+def test_the_schema_refuses_a_mode_outside_the_vocabulary(database: Database) -> None:
+    database.migrate()
+    columns = (
+        "id, exercise_id, status, started_at, max_commands, "
+        "allowed_commands, hints, mode, deadline_seconds"
+    )
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="CHECK constraint failed"),
+        database.connect() as connection,
+    ):
+        connection.execute(
+            f"INSERT INTO attempts ({columns}) "  # noqa: S608  (a literal)
+            "VALUES ('a', 'katas/two-sum', 'active', '2026-10-02T09:00:00+00:00', "
+            "0, '[]', '[]', 'exam', 600)"
+        )
