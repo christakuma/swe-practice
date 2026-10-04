@@ -28,7 +28,7 @@ import pytest
 import uvicorn
 from typer.testing import CliRunner
 
-from practice.adapters.persistence.sqlite import Database, Migration
+from practice.adapters.persistence.sqlite import Database, Migration, load_migrations
 from practice.adapters.sandbox.env import ToolNotFoundError
 from practice.interface.cli import launcher
 from practice.interface.cli.launcher import prepare
@@ -342,15 +342,27 @@ def test_a_database_written_by_a_newer_practice_is_refused_not_opened(
 
     Built through `Database`'s injectable migration list — the seam that exists
     so a test can construct a history that must be refused without putting a
-    broken `.sql` file in the shipped directory. This one records version 2,
-    which no shipped `practice` has, so the next `migrate()` refuses it.
+    broken `.sql` file in the shipped directory. The fabricated version is one
+    past the last one shipped, so the next `migrate()` finds it applied and
+    unknown.
+
+    **Derived from `load_migrations()` rather than written as a literal**, which
+    is what it was until Phase 13 shipped 0002 and made the literal `2` a version
+    this `practice` does have. The test then passed for the wrong reason — it was
+    constructing a perfectly ordinary database and asserting a refusal — which is
+    the failure mode a hard-coded "version from the future" has by construction.
     """
     database = tmp_path / "data" / "practice.db"
+    from_the_future = load_migrations()[-1].version + 1
     ahead = Database(
         database,
         migrations=[
-            Migration(version=1, name="initial", sql="CREATE TABLE a (b TEXT)"),
-            Migration(version=2, name="from_the_future", sql="CREATE TABLE c (d TEXT)"),
+            *load_migrations(),
+            Migration(
+                version=from_the_future,
+                name="from_the_future",
+                sql="CREATE TABLE c (d TEXT)",
+            ),
         ],
     )
     ahead.migrate()

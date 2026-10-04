@@ -308,6 +308,11 @@ def card_row(card: ReviewCard) -> dict[str, object]:
     which is the asymmetry the domain already has: a card comes due on a calendar
     day, and the moment it was reviewed is an instant. Storing the first as a
     timestamp would make `due_on <= :day` depend on a time of day nobody set.
+
+    `stability` and `difficulty` go in as they are, `None` included. They are the
+    one pair of columns here that is *expected* to be null for most of the table
+    (0002): a card SM-2 wrote has no FSRS memory state and inventing one would be
+    a fabricated history rather than a missing value.
     """
     return {
         "exercise_id": str(card.exercise_id),
@@ -318,6 +323,8 @@ def card_row(card: ReviewCard) -> dict[str, object]:
         "lapses": card.lapses,
         "due_on": card.due_on.isoformat(),
         "last_reviewed_at": _isoformat(card.last_reviewed_at),
+        "stability": card.stability,
+        "difficulty": card.difficulty,
     }
 
 
@@ -337,6 +344,8 @@ def to_card(row: Mapping[str, object]) -> ReviewCard:
         lapses=_integer(row, "lapses"),
         due_on=_day(row, "due_on"),
         last_reviewed_at=_optional_timestamp(row, "last_reviewed_at"),
+        stability=_optional_number(row, "stability"),
+        difficulty=_optional_number(row, "difficulty"),
     )
 
 
@@ -382,6 +391,18 @@ def _number(row: Mapping[str, object], column: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise RowError(f"{column} must be a number, got {type(value).__name__}")
     return float(value)
+
+
+def _optional_number(row: Mapping[str, object], column: str) -> float | None:
+    """A nullable REAL column, for the two 0002 added.
+
+    Null is a value here rather than a fault, which is the whole difference from
+    `_number`: a card SM-2 wrote has no stability, and `ReviewCard` is the thing
+    that decides what that means.
+    """
+    if _required(row, column, optional=True) is None:
+        return None
+    return _number(row, column)
 
 
 def _day(row: Mapping[str, object], column: str) -> date:

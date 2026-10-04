@@ -48,6 +48,8 @@ _COLUMNS: Final = (
     "lapses",
     "due_on",
     "last_reviewed_at",
+    "stability",
+    "difficulty",
 )
 
 #: Everything but the key, because everything but the key is what a review moves.

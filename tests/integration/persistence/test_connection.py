@@ -161,7 +161,14 @@ def test_migrating_twice_applies_nothing_the_second_time(tmp_path: Path) -> None
     """The property that makes it safe to call on every startup. Asserted through
     two `Database` objects over one file, because a single one short-circuits on
     its own flag and would prove only that the flag works.
+
+    Against `load_migrations()` rather than a literal `[1]`, which is what it was
+    until Phase 13 shipped 0002 and this failed as the only test that had to
+    change. The claim is *each migration is recorded exactly once*, and a list
+    written out by hand states it for one history and then stops being a test of
+    anything the next time the schema moves.
     """
+    expected = [migration.version for migration in load_migrations()]
     path = tmp_path / "practice.db"
     Database(path).migrate()
 
@@ -169,7 +176,7 @@ def test_migrating_twice_applies_nothing_the_second_time(tmp_path: Path) -> None
 
     with Database(path).connect() as connection:
         rows = connection.execute("SELECT version FROM schema_migrations").fetchall()
-    assert [int(row["version"]) for row in rows] == [1]
+    assert [int(row["version"]) for row in rows] == expected
 
 
 def test_a_second_migration_is_applied_to_an_existing_database(

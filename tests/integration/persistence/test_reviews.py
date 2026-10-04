@@ -14,6 +14,7 @@ review queue has to offer.
 
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
@@ -217,3 +218,107 @@ def test_cards_is_empty_before_anything_is_scheduled(
     reviews: SqliteReviewRepository,
 ) -> None:
     assert reviews.cards() == ()
+
+
+# --- the columns 0002 added -------------------------------------------------
+
+
+def test_a_memory_state_survives_the_round_trip(
+    reviews: SqliteReviewRepository,
+) -> None:
+    """The two nullable REAL columns, read back as numbers the card can check.
+
+    The same claim the `ease` round-trip makes, and it needs making again for a
+    different reason: these columns are nullable, so a mapper that read them with
+    the non-null reader would turn an SM-2 card into a `RowError` rather than into
+    a card with no memory state.
+    """
+    reviews.save_card(a_card(REVERT, stability=12.5, difficulty=6.25))
+
+    stored = reviews.get_card(REVERT)
+
+    assert stored is not None
+    assert stored.stability == 12.5
+    assert stored.difficulty == 6.25
+    assert stored.has_memory_state is True
+
+
+def test_a_card_with_no_memory_state_comes_back_with_none(
+    reviews: SqliteReviewRepository,
+) -> None:
+    """Which is every row a database SM-2 filled holds, and the migration's whole
+    premise: 0002 backfills nothing, so NULL has to mean exactly this.
+    """
+    reviews.save_card(a_card(REVERT))
+
+    stored = reviews.get_card(REVERT)
+
+    assert stored is not None
+    assert stored.has_memory_state is False
+
+
+def test_switching_schedulers_overwrites_the_memory_state_in_place(
+    reviews: SqliteReviewRepository,
+) -> None:
+    """Both directions, because a card is replaced rather than versioned.
+
+    The upsert's column list has to carry *every* mutable column or a switch back
+    to SM-2 would leave a stale stability on the row, and the next switch forward
+    would adopt it as though it were current. `_MUTABLE` is derived from
+    `_COLUMNS` for this reason; the test is what proves the derivation covers the
+    two columns 0002 added.
+    """
+    reviews.save_card(a_card(REVERT))
+    reviews.save_card(a_card(REVERT, stability=9.0, difficulty=4.0))
+
+    adopted = reviews.get_card(REVERT)
+    assert adopted is not None
+    assert adopted.has_memory_state is True
+
+    reviews.save_card(a_card(REVERT))
+
+    assert len(reviews) == 1
+    reverted = reviews.get_card(REVERT)
+    assert reverted is not None
+    assert reverted.has_memory_state is False
+
+
+def test_the_schema_refuses_half_a_memory_state(database: Database) -> None:
+    """The schema's half of `ReviewCard`'s pairing invariant (0002).
+
+    Deliberate duplication, with the jobs 0001 names: the card refuses to *reach*
+    the state and the schema refuses to *store* it, so a mapper that stopped
+    writing one of the two columns fails on the INSERT rather than on the read
+    that eventually loads it back. Written as raw SQL because there is no way to
+    get here through the domain -- which is exactly the hole this closes.
+    """
+    database.migrate()
+    columns = "exercise_id, state, ease, interval_days, reps, lapses, due_on, stability"
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="CHECK constraint failed"),
+        database.connect() as connection,
+    ):
+        connection.execute(
+            f"INSERT INTO review_cards ({columns}) "  # noqa: S608  (a literal)
+            "VALUES ('katas/two-sum', 'review', 2.5, 7, 3, 0, '2026-10-02', 4.5)"
+        )
+
+
+def test_the_schema_refuses_a_stability_of_zero(database: Database) -> None:
+    """The other CHECK 0002 adds, and the one with teeth: zero is the value that
+    would divide into elapsed time on the next review.
+    """
+    database.migrate()
+    columns = (
+        "exercise_id, state, ease, interval_days, reps, lapses, due_on, "
+        "stability, difficulty"
+    )
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="CHECK constraint failed"),
+        database.connect() as connection,
+    ):
+        connection.execute(
+            f"INSERT INTO review_cards ({columns}) "  # noqa: S608  (a literal)
+            "VALUES ('katas/two-sum', 'review', 2.5, 7, 3, 0, "
+            "'2026-10-02', 0.0, 5.0)"
+        )
