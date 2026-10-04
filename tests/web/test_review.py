@@ -16,8 +16,9 @@ from typing import TYPE_CHECKING
 
 from practice.domain.ids import ExerciseId
 from practice.domain.review import Grade
+from practice.domain.scheduling import FsrsScheduler
 from tests.unit.application.helpers import RecordingGrader, a_failing_verdict
-from tests.web.conftest import a_wiring, client_for
+from tests.web.conftest import a_wiring, client_for, recording_scheduler
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -138,13 +139,69 @@ def test_every_grade_is_a_button_and_the_suggested_one_is_marked(
 # --- pressing it -----------------------------------------------------------
 
 
+def test_the_card_panel_names_the_numbers_the_scheduler_actually_moved(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """`Ease` under SM-2, and `Stability`/`Difficulty` under FSRS.
+
+    The one place the `Scheduler` port had leaked into a surface: the panel
+    showed `Ease` unconditionally, which under FSRS is a constant 2.50 that never
+    moves and means nothing (ADR 0018). Found by switching the scheduler and
+    reading the page -- no fragment assertion in this directory would have caught
+    it, because the number was present and correctly formatted.
+
+    Driven through `FixedScheduler`, which writes no memory state and so is the
+    SM-2-shaped case; the FSRS case is the test below it.
+    """
+    attempt_id = a_graded_attempt(client, wiring)
+
+    response = client.post(review_url(attempt_id), data={"grade": "good"})
+
+    assert "Ease" in response.text
+    assert "Stability" not in response.text
+
+
+def test_an_fsrs_card_shows_its_memory_state_instead_of_an_ease() -> None:
+    """The other half, with a real `FsrsScheduler` rather than the double.
+
+    The double is the right subject for every other test in this file -- it
+    records the grade it was handed and invents no arithmetic -- but it writes no
+    stability, so it cannot reach this branch at all. A test that needs the real
+    scheduler is a test about what the scheduler wrote.
+    """
+    wiring = a_wiring(scheduler=FsrsScheduler())
+    with client_for(wiring) as client:
+        attempt_id = a_graded_attempt(client, wiring)
+
+        response = client.post(review_url(attempt_id), data={"grade": "good"})
+
+    assert "Stability" in response.text
+    assert "Difficulty" in response.text
+    assert "Ease" not in response.text
+
+
+def test_both_schedulers_report_the_counters_they_share(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """`reps` and `lapses` sit outside the branch, because they mean the same
+    thing to both -- which is also why the conformance suite can hold both to
+    them.
+    """
+    attempt_id = a_graded_attempt(client, wiring)
+
+    response = client.post(review_url(attempt_id), data={"grade": "good"})
+
+    assert "1 review" in response.text
+    assert "0 lapses" in response.text
+
+
 def test_pressing_a_grade_stores_the_card(client: TestClient, wiring: Wiring) -> None:
     attempt_id = a_graded_attempt(client, wiring)
 
     response = client.post(review_url(attempt_id), data={"grade": "hard"})
 
     assert response.status_code == 200
-    assert wiring.scheduler.grades == [Grade.HARD]
+    assert recording_scheduler(wiring).grades == [Grade.HARD]
     card = wiring.reviews.get_card(KATA)
     assert card is not None
     assert "Next due" in response.text
@@ -161,7 +218,7 @@ def test_pressing_with_no_grade_applies_the_suggestion(
 
     client.post(review_url(attempt_id), data={})
 
-    assert wiring.scheduler.grades == [Grade.EASY]
+    assert recording_scheduler(wiring).grades == [Grade.EASY]
 
 
 def test_a_grade_that_is_not_one_of_the_four_falls_back_to_the_suggestion(
@@ -176,7 +233,7 @@ def test_a_grade_that_is_not_one_of_the_four_falls_back_to_the_suggestion(
     response = client.post(review_url(attempt_id), data={"grade": "brilliant"})
 
     assert response.status_code == 200
-    assert wiring.scheduler.grades == [Grade.EASY]
+    assert recording_scheduler(wiring).grades == [Grade.EASY]
 
 
 def test_an_override_is_reported_as_one(client: TestClient, wiring: Wiring) -> None:
@@ -219,7 +276,7 @@ def test_a_second_press_is_refused_in_the_block(
 
     assert response.status_code == 200
     assert "already been reviewed" in response.text
-    assert len(wiring.scheduler.calls) == 1
+    assert len(recording_scheduler(wiring).calls) == 1
 
 
 def test_an_attempt_still_running_cannot_be_scheduled(

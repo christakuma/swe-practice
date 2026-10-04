@@ -7,10 +7,10 @@ first write, the content root is read when a page asks for a list. Each of those
 is correct and each of them surfaces a missing prerequisite in the middle of an
 HTTP request, which is the worst available moment: the browser shows a stack
 trace, the terminal shows a traceback from a threadpool, and neither says
-*install git*. So the launcher asks all four questions up front, while there is
+*install git*. So the launcher asks all five questions up front, while there is
 still a terminal to answer in (PLAN.md §11, Phase 12).
 
-**Four steps, run unconditionally, and all their problems reported together.**
+**Five steps, run unconditionally, and all their problems reported together.**
 The tempting shape is a chain that stops at the first failure, and it is the
 wrong one for a tool somebody has just cloned: a machine with no git very
 plausibly also has no writable data directory, and two runs to learn two facts
@@ -28,7 +28,18 @@ that cannot tell you whether the *next* thing is also broken.
 with no git there is no fixture, no attempt and no grading, so it is the one
 whose absence makes the other three pointless. Then the library, because an
 empty content root is a server with nothing to offer. Then the two pieces of
-local state, which are the ones this module actually creates.
+local state, which are the ones this module actually creates. The scheduler is
+last because it stops you latest of the five — not until the first *review*,
+which is after a whole exercise has been solved.
+
+**The fifth step was added in Phase 13, and the blocker is not its main job.**
+A bad `PRACTICE_SCHEDULER` would already fail loudly, at `build_services`, before
+a request existed — so turning it into a sentence rather than a traceback is a
+small win. The larger one is the same one `Step.detail` exists for everywhere
+else: the report says *which* git and *which* directory because a solver with
+two git installations is not helped by the word "ok", and which algorithm is
+moving their cards is exactly that kind of fact. It is a choice with
+consequences they cannot otherwise see.
 """
 
 from __future__ import annotations
@@ -40,6 +51,8 @@ from practice.adapters.content import ContentError, FilesystemContentRepository
 from practice.adapters.persistence import Database
 from practice.adapters.persistence.sqlite import MigrationError, load_migrations
 from practice.adapters.sandbox import ToolNotFoundError, find_git
+from practice.composition import build_scheduler
+from practice.domain.errors import InvalidValueError
 from practice.domain.exercise import ExerciseKind
 
 if TYPE_CHECKING:
@@ -89,13 +102,15 @@ class FirstRun:
         return tuple(step for step in self.steps if not step.ok)
 
 
-def prepare(*, content: Path, workspaces: Path, database: Path) -> FirstRun:
+def prepare(
+    *, content: Path, workspaces: Path, database: Path, scheduler: str
+) -> FirstRun:
     """Check what cannot be fixed later, create what can, and report both.
 
-    Takes the three paths rather than reading `config.py` itself, so that the
-    command passes the same resolved values it then hands `build_services` — a
-    report about a different content root than the one being served would be
-    worse than no report.
+    Takes its inputs rather than reading `config.py` itself, so that the command
+    passes the same resolved values it then hands `build_services` — a report
+    about a different content root, or a different scheduler, than the one being
+    served would be worse than no report.
     """
     storage = Database(database)
     fresh = not storage.exists
@@ -105,6 +120,7 @@ def prepare(*, content: Path, workspaces: Path, database: Path) -> FirstRun:
             _library(content),
             _workspaces(workspaces),
             _database(storage, fresh=fresh),
+            _scheduler(scheduler),
         ),
         fresh=fresh,
     )
@@ -236,6 +252,26 @@ def _database(storage: Database, *, fresh: bool) -> Step:
         label="database",
         detail=f"{storage.path} ({state} v{version})",
     )
+
+
+def _scheduler(name: str) -> Step:
+    """Resolve the configured scheduler, and say which one it is.
+
+    Built rather than looked up, which is the only way to be sure: both
+    schedulers validate on construction — `FsrsScheduler` refuses anything but
+    seventeen parameters — so a name that maps to a class that cannot be
+    instantiated is caught here rather than at the first review.
+
+    The `repr` is the detail, because that is where each scheduler says what is
+    actually in force; `FsrsScheduler`'s reports whether its parameters are the
+    published defaults, which is the one thing worth knowing about numbers this
+    project cannot validate (ADR 0018).
+    """
+    try:
+        chosen = build_scheduler(name)
+    except InvalidValueError as exc:
+        return Step(label="scheduler", detail=name, problem=str(exc))
+    return Step(label="scheduler", detail=f"{name} ({chosen!r})")
 
 
 def _plural(noun: str, count: int) -> str:

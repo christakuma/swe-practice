@@ -44,8 +44,25 @@
       Next due <strong>{{ reviewed.card.due_on.isoformat() }}</strong>,
       in {{ reviewed.interval_days }} day{{ '' if reviewed.interval_days == 1 else 's' }}.
     </p>
+    {#
+      **Which numbers these are depends on which scheduler moved the card**, and
+      Phase 13 is why this branch exists. `Ease` is SM-2's working state; under
+      FSRS it is a constant 2.50 that never moves and means nothing, so showing
+      it unconditionally was the one place the `Scheduler` port had leaked into
+      a surface (ADR 0018). `reps` and `lapses` are the two counters both
+      schedulers keep, so they sit outside the branch.
+
+      The domain says *which* numbers are meaningful -- `has_memory_state` -- and
+      this says what to call them, which is the division `dto.py` draws: the
+      domain has no prose except its own refusals.
+    #}
     <p class="meta">
-      Ease {{ '%.2f' | format(reviewed.card.ease) }} ·
+      {% if reviewed.card.has_memory_state %}
+        Stability {{ '%.1f' | format(reviewed.card.stability) }}d ·
+        Difficulty {{ '%.1f' | format(reviewed.card.difficulty) }}/10 ·
+      {% else %}
+        Ease {{ '%.2f' | format(reviewed.card.ease) }} ·
+      {% endif %}
       {{ reviewed.card.reps }} review{{ '' if reviewed.card.reps == 1 else 's' }} ·
       {{ reviewed.card.lapses }} lapse{{ '' if reviewed.card.lapses == 1 else 's' }}
     </p>

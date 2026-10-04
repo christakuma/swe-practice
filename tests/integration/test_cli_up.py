@@ -30,8 +30,10 @@ from typer.testing import CliRunner
 
 from practice.adapters.persistence.sqlite import Database, Migration, load_migrations
 from practice.adapters.sandbox.env import ToolNotFoundError
+from practice.config import DEFAULT_SCHEDULER, SCHEDULER_ENV
+from practice.domain.scheduling import FsrsScheduler
 from practice.interface.cli import launcher
-from practice.interface.cli.launcher import prepare
+from practice.interface.cli.launcher import FirstRun, prepare
 from practice.interface.cli.main import DEFAULT_HOST, DEFAULT_PORT, app
 from tests.integration.conftest import a_kata, a_scenario
 
@@ -385,14 +387,21 @@ def test_prepare_reports_a_second_run_as_not_fresh(
     flag is the thing `up` branches on and a test on the sentence would pass
     just as well if the branch read the wrong field.
     """
-    paths = {
-        "content": library,
-        "workspaces": tmp_path / "cache" / "ws",
-        "database": tmp_path / "data" / "practice.db",
-    }
 
-    first = prepare(**paths)
-    second = prepare(**paths)
+    def once() -> FirstRun:
+        """A closure rather than a dict of kwargs: Phase 13 gave `prepare` a
+        `str` parameter beside the three `Path`s, and a dict of both is
+        `dict[str, object]` to mypy.
+        """
+        return prepare(
+            content=library,
+            workspaces=tmp_path / "cache" / "ws",
+            database=tmp_path / "data" / "practice.db",
+            scheduler=DEFAULT_SCHEDULER,
+        )
+
+    first = once()
+    second = once()
 
     assert first.fresh is True
     assert second.fresh is False
@@ -416,6 +425,84 @@ def test_it_reports_the_installed_version() -> None:
 
 
 @pytest.mark.usefixtures("stocked")
+def test_the_report_names_the_scheduler_that_will_move_your_cards(
+    served: Recorder,
+    library: Path,
+    tmp_path: Path,
+) -> None:
+    """The fifth step, and the reason it is a step rather than a bare refusal.
+
+    Every other step fills in `detail` on success as well as on failure, because
+    the useful half of a first-run report is *which* git and *which* directory.
+    Which algorithm is scheduling your reviews is that kind of fact: a choice
+    with consequences the solver cannot otherwise see, since the only symptom is
+    an interval.
+    """
+    code, output = run(library, tmp_path)
+
+    assert code == 0
+    assert "scheduler" in output
+    assert "sm2" in output
+    assert len(served.calls) == 1
+
+
+@pytest.mark.usefixtures("stocked")
+def test_an_unknown_scheduler_is_a_blocker_and_not_a_traceback(
+    served: Recorder,
+    opened: Recorder,
+    library: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A typo in the one setting a user types by hand.
+
+    It would already fail loudly -- `build_services` refuses an unknown name
+    before a request exists -- so what this buys is a sentence naming the valid
+    names instead of a traceback, and it buys it on the same exit path as every
+    other blocker. Nothing is served.
+    """
+    monkeypatch.setenv(SCHEDULER_ENV, "fsrs2")
+
+    code, output = run(library, tmp_path)
+
+    assert code == 2
+    assert "is not a scheduler" in output
+    assert "fsrs, sm2" in output
+    assert served.calls == []
+    assert opened.calls == []
+
+
+@pytest.mark.usefixtures("stocked")
+def test_the_scheduler_can_be_chosen_for_real(
+    served: Recorder,
+    opened: Recorder,
+    library: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The end of the swap ADR 0008 predicted, exercised through the front door.
+
+    Not a unit test of the registry -- `test_composition.py` asserts the object
+    graph -- but the claim that setting one environment variable is the whole of
+    changing the algorithm, and that `up` then serves rather than refusing.
+
+    Asserted on the step's `detail`, which is the scheduler's own `repr`: it is
+    the only place the tool says whether FSRS is running on its published
+    parameters, which is the one honest thing to say about numbers this project
+    cannot validate.
+    """
+    monkeypatch.setenv(SCHEDULER_ENV, "fsrs")
+
+    code, output = run(library, tmp_path)
+
+    assert code == 0
+    assert FsrsScheduler.__name__ in output
+    assert "defaults" in output
+    assert len(served.calls) == 1
+    assert opened.calls != []
+
+
+@pytest.mark.usefixtures("stocked")
 def test_prepare_creates_nothing_it_was_not_asked_to(
     library: Path, tmp_path: Path
 ) -> None:
@@ -429,6 +516,7 @@ def test_prepare_creates_nothing_it_was_not_asked_to(
         content=library,
         workspaces=tmp_path / "cache" / "ws",
         database=tmp_path / "data" / "practice.db",
+        scheduler=DEFAULT_SCHEDULER,
     )
 
     assert report.ok

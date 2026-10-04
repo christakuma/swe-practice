@@ -38,11 +38,25 @@ in-memory stores for SQLite ones is a change to this file and nothing else — a
 if it is not, that is the finding. It was. No use case, no grader and no CLI
 command changed, because none of them had ever held anything but an
 `AttemptRepository`.
+
+**Phase 13 ran the same experiment on the `Scheduler` port, and the answer was
+one line *plus a registry*.** ADR 0008 predicted FSRS would be "a second class
+satisfying the same protocol and one line in `composition.py`", and the line was
+exactly where it said. What the prediction missed is that a second
+implementation nobody can select is not shipped, it is only written — so
+`build_scheduler` exists, and it is the one place in this file that maps a
+*name* to an implementation. ADR 0018 is the record.
+
+That makes it also the only place with an opinion about an unknown name, and it
+refuses rather than defaulting. A typo in `PRACTICE_SCHEDULER` that quietly kept
+scheduling with SM-2 would be indistinguishable from having set nothing, and the
+only symptom would be intervals the user cannot explain.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from practice.adapters.clock import SystemClock
@@ -80,11 +94,20 @@ from practice.application.use_cases import (
     SummariseProgress,
     WatchSolutionFile,
 )
-from practice.config import content_root, database_path, workspace_root
+from practice.config import (
+    DEFAULT_SCHEDULER,
+    SCHEDULER_ENV,
+    content_root,
+    database_path,
+    scheduler_name,
+    workspace_root,
+)
+from practice.domain.errors import InvalidValueError
 from practice.domain.exercise import ExerciseKind
-from practice.domain.scheduling import Sm2Scheduler
+from practice.domain.scheduling import FsrsScheduler, Sm2Scheduler
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
     from pathlib import Path
 
     from practice.domain.ports import (
@@ -101,7 +124,47 @@ if TYPE_CHECKING:
         Scheduler,
     )
 
-__all__ = ["Services", "build_services"]
+__all__ = ["SCHEDULERS", "Services", "build_scheduler", "build_services"]
+
+
+#: Every scheduler a user can ask for, by the name they ask for it with. The
+#: constructors rather than instances, so that nothing is built for a name
+#: nobody selected and so that a scheduler with required arguments could be
+#: added without reshaping this.
+#:
+#: A two-entry mapping is close to the abstraction §13 says to delete, and it
+#: earns its place on the one thing a `getattr` or an `if` would not do: it is
+#: the *list of valid names*, which the refusal below quotes and which
+#: `practice up` prints. Written out twice, those two would drift.
+SCHEDULERS: Mapping[str, Callable[[], Scheduler]] = MappingProxyType(
+    {
+        "sm2": Sm2Scheduler,
+        "fsrs": FsrsScheduler,
+    }
+)
+
+
+def build_scheduler(name: str | None = None) -> Scheduler:
+    """The scheduler this machine is configured for.
+
+    `None` means "ask `config`", which is what every caller but a test does.
+    The name is passed explicitly by the tests that need a specific one, for the
+    same reason the three paths are: a suite that set an environment variable to
+    choose a scheduler would be choosing it for every other test in the process.
+
+    **Refuses an unknown name**, with the valid ones in the message. The
+    alternative — fall back to the default — makes a typo invisible, and a
+    scheduler is the component whose misconfiguration is least visible to begin
+    with: the symptom is an interval, weeks later.
+    """
+    chosen = name if name is not None else scheduler_name()
+    try:
+        return SCHEDULERS[chosen]()
+    except KeyError:
+        raise InvalidValueError(
+            f"{chosen!r} is not a scheduler; set {SCHEDULER_ENV} to one of "
+            f"{', '.join(sorted(SCHEDULERS))} (the default is {DEFAULT_SCHEDULER})"
+        ) from None
 
 
 @dataclass(frozen=True, slots=True)
@@ -326,13 +389,19 @@ class Services:
         return CollectWorkspaces(attempts=self.attempts, provisioner=self.provisioner)
 
 
-def build_services(
+# Six parameters, every one of them an override with no default behaviour of its
+# own: the three disposable paths the test suite needs, and the three objects a
+# caller may want to substitute outright. Keyword-only, so a caller that means
+# `database` cannot pass `content`. A parameter object here would be a settings
+# type that exists only to be unpacked one line later.
+def build_services(  # noqa: PLR0913
     *,
     content: Path | None = None,
     workspaces: Path | None = None,
     database: Path | None = None,
     clock: Clock | None = None,
     attempts: AttemptRepository | None = None,
+    scheduler: Scheduler | None = None,
 ) -> Services:
     """Build the real object graph.
 
@@ -350,6 +419,13 @@ def build_services(
     escape hatch for a caller that wants no database at all — an application test
     driving the real use cases over the in-memory store. The path override is for
     a caller that wants a *disposable* one.
+
+    `scheduler` is the newest override and the only one that is not about
+    disposability. It exists because the choice of scheduler is the one
+    dependency here a *user* configures, so a test that wanted a specific one had
+    the choice of setting an environment variable — which would have chosen it for
+    every other test in the process — or taking the one the machine happens to be
+    set to. ADR 0018.
     """
     library = content if content is not None else content_root()
     storage = Database(database if database is not None else database_path())
@@ -368,7 +444,7 @@ def build_services(
         clock=clock if clock is not None else SystemClock(),
         ids=Uuid4IdGenerator(),
         repo_query=GitRepoQuery,
-        scheduler=Sm2Scheduler(),
+        scheduler=scheduler if scheduler is not None else build_scheduler(),
         editor=SubprocessEditorLauncher(),
         watcher=WatchfilesFileWatcher(),
     )

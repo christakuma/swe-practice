@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from practice.domain.exercise import Exercise
+    from practice.domain.ports import Scheduler
 
 #: The origin the client speaks as, and the base url it requests. `TestClient`
 #: defaults to `http://testserver`, which `SameOriginMiddleware` refuses on the
@@ -75,16 +76,25 @@ class Wiring:
         *,
         exercises: tuple[Exercise, ...],
         grader: RecordingGrader,
+        scheduler: Scheduler | None = None,
     ) -> None:
         self.content = FakeContentRepository(exercises)
         self.attempts = InMemoryAttemptRepository()
         self.reviews = InMemoryReviewRepository()
         self.provisioner = FakeProvisioner()
         self.clock = FakeClock()
-        #: Records the grade it was handed rather than doing SM-2's
-        #: arithmetic, so a web test asserts on what the page sent and not on
-        #: an interval it would have to keep in step with the scheduler.
-        self.scheduler = FixedScheduler()
+        #: The *port*, not the double, because a test may substitute a real
+        #: scheduler for it -- the schedule panel shows different numbers
+        #: depending on which one moved the card (ADR 0018), and only a real one
+        #: writes a memory state. `recording_scheduler` is how a test that wants
+        #: the double's record of what it was handed asks for it.
+        #:
+        #: The default records the grade rather than doing SM-2's arithmetic, so
+        #: a web test asserts on what the page sent and not on an interval it
+        #: would have to keep in step with the scheduler.
+        self.scheduler: Scheduler = (
+            scheduler if scheduler is not None else FixedScheduler()
+        )
         self.ids = SequentialIdGenerator(start=0)
         #: The editor the reveal endpoint drives. A fake, because the real one
         #: starts a GUI program -- and a web test that opened VS Code would be a
@@ -129,7 +139,9 @@ class Wiring:
         )
 
 
-def a_wiring(grader: RecordingGrader | None = None) -> Wiring:
+def a_wiring(
+    grader: RecordingGrader | None = None, scheduler: Scheduler | None = None
+) -> Wiring:
     """Both shipped exercise kinds, and a grader that records what it was asked.
 
     A function as well as a fixture because a test that wants a *failing* verdict
@@ -137,11 +149,28 @@ def a_wiring(grader: RecordingGrader | None = None) -> Wiring:
     `an_environment(grader=...)` takes in the application tests, and for the same
     reason: a shared environment mutated after the fact would make every test in
     the file depend on the order they ran in.
+
+    `scheduler` arrives on the same terms, and the same reasoning decided it: a
+    test that wants a real scheduler chooses it here rather than reassigning the
+    attribute afterwards.
     """
     return Wiring(
         exercises=(a_kata(), a_scenario()),
         grader=grader if grader is not None else RecordingGrader(),
+        scheduler=scheduler,
     )
+
+
+def recording_scheduler(wiring: Wiring) -> FixedScheduler:
+    """The double, narrowed, for the tests that assert on what it was handed.
+
+    `Wiring.scheduler` is typed as the port because a test may put a real
+    scheduler there, so the double's recording API is not reachable from the
+    attribute alone. One door rather than a cast per assertion.
+    """
+    scheduler = wiring.scheduler
+    assert isinstance(scheduler, FixedScheduler)
+    return scheduler
 
 
 def client_for(wiring: Wiring) -> TestClient:

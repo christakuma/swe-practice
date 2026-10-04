@@ -21,6 +21,8 @@ from datetime import date
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import pytest
+
 from practice.adapters.git import ScenarioGrader
 from practice.adapters.persistence import (
     InMemoryAttemptRepository,
@@ -33,12 +35,13 @@ from practice.application.use_cases import (
     StartAttempt,
     SubmitSolution,
 )
-from practice.composition import Services, build_services
-from practice.config import content_root, database_path
+from practice.composition import SCHEDULERS, Services, build_scheduler, build_services
+from practice.config import SCHEDULER_ENV, content_root, database_path
+from practice.domain.errors import InvalidValueError
 from practice.domain.exercise import ExerciseKind
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.review import ReviewCard
-from practice.domain.scheduling import Sm2Scheduler
+from practice.domain.scheduling import FsrsScheduler, Sm2Scheduler
 from tests.fakes import FakeClock
 
 if TYPE_CHECKING:
@@ -165,13 +168,82 @@ def test_the_grader_and_the_panel_share_one_repo_query_factory() -> None:
     assert services.inspect_repository.repo_query is services.repo_query
 
 
-def test_the_scheduler_is_sm2_and_only_one_use_case_holds_it() -> None:
-    """Both halves matter. SM-2 is the v1 choice, named once; and `GradeReview`
-    being its only caller is what keeps swapping it for FSRS a change to this
-    file -- a port with callers scattered across the use cases would be a port in
-    name only.
+def test_the_scheduler_defaults_to_sm2_and_only_one_use_case_holds_it() -> None:
+    """Both halves matter. SM-2 is still the default, named once; and
+    `GradeReview` being its only caller is what kept swapping it for FSRS a
+    change to this file -- a port with callers scattered across the use cases
+    would be a port in name only.
+
+    Phase 13 cashed that in: the `Sm2Scheduler()` on the line below became
+    `build_scheduler()`, and nothing else in the graph moved.
     """
     services = build_services()
+
+    assert isinstance(services.scheduler, Sm2Scheduler)
+    assert services.grade_review.scheduler is services.scheduler
+
+
+# --- choosing one, which is Phase 13's addition ----------------------------
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [("sm2", Sm2Scheduler), ("fsrs", FsrsScheduler)],
+)
+def test_each_name_builds_its_scheduler(name: str, expected: type[object]) -> None:
+    assert isinstance(build_scheduler(name), expected)
+
+
+def test_the_registry_is_the_list_of_valid_names() -> None:
+    """Which is the only reason a two-entry mapping earns its place over an
+    `if`: the refusal below quotes it, and `practice up` prints through it.
+    """
+    assert set(SCHEDULERS) == {"sm2", "fsrs"}
+
+
+def test_an_unknown_name_is_refused_with_the_valid_ones_named() -> None:
+    """Rather than falling back to the default, which would make a typo in
+    `PRACTICE_SCHEDULER` indistinguishable from having set nothing -- and the
+    only symptom would be intervals the user cannot explain, weeks later.
+    """
+    with pytest.raises(InvalidValueError, match="is not a scheduler") as refusal:
+        build_scheduler("fsrs2")
+
+    assert "fsrs, sm2" in str(refusal.value)
+    assert SCHEDULER_ENV in str(refusal.value)
+
+
+def test_the_environment_chooses_when_no_name_is_passed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The path a real launch takes. `conftest.py` clears this variable for every
+    test, so a developer with `fsrs` exported runs the same suite CI does.
+    """
+    monkeypatch.setenv(SCHEDULER_ENV, "fsrs")
+
+    assert isinstance(build_scheduler(), FsrsScheduler)
+    assert isinstance(build_services().scheduler, FsrsScheduler)
+
+
+@pytest.mark.parametrize("spelling", ["FSRS", " fsrs ", "Fsrs"])
+def test_the_name_is_normalised(monkeypatch: pytest.MonkeyPatch, spelling: str) -> None:
+    """It is the one setting in `config.py` a user types by hand into a shell
+    profile, so case and stray whitespace are not errors worth reporting.
+    """
+    monkeypatch.setenv(SCHEDULER_ENV, spelling)
+
+    assert isinstance(build_scheduler(), FsrsScheduler)
+
+
+def test_an_explicit_scheduler_overrides_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The override exists so a test can choose without setting an environment
+    variable -- which would choose for every other test in the process.
+    """
+    monkeypatch.setenv(SCHEDULER_ENV, "fsrs")
+
+    services = build_services(scheduler=Sm2Scheduler())
 
     assert isinstance(services.scheduler, Sm2Scheduler)
     assert services.grade_review.scheduler is services.scheduler

@@ -95,6 +95,7 @@ from practice.config import (
     WORKSPACE_ROOT_ENV,
     content_root,
     database_path,
+    scheduler_name,
     workspace_root,
 )
 from practice.domain.attempt import ComplexityClaim
@@ -295,8 +296,14 @@ def up(
     provisioned = workspaces.resolve() if workspaces is not None else workspace_root()
     storage = db.resolve() if db is not None else database_path()
 
-    first_run = prepare(content=library, workspaces=provisioned, database=storage)
-    # Padded to the widest label so the paths form a column. Four lines of
+    scheduler = scheduler_name()
+    first_run = prepare(
+        content=library,
+        workspaces=provisioned,
+        database=storage,
+        scheduler=scheduler,
+    )
+    # Padded to the widest label so the paths form a column. Five lines of
     # ragged left margin is the difference between a report and a dump.
     width = max(len(step.label) for step in first_run.steps)
     for step in first_run.steps:

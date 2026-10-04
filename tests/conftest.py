@@ -1,6 +1,6 @@
 """Shared pytest configuration.
 
-Three things, and they are here rather than anywhere else for the same reason: a
+Four things, and they are here rather than anywhere else for the same reason: a
 rule that has to be remembered per test is a rule that will be forgotten by one.
 
 **Markers are applied by directory.** The alternative — a decorator on every test
@@ -15,6 +15,15 @@ history. A single test that forgot to override it would write into it, and
 `practice attempts` would then list test fixtures as real attempts. An autouse
 fixture is the only form of this rule that cannot be forgotten — the override is
 not something a test opts into.
+
+**No test inherits the developer's scheduler choice.** `PRACTICE_SCHEDULER`
+(Phase 13) is an environment variable a user is meant to set in their shell
+profile, and `build_services()` reads it — so a developer running the suite with
+`fsrs` exported would be running a different wiring than CI, and the tests that
+assert on the default would fail on their machine and nowhere else. Cleared for
+the same reason the database is redirected: the suite must not depend on the
+state of the machine it happens to be on. A test that wants a specific scheduler
+passes it to `build_services`, which is what that override is for.
 
 **Hypothesis runs without a deadline.** Its default fails an example that takes
 over 200ms, which is a useful guard against an accidentally quadratic property and
@@ -32,7 +41,7 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import settings
 
-from practice.config import DATABASE_PATH_ENV
+from practice.config import DATABASE_PATH_ENV, SCHEDULER_ENV
 
 settings.register_profile("practice", deadline=None)
 settings.load_profile("practice")
@@ -57,9 +66,17 @@ def _own_database(
     directory, so a test that never opens a database costs nothing — which is
     almost all of them, since `Database` connects on first use. The parent is
     created by the connection, not here.
+
+    It also clears `PRACTICE_SCHEDULER`, which is not a database and is here for
+    exactly the reason this fixture is autouse: it is a rule about not inheriting
+    the machine's state, and a rule remembered per test is one a test will
+    forget.
     """
     base = tmp_path_factory.getbasetemp() / "db" / str(next(_databases))
     monkeypatch.setenv(DATABASE_PATH_ENV, str(base / "practice.db"))
+    # Not a database, but the same rule and the same fixture: see the module
+    # docstring. `raising=False` because the usual case is that it is unset.
+    monkeypatch.delenv(SCHEDULER_ENV, raising=False)
 
 
 # Directory under tests/ -> marker applied to everything beneath it.

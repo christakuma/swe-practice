@@ -1,11 +1,21 @@
 """Where things live on this machine.
 
-Small on purpose. Three questions: which directory holds the exercises, where do
-attempt workspaces go, and where is the database. All three answers have to
-survive callers with different ideas about the working directory — the CLI, the
-content test suite, and CI — and all three are overridable by an environment
-variable, because every test that touches one needs to point somewhere
-disposable.
+Small on purpose. Three questions about paths: which directory holds the
+exercises, where do attempt workspaces go, and where is the database. All three
+answers have to survive callers with different ideas about the working directory
+— the CLI, the content test suite, and CI — and all three are overridable by an
+environment variable, because every test that touches one needs to point
+somewhere disposable.
+
+**And, as of Phase 13, one question that is not about a path at all**: which
+scheduler moves a review card. It is here rather than as a CLI option because it
+is the one setting that must *not* vary per invocation — a card scheduled by one
+algorithm and then moved by another is handled deliberately
+(`domain/scheduling/fsrs.py` adopts rather than resets), but a history where that
+happened at random because of which flag was typed is not a history anybody can
+reason about. An environment variable is the only persistent setting this tool
+has, which makes it the right shape and also the whole reason this module grew a
+fourth question.
 
 **The database is the one piece of state here that is not disposable**, which is
 why it goes in the *data* directory and the workspaces go in the *cache* one.
@@ -26,12 +36,15 @@ import platformdirs
 __all__ = [
     "CONTENT_ROOT_ENV",
     "DATABASE_PATH_ENV",
+    "DEFAULT_SCHEDULER",
+    "SCHEDULER_ENV",
     "WORKSPACE_ROOT_ENV",
     "cache_root",
     "content_root",
     "data_root",
     "database_path",
     "project_root",
+    "scheduler_name",
     "workspace_root",
 ]
 
@@ -49,6 +62,17 @@ WORKSPACE_ROOT_ENV: Final = "PRACTICE_WORKSPACE_ROOT"
 #: without exception: a suite that wrote to the real database would mix test
 #: attempts into a real history, and `practice attempts` would then list them.
 DATABASE_PATH_ENV: Final = "PRACTICE_DATABASE_PATH"
+
+#: Picks the scheduler. `sm2` or `fsrs`; `composition.py` owns the names, and
+#: refuses one it does not know rather than falling back to the default — a typo
+#: that silently kept scheduling with SM-2 would be indistinguishable from
+#: having set nothing, and the user would only find out from the intervals.
+SCHEDULER_ENV: Final = "PRACTICE_SCHEDULER"
+
+#: SM-2, still, and ADR 0018 says why the default did not move: it is the
+#: algorithm whose behaviour is explicable to the person using it, and the one
+#: whose parameters are not seventeen numbers this project cannot fit.
+DEFAULT_SCHEDULER: Final = "sm2"
 
 _CONTENT_DIRNAME: Final = "content"
 
@@ -117,6 +141,24 @@ def data_root() -> Path:
     distinguishes them: what is in here cannot be regenerated.
     """
     return Path(platformdirs.user_data_dir(_APP_NAME, appauthor=False))
+
+
+def scheduler_name() -> str:
+    """Which scheduler to wire in, lowercased and stripped.
+
+    Returns a name rather than a `Scheduler`, because this module may not import
+    one: a scheduler is a domain object and `config.py` is read by the CLI, the
+    launcher and the test suite. Resolving the name to a class is
+    `composition.py`'s job, which is where every other port is resolved too.
+
+    Normalised here so that `FSRS`, `fsrs` and ` fsrs ` are the same answer. An
+    environment variable set by hand in a shell profile is the one input in this
+    module a user types directly.
+    """
+    override = os.environ.get(SCHEDULER_ENV)
+    if override:
+        return override.strip().lower()
+    return DEFAULT_SCHEDULER
 
 
 def database_path() -> Path:
