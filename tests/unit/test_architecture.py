@@ -398,33 +398,102 @@ def test_the_sandbox_really_does_start_processes() -> None:
 # --- where SQL may be spoken ----------------------------------------------
 
 
-#: The only package allowed to talk to SQLite. Same shape of rule as the process
-#: one above and the same argument for it: the schema, the migrations, the
-#: transaction boundary and the mapping all live behind the repository ports, and
-#: a `sqlite3.connect` anywhere else is a second set of all four. The one most
-#: likely to be added in a hurry is a web route that wants one number.
-STORAGE_PACKAGE = "practice.adapters.persistence"
+#: The packages allowed to talk to SQLite, each with the reason it is one.
+#:
+#: **This rule said "only the persistence adapter" until Phase 14, and the
+#: change is the most interesting thing the SQL drill kind cost.** The original
+#: argument was that the schema, the migrations, the transaction boundary and
+#: the mapping all live behind the repository ports, so a `sqlite3.connect`
+#: anywhere else is a second set of all four — and the one most likely to be
+#: added in a hurry is a web route that wants one number. That argument is
+#: intact. What it turned out to be about was *storage*, not about the string
+#: `sqlite3`: the rule had been stated in terms of the import because, with one
+#: database in the project, the two were the same thing.
+#:
+#: `adapters/sql/` is not storage. It is an exercise engine that happens to be
+#: built on the same library, it keeps no schema and no migrations, it never
+#: touches the application's database, and the database it does build lives in
+#: memory and is thrown away at the end of one grading pass. Admitting it is
+#: therefore not a weakening — nothing that was true of
+#: `adapters/persistence/` has stopped being true — but it does mean the rule
+#: has to be a list with reasons rather than a single prefix, so that the third
+#: entry has to be argued for in the same place.
+#:
+#: What the rule still forbids is exactly what it always forbade: a use case, a
+#: route, a CLI command or the sandbox reaching for a connection directly.
+SQLITE_PACKAGES = {
+    "practice.adapters.persistence": (
+        "the application's own storage, behind the repository ports"
+    ),
+    "practice.adapters.sql": (
+        "the SQL drill engine: an in-memory database per grading pass, no "
+        "schema and no migrations of its own"
+    ),
+}
 
 STORAGE_MODULES = frozenset({"sqlite3"})
 
 
-def test_only_the_persistence_adapter_speaks_sqlite() -> None:
+def test_only_the_two_named_packages_speak_sqlite() -> None:
     offenders = {
         module: targets
         for module, targets in importers_of(STORAGE_MODULES).items()
-        if not module.startswith(f"{STORAGE_PACKAGE}.") and module != STORAGE_PACKAGE
+        if not any(
+            module == package or module.startswith(f"{package}.")
+            for package in SQLITE_PACKAGES
+        )
     }
 
+    allowed = "\n".join(
+        f"  - {package}: {why}" for package, why in sorted(SQLITE_PACKAGES.items())
+    )
     assert offenders == {}, (
-        "SQLite is reached through the repository ports, not directly:\n"
+        f"SQLite may only be imported by:\n{allowed}\nbut it is also imported by:\n"
         + "\n".join(
             f"  - {module} imports {targets}" for module, targets in offenders.items()
         )
     )
 
 
-def test_the_persistence_adapter_really_does_speak_sqlite() -> None:
-    """So the rule above cannot pass by there being no database code at all."""
+def test_each_package_allowed_to_speak_sqlite_actually_does() -> None:
+    """So the rule above cannot be widened for a package that does not need it.
+
+    The other half of admitting a second entry: a list of exceptions nobody
+    checks is a list that grows. An entry here whose package has stopped
+    importing `sqlite3` is an entry to delete, and this is what says so.
+    """
     importers = importers_of(STORAGE_MODULES)
 
-    assert f"{STORAGE_PACKAGE}.sqlite.connection" in importers
+    for package in SQLITE_PACKAGES:
+        assert any(
+            module == package or module.startswith(f"{package}.")
+            for module in importers
+        ), f"{package} is allowed to import sqlite3 but does not"
+
+
+def test_the_drill_engine_does_not_reach_the_applications_database() -> None:
+    """The claim that makes the second entry above safe, as a test.
+
+    `adapters/sql/` is admitted on the grounds that it is an exercise engine and
+    not storage. If it imported the persistence adapter -- a `Database`, a
+    connection, a repository -- that claim would be false, and the rule would be
+    protecting nothing.
+    """
+    paths = sorted((PACKAGE_ROOT / "adapters" / "sql").rglob("*.py"))
+    assert paths, "the drill engine has no modules; this test checks nothing"
+
+    packages = frozenset(
+        module_name(path, SOURCE_ROOT) for path in paths if path.name == "__init__.py"
+    )
+    reached = []
+    for path in paths:
+        module = module_name(path, SOURCE_ROOT)
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for lineno, target in imported_modules(tree, module, packages):
+            if target.startswith("practice.adapters.persistence"):
+                reached.append(f"{module}:{lineno} imports {target}")
+
+    assert reached == [], (
+        "the drill engine must not reach the application's storage:\n"
+        + "\n".join(f"  - {line}" for line in reached)
+    )
