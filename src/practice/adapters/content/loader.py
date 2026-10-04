@@ -34,9 +34,11 @@ if TYPE_CHECKING:
 __all__ = [
     "EXERCISE_FILENAME",
     "NOTES_FILENAME",
+    "build_exercise",
     "exercise_id_for",
     "load_exercise",
     "load_exercise_file",
+    "parse_exercise_file",
     "read_notes",
 ]
 
@@ -66,32 +68,80 @@ def read_notes(directory: Path) -> str:
     return notes.read_text(encoding="utf-8") if notes.is_file() else ""
 
 
-def load_exercise_file(path: Path) -> ExerciseFile:
-    """Parse and validate one `exercise.yaml`.
+def parse_exercise_file(raw: str, *, located_at: Path | str) -> ExerciseFile:
+    """Validate the *text* of one `exercise.yaml`. Nothing here touches a disk.
 
-    Raises `ContentError` carrying every problem the file has, each located.
+    **Split out from `load_exercise_file` in Phase 16, so that two
+    `ContentRepository` implementations can share one parser.** A pack reads its
+    exercises out of a zip entry, and the alternative to a text-taking core is
+    either a second copy of the schema call — which is a second place for the
+    discriminated union, the error rendering and the empty-file rule to be
+    wrong — or extracting the archive to a temporary directory just to hand the
+    loader a `Path`, which makes a repository's correctness depend on the
+    filesystem it was trying not to need.
+
+    `located_at` is what the error names, and it is `Path | str` for the same
+    reason `ContentError` now accepts both: a file inside an archive has a
+    location worth printing and no path on this machine.
     """
-    try:
-        raw = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise ContentError(path, [f"cannot be read: {exc.strerror or exc}"]) from exc
-
     try:
         document: Any = yaml.safe_load(raw)
     except yaml.YAMLError as exc:
-        raise ContentError(path, [_describe_yaml_error(exc)]) from exc
+        raise ContentError(located_at, [_describe_yaml_error(exc)]) from exc
 
     if document is None:
-        raise ContentError(path, ["is empty"])
+        raise ContentError(located_at, ["is empty"])
     if not isinstance(document, dict):
         raise ContentError(
-            path, [f"must be a mapping of keys, not a {type(document).__name__}"]
+            located_at, [f"must be a mapping of keys, not a {type(document).__name__}"]
         )
 
     try:
         return EXERCISE_FILE.validate_python(document)
     except ValidationError as exc:
-        raise ContentError(path, _describe(exc)) from exc
+        raise ContentError(located_at, _describe(exc)) from exc
+
+
+def load_exercise_file(path: Path) -> ExerciseFile:
+    """Parse and validate one `exercise.yaml` on disk.
+
+    Raises `ContentError` carrying every problem the file has, each located. The
+    read is here rather than in `parse_exercise_file` because an unreadable file
+    is a problem only a filesystem can have.
+    """
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ContentError(path, [f"cannot be read: {exc.strerror or exc}"]) from exc
+    return parse_exercise_file(raw, located_at=path)
+
+
+def build_exercise(
+    parsed: ExerciseFile,
+    *,
+    exercise_id: ExerciseId,
+    notes: str,
+    located_at: Path | str,
+) -> Exercise:
+    """Assemble the aggregate, refusing a file whose `id:` is not where it lives.
+
+    The id check is here rather than in `parse_exercise_file` because it is a
+    claim about the *container* — a directory on disk, or a prefix inside an
+    archive — and the parser has deliberately never heard of one. Both
+    repositories enforce it, which is what stops a pack smuggling in an exercise
+    whose id disagrees with its own path.
+    """
+    if parsed.id != exercise_id.value:
+        raise ContentError(
+            located_at,
+            [
+                (
+                    f"id: {parsed.id!r} does not match the directory it is in; "
+                    f"expected {exercise_id.value!r}"
+                )
+            ],
+        )
+    return parsed.to_exercise(notes=notes)
 
 
 def load_exercise(directory: Path) -> Exercise:
@@ -100,19 +150,12 @@ def load_exercise(directory: Path) -> Exercise:
     if not path.is_file():
         raise ContentError(path, ["no such file"])
 
-    parsed = load_exercise_file(path)
-    expected = exercise_id_for(directory)
-    if parsed.id != expected.value:
-        raise ContentError(
-            path,
-            [
-                (
-                    f"id: {parsed.id!r} does not match the directory it is in; "
-                    f"expected {expected.value!r}"
-                )
-            ],
-        )
-    return parsed.to_exercise(notes=read_notes(directory))
+    return build_exercise(
+        load_exercise_file(path),
+        exercise_id=exercise_id_for(directory),
+        notes=read_notes(directory),
+        located_at=path,
+    )
 
 
 # --- turning a ValidationError into something an author can act on ---------

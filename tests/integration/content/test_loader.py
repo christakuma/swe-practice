@@ -86,7 +86,7 @@ def test_a_missing_exercise_file_names_the_file(library: Path) -> None:
     with pytest.raises(ContentError) as caught:
         load_exercise(directory)
 
-    assert caught.value.path.name == "exercise.yaml"
+    assert caught.value.path == directory / "exercise.yaml"
     assert caught.value.problems == ("no such file",)
 
 

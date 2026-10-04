@@ -49,6 +49,7 @@ __all__ = [
     "Track",
     "curriculum_path",
     "load_curriculum",
+    "parse_curriculum",
 ]
 
 CURRICULUM_FILENAME: Final = "curriculum.yaml"
@@ -113,6 +114,24 @@ def curriculum_path(root: Path) -> Path:
     return root / CURRICULUM_FILENAME
 
 
+def parse_curriculum(raw: str, *, located_at: Path | str) -> Curriculum:
+    """Validate the *text* of a manifest. The disk-free half, for the same reason
+    `loader.parse_exercise_file` has one: a pack carries its own manifest as an
+    archive entry, and one parser means a packed library and a directory cannot
+    disagree about what an ordering is.
+    """
+    try:
+        document: object = yaml.safe_load(raw)
+    except yaml.YAMLError as exc:
+        raise ContentError(located_at, [f"is not valid YAML: {exc}"]) from exc
+
+    problems: list[str] = []
+    tracks = tuple(_tracks(document, problems))
+    if problems:
+        raise ContentError(located_at, problems)
+    return Curriculum(tracks=tracks)
+
+
 def load_curriculum(root: Path) -> Curriculum:
     """Read the manifest, or raise `ContentError` naming what is wrong with it.
 
@@ -125,16 +144,7 @@ def load_curriculum(root: Path) -> Curriculum:
     if not path.is_file():
         raise ContentError(path, [f"{CURRICULUM_FILENAME} is missing"])
 
-    try:
-        document: object = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as exc:
-        raise ContentError(path, [f"is not valid YAML: {exc}"]) from exc
-
-    problems: list[str] = []
-    tracks = tuple(_tracks(document, problems))
-    if problems:
-        raise ContentError(path, problems)
-    return Curriculum(tracks=tracks)
+    return parse_curriculum(path.read_text(encoding="utf-8"), located_at=path)
 
 
 def _tracks(document: object, problems: list[str]) -> Iterator[Track]:
