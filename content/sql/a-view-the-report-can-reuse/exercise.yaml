@@ -1,0 +1,76 @@
+schema_version: 1
+id: sql/a-view-the-report-can-reuse
+kind: sql_drill
+title: A view the report can reuse
+difficulty: medium
+tags: [views, joins, aggregation]
+estimated_minutes: 15
+
+prompt: |
+  Three people have now written their own version of "how much has each
+  customer spent", and two of them forgot about cancelled orders. Put it in one
+  place.
+
+  Create a view called `customer_totals` with columns `name` and `spent`:
+  every customer, their spend excluding cancelled orders, rounded to two
+  decimal places, and `0` for a customer who has never ordered.
+
+  Then select everything from it, sorted by name, so you can see what you
+  built.
+
+hints:
+  - "`CREATE VIEW <name> AS <select>` — a view is a stored query, not a stored
+     table, so it has no data of its own and cannot get out of date."
+  - "Your answer can be more than one statement. Create the view, then select
+     from it; the drill is graded on the last thing that returned rows."
+  - "Every customer means an outer join again, and `0` rather than `NULL` for
+     dana means the sum needs a fallback. `COALESCE(x, 0)` is that fallback."
+  - "`CREATE VIEW customer_totals AS SELECT c.name AS name,
+     ROUND(COALESCE(SUM(CASE WHEN o.status <> 'cancelled' THEN o.total END),
+     0), 2) AS spent FROM customers c LEFT JOIN orders o ON o.customer_id =
+     c.id GROUP BY c.id;` then `SELECT * FROM customer_totals ORDER BY name;`"
+
+drill:
+  seed: seed.sql
+  stub: stub.sql
+  reference: solution.sql
+
+  counter_examples:
+    - file: a-query-not-a-view.sql
+      expect_failures: [the-view-exists]
+    - file: filtered-in-the-where.sql
+      expect_failures: [rows-match]
+
+  checks:
+    - id: the-view-exists
+      label: There is something called customer_totals in the database
+      severity: required
+      assert: table_exists
+      with: {table: customer_totals}
+      explanation: |
+        The point of the exercise is that the *next* person can reuse this, so
+        a query that returns the right rows and leaves nothing behind has not
+        done the job. Views and tables both count — the author of a drill
+        decides which is wanted, not the engine.
+
+    - id: rows-match
+      label: Every customer, with the money actually taken from them
+      severity: required
+      assert: result_matches
+      with:
+        rows: [[alice, 77.5], [bob, 70.25], [carol, 10], [dana, 0]]
+        ordered: true
+      explanation: |
+        dana's `0` and bob's `70.25` are the two rows that matter: the first
+        catches an inner join or a missing COALESCE, the second catches a
+        cancelled order being counted as revenue.
+
+    - id: named-the-columns
+      label: The view has exactly the two columns that were asked for
+      severity: required
+      assert: result_columns
+      with: {columns: [name, spent]}
+      explanation: |
+        A view's column names are its interface. `SELECT *` from it is fine
+        once the view itself is named properly, which is the whole trade a
+        view makes.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from practice.domain.exercise import KataSpec
+from practice.domain.exercise import KataSpec, SqlDrillSpec
 from practice.domain.ids import ExerciseId
 
 if TYPE_CHECKING:
@@ -14,8 +14,10 @@ if TYPE_CHECKING:
 
 KATA = ExerciseId("katas/two-sum")
 SCENARIO = ExerciseId("git/revert-a-pushed-commit")
+DRILL = ExerciseId("sql/one-row-per-customer")
 
 STUB = "def two_sum(values, target):\n    ...\n"
+DRILL_STUB = "-- every customer and how many orders they have placed\n"
 
 
 def test_the_workbench_shows_the_prompt(client: TestClient, wiring: Wiring) -> None:
@@ -45,10 +47,10 @@ def test_a_kata_opens_the_editor_on_its_stub(
 def test_the_editor_mode_comes_from_the_exercise(
     client: TestClient, wiring: Wiring
 ) -> None:
-    """From `KataSpec.language`, not hardcoded.
+    """From the spec's own language, not hardcoded.
 
-    Which is the claim §15 question 3 rests on: a second kata language is a
-    content change plus a vendored mode file, and nothing in the page.
+    Which is the claim §15 question 3 rests on: a second language is a content
+    change plus a vendored mode file, and nothing in the page.
     """
     started = wiring.services.start_attempt(KATA)
 
@@ -164,3 +166,62 @@ def test_opening_the_workbench_records_nothing(
     reloaded = wiring.attempts.get(started.attempt.id)
     assert reloaded is not None
     assert len(reloaded.events) == before
+
+
+# --- the third kind's workbench -------------------------------------------
+
+
+def test_a_drill_opens_the_editor_on_its_stub(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """The page a drill gets, and the reason `editable_source` exists.
+
+    Before Phase 14 this route asked `isinstance(spec, KataSpec)` to decide
+    whether to draw an editor at all, so a drill would have been served a
+    console over a repository it does not have.
+    """
+    started = wiring.services.start_attempt(DRILL)
+    spec = started.exercise.spec
+    assert isinstance(spec, SqlDrillSpec)
+    wiring.provisioner.workspace_for(started.attempt.id).write_file(
+        spec.stub, DRILL_STUB
+    )
+
+    body = client.get(f"/attempt/{started.attempt.id}").text
+
+    assert "every customer and how many orders" in body
+    assert "/static/vendor/codemirror.min.js" in body
+
+
+def test_a_drill_loads_the_sql_mode_and_not_the_python_one(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """**The half of §15 Q3's prediction that was wrong.**
+
+    `vendor.py` said a second language costs "a second line here and nothing
+    else". The second line is right; this page had
+    `codemirror-python.min.js` written into its script tag, so a drill would
+    have loaded a Python tokenizer and then asked CodeMirror for a `sql` mode
+    it had not loaded — which fails by silently giving you a plain textarea,
+    the worst available way for it to fail. No existing assertion could have
+    caught it: the mode *name* was already coming from the spec.
+    """
+    started = wiring.services.start_attempt(DRILL)
+
+    body = client.get(f"/attempt/{started.attempt.id}").text
+
+    assert 'mode: "sql"' in body
+    assert "/static/vendor/codemirror-sql.min.js" in body
+    assert "/static/vendor/codemirror-python.min.js" not in body
+
+
+def test_a_drill_gets_no_repository_panel(client: TestClient, wiring: Wiring) -> None:
+    """The other half of the same split. `InspectRepository` *refuses* anything
+    that is not a scenario, so the page must not ask — and the branch that
+    decides used to be "is this a kata", which a drill is not.
+    """
+    started = wiring.services.start_attempt(DRILL)
+
+    body = client.get(f"/attempt/{started.attempt.id}").text
+
+    assert "Repository state" not in body

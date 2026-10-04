@@ -1,0 +1,4 @@
+-- Return every customer and how many orders they have placed,
+-- as columns `name` and `orders`, sorted by name.
+--
+-- Read seed.sql for the schema. There are four customers.

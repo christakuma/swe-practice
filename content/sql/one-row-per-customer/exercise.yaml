@@ -1,0 +1,96 @@
+schema_version: 1
+id: sql/one-row-per-customer
+kind: sql_drill
+title: One row per customer, including the quiet one
+difficulty: easy
+tags: [joins, aggregation, nulls]
+estimated_minutes: 12
+
+prompt: |
+  Read `seed.sql` first — it is in your workspace and the schema is part of the
+  question.
+
+  Return **every** customer with the number of orders they have placed, as two
+  columns named `name` and `orders`, sorted by name.
+
+  Every customer. There are four of them, and one has never ordered anything;
+  a report that quietly drops her is the bug this exercise is about.
+
+hints:
+  - "Start with the query you would write if every customer had orders. Run it.
+     How many rows come back, and how many customers are there?"
+  - "A join decides which rows *survive*. An inner join keeps a customer only
+     if the `ON` condition found something; you need one that keeps the left
+     side whatever happens on the right."
+  - "`COUNT(*)` counts rows in the group, and after an outer join a customer
+     with no orders still has one row — so it counts 1, not 0. `COUNT(o.id)`
+     counts non-NULL values of that column, which is 0."
+  - "`SELECT c.name, COUNT(o.id) AS orders FROM customers c LEFT JOIN orders o
+     ON o.customer_id = c.id GROUP BY c.id ORDER BY c.name;`"
+
+drill:
+  seed: seed.sql
+  stub: stub.sql
+  reference: solution.sql
+
+  counter_examples:
+    - file: inner-join.sql
+      expect_failures: [rows-match, one-row-each, kept-the-quiet-customer]
+    - file: counted-the-rows.sql
+      expect_failures: [rows-match, kept-the-quiet-customer]
+
+  checks:
+    - id: rows-match
+      label: Every customer appears once, with the number of orders they placed
+      severity: required
+      assert: result_matches
+      with:
+        rows: [[alice, 3], [bob, 2], [carol, 1], [dana, 0]]
+        ordered: true
+      explanation: |
+        Sorted by name because the prompt asked for it, so the order is part of
+        the answer here. The row that separates a right answer from a plausible
+        one is `dana, 0`.
+
+    - id: one-row-each
+      label: Four customers, four rows
+      severity: required
+      assert: result_row_count
+      with: {equals: 4}
+      explanation: |
+        A claim about the *grain* of the query, asserted separately so that a
+        wrong row count reports as a wrong row count rather than as a wall of
+        mismatched data. Too few means a join dropped someone; too many means
+        one duplicated them.
+
+    - id: kept-the-quiet-customer
+      label: The customer with no orders still has a row, with zero
+      severity: required
+      assert: result_contains_row
+      with: {row: [dana, 0]}
+      explanation: |
+        The whole exercise, as one check. `dana` has never ordered, and both
+        plausible wrong answers get this wrong in different ways: an inner join
+        loses her row entirely, and `COUNT(*)` gives her a row saying 1.
+
+    - id: named-the-columns
+      label: The result has exactly the two columns that were asked for
+      severity: required
+      assert: result_columns
+      with: {columns: [name, orders]}
+      explanation: |
+        `SELECT *` after a join returns every column of both tables, which is
+        the right data behind the wrong interface — and the interface is what
+        the next person builds against.
+
+    - id: no-select-star
+      label: You named your columns rather than selecting all of them
+      severity: advisory
+      assert: sql_matches
+      not: true
+      with: {pattern: 'select\s+\*'}
+      explanation: |
+        Advisory, because an answer that returns the right rows is a right
+        answer. Still worth saying: `SELECT *` means the result changes shape
+        when somebody adds a column, and a report built on it breaks for a
+        reason nobody will connect to the migration that caused it.

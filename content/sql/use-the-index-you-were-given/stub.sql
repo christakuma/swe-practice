@@ -1,0 +1,5 @@
+-- Every order total bob has placed, as one column named `total`, oldest
+-- first. Bob is customer 2.
+--
+-- Then put EXPLAIN QUERY PLAN in front of your query and read the output.
+-- SEARCH ... USING INDEX is the fast path; SCAN is not.

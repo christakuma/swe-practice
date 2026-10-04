@@ -1,0 +1,4 @@
+-- Delete the carts we know are empty. Leave the ones we have no count for.
+-- Exactly one cart should go.
+--
+-- Read seed.sql: `items` has three states, not two.

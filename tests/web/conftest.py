@@ -38,6 +38,7 @@ from tests.fakes import (
     FakeProvisioner,
     FixedScheduler,
     SequentialIdGenerator,
+    a_drill,
     a_kata,
     a_repo,
     a_scenario,
@@ -128,6 +129,7 @@ class Wiring:
                 graders={
                     ExerciseKind.KATA: self.grader,
                     ExerciseKind.GIT_SCENARIO: self.grader,
+                    ExerciseKind.SQL_DRILL: self.grader,
                 }
             ),
             clock=self.clock,
@@ -142,7 +144,7 @@ class Wiring:
 def a_wiring(
     grader: RecordingGrader | None = None, scheduler: Scheduler | None = None
 ) -> Wiring:
-    """Both shipped exercise kinds, and a grader that records what it was asked.
+    """All three shipped exercise kinds, and a grader that records what it was asked.
 
     A function as well as a fixture because a test that wants a *failing* verdict
     has to choose the grader before the client is built -- the same shape
@@ -155,7 +157,7 @@ def a_wiring(
     attribute afterwards.
     """
     return Wiring(
-        exercises=(a_kata(), a_scenario()),
+        exercises=(a_kata(), a_scenario(), a_drill()),
         grader=grader if grader is not None else RecordingGrader(),
         scheduler=scheduler,
     )

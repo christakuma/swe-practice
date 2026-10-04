@@ -45,7 +45,11 @@ from practice.adapters.content.validation import discover, unproven_by_design
 from practice.config import content_root
 from practice.domain.checks import registry
 from practice.domain.commands import parse_command_list
-from practice.domain.exercise import GitScenarioSpec, KataSpec
+from practice.domain.exercise import (
+    ExerciseKind,
+    GitScenarioSpec,
+    KataSpec,
+)
 from practice.interface.web.routes.dashboard import QUEUE_LIMIT
 
 if TYPE_CHECKING:
@@ -356,7 +360,7 @@ def test_the_repository_loads_the_whole_library() -> None:
     }
 
 
-def test_the_first_screen_of_the_curriculum_offers_both_kinds() -> None:
+def test_the_first_screen_of_the_curriculum_offers_every_kind() -> None:
     """The dashboard offers the top `QUEUE_LIMIT` rows, so the curriculum's first
     few entries *are* the product's front page on a fresh install.
 
@@ -367,12 +371,26 @@ def test_the_first_screen_of_the_curriculum_offers_both_kinds() -> None:
     `tests/e2e/test_schedule_a_review.py` is what noticed — it asks for Two Sum
     on the dashboard — and it took the whole suite to find, so the claim is
     asserted here where `-m content` can check it in milliseconds.
+
+    **Asserted against the enum rather than against a literal pair as of Phase
+    14.** It used to read `tracks == {"git", "katas"}`, and a third kind made
+    that a statement about which two kinds existed when it was written. Deriving
+    the expectation from `ExerciseKind` means a fourth kind fails here — on the
+    first screen having no room for it, which is the decision that should be
+    forced rather than discovered.
+
+    It is also now tight: `QUEUE_LIMIT` is six and `start-here` is exactly six
+    long, two of each kind. There is no slack left, which is the point of
+    stating it.
     """
     curriculum = load_curriculum(CONTENT_ROOT)
-    first_screen = curriculum.exercise_ids[:QUEUE_LIMIT]
-    tracks = {exercise_id.value.split("/")[0] for exercise_id in first_screen}
+    repository = FilesystemContentRepository(CONTENT_ROOT)
+    by_id = {exercise.id: exercise for exercise in repository.list_exercises()}
 
-    assert tracks == {"git", "katas"}, sorted(str(one) for one in first_screen)
+    first_screen = curriculum.exercise_ids[:QUEUE_LIMIT]
+    kinds = {by_id[exercise_id].kind for exercise_id in first_screen}
+
+    assert kinds == set(ExerciseKind), sorted(str(one) for one in first_screen)
 
 
 def test_the_curriculum_orders_the_whole_library() -> None:

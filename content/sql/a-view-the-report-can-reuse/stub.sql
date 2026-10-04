@@ -1,0 +1,5 @@
+-- Create a view `customer_totals` with columns `name` and `spent`:
+-- every customer, spend excluding cancelled orders, rounded to 2 places,
+-- and 0 for a customer who has never ordered.
+--
+-- Then select everything from it, sorted by name.

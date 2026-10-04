@@ -1,0 +1,4 @@
+-- Customers per city, as `city` and `customers`, sorted by city.
+-- The customer whose city was never recorded gets a row labelled 'unknown'.
+--
+-- Three rows out, four customers accounted for.

@@ -1,0 +1,67 @@
+schema_version: 1
+id: sql/delete-only-the-empty-carts
+kind: sql_drill
+title: Delete only the carts you know are empty
+difficulty: medium
+tags: [deletes, nulls, end-state]
+estimated_minutes: 15
+
+prompt: |
+  Read `seed.sql`. The `items` column has three states and only one of them
+  means *this cart is empty*.
+
+  Delete the carts we know are empty. Leave the ones we have no count for —
+  they are not empty, they are unmeasured, and throwing them away destroys the
+  only evidence that they existed.
+
+  Exactly one cart should go. Graded on the table afterwards.
+
+hints:
+  - "Write it as a `SELECT` first and count the rows. If you get two, read the
+     `items` column of both of them."
+  - "`NULL` is not a value, it is the absence of one. Ask yourself what
+     `NULL = 0` evaluates to — it is not `true`, and it is not `false` either."
+  - "SQLite has `IS NULL` and `IS NOT NULL` precisely because `= NULL` can
+     never be true. You want neither of them here: you want the plain
+     comparison, and to understand why it already does the right thing."
+  - "`DELETE FROM carts WHERE items = 0;` — and the reason that is enough is
+     that `NULL = 0` is `NULL`, which is not true, so row 4 is not matched."
+
+drill:
+  seed: seed.sql
+  stub: stub.sql
+  reference: solution.sql
+
+  counter_examples:
+    - file: no-where.sql
+      expect_failures: [the-right-carts-survived, three-carts-left]
+    - file: null-is-not-zero.sql
+      expect_failures: [the-right-carts-survived, three-carts-left]
+    - file: deleted-nothing.sql
+      expect_failures: [the-right-carts-survived, three-carts-left]
+
+  checks:
+    - id: the-right-carts-survived
+      label: Carts 1, 3 and 4 are still there, and cart 2 is gone
+      severity: required
+      assert: table_matches
+      with:
+        table: carts
+        rows:
+          - [1, 1, '2026-06-01', 3]
+          - [3, 3, '2026-06-19', 2]
+          - [4, 4, '2026-06-02', 'NULL']
+      explanation: |
+        Cart 4 is the one that matters. Its `items` is NULL, and `NULL` is
+        written as the word in an expected row because that is the single
+        spelling the engine uses for it everywhere.
+
+    - id: three-carts-left
+      label: Three carts survive
+      severity: required
+      assert: table_row_count
+      with: {table: carts, equals: 3}
+      explanation: |
+        The number that separates the three wrong answers from each other: zero
+        means a missing `WHERE`, two means NULL was treated as empty, four means
+        nothing matched at all.

@@ -1,0 +1,65 @@
+schema_version: 1
+id: sql/newest-customers-first
+kind: sql_drill
+title: Newest customers first
+difficulty: intro
+tags: [ordering, dates]
+estimated_minutes: 8
+
+prompt: |
+  Return every customer as columns `name` and `signed_up`, most recently signed
+  up first.
+
+  The shortest drill in the track, and the one to start with if you have not
+  written SQL in a while: one table, no join, no aggregate.
+
+hints:
+  - "`ORDER BY` goes at the end, and takes a direction."
+  - "Ascending is the default, so the direction you want is the one you have to
+     ask for by name."
+  - "`SELECT name, signed_up FROM customers ORDER BY signed_up DESC;`"
+
+drill:
+  seed: seed.sql
+  stub: stub.sql
+  reference: solution.sql
+
+  counter_examples:
+    - file: ascending.sql
+      expect_failures: [newest-first, rows-match]
+
+  checks:
+    - id: newest-first
+      label: The rows come back ordered by signup date, newest first
+      severity: required
+      assert: result_ordered_by
+      with: {column: signed_up, descending: true}
+      explanation: |
+        Graded as a *property* of the result rather than as a list of rows, so
+        the verdict can say "sorted by signed_up descending" instead of making
+        you diff four rows to find that two are the wrong way round.
+
+        It works here because these dates are ISO-8601 text, which sorts
+        correctly as text. That is the reason to store a date that way.
+
+    - id: rows-match
+      label: Every customer, with the date they signed up
+      severity: required
+      assert: result_matches
+      with:
+        rows:
+          - [dana, '2026-04-02']
+          - [carol, '2026-03-21']
+          - [bob, '2026-02-03']
+          - [alice, '2026-01-15']
+        ordered: true
+      explanation: |
+        The literal rows as well as the ordering property, because "sorted
+        descending" is also true of an empty result and of one missing a row.
+        The two checks fail for different reasons and say different things.
+
+    - id: named-the-columns
+      label: The result has exactly the two columns that were asked for
+      severity: required
+      assert: result_columns
+      with: {columns: [name, signed_up]}

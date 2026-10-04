@@ -1,0 +1,3 @@
+-- The two customers who have spent the most, as `name` and `spent`,
+-- biggest first. Cancelled orders are not money taken.
+-- Round `spent` to two decimal places.

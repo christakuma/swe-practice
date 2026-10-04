@@ -147,7 +147,10 @@ def test_an_exercise_with_an_open_attempt_offers_resume_rather_than_start(
     body = client.get("/browse").text
 
     assert f'href="/attempt/{started.attempt.id}"' in body
-    assert body.count('name="exercise_id"') == 1
+    # One Start form per exercise with no open attempt. Three kinds in the
+    # library since Phase 14, so two rows still offer Start and the kata's
+    # offers Resume.
+    assert body.count('name="exercise_id"') == 2
 
 
 def test_an_attempt_whose_workspace_is_gone_does_not_count_as_resumable(
@@ -164,4 +167,5 @@ def test_an_attempt_whose_workspace_is_gone_does_not_count_as_resumable(
     body = client.get("/browse").text
 
     assert f'href="/attempt/{started.attempt.id}"' not in body
-    assert body.count('name="exercise_id"') == 2
+    # Every row falls back to Start, so one form per exercise in the library.
+    assert body.count('name="exercise_id"') == 3

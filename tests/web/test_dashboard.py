@@ -55,7 +55,11 @@ def test_an_unpractised_library_is_entirely_due(client: TestClient) -> None:
     assert "Due today" in body
     assert "Two Sum" in body
     assert "Revert a pushed commit" in body
-    assert body.count('class="chip new"') == 2
+    assert "One row per customer" in body
+    # One "new" chip per never-attempted exercise -- all three of them, which
+    # is also the smallest assertion that notices a kind being dropped from the
+    # queue entirely.
+    assert body.count('class="chip new"') == 3
 
 
 def test_a_queue_row_can_be_started_from_the_dashboard(
@@ -127,7 +131,7 @@ def test_the_queue_is_cut_and_says_how_much_it_cut() -> None:
 
     # Nothing is open, so every `li` on the page is a queue row.
     assert body.count("<li>") == QUEUE_LIMIT
-    assert f"{QUEUE_LIMIT + 4} waiting in all" in body
+    assert f"{QUEUE_LIMIT + 5} waiting in all" in body
 
 
 def test_a_fully_scheduled_library_says_nothing_is_due(
@@ -136,7 +140,11 @@ def test_a_fully_scheduled_library_says_nothing_is_due(
     """Which is a real state and a good one, so it reads as an achievement
     rather than as a page that failed to load.
     """
-    for exercise_id in ("katas/two-sum", "git/revert-a-pushed-commit"):
+    for exercise_id in (
+        "katas/two-sum",
+        "git/revert-a-pushed-commit",
+        "sql/one-row-per-customer",
+    ):
         started = wiring.services.start_attempt(ExerciseId(exercise_id))
         client.post(
             f"/api/attempt/{started.attempt.id}/submit", data={"source": SOLUTION}

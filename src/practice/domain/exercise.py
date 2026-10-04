@@ -116,7 +116,21 @@ class ComplexityExpectation:
 # The `with:` mapping in YAML. Recursive because a handful of assertions take a
 # list of paths; deliberately narrow, so a check function can exhaust the cases
 # instead of casting away from `object`.
-type ParamValue = str | int | bool | tuple[ParamValue, ...]
+#
+# **`float` arrived in Phase 14, and its absence was a real gap rather than a
+# deliberate narrowing.** Nothing in the git vocabulary has ever needed one: a
+# commit count is an integer, a ref is a string, `include_untracked` is a flag.
+# A SQL drill compares literal rows, and four of the eight shipped drills hold a
+# money column — so `[[alice, 77.5]]` was rejected by the schema with twenty
+# lines of Pydantic union errors, none of which said "no float here".
+#
+# Widening it loosens nothing, because narrowness was never enforced here: it is
+# enforced by the accessors in `checks/evaluation.Params`, each of which refuses
+# a value of the wrong shape for the parameter it is reading.
+# `Params.integer` still rejects a float, which
+# `test_a_float_is_not_accepted_where_an_integer_is_required` holds it to —
+# `commit_count {equals: 1.5}` is a typo, not a count.
+type ParamValue = str | int | float | bool | tuple[ParamValue, ...]
 
 
 @dataclass(frozen=True, slots=True)

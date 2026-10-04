@@ -1,0 +1,5 @@
+-- Cancel every pending order placed before 2026-06-10, by setting its
+-- status to 'cancelled'. There is exactly one. Delete nothing.
+--
+-- This drill is graded on the `orders` table afterwards, not on anything
+-- your answer returns.

@@ -1,0 +1,73 @@
+schema_version: 1
+id: sql/the-null-that-broke-the-report
+kind: sql_drill
+title: The null that broke the report
+difficulty: medium
+tags: [nulls, grouping, aggregation]
+estimated_minutes: 15
+
+prompt: |
+  Marketing wants customers per city, as columns `city` and `customers`, sorted
+  by city.
+
+  One customer's city was never recorded. She still exists, and she still needs
+  a row — labelled `unknown`, grouped with anyone else whose city is missing.
+
+  There are three cities' worth of rows in the answer and four customers. Get
+  both numbers right.
+
+hints:
+  - "Write the obvious `GROUP BY city` first and look at the first column of
+     what comes back. What is in it for dana?"
+  - "Adding `WHERE city IS NOT NULL` makes the strange row go away and loses
+     the customer with it. The job is to label her, not to hide her."
+  - "`COALESCE(a, b)` returns `a` unless it is NULL, in which case `b`. You can
+     group by an expression, not just a column — and if you group by the same
+     expression you select, the rows line up."
+  - "`SELECT COALESCE(city, 'unknown') AS city, COUNT(*) AS customers FROM
+     customers GROUP BY COALESCE(city, 'unknown') ORDER BY city;`"
+
+drill:
+  seed: seed.sql
+  stub: stub.sql
+  reference: solution.sql
+
+  counter_examples:
+    - file: filtered-the-null-away.sql
+      expect_failures: [rows-match, three-groups, everyone-is-counted]
+    - file: counted-the-column.sql
+      expect_failures: [rows-match, everyone-is-counted]
+
+  checks:
+    - id: rows-match
+      label: Three rows, with the unrecorded city labelled unknown
+      severity: required
+      assert: result_matches
+      with:
+        rows: [[leeds, 2], [unknown, 1], [york, 1]]
+        ordered: true
+      explanation: |
+        Sorted by city, which puts `unknown` between `leeds` and `york` — a
+        reminder that the label is data like any other and sorts with it.
+
+    - id: three-groups
+      label: Three groups
+      severity: required
+      assert: result_row_count
+      with: {equals: 3}
+
+    - id: everyone-is-counted
+      label: The customer with no recorded city is in the answer
+      severity: required
+      assert: result_contains_row
+      with: {row: [unknown, 1]}
+      explanation: |
+        The row that separates a right answer from the one that filters NULLs
+        out. It is asserted on its own so that the verdict names the missing
+        group rather than printing three rows that are nearly right.
+
+    - id: named-the-columns
+      label: The result has exactly the two columns that were asked for
+      severity: required
+      assert: result_columns
+      with: {columns: [city, customers]}

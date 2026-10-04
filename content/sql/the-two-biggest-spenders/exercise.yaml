@@ -1,0 +1,77 @@
+schema_version: 1
+id: sql/the-two-biggest-spenders
+kind: sql_drill
+title: The two biggest spenders
+difficulty: easy
+tags: [aggregation, ordering, filtering]
+estimated_minutes: 12
+
+prompt: |
+  Return the two customers who have spent the most, as columns `name` and
+  `spent`, biggest first.
+
+  **Spent means money actually taken.** A cancelled order was placed and then
+  cancelled; nobody paid for it.
+
+  Round `spent` to two decimal places. Deciding the precision of what you
+  return is part of the job — a report that prints `77.49999999999999` is a
+  report somebody has to apologise for.
+
+  Two, not three, and the reason is worth noticing before you start: only three
+  of the four customers have ever paid for anything, so a `LIMIT 3` here would
+  do nothing at all and you would not find out.
+
+hints:
+  - "Three things have to happen in order: filter the orders you are counting,
+     group them by customer, then take the top of the result."
+  - "`WHERE` filters rows before they are grouped. That is where the cancelled
+     order has to go — filtering after the grouping is a different question."
+  - "`ORDER BY` runs after `GROUP BY`, and `LIMIT` runs last of all, so you can
+     order by the aggregate you just computed."
+  - "`SELECT c.name, ROUND(SUM(o.total), 2) AS spent FROM customers c JOIN
+     orders o ON o.customer_id = c.id WHERE o.status <> 'cancelled' GROUP BY
+     c.id ORDER BY spent DESC LIMIT 2;`"
+
+drill:
+  seed: seed.sql
+  stub: stub.sql
+  reference: solution.sql
+
+  counter_examples:
+    - file: counted-the-cancelled-order.sql
+      expect_failures: [rows-match]
+    - file: forgot-the-limit.sql
+      expect_failures: [rows-match, exactly-two]
+
+  checks:
+    - id: rows-match
+      label: The two biggest spenders, biggest first, rounded to two places
+      severity: required
+      assert: result_matches
+      with:
+        rows: [[alice, 77.5], [bob, 70.25]]
+        ordered: true
+      explanation: |
+        `ordered: true`, because "biggest first" was the question. bob is the
+        row that catches a missing filter: he placed 75.50 of orders and paid
+        for 70.25 of them.
+
+    - id: exactly-two
+      label: Two rows, not every customer who has spent anything
+      severity: required
+      assert: result_row_count
+      with: {equals: 2}
+      explanation: |
+        Separate from the row comparison so that a missing `LIMIT` reports as
+        "you returned three rows" rather than as a mismatch somewhere in a
+        list.
+
+    - id: named-the-columns
+      label: The result has exactly the two columns that were asked for
+      severity: required
+      assert: result_columns
+      with: {columns: [name, spent]}
+      explanation: |
+        `spent` rather than `SUM(o.total)`. An aggregate with no alias gets a
+        column name SQLite made up, which is not something anybody downstream
+        should have to depend on.

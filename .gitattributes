@@ -10,10 +10,15 @@
 # Normalize all text in the repository; check out LF on every platform.
 * text=auto eol=lf
 
-# The two that would actually break. Explicit for the benefit of the next
+# The three that would actually break. Explicit for the benefit of the next
 # person to read this file.
 *.sh    text eol=lf
 *.cmds  text eol=lf
+# A drill's SQL is read by `sql_matches`, whose patterns are the author's own
+# regular expressions -- so a stray \r is a character those patterns can match
+# on one platform and not the other. Covered by the blanket rule above as well;
+# named here because it is the third file type whose *content* is graded.
+*.sql   text eol=lf
 
 # Genuinely need CRLF to run on Windows.
 *.bat   text eol=crlf

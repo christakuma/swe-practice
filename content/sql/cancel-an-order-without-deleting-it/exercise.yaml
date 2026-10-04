@@ -1,0 +1,83 @@
+schema_version: 1
+id: sql/cancel-an-order-without-deleting-it
+kind: sql_drill
+title: Cancel an order without deleting it
+difficulty: easy
+tags: [updates, filtering, end-state]
+estimated_minutes: 12
+
+prompt: |
+  Support has asked you to cancel every order that is still `pending` and was
+  placed **before 2026-06-10**. There is exactly one.
+
+  Cancel it by setting its `status` to `'cancelled'`. Do not delete anything:
+  the order happened, and finance needs the row.
+
+  Your answer returns nothing. **This drill is graded on the table afterwards** —
+  which is the first one in the track where the thing being checked is not what
+  came back.
+
+hints:
+  - "An `UPDATE` with no `WHERE` updates every row. The `WHERE` is the exercise."
+  - "Two conditions, both of which have to hold: the status, and the date. The
+     dates are ISO text, so `<` does what you want on them."
+  - "Run a `SELECT` with your `WHERE` clause first and look at what comes back.
+     One row means you are ready; six means you are about to have a bad
+     afternoon."
+  - "`UPDATE orders SET status = 'cancelled' WHERE status = 'pending' AND
+     placed_on < '2026-06-10';`"
+
+drill:
+  seed: seed.sql
+  stub: stub.sql
+  reference: solution.sql
+
+  counter_examples:
+    - file: no-where.sql
+      expect_failures: [only-that-order-changed]
+    - file: deleted-it.sql
+      expect_failures: [only-that-order-changed, nothing-was-deleted, not-a-delete]
+    - file: forgot-the-date.sql
+      expect_failures: [only-that-order-changed]
+
+  checks:
+    - id: only-that-order-changed
+      label: Order 4 is cancelled and every other row is exactly as it was
+      severity: required
+      assert: table_matches
+      with:
+        table: orders
+        rows:
+          - [1, 1, '2026-05-01', 40, shipped]
+          - [2, 1, '2026-05-09', 15.5, shipped]
+          - [3, 2, '2026-05-11', 70.25, shipped]
+          - [4, 3, '2026-06-02', 10, cancelled]
+          - [5, 2, '2026-06-14', 5.25, cancelled]
+          - [6, 1, '2026-06-20', 22, pending]
+      explanation: |
+        The whole table, not just the row that was supposed to change. An
+        `UPDATE` graded by "the row I expected is cancelled" passes an answer
+        that cancelled that row *and five others*, which is precisely the
+        mistake a missing `WHERE` makes.
+
+    - id: nothing-was-deleted
+      label: All six orders are still there
+      severity: required
+      assert: table_row_count
+      with: {table: orders, equals: 6}
+      explanation: |
+        Redundant with the check above and worth having anyway: it is the one
+        that reports "orders holds 4 row(s)" instead of a six-row diff, and the
+        number is the thing you can act on.
+
+    - id: not-a-delete
+      label: You changed the row rather than removing it
+      severity: advisory
+      assert: sql_matches
+      not: true
+      with: {pattern: '\bdelete\b'}
+      explanation: |
+        Advisory, and the one check in this drill that reads your SQL rather
+        than the database. It is here because "cancelled" and "gone" are
+        different states of the world, and conflating them is the kind of
+        decision that is invisible until an auditor asks where the order went.

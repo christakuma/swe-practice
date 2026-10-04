@@ -4,11 +4,11 @@
 # with and section 16 records revisiting at fifty-four exercises: still hand
 # ordered, now written down (docs/adr/0014-a-hand-ordered-curriculum-manifest.md).
 #
-# Tracks here are pedagogical and finer than the two directories on disk. An
+# Tracks here are pedagogical and finer than the three directories on disk. An
 # exercise id is exactly <track>/<slug> and the loader enforces two path
-# segments, so `git/` and `katas/` are all the filesystem can express; the nine
-# runs below are a second grouping over the same files, and nothing is moved to
-# express them.
+# segments, so `git/`, `katas/` and `sql/` are all the filesystem can express;
+# the eleven runs below are a second grouping over the same files, and nothing
+# is moved to express them.
 #
 # Within a track the order is difficulty and dependency: an exercise should only
 # need ideas the ones above it have already introduced. Across tracks it is
@@ -21,18 +21,28 @@
 # rather than quietly appearing at the end.
 
 tracks:
-  # Deliberately mixed, and deliberately four long. The dashboard offers the top
-  # six rows of the queue, so a first track of six git exercises would put a
-  # kata off the first screen entirely -- interleaving at track granularity does
-  # not interleave the first thing anybody sees. Found by an e2e test that asked
-  # for Two Sum on the dashboard and could not find it.
+  # Deliberately mixed, and deliberately exactly six long -- which is the
+  # dashboard's queue limit, so this track *is* the product's front page on a
+  # fresh install. A first track of six git exercises would push every kata off
+  # the screen entirely; interleaving at track granularity does not interleave
+  # the first thing anybody sees. Found by an e2e test that asked for Two Sum on
+  # the dashboard and could not find it, and now asserted directly by
+  # `test_the_first_screen_of_the_curriculum_offers_every_kind`.
+  #
+  # Phase 14 is what made it exactly six. With two kinds, four rows left room to
+  # spare; with three kinds and a six-row screen there is exactly one slot each
+  # for two of each, and no slack at all. A fourth kind would force a decision
+  # here rather than an append -- which is the right place for that decision to
+  # be forced.
   - name: start-here
     title: "Start here: one of each, nothing clever"
     exercises:
       - git/publish-a-branch-for-review
       - katas/two-sum
+      - sql/newest-customers-first
       - git/amend-the-last-commit
       - katas/valid-parentheses
+      - sql/one-row-per-customer
 
   - name: git-foundations
     title: "Git: the operations you undo things with"
@@ -53,6 +63,13 @@ tracks:
       - katas/top-k-frequent
       - katas/product-except-self
       - katas/subarray-sum-equals-k
+
+  - name: sql-reading
+    title: "SQL: asking the right question"
+    exercises:
+      - sql/the-two-biggest-spenders
+      - sql/the-null-that-broke-the-report
+      - sql/use-the-index-you-were-given
 
   - name: git-recovery
     title: "Git: getting work back"
@@ -78,6 +95,13 @@ tracks:
       - katas/shortest-path-in-a-grid
       - katas/detect-a-dependency-cycle
       - katas/topological-order
+
+  - name: sql-writing
+    title: "SQL: changing data and living with it"
+    exercises:
+      - sql/cancel-an-order-without-deleting-it
+      - sql/delete-only-the-empty-carts
+      - sql/a-view-the-report-can-reuse
 
   - name: git-collaboration
     title: "Git: working with other people"

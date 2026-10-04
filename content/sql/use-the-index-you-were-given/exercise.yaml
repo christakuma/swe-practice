@@ -1,0 +1,79 @@
+schema_version: 1
+id: sql/use-the-index-you-were-given
+kind: sql_drill
+title: Use the index you were given
+difficulty: medium
+tags: [indexes, query-plans, performance]
+estimated_minutes: 15
+
+prompt: |
+  Return the `total` of every order bob has placed, as a single column named
+  `total`, oldest order first.
+
+  The easy part is getting the two numbers. The exercise is the second check:
+  `seed.sql` creates an index on `orders(customer_id)`, and one of the two
+  obvious ways to write this query uses it while the other reads every row of
+  a table it did not need to.
+
+  Ask SQLite which one you wrote. Put `EXPLAIN QUERY PLAN` in front of your
+  query and read what comes back — `SEARCH ... USING INDEX` is the fast path,
+  `SCAN` is the slow one.
+
+  Bob is customer 2. With four rows nothing is slow; with four million rows
+  this is the difference between a page that loads and a page that does not.
+
+hints:
+  - "Which tables does your query actually need to touch? You were told bob's
+     id in the prompt."
+  - "`EXPLAIN QUERY PLAN SELECT ...` is a prefix you can put on any query. Run
+     it and read the output before you change anything."
+  - "An index on `orders(customer_id)` can only be used if your query filters
+     on `orders.customer_id`. Filtering on `customers.name` and joining makes
+     SQLite find bob first, which means reading `customers`."
+  - "`SELECT total FROM orders WHERE customer_id = 2 ORDER BY id;`"
+
+drill:
+  seed: seed.sql
+  stub: stub.sql
+  reference: solution.sql
+
+  counter_examples:
+    - file: joined-to-find-the-name.sql
+      expect_failures: [used-the-index]
+
+  checks:
+    - id: rows-match
+      label: Bob's two order totals, oldest first
+      severity: required
+      assert: result_matches
+      with:
+        rows: [[70.25], [5.25]]
+        ordered: true
+      explanation: |
+        Both of bob's orders, including the cancelled one — the prompt asked
+        for orders placed, not money taken. Compare with
+        `the-three-biggest-spenders`, where the same data answers a different
+        question.
+
+    - id: one-column
+      label: One column, named total
+      severity: required
+      assert: result_columns
+      with: {columns: [total]}
+
+    - id: used-the-index
+      label: The query plan does not scan a whole table
+      severity: advisory
+      assert: query_plan_matches
+      not: true
+      with: {pattern: '\bSCAN\b'}
+      explanation: |
+        **The check this exercise exists for.** Two answers that return
+        identical rows can differ by any factor you like in work done, and no
+        comparison of those rows can tell them apart — so this reads SQLite's
+        own plan instead.
+
+        Advisory, because the rows are right either way and §4.4 grades craft
+        separately from correctness. It is still the thing to learn: `SCAN` in
+        a plan over a table with a usable index means the index was not usable
+        *for the query you wrote*.

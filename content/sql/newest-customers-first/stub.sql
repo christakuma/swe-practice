@@ -1,0 +1,1 @@
+-- Every customer as `name` and `signed_up`, most recent first.

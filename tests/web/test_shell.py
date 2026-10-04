@@ -45,7 +45,7 @@ def test_the_dashboard_counts_the_library(client: TestClient) -> None:
     """Two exercises are wired, and the page says two rather than a placeholder."""
     body = client.get("/").text
 
-    assert "2 exercises" in body
+    assert "3 exercises" in body
 
 
 def test_an_open_attempt_is_a_link_to_its_workbench(
