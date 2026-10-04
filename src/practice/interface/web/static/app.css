@@ -450,6 +450,40 @@ code.path {
   color: var(--fail);
 }
 
+/* --- interview mode ------------------------------------------------------ */
+
+/* Shaped like `.hints`, because it occupies the same slot in the prompt column
+ * and for the same reason: it is the panel that says what this attempt's rules
+ * are, and under interview mode it is what the hint panel is replaced by. A
+ * different shape would read as a different kind of thing. */
+.interview {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.interview h2 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--note);
+  font-weight: 600;
+}
+
+.interview p {
+  margin: 0.3rem 0;
+}
+
+/* The checkbox beside Start, on the dashboard and the browse list. Inline with
+ * the button rather than above it: it modifies that button, and a choice that
+ * reads as a separate question is one people answer without seeing what it
+ * attaches to. */
+.interview-toggle {
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+
 /* --- hints --------------------------------------------------------------- */
 
 .hints {
@@ -904,6 +938,15 @@ code.path {
 }
 
 .chip.overdue {
+  border-color: var(--note);
+  color: var(--note);
+}
+
+/* The interview badge, in the same vocabulary as the queue's three: a word in a
+ * bordered chip, with colour as reinforcement only. It sits on the workbench
+ * rather than on a queue row, because the mode is a property of an attempt and
+ * not of an exercise -- the same exercise can be opened either way. */
+.chip.interview {
   border-color: var(--note);
   color: var(--note);
 }

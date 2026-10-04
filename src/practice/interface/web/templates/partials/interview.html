@@ -1,0 +1,53 @@
+{#
+  The interview banner: what this attempt's rules are, and how much of the clock
+  is left.
+
+  **Server-rendered on load and not a live countdown**, which is a decision
+  rather than a missing feature. A JavaScript timer would be the one number on
+  this page that nothing grades — it would tick past zero and change nothing,
+  because what decides whether an attempt ran over is `suggest_grade` reading
+  `elapsed` against the deadline at submission. A clock that looks authoritative
+  and is decorative is worse than a stated fact, and it is the shape of defect
+  Phase 13 found in the schedule panel's ease factor (PLAN.md §16).
+
+  So this says what is true when the page is drawn, and says that is what it is.
+  Reloading is how you ask again.
+
+  **The deadline does not stop you submitting.** Refusing a late submission
+  would destroy the work, and the core bet says grade the end state: being over
+  is recorded and read off the finished attempt, not enforced by a gate
+  (ADR 0020).
+#}
+<section class="interview">
+  <h2>Interview conditions</h2>
+
+  {% set left = attempt.remaining(now) %}
+  {% if left is none %}
+    {# Unreachable: this partial is only included for a timed attempt. #}
+  {% elif not workbench.is_active %}
+    <p class="meta">
+      {% if attempt.overran(now) %}
+        Submitted {{ minutes_over }} minute{{ '' if minutes_over == 1 else 's' }}
+        over the {{ limit_minutes }} minute limit.
+      {% else %}
+        Submitted with {{ minutes_left }}
+        minute{{ '' if minutes_left == 1 else 's' }} to spare.
+      {% endif %}
+    </p>
+  {% elif attempt.overran(now) %}
+    <p class="problem">
+      {{ minutes_over }} minute{{ '' if minutes_over == 1 else 's' }} over the
+      {{ limit_minutes }} minute limit, as of this page load. You can still
+      submit — being over is recorded, not refused.
+    </p>
+  {% else %}
+    <p class="meta">
+      {{ minutes_left }} minute{{ '' if minutes_left == 1 else 's' }} left of
+      {{ limit_minutes }}, as of this page load. Reload to check again.
+    </p>
+  {% endif %}
+
+  <p class="meta">
+    No hints, and no path to the workspace. Your answer goes in the editor.
+  </p>
+</section>

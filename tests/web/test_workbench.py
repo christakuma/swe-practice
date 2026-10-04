@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from practice.domain.attempt import AttemptMode
 from practice.domain.exercise import KataSpec, SqlDrillSpec
 from practice.domain.ids import ExerciseId
 
@@ -225,3 +226,117 @@ def test_a_drill_gets_no_repository_panel(client: TestClient, wiring: Wiring) ->
     body = client.get(f"/attempt/{started.attempt.id}").text
 
     assert "Repository state" not in body
+
+
+# --- interview mode ---------------------------------------------------------
+
+
+def test_an_interview_workbench_says_so_and_states_the_clock(
+    client: TestClient, wiring: Wiring
+) -> None:
+    started = wiring.services.start_attempt(KATA, mode=AttemptMode.INTERVIEW)
+
+    body = client.get(f"/attempt/{started.attempt.id}").text
+
+    assert "Interview conditions" in body
+    assert "interview" in body
+    assert "minutes left of" in body
+    assert "Reload to check again" in body
+
+
+def test_an_interview_workbench_draws_no_hint_panel(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """Nothing in the template had to learn about the mode for this: the panel
+    is drawn on `hint_count`, and the policy was built with no hints.
+    """
+    interview = wiring.services.start_attempt(KATA, mode=AttemptMode.INTERVIEW)
+    practice = wiring.services.start_attempt(SCENARIO)
+
+    withheld = client.get(f"/attempt/{interview.attempt.id}").text
+    offered = client.get(f"/attempt/{practice.attempt.id}").text
+
+    assert 'id="hint-list"' not in withheld
+    assert "Reveal a hint" not in withheld
+    assert 'id="hint-list"' in offered
+
+
+def test_an_interview_workbench_offers_no_own_editor_button(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """The control is withdrawn rather than left to post and be refused. A
+    button whose only job is to explain that it does not work is worse than no
+    button.
+    """
+    interview = wiring.services.start_attempt(KATA, mode=AttemptMode.INTERVIEW)
+    practice = wiring.services.start_attempt(KATA)
+
+    withheld = client.get(f"/attempt/{interview.attempt.id}").text
+    offered = client.get(f"/attempt/{practice.attempt.id}").text
+
+    assert 'id="open-editor"' not in withheld
+    assert 'id="open-editor"' in offered
+
+
+def test_an_interview_workbench_still_has_its_editor_and_submit(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """What interview mode must *not* take away. Withdrawing the workspace path
+    is only honest if there is still a way to answer.
+    """
+    started = wiring.services.start_attempt(KATA, mode=AttemptMode.INTERVIEW)
+
+    body = client.get(f"/attempt/{started.attempt.id}").text
+
+    assert 'id="source"' in body
+    assert 'id="solution-form"' in body
+
+
+def test_a_practice_workbench_says_nothing_about_interviews(
+    client: TestClient, wiring: Wiring
+) -> None:
+    started = wiring.services.start_attempt(KATA)
+
+    body = client.get(f"/attempt/{started.attempt.id}").text
+
+    assert "Interview conditions" not in body
+    assert "minutes left of" not in body
+
+
+def test_the_start_form_offers_the_mode_and_defaults_to_practice(
+    client: TestClient,
+) -> None:
+    """The checkbox is on the form that opens the attempt, because that is the
+    only moment the mode can be chosen.
+    """
+    page = client.get("/browse").text
+
+    assert 'name="interview"' in page
+    assert 'value="1"' in page
+
+
+def test_starting_without_the_box_ticked_is_a_practice_run(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """An unchecked box sends nothing, which is what makes practice the answer
+    for a form that has never heard of the field.
+    """
+    client.post("/attempt", data={"exercise_id": str(KATA)}, follow_redirects=False)
+
+    opened = wiring.services.list_open_attempts()
+    assert len(opened) == 1
+    assert opened[0].attempt.policy.is_interview is False
+
+
+def test_starting_with_the_box_ticked_opens_an_interview(
+    client: TestClient, wiring: Wiring
+) -> None:
+    client.post(
+        "/attempt",
+        data={"exercise_id": str(KATA), "interview": "1"},
+        follow_redirects=False,
+    )
+
+    opened = wiring.services.list_open_attempts()
+    assert len(opened) == 1
+    assert opened[0].attempt.policy.is_interview is True

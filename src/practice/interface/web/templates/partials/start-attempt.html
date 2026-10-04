@@ -1,0 +1,28 @@
+{#
+  The Start control, with the one choice that can only be made here.
+
+  **One partial rather than one form per page**, and Phase 15 is what forced it.
+  The dashboard queue and the browse list each had their own copy of a two-line
+  form; adding the interview checkbox to both would have been the first time
+  those copies could disagree about what starting an exercise means, which is
+  the drift §13 is about. `exercise_id` is the only thing they differ in, and it
+  comes in through the context.
+
+  **The checkbox is on the form that opens the attempt because that is the only
+  moment the mode can be chosen.** It is copied onto the attempt's policy and
+  stored with it (ADR 0020), so there is no later control to offer and nowhere
+  to put one — a workbench toggle would be a promise the aggregate refuses to
+  keep.
+#}
+<form method="post" action="/attempt">
+  <input type="hidden" name="exercise_id" value="{{ exercise_id }}">
+  <button type="submit">Start</button>
+  {#
+    `value="1"` because an unchecked box sends nothing at all, which is what
+    makes the route's default the practice mode without a third state to read.
+  #}
+  <label class="meta interview-toggle">
+    <input type="checkbox" name="interview" value="1">
+    interview: a clock, no hints
+  </label>
+</form>

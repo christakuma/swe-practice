@@ -98,7 +98,7 @@ from practice.config import (
     scheduler_name,
     workspace_root,
 )
-from practice.domain.attempt import ComplexityClaim
+from practice.domain.attempt import AttemptMode, ComplexityClaim
 from practice.domain.commands import parse_command_list
 from practice.domain.errors import DomainError, InvalidValueError
 from practice.domain.exercise import GitScenarioSpec, editable_source
@@ -110,6 +110,7 @@ from practice.interface.web.security import NotLoopbackError, require_loopback
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+    from datetime import datetime
 
     from practice.application.dto import (
         Collection,
@@ -552,6 +553,13 @@ def start(
         bool,
         typer.Option("--prompt/--no-prompt", help="Print the exercise prompt."),
     ] = True,
+    interview: Annotated[
+        bool,
+        typer.Option(
+            "--interview",
+            help="Interview conditions: a clock, no hints, no workspace path.",
+        ),
+    ] = False,
     content: Annotated[
         Path | None,
         typer.Option(
@@ -597,6 +605,15 @@ def start(
     That sequence is four processes sharing one repository and one event log,
     which is the thing the attempt table buys. `practice solve` remains the
     one-shot form for a whole answer at once.
+
+    **`--interview` is on this command and not on `solve`, and the asymmetry is
+    the point rather than an omission.** Interview mode is about what happens
+    *during* an attempt -- a clock running, a hint refused, a path withheld --
+    and `solve` has no during: it opens an attempt, grades the answer you had
+    already written, and exits. A mode flag there would record a set of rules
+    that nothing could have applied (PLAN.md §16).
+
+        practice start katas/two-sum --interview
     """
     library = content.resolve() if content is not None else content_root()
     services = build_services(
@@ -605,8 +622,9 @@ def start(
         database=db.resolve() if db is not None else None,
     )
 
+    mode = AttemptMode.INTERVIEW if interview else AttemptMode.PRACTICE
     try:
-        started = services.start_attempt(_exercise_id(exercise))
+        started = services.start_attempt(_exercise_id(exercise), mode=mode)
     except ApplicationError as exc:
         typer.secho(str(exc), fg=typer.colors.RED)
         raise typer.Exit(code=2) from exc
@@ -617,6 +635,11 @@ def start(
         typer.echo(started.exercise.prompt.strip())
     typer.echo("")
     typer.secho(f"{_OK}attempt {started.attempt.id}", fg=typer.colors.GREEN)
+    # **No `now` here, deliberately.** The attempt was created a moment ago, so
+    # its remaining time is its limit by definition -- and a countdown computed
+    # from a clock read microseconds later announces "14 minutes left" of a
+    # fifteen minute exercise, which reads as a bug. `resume` passes one,
+    # because there the countdown is the whole point.
     typer.echo(_describe_attempt(started.attempt))
     typer.echo("")
     typer.echo(_next_step(started))
@@ -764,7 +787,7 @@ def resume(
     resumed = _load(services.resume_attempt, attempt)
 
     typer.secho(f"{resumed.exercise.id}  {resumed.exercise.title}", bold=True)
-    typer.echo(_describe_attempt(resumed.attempt))
+    typer.echo(_describe_attempt(resumed.attempt, now=services.clock.now()))
 
     if commands is None:
         typer.echo("")
@@ -1405,18 +1428,69 @@ def _load(resume_attempt: ResumeAttempt, value: str) -> StartedAttempt:
         raise typer.Exit(code=2) from exc
 
 
-def _describe_attempt(attempt: Attempt) -> str:
-    """One line of state: when it started, what it has used, what is left."""
+def _describe_attempt(attempt: Attempt, *, now: datetime | None = None) -> str:
+    """One line of state: when it started, what it has used, what is left.
+
+    **An interview reads differently in two places, and both are the same
+    decision: say what the rules are rather than printing a field that is
+    technically true.** "0 of 0 hints" is true of every interview attempt and
+    tells the solver nothing, so the clause becomes `no hints`; and the clock is
+    the fact that matters, so it replaces the count that is now constant.
+
+    `now` is optional because one caller has no clock to offer -- `practice
+    attempts` lists rows it has not provisioned services for -- and the honest
+    thing to print without one is the budget rather than a countdown computed
+    from a time this function invented.
+    """
     used = (
         f"{attempt.command_count}/{attempt.policy.max_commands} commands"
         if attempt.policy.max_commands
         else f"{len(attempt.events)} {_plural('event', len(attempt.events))}"
     )
-    hints = f", {attempt.hints_revealed} of {attempt.policy.hint_count} hints"
+    hints = (
+        ", no hints"
+        if attempt.policy.is_interview
+        else f", {attempt.hints_revealed} of {attempt.policy.hint_count} hints"
+    )
     return (
         f"{_INDENT}started {attempt.started_at.isoformat(timespec='seconds')}, "
-        f"{used}{hints}"
+        f"{used}{hints}{_clock(attempt, now)}"
     )
+
+
+def _clock(attempt: Attempt, now: datetime | None) -> str:
+    """The interview clock, as a clause to append. Empty for a practice run.
+
+    Whole minutes, which is the unit the deadline is authored in. Seconds would
+    be a precision the estimate does not have and a figure that is wrong by the
+    time it is read.
+
+    **The two directions round opposite ways, and each lean is the safe one.**
+    Time left rounds *up*, because a clock face does: fourteen minutes and
+    fifty-nine seconds reads as fifteen, and flooring it would announce "0
+    minutes left" to somebody with the better part of a minute in hand — which
+    is the one reading that would make the solver stop early for no reason.
+    Overrun rounds *down*, so being two and a half minutes late is never
+    reported as three.
+
+    `now` is optional because `practice attempts` has no clock to offer, and the
+    honest thing to print without one is the limit rather than a countdown from
+    a time this function invented.
+    """
+    seconds = attempt.policy.deadline_seconds
+    if seconds is None:
+        return ""
+    if now is None:
+        return f", {seconds // 60} minute limit"
+    left = attempt.remaining(now)
+    assert left is not None  # noqa: S101  (a deadline implies a remainder)
+    if left.total_seconds() < 0:
+        return f", {_minutes(-left.total_seconds() // 60)} over"
+    return f", {_minutes(-(-left.total_seconds() // 60))} left"
+
+
+def _minutes(whole: float) -> str:
+    return f"{int(whole)} {_plural('minute', int(whole))}"
 
 
 def _report_open_attempt(found: OpenAttempt) -> None:
@@ -1486,11 +1560,25 @@ def _next_step(resumed: StartedAttempt) -> str:
     Printed on two lines because a Windows workspace path plus a uuid plus
     `--source` is well past 80 characters, and a wrapped instruction is an
     instruction somebody mistypes.
+
+    **Under interview mode the path is not printed**, which is the CLI half of
+    Phase 15's third clause and the reason it is a sentence here rather than a
+    deletion. The workspace holds a kata's `tests.py`, and naming the directory
+    is the tool offering to show it. Withdrawing the offer leaves `--source`
+    still working on a file the solver wrote themselves, which is what an
+    interview actually looks like -- so the instruction changes rather than
+    disappearing. It is not containment, and
+    `AttemptPolicy.reveals_workspace` says why at length.
     """
     if isinstance(resumed.exercise.spec, GitScenarioSpec):
         return (
             f"Run more commands with `practice resume {resumed.attempt.id} "
             f"-c FILE`, or grade it with `practice submit {resumed.attempt.id}`."
+        )
+    if not resumed.attempt.policy.reveals_workspace:
+        return (
+            f"Write your answer in a file of your own, then grade it with\n"
+            f"`practice submit {resumed.attempt.id} --source FILE`."
         )
     solution = _solution_path(resumed)
     return (

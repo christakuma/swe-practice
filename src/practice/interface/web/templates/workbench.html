@@ -10,6 +10,12 @@
   {{ exercise.id }} · {{ exercise.difficulty.value }} ·
   ~{{ exercise.estimated_minutes }} min ·
   attempt {{ attempt.id.short }}
+  {#
+    The badge is on the attempt's policy rather than on anything this request
+    chose, so a tab left open across a restart still says what rules the
+    attempt is being graded under.
+  #}
+  {% if attempt.policy.is_interview %} · <span class="chip interview">interview</span>{% endif %}
 </p>
 
 <div class="workbench{{ ' scenario' if not is_kata }}">
@@ -23,8 +29,20 @@
     #}
     <pre>{{ exercise.prompt }}</pre>
 
+    {#
+      **Nothing here had to learn about interview mode**, which is the clearest
+      thing Phase 15 can point at: `hint_count` is 0 because the policy was
+      built with no hints, so this condition already hides the panel and the
+      aggregate already refuses the endpoint. The banner below is what replaces
+      it, because a panel that is simply absent is indistinguishable from an
+      exercise nobody wrote hints for.
+    #}
     {% if attempt.policy.hint_count %}
       {% include "partials/hints.html" %}
+    {% endif %}
+
+    {% if attempt.policy.is_interview %}
+      {% include "partials/interview.html" %}
     {% endif %}
   </section>
 
@@ -68,12 +86,20 @@
         the editor from the file, so a second reveal writes back what is already
         there.
       #}
-      <div id="file-mode">
-        <button type="button" id="open-editor" class="quiet">
-          Open in my editor
-        </button>
-        <span class="meta">re-grades every time you save, without submitting</span>
-      </div>
+      {#
+        Withdrawn under interview mode, and withdrawn here rather than left to
+        fail: `load_solution_file` refuses the attempt, so the button would
+        post and come back with a refusal. A control that exists only to
+        explain that it does not work is worse than no control (ADR 0020).
+      #}
+      {% if attempt.policy.reveals_workspace %}
+        <div id="file-mode">
+          <button type="button" id="open-editor" class="quiet">
+            Open in my editor
+          </button>
+          <span class="meta">re-grades every time you save, without submitting</span>
+        </div>
+      {% endif %}
 
       {# Where the verdict fragment lands. Empty until something is submitted. #}
       <div id="verdict"></div>

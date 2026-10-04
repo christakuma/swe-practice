@@ -90,7 +90,19 @@
       #}
       {%- set s = review.suggestion -%}
       {%- if not s.passed %} — the attempt did not pass
-      {%- elif s.is_clean %} — passed clean, inside the estimate, no hints
+      {%- elif s.is_clean and s.declined_a_hint %} — passed clean, inside the estimate, no hints
+      {#
+        **The same sentence without the hint clause, and the reason is the FSRS
+        ease factor repeating.** `hints_used` is 0 for every interview attempt
+        because none was ever offered, so "no hints" credited the solver for
+        restraint they had no opportunity to show — present, correctly
+        formatted and meaningless. `declined_a_hint` is the question this
+        sentence was always asking. It also covers an exercise authored with no
+        hints at all, which was wrong the same way and invisible because the
+        content suite requires every shipped exercise to have some (PLAN.md
+        §16).
+      #}
+      {%- elif s.is_clean %} — passed clean, inside the estimate
       {%- else %} — passed, but
         {%- set reasons = [] -%}
         {%- if s.advisories %}{% set _ = reasons.append('%d advisory on how you got there' % s.advisories) %}{% endif -%}

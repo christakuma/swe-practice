@@ -40,6 +40,7 @@ from starlette.requests import Request  # noqa: TC002  (FastAPI reads this at ru
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from practice.application.errors import ApplicationError
+from practice.domain.attempt import AttemptMode
 from practice.domain.exercise import Difficulty, ExerciseFilter, ExerciseKind
 from practice.domain.ids import ExerciseId, tag
 from practice.interface.web.errors import render_problem
@@ -105,16 +106,27 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         )
 
     @router.post("/attempt")
-    def start(request: Request, exercise_id: Annotated[str, Form()]) -> Response:
+    def start(
+        request: Request,
+        exercise_id: Annotated[str, Form()],
+        interview: Annotated[bool, Form()] = False,
+    ) -> Response:
         """Provision a workspace and send the browser to the workbench.
 
         `303`, not `302`: the browser must follow it with a `GET` whatever it
         posted, and that is the whole point of the redirect — a workbench that
         rendered itself from the POST would provision a second workspace on every
         reload.
+
+        **`interview` defaults to `False` because an unchecked box sends
+        nothing**, which is what makes the practice mode the answer to a form
+        that has never heard of the field — including the two forms this route
+        served before Phase 15, and any bookmarked POST. A required field would
+        have turned the addition into a breaking change.
         """
+        mode = AttemptMode.INTERVIEW if interview else AttemptMode.PRACTICE
         try:
-            started = services.start_attempt(ExerciseId(exercise_id))
+            started = services.start_attempt(ExerciseId(exercise_id), mode=mode)
         except (ApplicationError, ValueError) as exc:
             return render_problem(
                 templates, request, title="Cannot start", detail=str(exc), status=404

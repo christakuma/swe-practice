@@ -76,6 +76,8 @@ from practice.interface.web.routes.review import REVIEW_URL
 from practice.interface.web.vendor import mode_file
 
 if TYPE_CHECKING:
+    from datetime import timedelta
+
     from fastapi.templating import Jinja2Templates
 
     from practice.composition import Services
@@ -118,6 +120,15 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         # for exactly as long as there were two kinds.
         editable = editable_source(spec)
         is_scenario = isinstance(spec, GitScenarioSpec)
+
+        # **The clock is read here and not in `OpenWorkbench`**, which keeps
+        # that use case's "no clock, this only reads" promise intact. How much
+        # time is left is a reading of the attempt rather than part of it, the
+        # attempt answers it given a `now`, and the surface drawing the page is
+        # the thing that has one. A clock injected into the use case for a
+        # display value would make every caller that does not want it pass one.
+        now = services.clock.now()
+        left = opened.attempt.remaining(now)
         return templates.TemplateResponse(
             request=request,
             name="workbench.html",
@@ -160,6 +171,14 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # template asks the same question to decide which half of the
                 # page to draw, so the two cannot disagree.
                 "review": (None if opened.is_active else services.offer_review(parsed)),
+                # Whole minutes, because the deadline is authored in minutes and
+                # a seconds figure on a page that does not tick is a precision
+                # the number does not have. Both directions are formatted so the
+                # template never negates a timedelta.
+                "now": now,
+                "limit_minutes": _whole_minutes(opened.attempt.policy.deadline_seconds),
+                "minutes_left": _minutes_left(left),
+                "minutes_over": _minutes_over(-left if left is not None else None),
             },
         )
 
@@ -261,3 +280,33 @@ def _claim(time: str | None, space: str | None) -> ComplexityClaim | None:
     if not time or not space:
         return None
     return ComplexityClaim(time=time, space=space)
+
+
+def _whole_minutes(seconds: int | None) -> int | None:
+    """A deadline in whole minutes, for the sentence that states the limit."""
+    return None if seconds is None else seconds // 60
+
+
+def _minutes_left(span: timedelta | None) -> int | None:
+    """Time remaining in whole minutes, rounded *up*. `None` when untimed.
+
+    Up, because a clock face rounds up: fourteen minutes and fifty-nine seconds
+    reads as fifteen, and the page is drawn a second or two after the attempt
+    was opened. Flooring would greet a fresh fifteen-minute interview with "14
+    minutes left of 15" and, worse, would announce "0 minutes left" to somebody
+    with fifty seconds in hand.
+    """
+    if span is None:
+        return None
+    return -(-int(span.total_seconds()) // 60)
+
+
+def _minutes_over(span: timedelta | None) -> int | None:
+    """Time past the deadline in whole minutes, rounded *down*.
+
+    The opposite lean to `_minutes_left`, and for the same reason it is the safe
+    one: two and a half minutes late should not be reported as three.
+    """
+    if span is None:
+        return None
+    return int(span.total_seconds()) // 60

@@ -107,6 +107,138 @@ def test_start_provisions_the_repository_before_it_returns(
     assert "1 in use, 0 orphans" in output
 
 
+def test_start_opens_a_practice_run_by_default(storage: tuple[Path, Path]) -> None:
+    """No flag, no change: the hints are counted as they always were and no clock
+    is mentioned at all.
+    """
+    code, output = run(storage, "start", TWO_SUM, "--no-prompt")
+
+    assert code == 0, output
+    assert "hints" in output
+    assert "limit" not in output
+    assert "left" not in output
+
+
+def test_start_interview_withholds_the_hints_and_states_the_limit(
+    storage: tuple[Path, Path],
+) -> None:
+    """Both clauses on one line. "0 of 0 hints" is true of every interview attempt
+    and tells the solver nothing, so it becomes `no hints`.
+    """
+    code, output = run(storage, "start", TWO_SUM, "--no-prompt", "--interview")
+
+    assert code == 0, output
+    assert "no hints" in output
+    assert "15 minute limit" in output
+
+
+def test_start_interview_does_not_print_the_workspace_path(
+    storage: tuple[Path, Path],
+) -> None:
+    """Phase 15's third clause in the CLI. The workspace holds a kata's
+    `tests.py`, and naming the directory is the tool offering to show it.
+    """
+    workspaces, _ = storage
+
+    code, output = run(storage, "start", TWO_SUM, "--no-prompt", "--interview")
+
+    assert code == 0, output
+    assert str(workspaces) not in output
+    assert "stub.py" not in output
+
+
+def test_start_interview_still_says_how_to_submit(
+    storage: tuple[Path, Path],
+) -> None:
+    """A withdrawn affordance with no alternative named is a dead end. `--source`
+    still works on a file the solver wrote themselves, which is what an interview
+    looks like.
+    """
+    code, output = run(storage, "start", TWO_SUM, "--no-prompt", "--interview")
+
+    assert code == 0, output
+    assert "--source FILE" in output
+    assert "a file of your own" in output
+
+
+def test_a_practice_start_still_hands_over_the_path(
+    storage: tuple[Path, Path],
+) -> None:
+    """The regression that keeps own-editor mode working for everybody else."""
+    code, output = run(storage, "start", TWO_SUM, "--no-prompt")
+
+    assert code == 0, output
+    assert "stub.py" in output
+
+
+def test_resume_counts_the_interview_clock_down(storage: tuple[Path, Path]) -> None:
+    """`start` prints the limit because the attempt has just begun; `resume` is
+    where a countdown is the point, and the two read differently on purpose.
+    """
+    code, output = run(storage, "start", TWO_SUM, "--no-prompt", "--interview")
+    assert code == 0, output
+    attempt_id = next(
+        line.split("attempt ", 1)[1].strip()
+        for line in output.splitlines()
+        if "attempt " in line
+    )
+
+    code, output = run(storage, "resume", attempt_id)
+
+    assert code == 0, output
+    assert "15 minutes left" in output
+
+
+def test_the_mode_belongs_to_the_attempt_not_the_invocation(
+    storage: tuple[Path, Path],
+) -> None:
+    """The reason the mode is stored rather than read from a flag each time: a
+    `resume` that passed no `--interview` must not quietly offer the hints back.
+
+    The same claim `test_the_budget_belongs_to_the_attempt_not_the_invocation`
+    makes about the command budget, which is where the pattern came from.
+    """
+    code, output = run(storage, "start", REVERT, "--no-prompt", "--interview")
+    assert code == 0, output
+    attempt_id = next(
+        line.split("attempt ", 1)[1].strip()
+        for line in output.splitlines()
+        if "attempt " in line
+    )
+
+    code, output = run(storage, "resume", attempt_id)
+
+    assert code == 0, output
+    assert "no hints" in output
+
+
+def test_attempts_states_the_limit_when_it_has_no_clock(
+    storage: tuple[Path, Path],
+) -> None:
+    """`practice attempts` lists rows without provisioning a clock, and the honest
+    thing to print without one is the limit rather than a countdown from a time
+    the listing invented.
+    """
+    start_code, _ = run(storage, "start", TWO_SUM, "--no-prompt", "--interview")
+    assert start_code == 0
+
+    code, output = run(storage, "attempts")
+
+    assert code == 0, output
+    assert "15 minute limit" in output
+
+
+def test_solve_has_no_interview_flag(storage: tuple[Path, Path]) -> None:
+    """Deliberate, and the asymmetry is the point rather than an omission.
+    Interview mode is about what happens *during* an attempt, and `solve` has no
+    during: it opens an attempt, grades the answer already written, and exits.
+    """
+    code, output = run(storage, "solve", TWO_SUM, "--interview")
+
+    assert code != 0
+    assert "--interview" in output
+
+
 def test_start_names_an_exercise_that_does_not_exist(
     storage: tuple[Path, Path],
 ) -> None:

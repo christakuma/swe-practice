@@ -62,10 +62,9 @@
         {% if open %}
           <a href="/attempt/{{ open.attempt.id }}">Resume</a>
         {% else %}
-          <form method="post" action="/attempt">
-            <input type="hidden" name="exercise_id" value="{{ exercise.id }}">
-            <button type="submit">Start</button>
-          </form>
+          {% with exercise_id = exercise.id %}
+            {% include "partials/start-attempt.html" %}
+          {% endwith %}
         {% endif %}
         <span class="tags">
           <span class="chip">{{ exercise.kind.value.replace('_', ' ') }}</span>
