@@ -373,7 +373,7 @@ class GitScenarioSpec:
 class SqlDrillSpec:
     """Everything needed to seed a database, run one answer, and grade the result.
 
-    The third kind (PLAN.md §5.3, Phase 14), and the one that applies the core
+    The third kind (PLAN.md §5.5, Phase 14), and the one that applies the core
     bet to a second domain: **a drill is graded on the state the database is
     left in and the rows the answer returns, never on the text of the SQL.** Two
     answers that spell the same join differently are the same answer, and the

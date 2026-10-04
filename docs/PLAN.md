@@ -4,7 +4,7 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** **v1.0.0, and Phase 13 has begun — one stretch item taken.**
+> **Status:** **v1.0.0, and two stretch items taken — Phases 13 and 14.**
 > Phases 0–10 built the engine, Phase 11 filled it with 54 exercises, and Phase
 > 12 is the front door and the portfolio artifacts: `uv sync && uv run practice
 > up` is the whole of getting started, and it refuses with an instruction rather
@@ -43,15 +43,50 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > reason ADR 0008 already gave: FSRS without fitted parameters is FSRS without the
 > thing that makes it better, and this tool still keeps no review log.
 >
-> **The library is the product: 54 exercises, 24 git scenarios and 30 katas,
-> every one of them graded.** Phase 11 is the content that makes the engine
-> worth opening, and its exit bar was never "they load" — `uv run pytest -m
-> content` replays every reference solution through the real use cases, holds 52
-> counter-examples to failing **exactly** the checks they declare, grades every
-> kata's stub to prove the suite rejects it, and pins all 24 fixtures to
+> **Phase 14 took the second item with a prediction attached: a third exercise
+> kind.** `domain/exercise.py` had claimed since Phase 1 that adding one means
+> "adding a spec and a registry entry instead of re-cutting a class hierarchy",
+> and SQL drills are what graded it
+> ([ADR 0019](adr/0019-sql-drills-as-a-third-exercise-kind.md)). A drill seeds a
+> SQLite database from a `seed.sql` the solver is *meant* to read, runs their
+> answer in memory, and grades the rows it returned **and the state it left the
+> database in** — which is the core bet applied to a second domain, and only a
+> real claim for the statements that return nothing at all. Ten pure assertions
+> over a `DrillQuery` port, in three families: what came back, what the database
+> holds, and — the one this kind is worth having for — what SQLite's own query
+> plan says about how hard it worked.
+>
+> **The inheritance half of the prediction held exactly and the other half did
+> not, which was the more useful outcome.** No port widened, no use case
+> rewired, `build_services` unchanged, `build_graders` three lines longer. What
+> changed is five call sites that had learnt to read `isinstance(spec,
+> KataSpec)` as *has a file to edit* — true for exactly as long as there were
+> two kinds. **A prediction about the cost of a third case cannot be made from
+> two cases**, because the thing that costs is the conflation you cannot see
+> yet. `editable_source` names the question once, so a fourth kind pays none of
+> it again.
+>
+> **Five more findings, and the two worth the banner.** `_PENDING` — the mapping
+> kept empty since Phase 5 for a kind that exists before its grader — turned out
+> to be *unreachable by construction*, because `test_every_exercise_kind_has_a
+> _grader` forbids that state; it is deleted under §13's rule, and the commit
+> list is five rather than seven because the kind had to land with its engine.
+> And §15 Q3's claim that a second language costs "one line in `vendor.py` and
+> nothing else" was **nearly** right: the line was, but `workbench.html` had the
+> Python mode file hardcoded, so a drill would have degraded to a plain textarea
+> with no error anywhere. Nothing could have caught it, because the mode *name*
+> was already coming from the spec and already tested.
+>
+> **The library is the product: 62 exercises — 24 git scenarios, 30 katas and 8
+> SQL drills, every one of them graded.** Phase 11 is the content that makes the
+> engine worth opening, and its exit bar was never "they load" — `uv run pytest
+> -m content` replays every reference solution through the real use cases, holds
+> 52 scenario counter-examples and 16 drill counter-examples to failing
+> **exactly** the checks they declare, grades every kata's and every drill's stub
+> to prove the suite rejects it, and pins all 24 fixtures to
 > `content/fixtures.lock` on both platforms. Phases 0–9 are a complete product:
-> the core bet works, an attempt survives the process that
-> started it, both exercise kinds are solved in a browser, and the tool now
+> the core bet works, an attempt survives the process that started it, the two
+> exercise kinds that existed then are solved in a browser, and the tool now
 > answers *what should I practise today?* instead of leaving it to you. A git
 > scenario is graded end to end — `practice solve git/revert-a-pushed-commit
 > --reference` passes, and the same exercise replayed with `reset --hard` fails
@@ -628,6 +663,96 @@ Pydantic v2 models in `adapters/content/schema.py`, exercised by:
 
 ---
 
+### 5.5 SQL drill file
+
+Phase 14's addition, and the third `kind:`. Numbered 5.5 rather than slotted in
+after 5.2 because §5.3 and §5.4 have been cited by name since Phase 2 and
+numbers here are never reused — the same rule the ADRs follow.
+
+```yaml
+schema_version: 1
+id: sql/one-row-per-customer
+kind: sql_drill
+title: One row per customer, including the quiet one
+difficulty: easy
+tags: [joins, aggregation, nulls]
+estimated_minutes: 12
+
+prompt: |
+  Read `seed.sql` first — it is in your workspace and the schema is part of
+  the question.
+
+  Return **every** customer with the number of orders they have placed, as two
+  columns named `name` and `orders`, sorted by name.
+
+hints:
+  - "..."
+
+drill:
+  seed: seed.sql          # builds the starting database. Trusted code.
+  stub: stub.sql          # what the solver edits. Copied into the workspace.
+  reference: solution.sql # the author's answer. Never copied in.
+
+  counter_examples:
+    - file: inner-join.sql
+      expect_failures: [rows-match, one-row-each, kept-the-quiet-customer]
+
+  checks:
+    - id: rows-match
+      label: Every customer appears once, with the number of orders they placed
+      severity: required
+      assert: result_matches
+      with:
+        rows: [[alice, 3], [bob, 2], [carol, 1], [dana, 0]]
+        ordered: true
+      explanation: |
+        The row that separates a right answer from a plausible one is `dana, 0`.
+```
+
+**Four things make this different from §5.2's scenario, and each is a decision.**
+
+**`seed` is a sibling of `fixture`, not of `stub`.** It builds the starting
+database the way a git fixture builds the starting repository, and like a fixture
+it is trusted code. Unlike a fixture, **the solver is meant to read it** — the
+schema is the question rather than the answer, and a drill with a hidden schema
+is a riddle — so the provisioner copies it in. `reference` and the
+counter-examples stay in the content directory: that is the answer key staying
+outside the exam.
+
+**No `allowed_commands` and no `max_commands`.** A drill has no command console,
+so there is nothing to police. `AttemptPolicy.for_exercise` already encoded that
+honestly for a kata — a zero budget and an empty allowlist — and a drill falls
+into the same branch unchanged. §5.3's command-list guarantee therefore does not
+apply here, and neither does the `|<>&;` rejection: a `.sql` file is not a
+command list, and needs semicolons.
+
+**The `assert:` vocabulary is a different one.** Ten names over `DrillQuery`
+rather than twenty over `RepoQuery`, and the two sets are *deliberately
+disjoint*: a drill naming `tree_equals` is rejected by the schema with the family
+named, rather than reaching a dispatcher holding the wrong port. The mechanisms
+§5.4 describes — negation as a uniform modifier, `severity`, the author's own
+`label` and `explanation`, counter-examples naming their expected failures —
+are shared unchanged, which is the evidence that those were the right shape.
+
+**Expected rows are compared as text, and the rule is a grading policy rather
+than a driver detail.** `NULL` is written as the word. A float is formatted with
+`%g`, so `10.0` reads as `10` — and a drill whose answer is an average should ask
+for `ROUND(AVG(x), 2)` in SQL, because controlling the precision of what you
+return *is* the lesson. Row order is ignored unless the check says
+`ordered: true`; column order is graded unless it says otherwise, because a
+`SELECT` list is written by hand and always reproducible while row order without
+an `ORDER BY` is neither.
+
+**The craft family is advisory by convention.** `sql_matches` and
+`query_plan_matches` read the solver's text and SQLite's query plan, which is the
+only way to grade *how* an answer got there — the counterpart to `command_used`
+on the git side, and subject to the same rule. Nothing in the domain enforces the
+convention; `tests/content/test_drills.py` holds the library to it, and
+`practice validate` refuses an exercise whose only *required* check reads the
+text ([ADR 0019](adr/0019-sql-drills-as-a-third-exercise-kind.md)).
+
+---
+
 ## 6. The git scenario engine
 
 The most interesting subsystem, and the one most worth being able to talk
@@ -1192,10 +1317,13 @@ swe-practice/
 │   ├── domain/
 │   │   ├── ids.py  exercise.py  attempt.py  verdict.py  review.py
 │   │   ├── ports.py  errors.py  commands.py
-│   │   ├── checks/          # registry + 22 PURE assert functions (§6.2)
+│   │   ├── checks/          # registry + 20 PURE assert functions (§6.2)
 │   │   │   ├── registry.py  refs.py  trees.py  worktree.py
 │   │   │   └── recovery.py  process.py
-│   │   └── scheduling/sm2.py
+│   │   ├── drills/          # registry + 10 PURE assert functions; phase 14
+│   │   │   ├── registry.py  evaluation.py
+│   │   │   └── rows.py  tables.py  craft.py
+│   │   └── scheduling/{sm2,fsrs,suggestion}.py
 │   ├── application/
 │   │   ├── dto.py  registry.py  errors.py
 │   │   └── use_cases/*.py
@@ -1208,6 +1336,7 @@ swe-practice/
 │   │   │            {editor,watcher}.py   # the solver's own editor; phase 10
 │   │   ├── git/{repo_query,graph}.py   # reads repos; phase 5
 │   │   ├── kata/{pytest_runner,report_plugin,grader}.py
+│   │   ├── sql/{engine,drill_query,grader}.py   # the drill engine; phase 14
 │   │   └── clock.py  ids.py
 │   ├── interface/
 │   │   ├── web/{app,security,errors,vendor}.py  # vendor.py: the asset manifest
@@ -1220,7 +1349,7 @@ swe-practice/
 ├── content/
 │   ├── _lib/fixture_lib.sh          # commit_as, mkremote, publish, write_file
 │   ├── fixtures.lock                # cross-platform SHA verification (phase 3)
-│   └── {katas,git}/…
+│   └── {katas,git,sql}/…
 ├── tests/{unit,integration,content,web,e2e,fakes}/
 └── tools/vendor_assets.py
 ```
@@ -1933,6 +2062,86 @@ could have caught.
 
 ---
 
+### Phase 14 — SQL drills: the third exercise kind · **2 sessions**
+
+Taken from Phase 13's menu, and taken second for the same reason FSRS was taken
+first: **it was the item with a prediction attached.** `domain/exercise.py` has
+claimed since Phase 1 that "adding a third kind means adding a spec and a
+registry entry instead of re-cutting a class hierarchy", and
+`application/registry.py` kept `_PENDING` deliberately empty against the day one
+arrived. Two kinds is the number at which a discriminated union and an
+inheritance hierarchy are indistinguishable, so the claim had no evidence behind
+it.
+
+It is also the row on the menu that applies the **core bet to a second domain**.
+*Grade the end state, not the answer text* is nearly free for a `SELECT` — the
+rows are the end state — and only becomes a claim worth testing for an `UPDATE`
+or a `DELETE`, which return nothing at all.
+
+| Idea | Touches | Status |
+|---|---|---|
+| FSRS scheduler | a new `Scheduler` implementation only | **done** ([ADR 0018](adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)) |
+| SQL drills against seeded SQLite | new exercise kind | **done** ([ADR 0019](adr/0019-sql-drills-as-a-third-exercise-kind.md)) |
+| Docker sandbox adapter | a new `SandboxProvisioner` implementation only | open |
+| Shell/CLI drills (grep, awk, jq, logs) | new exercise kind + content | open |
+| Concept recall with rubric self-grading | new exercise kind + content | open |
+| Embedded terminal (xterm.js + pty) | a new interaction adapter | open |
+| Exportable content packs | a content repository adapter | open |
+| Interview mode (timed, no hints, no test peeking) | application-layer policy | open |
+
+**Commits** — five, in dependency order
+1. `feat(domain): a read-only port over a drill result, and ten assertions`
+2. `feat(adapters): run a drill answer in memory, under SQLite's own policy`
+3. `feat: the SQL drill kind, from spec to registered grader`
+4. `content(sql): eight drills, graded end to end`
+5. `docs: close phase 14 with ADR 0019`
+
+The list is five rather than the seven the phase was sketched with, and **the
+merge is the first finding**: the kind, its schema, its grader and its interface
+had to land in one commit, because `test_every_exercise_kind_has_a_grader`
+forbids a kind existing in the enum without a grader. The incremental path
+`_PENDING` was built for is one the suite rules out. §16 has the rest.
+
+**Exit:** a third exercise kind is solvable in the shipped product, and it
+arrives as an addition rather than as a change to anything that was already
+working. **Met on the first clause, and the second needs an asterisk** — which
+is the phase's value. Each clause has a named owner:
+
+- *a third kind, graded* — `tests/content/test_drills.py` (113 tests) replays
+  every reference through the real grader, requires each to pass with no
+  advisories, requires each stub to fail, and holds every counter-example to
+  failing **exactly** the checks it declares. That is the git scenarios'
+  standard (§5.4), which katas still do not meet.
+- *solvable in the shipped product* —
+  `tests/e2e/test_solve_a_sql_drill.py::test_a_drill_goes_from_failing_to_passing`
+  drives `practice solve` from a FAIL on the stub to a PASS, and
+  `tests/web/test_workbench.py` renders the drill workbench with the right
+  CodeMirror mode. ADR 0018's lesson applied to a kind: one nobody can open is
+  written, not shipped.
+- *the port is proved rather than claimed* —
+  `tests/integration/sql/test_conformance.py` holds `SqliteDrillQuery` and
+  `FakeDrillQuery` to the same answers on every state a real database can
+  reach, which is what makes the 86 unit tests under `tests/unit/domain/drills/`
+  evidence about the engine rather than about the fake.
+- *an addition rather than a change* — **the asterisk.**
+  `git diff --stat v1.0.0..HEAD` is the evidence, and it says the prediction was
+  half right. Nothing under `domain/checks/`, `adapters/git/`, `adapters/kata/`
+  or `application/use_cases/` changed in substance; no port was widened; no
+  grader but the new one was touched. What *did* change is five call sites that
+  had learnt to read `isinstance(spec, KataSpec)` as *has a file to edit*, one
+  architecture rule, and one template. `editable_source` is where that cost was
+  concentrated, deliberately, so a fourth kind pays none of it again.
+
+**Six findings, all in §16.** The enum-to-grader invariant makes `_PENDING`
+unreachable, so it is deleted; the old `if scenario ... else kata` was asserting
+that not-a-scenario means a kata; the first-run library line counted by
+subtraction; §15 Q3's vendored-asset prediction was *nearly* right and the gap
+fails silently; `ParamValue` had no `float`; and three content bugs that only
+running the content could find, including a `LIMIT` that was vacuous on the data
+it was written against.
+
+---
+
 ## 12. Architecture decision records
 
 Written as they are decided, not retrofitted. These are the artifacts to bring
@@ -1960,6 +2169,7 @@ changed"* is worth more than any code sample.
 | [0016](adr/0016-a-generated-demo-not-a-recorded-one.md) | The demo is generated from captured output, not recorded | accepted |
 | [0017](adr/0017-a-front-door-separate-from-the-server.md) | A front door (`practice up`) separate from the server | accepted |
 | [0018](adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md) | FSRS as a second scheduler, not a replacement | accepted |
+| [0019](adr/0019-sql-drills-as-a-third-exercise-kind.md) | SQL drills as a third exercise kind | accepted |
 
 ---
 
@@ -1972,7 +2182,7 @@ changed"* is worth more than any code sample.
 | Assertions too loose to tell right from wrong | **High** | Mandatory `naive.cmds` counter-examples that CI requires to fail, replayed through the real policy |
 | Reference solutions validated through a path users cannot use | Medium | §5.3 — solutions are command lists replayed through `RunScenarioCommand`, never shell scripts |
 | Content authoring stalls | **High — retired in Phase 11** | This was the real failure mode and it did not happen: 51 exercises authored, 54 in the library. Content-as-data plus Phase 2 proving the loop with three exercises before any UI existed. What it cost was a fortnight, and what made it survivable was the content suite catching five wrong counter-example declarations and three wrong expected values before any of them shipped |
-| Scope creep into SQL/k8s/system design | High | Phase 13 exists precisely to park these |
+| Scope creep into SQL/k8s/system design | High | Phase 13 parked these. SQL was unparked in Phase 14 on one condition: it had to be an *exercise kind*, not a second product. It is — `sqlite3` from the standard library, no service, no network, and `adapters/sql/` never touches the application's own database (ADR 0019). k8s and system design stay parked, and the test to apply is the same one: can it be graded offline, on both platforms, from declarative assertions? |
 | Over-abstracting for the interview story | Medium — **exercised in Phase 11** | Every port must have ≥ 2 real or test implementations, or it gets deleted. The rule was applied to two *assertions* rather than a port: `reflog_contains` and `command_count` shipped flagged as unproven in Phase 5 and were deleted once 24 scenarios wanted neither, taking `RepoQuery.reflog` with them |
 | CodeMirror 5 being legacy | Low | Isolated to one template; CM6 + esbuild is a contained swap if needed |
 
@@ -2071,12 +2281,36 @@ Not blockers — decide when the phase arrives.
 3. **Kata languages beyond Python.** The runner is already behind a port, so
    adding TypeScript means a `vitest` adapter. Worth it only if you interview
    in TS.
+
+   **Phase 14 tested the front half of this question without meaning to.** A SQL
+   drill needs a second CodeMirror mode, which is the same vendored-asset work a
+   second kata language needs — and `vendor.py` had predicted it costs "a second
+   line here and nothing else". The line was right: `verify`, the offline grep,
+   the asset route and the hash test were all untouched, and
+   `tools/vendor_assets.py` behaved exactly as designed (fetch, refuse the
+   placeholder hash, print the line to paste). What the prediction missed is that
+   `workbench.html` had the Python mode *file* hardcoded in its script tag, so
+   the page would have served a Python tokenizer and then asked CodeMirror for a
+   mode it had not loaded — failing silently, by degrading to a plain textarea.
+   `vendor.mode_file` is the fix. **So a second kata language is now one line in
+   the manifest, one committed file, and a `language:` in the exercise** — and
+   the runner adapter is the only remaining cost, which is the half this question
+   was always about.
 4. **Curriculum sequencing — answered in Phase 11 at fifty-four exercises, and
    the revisit found that "hand-ordered" had never actually happened.** The
    library's order was `sorted(ExerciseId)`, so it was ordered by spelling:
    `edit-distance` fifth, before `climbing-stairs`. `content/curriculum.yaml`
-   now declares nine tracks in order and `validate_library` requires it to cover
-   the library exactly ([ADR 0014](adr/0014-a-hand-ordered-curriculum-manifest.md)).
+   now declares eleven tracks in order — nine, plus the two SQL runs Phase 14
+   interleaved between them — and `validate_library` requires it to cover the
+   library exactly ([ADR 0014](adr/0014-a-hand-ordered-curriculum-manifest.md)).
+
+   **Phase 14 found the one place the manifest is now tight.** `start-here` is
+   six exercises against a six-row dashboard queue, two of each kind, with no
+   slack: a fourth exercise kind cannot be put on the first screen without
+   taking something off it. That is a decision worth forcing rather than
+   discovering, and
+   `test_the_first_screen_of_the_curriculum_offers_every_kind` is what forces
+   it.
 
    **Prerequisite-graph unlocking stays parked, and now for a product reason
    rather than a sequencing one.** It needs the attempt history as an input to
@@ -3876,3 +4110,186 @@ user almost nothing. That is a fair trade for a stretch item and would not be on
 for a planned phase. The review log is the thing that would change it, and it is
 a phase rather than an afternoon: a schema change, a repository method, a backfill
 with nothing to backfill from, and a fitting procedure.
+
+
+**2026-10-04 — Phase 14: the third exercise kind, and a prediction half graded.**
+Five commits, two sessions. SQL drills, taken from Phase 13's menu for the same
+reason FSRS was taken first — it was the item with a *prediction* attached, and
+the only other place in the project carrying one. `domain/exercise.py` has
+claimed since Phase 1 that a third kind means "adding a spec and a registry
+entry instead of re-cutting a class hierarchy". [ADR 0019](adr/0019-sql-drills-as-a-third-exercise-kind.md)
+is the grade.
+
+**The inheritance half held exactly, and that is the less interesting half.**
+`SqlDrillSpec` is a dataclass beside the other two; nothing was subclassed, no
+class was re-cut, `build_services` did not change at all, and `build_graders`
+gained three lines of which two are a comment. No port was widened. Nothing
+under `domain/checks/`, `adapters/git/`, `adapters/kata/` or
+`application/use_cases/` changed in substance.
+
+**The "and a registry entry" half did not, and the reason generalises.** Two
+kinds is the number at which a discriminated union and an inheritance hierarchy
+are indistinguishable: every `isinstance` is a boolean and every `else` is the
+other case. Five call sites asked whether an exercise was a kata and *meant*
+whether it had a file to edit — the workbench editor seed, the solution-file
+handoff, `practice solve`'s next-step line, the fallback source it reads without
+`--source`, and the template branch choosing a console over a CodeMirror pane.
+None of them was wrong until a third file-based kind made the two questions
+different. **The lesson is not "the union was the wrong shape"** — it was the
+right shape, and the prediction was about the shape. It is that *a prediction
+about the cost of a third case cannot be made from two cases*, because the thing
+that costs is the conflation you cannot see yet. `editable_source` names the
+question once and is total over the union, so a fourth kind pays none of it
+again.
+
+**Six findings, in the order they turned up.**
+
+**`_PENDING` was unreachable by construction, so it is deleted.** The mapping
+was kept empty since Phase 5 for a kind that exists before its grader does, and
+`test_every_exercise_kind_has_a_grader` — added in that same phase — forbids
+exactly that state. Phase 14 is the first time anything tried to use the
+mechanism and found the suite already rules it out. §13's rule applied rather
+than quoted, the same way Phase 11 deleted `reflog_contains` and
+`command_count`. The consequence is structural: the commit list is five rather
+than the seven sketched, because the kind, its schema, its grader and its
+interface **had to land together**. Worth noting as a tension rather than a bug —
+two mechanisms disagreed about whether a kind may exist without a grader, and the
+stronger one was right.
+
+**The old `if scenario ... else kata` was asserting that not-a-scenario means a
+kata.** Widening the spec union turned `provisioner.provision` into the single
+`mypy` error this phase produced, and it is the architecture test working in the
+form that costs nothing to run: a two-branch dispatch over a two-member union is
+indistinguishable from an exhaustive one until the union grows.
+
+**The first-run library line counted by subtraction.** `scenarios =
+len(exercises) - katas` in `launcher.py` would have reported eight SQL drills as
+eight more git scenarios, in the first line a stranger reads. Same defect class
+as the five `isinstance` sites, in the one place a type checker cannot see it:
+the arithmetic stays valid, and only the *claim* stops being true. The general
+form is worth keeping — **a count derived by subtracting one category from the
+total is a count that silently absorbs a third category.**
+
+**§15 Q3's prediction was nearly right, and the gap fails silently.**
+`vendor.py` said a second language costs "a second line here and nothing else".
+The second line is right, and `verify`, the offline grep, the asset route and
+the hash test are all untouched. But `workbench.html` had
+`codemirror-python.min.js` written into its script tag, so a drill would have
+loaded a Python tokenizer and then asked CodeMirror for a `sql` mode it had not
+loaded — degrading to a plain textarea with no error anywhere. **No existing
+assertion could have caught it**, because the mode *name* was already coming from
+the spec and was already tested. `vendor.mode_file` makes the mode-to-file map a
+fact about the manifest rather than a path a template guesses at, and
+`test_a_drill_loads_the_sql_mode_and_not_the_python_one` is the claim.
+
+**`ParamValue` had no `float`.** Nothing in the git vocabulary has ever needed
+one — a commit count is an integer, a ref is a string, `include_untracked` is a
+flag. Four of the eight drills hold a money column, so `[[alice, 77.5]]` was
+rejected by the schema with roughly twenty lines of Pydantic union errors, not
+one of which said "no float here". Widening it loosens nothing, because
+narrowness was never enforced by the type: it is enforced by the accessors, and
+`Params.integer` still refuses a float. **The error message is the part worth
+recording as unfixed** — Pydantic renders a failed recursive union by listing
+every arm at every depth, and the project already accepts the same noise from
+the `kind` discriminator. A better message would mean hand-rolling the
+validator, which is a worse trade than a noisy one.
+
+**Three content bugs, every one found by running the content rather than reading
+it.** Which is the argument for `-m content` existing, restated:
+
+- **A `LIMIT` that was vacuous on its own data.** Only three of four customers
+  have non-cancelled orders, so `LIMIT 3` cut nothing: the counter-example
+  written to demonstrate a forgotten `LIMIT` returned the right rows in the
+  right order and failed nothing, and the `exactly-three` check could never have
+  failed either. §5.4's vacuous-check failure, in content rather than in a spec,
+  and caught by `test_a_counter_example_fails_the_check_it_declares` — which is
+  precisely the assertion §5.4 argues for over "fails at least one check".
+- **A counter-example that returned the reference's exact rows.** `GROUP BY city`
+  and `GROUP BY COALESCE(city, 'unknown')` partition this data identically,
+  because SQLite groups NULLs together; the mechanism the notes described was not
+  the mechanism at work. The honest behaviour is now a footnote and the
+  counter-example is `COUNT(city)`, which genuinely reports the unknown group as
+  zero.
+- **A query plan that scans the other table.** The exercise was right and the
+  notes explaining it were wrong: with no index on `customers.name`, SQLite walks
+  every *order* and looks each customer up by rowid, so the index on
+  `orders(customer_id)` is not used at all. Both plans are quoted in the notes
+  now, because which table gets scanned is the lesson and it is not the one most
+  people guess.
+
+**One architecture rule changed, and it is a clarification.**
+`test_only_the_persistence_adapter_speaks_sqlite` becomes
+`test_only_the_two_named_packages_speak_sqlite`. The original argument was about
+*storage* — one schema, one set of migrations, one transaction boundary, behind
+the repository ports — and with one database in the project, "storage" and
+"imports `sqlite3`" were the same string. `adapters/sql/` keeps no schema, no
+migrations and no file. The cost of admitting it is that the rule is a list with
+a reason per entry, so two tests exist to stop the list rotting: every named
+package must actually import `sqlite3`, and the drill engine must not reach the
+application's database.
+
+**One requirement the other two kinds got for free: idempotent re-grading.**
+ADR 0013 grades on every Ctrl+S, so an answer runs tens of times — and `INSERT
+INTO orders ...` against a persistent database gives a different verdict the
+second time, while `UPDATE totals SET total = total * 2` gives a different one
+every time. pytest against a file is naturally idempotent and a git fixture
+rebuilds its repository, so nothing in the project had had to think about it. An
+in-memory database seeded per pass is the fix, and it pays for itself three
+times: nothing to confine, nothing to clean up on Windows, and `seed.sql` stays
+readable on disk — which matters, because the solver is *meant* to read the
+schema.
+
+**The policy is SQLite's, not a regular expression.** The one thing worth
+stopping is `ATTACH DATABASE`, and the spellings that defeat a pattern were
+written out before choosing: `ATTACH/**/DATABASE`, `attach\n  database`, mixed
+case — and a pattern strict enough for those refuses `SELECT 'ATTACH DATABASE'
+AS note`, which is a correct answer. `set_authorizer` runs during statement
+preparation and cannot be spelled around. That is ADR 0003's argument about
+*grading* applied to *policy*, and it is the second time this project has
+reached for a mechanism instead of a pattern and been glad of it.
+
+**Final numbers.** **3,593 passing and one skipped, in 3m45s on four workers** — 374 more tests
+than Phase 13 left it. **100% statement and branch coverage** over `domain/` and
+`application/` against the 90% gate, and the covered surface grew again: 2,372
+statements and 480 branches, against Phase 13's 2,077 and 402. Nearly three
+hundred statements of new domain code, all of it inside the gate, because ten
+assertion functions and a comparison policy are exactly the kind of thing that
+can be quietly wrong.
+
+Four of those branches had to be chased deliberately.
+`domain/drills/evaluation.py` shipped at 91% on the first full run — a blob, a
+boolean, and two malformed-`rows:` shapes that none of the eight drills reaches.
+`tests/unit/domain/drills/test_evaluation.py` exists for them, and the gate
+naming them is the gate doing its job: *no current content reaches it* is not
+the same claim as *it is right*.
+
+**62 exercises** — 24 git scenarios, 30 katas, 8 SQL drills — with 52 scenario
+counter-examples and 16 drill counter-examples held to failing **exactly** the
+checks they declare. 24 fixtures pinned on both platforms, **19 ADRs**, 2 schema
+migrations. 17 use cases, **14 ports**, **30 assertions** across two disjoint
+vocabularies. `git diff --stat v1.0.0..HEAD -- src/` is 34 files.
+
+**One number I cannot account for and am recording rather than explaining.**
+Phase 13 measured the full suite at 8m11s on four workers with a *smaller* test
+count; two runs today, at the larger count, came in at 3m43s and 3m45s. The
+times are repeatable, so the measurement is sound; what is not sound is any
+story about why. The drill suite is the fastest content in the project — 113
+tests in 2.6 seconds, against two pytest subprocesses per kata — but that
+accounts for seconds, not four minutes. The honest reading is that §11's own
+warning about `-n auto` applies to four workers as well: **wall clock on this
+suite is dominated by subprocess scheduling and therefore by what else the
+machine is doing**, and a single figure recorded in a revision log is weaker
+evidence than it looks. Re-measure before believing either number.
+
+**What this bought, and what it did not.** Unlike Phase 13, this one bought the
+user something: eight exercises in a third discipline, and `query_plan_matches`
+carries the most transferable idea in the track — two answers returning
+identical rows can differ by any factor in work done, and SQLite will tell you
+which is which. What it did not buy is any change to the engine's shape, which
+was the point. The remaining Phase 13 items are unchanged except that **shell
+drills and concept recall are now cheaper than they look**: the second exercise
+kind cost an abstraction that a third would not pay for again, and
+`editable_source` plus two disjoint check registries is the pattern a fourth
+kind follows. Interview mode is still the cheapest item and the most
+self-contained. Docker still cannot be verified offline on both platforms, and
+still stays open as a sketch.

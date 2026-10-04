@@ -15,15 +15,22 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status: v1.0.0, plus one stretch item.** All twelve planned phases are done —
-**54 exercises, 24 git scenarios and 30 katas, every one of them graded.** The
-core bet works, a session survives the terminal it was opened in, both exercise
-kinds are solved in a browser *or in your own editor*, and the tool answers
-*what should I practise today?* instead of leaving it to you. Phase 13 is a menu
-of post-v1 ideas and the first one taken is **FSRS behind the same `Scheduler`
-port as SM-2** — chosen because it was the only item with a prediction attached,
-and the prediction held ([ADR 0018](docs/adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)). A git scenario is graded on what your
-commands actually did, from a console or from the terminal:
+**Status: v1.0.0, plus two stretch items.** All twelve planned phases are done —
+**62 exercises: 24 git scenarios, 30 katas and 8 SQL drills, every one of them
+graded.** The core bet works, a session survives the terminal it was opened in,
+every exercise kind is solved in a browser *or in your own editor*, and the tool
+answers *what should I practise today?* instead of leaving it to you.
+
+Phases 13 and 14 are post-v1, taken from a menu by appetite, and both were
+chosen for the same reason: they were the only items with a **prediction**
+attached. **FSRS behind the same `Scheduler` port as SM-2**, and the prediction
+held ([ADR 0018](docs/adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)).
+Then **SQL drills as a third exercise kind** — seed a database, write the SQL,
+and get graded on the rows you returned *and the state you left the database in*
+— where the prediction was half right, which was the more useful outcome
+([ADR 0019](docs/adr/0019-sql-drills-as-a-third-exercise-kind.md)). A git
+scenario is graded on what your commands actually did, from a console or from
+the terminal:
 
 ![A terminal replaying `practice solve git/revert-a-pushed-commit`: three commands run, the content check passes, and the history check fails.](docs/demo.svg)
 
@@ -72,7 +79,7 @@ your browser on `http://127.0.0.1:8765`:
 
 ```
   ok   git         /usr/bin/git
-  ok   library     54 exercises (24 git scenarios, 30 katas) in ~/swe-practice/content
+  ok   library     62 exercises (24 git scenarios, 30 katas, 8 SQL drills) in ~/swe-practice/content
   ok   workspaces  ~/.cache/swe-practice/ws
   ok   database    ~/.local/share/swe-practice/practice.db (created v2)
   ok   scheduler   sm2 (Sm2Scheduler())
@@ -430,7 +437,7 @@ against a plain dict with no database in the test.
 uv run practice validate
 ```
 
-Reports every problem in all 54 exercises in one pass, located to the field, and
+Reports every problem in all 62 exercises in one pass, located to the field, and
 exits non-zero if anything is wrong — so CI depends on it. It runs nothing, so
 it works on a machine with no git, and it prints what a passing run does **not**
 prove.
@@ -491,13 +498,15 @@ Two rules shape what gets added to it:
 ```
 src/practice/
 ├── domain/        pure data and functions; zero I/O
-│   ├── checks/      the 20 assertions, as pure functions over a read-only port
+│   ├── checks/      the 20 git assertions, pure over a read-only port
+│   ├── drills/      the 10 SQL assertions, pure over a second read-only port
 │   └── scheduling/  SM-2 and FSRS behind one port, and the grade read off an attempt
 ├── application/   use cases over ports, the kind registry, graph layout, progress
 ├── adapters/
 │   ├── sandbox/     builds a repository, runs commands in it, opens your editor
 │   ├── git/         reads one back: GitRepoQuery, ScenarioGrader
 │   ├── kata/        the pytest runner and its grader
+│   ├── sql/         seeds a database in memory, runs one answer, grades the result
 │   ├── content/     the exercise library on disk
 │   └── persistence/ in-memory stores, and sqlite/ behind the same ports
 ├── interface/
@@ -505,8 +514,8 @@ src/practice/
 │   └── cli/         Typer: the second driving adapter, plus the first-run launcher
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
-content/           54 exercises as declarative data — adding one needs no code
-├── curriculum.yaml nine tracks in order; validate holds it to covering them all
+content/           62 exercises as declarative data — adding one needs no code
+├── curriculum.yaml eleven tracks in order; validate holds it to covering them all
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform
 tools/             the one module that opens a socket, deliberately outside the wheel
 docs/adr/          architecture decision records

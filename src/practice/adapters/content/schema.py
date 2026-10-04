@@ -500,7 +500,7 @@ class GitScenarioFile(_ExerciseFileBase):
 
 
 class SqlDrillFile(_ExerciseFileBase):
-    """`kind: sql_drill`, per PLAN.md §5.3."""
+    """`kind: sql_drill`, per PLAN.md §5.5."""
 
     kind: Literal[ExerciseKind.SQL_DRILL]
     drill: SqlDrillSpecModel

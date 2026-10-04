@@ -107,7 +107,7 @@ def a_kata() -> dict[str, Any]:
 
 
 def a_drill() -> dict[str, Any]:
-    """A minimal but complete SQL drill, shaped like PLAN.md §5.3."""
+    """A minimal but complete SQL drill, shaped like PLAN.md §5.5."""
     return {
         "schema_version": 1,
         "id": "sql/one-row-per-customer",

@@ -49,10 +49,10 @@
   <rect class="box" x="308" y="206" width="324" height="218" fill="#ecfdf5"/>
   <text class="h" x="324" y="230">domain/</text>
   <text class="m" x="324" y="254">Attempt · Exercise · Verdict · ReviewCard</text>
-  <text class="m" x="324" y="276">checks/ — 20 pure assertions</text>
-  <text class="d" x="324" y="293">is_ancestor, tree_matches, worktree_clean …</text>
-  <text class="m" x="324" y="315">scheduling/ — SM-2 behind a port</text>
-  <text class="m" x="324" y="337">ports.py — 13 Protocols</text>
+  <text class="m" x="324" y="276">checks/ · drills/ — 30 pure assertions</text>
+  <text class="d" x="324" y="293">is_ancestor, tree_matches, table_matches, query_plan_matches …</text>
+  <text class="m" x="324" y="315">scheduling/ — SM-2 and FSRS, one port</text>
+  <text class="m" x="324" y="337">ports.py — 14 Protocols</text>
   <text class="d" x="324" y="354">Structural, so no adapter imports the domain</text>
   <text class="d" x="324" y="371">to satisfy one (ADR 0002).</text>
   <text class="d" x="324" y="398">Imports no adapter, no interface and no I/O</text>
@@ -62,11 +62,11 @@
   <rect class="box" x="704" y="48" width="212" height="238" fill="#fff7ed"/>
   <text class="h" x="720" y="72">adapters/</text>
   <text class="m" x="720" y="96">content/</text>
-  <text class="d" x="720" y="113">54 exercises, as YAML</text>
+  <text class="d" x="720" y="113">62 exercises, as YAML</text>
   <text class="m" x="720" y="137">sandbox/</text>
   <text class="d" x="720" y="154">the only subprocess</text>
-  <text class="m" x="720" y="178">git/ · kata/</text>
-  <text class="d" x="720" y="195">real git; a pytest per attempt</text>
+  <text class="m" x="720" y="178">git/ · kata/ · sql/</text>
+  <text class="d" x="720" y="195">real git; a pytest, or SQLite in memory</text>
   <text class="m" x="720" y="219">persistence/</text>
   <text class="d" x="720" y="236">SQLite, hand-written SQL</text>
   <text class="d" x="720" y="260">clock · ids · editor</text>
@@ -87,5 +87,5 @@
   <text class="d" x="44" y="511">Services holds ports, not implementations, so mypy checks adapter conformance at the one place it can.</text>
 
   <text class="d" x="24" y="548">Dependencies point inward. tests/unit/test_architecture.py AST-walks src/ and fails the build on a violation — including a deferred import</text>
-  <text class="d" x="24" y="566">inside a function, a second package that starts a process, and a second package that speaks SQL.</text>
+  <text class="d" x="24" y="566">inside a function, a second package that starts a process, and a package that speaks SQL without being named as one of the two that may.</text>
 </svg>

@@ -40,6 +40,7 @@ an afternoon do not need one.
 | [0016](0016-a-generated-demo-not-a-recorded-one.md) | The demo is generated from captured output, not recorded | accepted |
 | [0017](0017-a-front-door-separate-from-the-server.md) | A front door (`practice up`) separate from the server | accepted |
 | [0018](0018-fsrs-as-a-second-scheduler-not-a-replacement.md) | FSRS as a second scheduler, not a replacement | accepted |
+| [0019](0019-sql-drills-as-a-third-exercise-kind.md) | SQL drills as a third exercise kind | accepted |
 
 0015 is the one record here that was not written on the day the decision was
 made — it was decided in Phase 11 and written up in Phase 12. Its own first
@@ -60,3 +61,12 @@ report on an *earlier* one: ADR 0008 made two checkable predictions about the da
 FSRS arrived, and 0018 says which of them held. That is the shape worth repeating
 — a decision deferred with a stated prediction is a decision that can later be
 graded, and the grade belongs in the record rather than in a commit message.
+
+0019 is the second of that shape and the more interesting grade, because the
+prediction it reports on was only half right. `domain/exercise.py` claimed a
+third exercise kind would cost "a spec and a registry entry"; the spec and the
+entry were exactly as cheap as promised, and what the claim missed is that two
+kinds is the number at which *is this a kata* and *does this have a file to
+edit* are indistinguishable. Five call sites had been asking the first and
+meaning the second. An ADR that said the prediction held would have been a
+worse record than one that says where it did not.

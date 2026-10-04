@@ -107,7 +107,11 @@ violation, including a deferred import inside a function.
 - Only `adapters/sandbox` may import `subprocess` — the trust split (**fixtures are
   trusted code, user commands are untrusted input**) is only a split if exactly one
   place starts a process.
-- Only `adapters/persistence` may import `sqlite3`.
+- Only `adapters/persistence` and `adapters/sql` may import `sqlite3` — the
+  first is the app's storage, the second is the SQL drill engine, which keeps no
+  schema and builds an in-memory database per grading pass. A third entry has to
+  be argued for in `test_architecture.py`, where the list and the reasons live
+  together ([ADR 0019](docs/adr/0019-sql-drills-as-a-third-exercise-kind.md)).
 - `composition.py` is the single wiring point and the only cross-layer import.
   `Services` holds **ports, not implementations**, so mypy checks adapter conformance
   at the one place it can.
@@ -121,10 +125,21 @@ Two rules that shape what to add:
 
 The coverage gate covers `domain/` and `application/` only — 90% required, currently
 **100%** statement and branch. That is where the correctness-critical code lives,
-which is why the 20 assertion functions are in `domain/checks/` rather than under
-`adapters/`. Twenty, not twenty-two: Phase 11 deleted `reflog_contains` and
-`command_count` after 24 git scenarios wanted neither, which is §13's rule about
-abstractions earning their keep being applied rather than quoted.
+which is why the assertion functions are in `domain/` rather than under
+`adapters/`: **20 git assertions in `domain/checks/` over `RepoQuery`, and 10 SQL
+ones in `domain/drills/` over `DrillQuery`.**
+
+**Two vocabularies, deliberately disjoint**, so a drill naming `tree_equals` is a
+schema rejection rather than a check that reaches a dispatcher holding the wrong
+port. What they share is everything that is not a vocabulary — `CheckSpec`,
+`CheckResult`, `CheckReport`, `Params`, `compare`, `matcher`, `suggest_from` — and
+the dispatcher's three jobs. `domain/drills/registry.py` has the argument.
+
+Twenty git assertions, not twenty-two: Phase 11 deleted `reflog_contains` and
+`command_count` after 24 git scenarios wanted neither. Ten drill assertions, and
+`tests/content/test_drills.py` holds every one of them to being named by a
+shipped drill. Both are §13's rule about abstractions earning their keep being
+applied rather than quoted — add the eleventh with the exercise that wants it.
 
 ## Writing code here
 
@@ -181,8 +196,18 @@ A phase ends with a `docs:` commit that:
   After editing a fixture, regenerate with `practice fixtures --write` and review
   the diff — an unexpected line means the edit changed more history than you
   thought.
-- **Two authoring constraints that are not obvious.** `|<>&;` are rejected
+- **Three authoring constraints that are not obvious.** `|<>&;` are rejected
   anywhere in a `.cmds` line, *including inside quotes*, so file content a
-  solution writes cannot contain them. And a fixture must leave a clean worktree,
-  so no scenario can start mid-conflict — the solver runs the merge.
+  solution writes cannot contain them — this does **not** apply to a drill's
+  `.sql`, which needs semicolons and is not a command list. A fixture must leave
+  a clean worktree, so no scenario can start mid-conflict — the solver runs the
+  merge. And a drill's expected rows are compared as **text**: `NULL` is spelled
+  as the word, a float is formatted with `%g` rather than rounded, and a drill
+  whose answer is an average should ask for `ROUND(..., 2)` in SQL, because
+  controlling the precision of what you return is the lesson.
+- **Run the content, do not read it.** Every drill bug in Phase 14 — a vacuous
+  `LIMIT`, a counter-example that returned the reference's rows, a query plan
+  that scanned the other table — was invisible on the page and obvious the
+  moment `-m content` ran. `uv run pytest -q --no-cov -m content -k <slug>` is
+  about four seconds.
 - `uv sync` installs; `uv run` uses the locked environment. Don't re-resolve.
