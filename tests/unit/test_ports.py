@@ -29,7 +29,7 @@ from practice.domain.exercise import ExerciseFilter, ExerciseKind, KataSpec
 from practice.domain.ids import AttemptId, ExerciseId, Sha
 from practice.domain.ports import CommitInfo, WorktreeStatus
 from practice.domain.review import Grade, ReviewCard
-from practice.domain.scheduling import Sm2Scheduler
+from practice.domain.scheduling import FsrsScheduler, Sm2Scheduler
 from tests.fakes import (
     BuilderRepoQueryFactory,
     FakeClock,
@@ -400,7 +400,7 @@ def test_the_builder_factory_hands_out_a_fresh_query_each_call() -> None:
     assert factory(FakeWorkspace()).rev_parse("HEAD") == second
 
 
-# --- the Phase 9 scheduler -------------------------------------------------
+# --- the scheduler, twice over --------------------------------------------
 
 
 def test_the_sm2_scheduler_satisfies_the_scheduler_port() -> None:
@@ -417,10 +417,35 @@ def test_the_sm2_scheduler_satisfies_the_scheduler_port() -> None:
     assert reviewed.last_reviewed_at == now
 
 
+def test_the_fsrs_scheduler_satisfies_the_scheduler_port_too() -> None:
+    """The second *real* implementation, added in Phase 13, and the reason this
+    port is no longer taking §13's rule on credit.
+
+    What it proves here is only the shape — that the protocol did not have to
+    move to admit a scheduler with an entirely different memory model. The one
+    thing that did move is visible in the assertion: the card comes back with a
+    stability, which SM-2's never does.
+    """
+    scheduler: Scheduler = FsrsScheduler()
+    now = FakeClock().now()
+    card = ReviewCard.new(ExerciseId("katas/two-sum"), now.date())
+
+    reviewed = scheduler.next_card(card, Grade.GOOD, now)
+
+    assert reviewed.due_on > now.date()
+    assert reviewed.last_reviewed_at == now
+    assert reviewed.has_memory_state is True
+
+
 def test_the_fixed_scheduler_satisfies_it_too() -> None:
-    """The second implementation §13 asks of the port, and the one the use-case
-    tests drive: it records the grade it was handed instead of doing arithmetic
-    those tests would then depend on.
+    """The test double, and the third implementation of the port.
+
+    It is deliberately *not* held to the conformance properties the two real
+    schedulers share — it pushes every card out by the same interval whatever the
+    grade, so "consecutive GOOD strictly increases the interval" is false of it by
+    design. A double that satisfied the behavioural contract would be a third
+    scheduler to maintain, and the use-case tests it serves are about which grade
+    arrived, not about what the arithmetic did with it.
     """
     scheduler: Scheduler = FixedScheduler(interval_days=3)
     card = ReviewCard.new(ExerciseId("katas/two-sum"), FakeClock().today())

@@ -493,7 +493,19 @@ class Grader(Protocol):
 
 
 class Scheduler(Protocol):
-    """Moves a review card after an attempt. SM-2 in v1, FSRS behind the same port.
+    """Moves a review card after an attempt. SM-2 and FSRS, chosen at the root.
+
+    **Two real implementations as of Phase 13**, which is what §13 asks of a port
+    and what this one had been carrying an IOU for since Phase 9: `Sm2Scheduler`,
+    `FsrsScheduler`, and `FixedScheduler` in the test fakes. The result of
+    writing the second one is in ADR 0018 — the protocol itself did not change,
+    and `ReviewCard` gained two nullable columns, which is the cost ADR 0008
+    predicted to the word.
+
+    `ReviewCard` is the vocabulary both speak, and it is wider than either needs:
+    `ease` is SM-2's, `stability` and `difficulty` are FSRS's, and `interval_days`
+    is the one number that means the same thing to both. That is what makes a
+    switch mid-history survivable rather than a reset.
 
     **`now` rather than the `today: date` PLAN.md §4.6 sketched**, because the card
     the scheduler returns carries `last_reviewed_at`, and a date cannot produce a
