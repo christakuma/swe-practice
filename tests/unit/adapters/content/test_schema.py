@@ -20,8 +20,19 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from pydantic import ValidationError
 
-from practice.adapters.content.schema import EXERCISE_FILE, GitScenarioFile, KataFile
-from practice.domain.exercise import Difficulty, ExerciseKind, GitScenarioSpec, KataSpec
+from practice.adapters.content.schema import (
+    EXERCISE_FILE,
+    GitScenarioFile,
+    KataFile,
+    SqlDrillFile,
+)
+from practice.domain.exercise import (
+    Difficulty,
+    ExerciseKind,
+    GitScenarioSpec,
+    KataSpec,
+    SqlDrillSpec,
+)
 from practice.domain.verdict import Severity
 
 if TYPE_CHECKING:
@@ -93,6 +104,54 @@ def a_kata() -> dict[str, Any]:
             "complexity": {"expected_time": "O(n)", "expected_space": "O(n)"},
         },
     }
+
+
+def a_drill() -> dict[str, Any]:
+    """A minimal but complete SQL drill, shaped like PLAN.md §5.3."""
+    return {
+        "schema_version": 1,
+        "id": "sql/one-row-per-customer",
+        "kind": "sql_drill",
+        "title": "One row per customer",
+        "difficulty": "easy",
+        "tags": ["joins", "aggregation"],
+        "estimated_minutes": 12,
+        "prompt": "Return every customer with how many orders they have placed.",
+        "hints": ["Which side of the join keeps its rows?"],
+        "drill": {
+            "seed": "seed.sql",
+            "stub": "stub.sql",
+            "reference": "solution.sql",
+            "counter_examples": [
+                {"file": "inner-join.sql", "expect_failures": ["rows-match"]}
+            ],
+            "checks": [
+                {
+                    "id": "rows-match",
+                    "label": "Every customer appears exactly once, with a count",
+                    "severity": "required",
+                    "assert": "result_matches",
+                    "with": {"rows": [["alice", 2], ["bob", 0]]},
+                    "explanation": "A customer with no orders still has a row.",
+                },
+                {
+                    "id": "named-the-columns",
+                    "label": "You named the columns rather than selecting them all",
+                    "severity": "advisory",
+                    "assert": "sql_matches",
+                    "not": True,
+                    "with": {"pattern": "select\\s+\\*"},
+                },
+            ],
+        },
+    }
+
+
+def drill_with(mutate: Mutation) -> list[tuple[str, str]]:
+    """Mutate the valid drill and expect it to be rejected."""
+    payload = a_drill()
+    mutate(payload)
+    return rejected(payload)
 
 
 def rejected(payload: dict[str, Any]) -> list[tuple[str, str]]:
@@ -214,16 +273,22 @@ def test_an_unknown_kind_is_rejected_by_name() -> None:
     worth a slightly noisy message for the one field that can produce it: the
     alternative is a bare `Literal["kata"]` that no longer types as the domain
     enum everything downstream expects.
+
+    **This case used `sql_drill` as its unknown kind until Phase 14 made it a
+    real one**, which is the most literal possible demonstration of why a test
+    about "an unknown value" should not borrow a name somebody might implement.
+    The replacement is a value nothing will ever add.
     """
     payload = a_scenario()
-    payload["kind"] = "sql_drill"
+    payload["kind"] = "interpretive_dance"
 
     [(location, message)] = rejected(payload)
 
     assert location == ""
-    assert "'sql_drill'" in message
+    assert "'interpretive_dance'" in message
     assert "'kata'" in message
     assert "'git_scenario'" in message
+    assert "'sql_drill'" in message
 
 
 def test_a_kind_that_does_not_match_its_block_is_rejected() -> None:
@@ -537,3 +602,145 @@ def test_validating_does_not_mutate_the_payload_it_was_given() -> None:
     EXERCISE_FILE.validate_python(payload)
 
     assert payload == before
+
+
+# --- the third kind --------------------------------------------------------
+
+
+def test_a_sql_drill_becomes_an_exercise() -> None:
+    """The arrival of the third kind, through the same entry point as the other
+    two. `kind` discriminates, `drill:` carries the spec, and the domain object
+    is built during validation like the others.
+    """
+    parsed = EXERCISE_FILE.validate_python(a_drill())
+
+    assert isinstance(parsed, SqlDrillFile)
+    exercise = parsed.to_exercise(notes="Why a LEFT JOIN and not an INNER one.")
+    assert exercise.kind is ExerciseKind.SQL_DRILL
+    spec = exercise.spec
+    assert isinstance(spec, SqlDrillSpec)
+    assert spec.seed == "seed.sql"
+    assert spec.reference == "solution.sql"
+    assert spec.check_ids == {"rows-match", "named-the-columns"}
+    assert spec.counter_example_files == ("inner-join.sql",)
+
+
+def test_a_drill_takes_the_documented_default_timeout() -> None:
+    payload = a_drill()
+    del payload["drill"]["counter_examples"]
+
+    parsed = EXERCISE_FILE.validate_python(payload)
+    spec = parsed.spec
+
+    assert isinstance(spec, SqlDrillSpec)
+    assert spec.statement_timeout_seconds == 10
+    assert spec.counter_examples == ()
+
+
+def test_a_drills_rows_survive_as_nested_narrow_values() -> None:
+    """`ParamValue` is recursive, and this is the exercise shape that needs it:
+    a list of rows of scalars, arriving as tuples of tuples so a check function
+    can exhaust the cases instead of casting away from `object`.
+    """
+    spec = EXERCISE_FILE.validate_python(a_drill()).spec
+
+    assert isinstance(spec, SqlDrillSpec)
+    assert spec.check("rows-match").params["rows"] == (("alice", 2), ("bob", 0))
+
+
+def test_a_drill_with_a_scenario_block_is_rejected() -> None:
+    """The discriminator doing its job for the new arm too: a `drill:` kind
+    carrying a `scenario:` block is caught twice over.
+    """
+    payload = a_drill()
+    payload["scenario"] = payload.pop("drill")
+
+    problems = rejected(payload)
+
+    assert {location for location, _ in problems} == {"drill", "scenario"}
+
+
+# --- the two check vocabularies -------------------------------------------
+
+
+def test_a_git_assertion_inside_a_drill_is_rejected_by_name() -> None:
+    """**The reason the two registries are deliberately disjoint.**
+
+    A single registry keyed by name would validate this, and the check would
+    then reach a dispatcher holding a `DrillQuery` where it wanted a
+    `RepoQuery` — an exercise that cannot grade, discovered at grading time.
+    Here it is a build failure with the family named.
+    """
+
+    def use_a_git_assertion(payload: dict[str, Any]) -> None:
+        payload["drill"]["checks"][0]["assert"] = "tree_equals"
+
+    [(location, message)] = drill_with(use_a_git_assertion)
+
+    assert location == "drill.checks.0.assert"
+    assert "'tree_equals' is a git_scenario assertion" in message
+
+
+def test_a_drill_assertion_inside_a_scenario_is_rejected_by_name() -> None:
+    """The mirror, and the direction that was already possible to get wrong:
+    nothing stops an author copying a drill's check into a scenario.
+    """
+
+    def use_a_drill_assertion(payload: dict[str, Any]) -> None:
+        payload["scenario"]["checks"][0]["assert"] = "table_matches"
+
+    [(location, message)] = scenario_with(use_a_drill_assertion)
+
+    assert location == "scenario.checks.0.assert"
+    assert "'table_matches' is a sql_drill assertion" in message
+
+
+def test_a_typo_in_a_drill_assertion_is_offered_a_drill_assertion() -> None:
+    """The suggester, over the right vocabulary. The threshold and the algorithm
+    are shared with the git family; only the candidate set differs.
+    """
+
+    def mistype(payload: dict[str, Any]) -> None:
+        payload["drill"]["checks"][0]["assert"] = "result_match"
+
+    [(_, message)] = drill_with(mistype)
+
+    assert "did you mean result_matches" in message
+
+
+def test_an_unrecognisable_drill_assertion_gets_no_misleading_suggestion() -> None:
+    """A list that fires on everything trains the reader to ignore it."""
+
+    def nonsense(payload: dict[str, Any]) -> None:
+        payload["drill"]["checks"][0]["assert"] = "vacuum"
+
+    [(_, message)] = drill_with(nonsense)
+
+    assert "unknown assertion 'vacuum'" in message
+    assert "did you mean" not in message
+
+
+def test_a_drill_with_no_required_check_is_rejected_in_its_own_vocabulary() -> None:
+    """`validate_checks` is shared between the two kinds, and the message is
+    not: a drill is refused as a drill rather than told it is a scenario.
+    """
+
+    def all_advisory(payload: dict[str, Any]) -> None:
+        payload["drill"]["checks"][0]["severity"] = "advisory"
+
+    [(location, message)] = drill_with(all_advisory)
+
+    assert location == "drill"
+    assert "a drill needs at least one required check" in message
+
+
+def test_a_counter_example_naming_an_unknown_check_is_rejected_for_a_drill_too() -> (
+    None
+):
+    def unknown(payload: dict[str, Any]) -> None:
+        payload["drill"]["counter_examples"][0]["expect_failures"] = ["nope"]
+
+    [(location, message)] = drill_with(unknown)
+
+    assert location == "drill"
+    assert "expects unknown check(s): nope" in message

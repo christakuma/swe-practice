@@ -178,10 +178,18 @@ class AttemptPolicy:
 
     @classmethod
     def for_exercise(cls, exercise: Exercise) -> AttemptPolicy:
-        """Katas get a zero command budget and an empty allowlist.
+        """Only a scenario has a command budget. Everything else gets zero.
 
         Not a special case so much as the honest encoding: a kata has no command
         console, so every command against one is out of policy.
+
+        **The one place a third kind cost nothing.** Phase 14's SQL drills also
+        have no console, and they fall into the same branch unchanged — because
+        this was written as *scenarios have a budget* rather than as *katas do
+        not*, which is the opposite of the mistake five other call sites made
+        (`exercise.editable_source`). The difference is that the question here
+        was always about the thing that is true of one kind, not about the thing
+        that happened to be true of the other.
         """
         spec = exercise.spec
         if isinstance(spec, GitScenarioSpec):

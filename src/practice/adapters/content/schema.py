@@ -29,6 +29,20 @@ this is not one polymorphic field. Tagging on `kind` means a file that says
 `kind: kata` and carries a `scenario:` block is rejected by the discriminator
 and by `extra="forbid"`, rather than by a hand-written cross-field check that
 has to be kept in step with the union.
+
+**The check vocabulary is per kind as of Phase 14, which is the one place the
+third kind changed a rule here rather than extending one.** `CheckModel`
+validated `assert:` against a single registry, because there was one. There are
+now two deliberately disjoint ones (`domain/drills/registry.py` has the
+argument), so the model is split: `CheckModel` validates a scenario's names and
+`DrillCheckModel` a drill's. A shared base with the family as a class attribute
+is what makes each subclass one line, and what keeps the error message — the
+reason any of this is here — written once.
+
+That error message does two things a single registry could not. A name in
+neither vocabulary gets the trigram suggestion it always got, over the right
+vocabulary. A name in the *other* vocabulary gets told so outright, because
+`tree_equals` in a drill is not a typo and no similarity score will find it.
 """
 
 from __future__ import annotations
@@ -48,6 +62,7 @@ from pydantic import (
 )
 
 from practice.domain.checks import registry
+from practice.domain.drills import registry as drills
 from practice.domain.exercise import (
     CheckSpec,
     ComplexityExpectation,
@@ -60,6 +75,7 @@ from practice.domain.exercise import (
     Hint,
     KataSpec,
     ParamValue,
+    SqlDrillSpec,
 )
 from practice.domain.ids import ExerciseId, tag
 from practice.domain.verdict import Severity
@@ -75,11 +91,14 @@ __all__ = [
     "CheckModel",
     "ComplexityModel",
     "CounterExampleModel",
+    "DrillCheckModel",
     "ExerciseFile",
     "GitScenarioFile",
     "GitScenarioSpecModel",
     "KataFile",
     "KataSpecModel",
+    "SqlDrillFile",
+    "SqlDrillSpecModel",
 ]
 
 #: Bumped only for a change that would make an existing file load *incorrectly*
@@ -114,13 +133,18 @@ class _Model(BaseModel):
 # --- checks ----------------------------------------------------------------
 
 
-class CheckModel(_Model):
-    """One entry in a scenario's `checks:` list.
+class _CheckModel(_Model):
+    """One entry in a `checks:` list, for whichever vocabulary the kind uses.
 
     Two field names differ from their YAML keys, both because the key is a Python
     keyword: `assert:` and `not:`. `populate_by_name` means the Python names work
     as well, which is what makes these models constructible in a test without
     writing out a dict of aliases.
+
+    Subclasses supply the vocabulary and nothing else. The validator below is
+    the whole reason this base exists: the message it produces is the thing an
+    author reads when they get an assertion name wrong, and two copies of it
+    would be two chances for one of them to stop suggesting anything.
     """
 
     id: _Text
@@ -131,6 +155,18 @@ class CheckModel(_Model):
     negated: bool = Field(default=False, alias="not")
     explanation: str | None = None
 
+    @classmethod
+    def _is_registered(cls, value: str) -> bool:
+        raise NotImplementedError
+
+    @classmethod
+    def _suggest(cls, value: str) -> tuple[str, ...]:
+        raise NotImplementedError
+
+    @classmethod
+    def _other_family(cls, value: str) -> str | None:
+        raise NotImplementedError
+
     @field_validator("assertion")
     @classmethod
     def _must_be_registered(cls, value: str) -> str:
@@ -138,10 +174,24 @@ class CheckModel(_Model):
 
         Without this the exercise still loads and still grades — just with one
         fewer constraint than its author wrote, and nothing says so (§5.4).
+
+        Three outcomes rather than two, as of Phase 14. A registered name
+        passes. A name that belongs to the *other* kind's vocabulary is named as
+        such, because it is a known fact and no similarity score would find it —
+        `tree_equals` and `table_matches` share almost no trigrams. Anything else
+        is a typo and gets the suggestion.
         """
-        if registry.is_registered(value):
+        if cls._is_registered(value):
             return value
-        suggestions = registry.suggest(value)
+
+        family = cls._other_family(value)
+        if family is not None:
+            raise ValueError(
+                f"{value!r} is a {family} assertion, so it cannot be used here; "
+                f"this kind's checks read a different port"
+            )
+
+        suggestions = cls._suggest(value)
         hint = f"; did you mean {' or '.join(suggestions)}?" if suggestions else ""
         raise ValueError(f"unknown assertion {value!r}{hint}")
 
@@ -170,6 +220,38 @@ class CheckModel(_Model):
             negated=self.negated,
             explanation=self.explanation,
         )
+
+
+class CheckModel(_CheckModel):
+    """One entry in a scenario's `checks:` list: the `RepoQuery` vocabulary."""
+
+    @classmethod
+    def _is_registered(cls, value: str) -> bool:
+        return registry.is_registered(value)
+
+    @classmethod
+    def _suggest(cls, value: str) -> tuple[str, ...]:
+        return registry.suggest(value)
+
+    @classmethod
+    def _other_family(cls, value: str) -> str | None:
+        return drills.misplaced_in_scenario(value)
+
+
+class DrillCheckModel(_CheckModel):
+    """One entry in a drill's `checks:` list: the `DrillQuery` vocabulary."""
+
+    @classmethod
+    def _is_registered(cls, value: str) -> bool:
+        return drills.is_registered(value)
+
+    @classmethod
+    def _suggest(cls, value: str) -> tuple[str, ...]:
+        return drills.suggest(value)
+
+    @classmethod
+    def _other_family(cls, value: str) -> str | None:
+        return drills.other_family(value)
 
 
 class CounterExampleModel(_Model):
@@ -299,6 +381,34 @@ class GitScenarioSpecModel(_SpecModel):
         )
 
 
+class SqlDrillSpecModel(_SpecModel):
+    """The `drill:` block.
+
+    No `allowed_commands` and no `max_commands`, because a drill has no command
+    console — `SqlDrillSpec` says why that cost nothing. What it does have that
+    a kata does not is `checks:`, over the drill vocabulary.
+    """
+
+    seed: _Text
+    stub: _Text
+    reference: _Text
+    checks: tuple[DrillCheckModel, ...]
+    counter_examples: tuple[CounterExampleModel, ...] = ()
+    statement_timeout_seconds: Annotated[int, Field(ge=1)] = 10
+
+    def to_domain(self) -> SqlDrillSpec:
+        return SqlDrillSpec(
+            seed=self.seed,
+            stub=self.stub,
+            reference=self.reference,
+            checks=tuple(check.domain for check in self.checks),
+            counter_examples=tuple(
+                example.to_domain() for example in self.counter_examples
+            ),
+            statement_timeout_seconds=self.statement_timeout_seconds,
+        )
+
+
 # --- the file itself -------------------------------------------------------
 
 
@@ -389,11 +499,22 @@ class GitScenarioFile(_ExerciseFileBase):
         return self.scenario
 
 
-type ExerciseFile = KataFile | GitScenarioFile
+class SqlDrillFile(_ExerciseFileBase):
+    """`kind: sql_drill`, per PLAN.md §5.3."""
+
+    kind: Literal[ExerciseKind.SQL_DRILL]
+    drill: SqlDrillSpecModel
+
+    @property
+    def spec_model(self) -> SqlDrillSpecModel:
+        return self.drill
+
+
+type ExerciseFile = KataFile | GitScenarioFile | SqlDrillFile
 
 #: The single entry point for parsing. A `TypeAdapter` over the tagged union
 #: rather than a wrapper model, so what an author sees is the discriminator's
 #: own error rather than one nested a level deeper than the file it describes.
 EXERCISE_FILE: TypeAdapter[ExerciseFile] = TypeAdapter(
-    Annotated[KataFile | GitScenarioFile, Field(discriminator="kind")]
+    Annotated[KataFile | GitScenarioFile | SqlDrillFile, Field(discriminator="kind")]
 )

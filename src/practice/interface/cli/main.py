@@ -101,7 +101,7 @@ from practice.config import (
 from practice.domain.attempt import ComplexityClaim
 from practice.domain.commands import parse_command_list
 from practice.domain.errors import DomainError, InvalidValueError
-from practice.domain.exercise import GitScenarioSpec, KataSpec
+from practice.domain.exercise import GitScenarioSpec, editable_source
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.verdict import Outcome
 from practice.interface.cli.launcher import prepare
@@ -1479,6 +1479,10 @@ def _next_step(resumed: StartedAttempt) -> str:
     `submit --source` it — and the only thing missing was ever its path. That is
     the finding the phase opened with, and it cost one line here (PLAN.md §16).
 
+    A SQL drill takes the same branch unchanged, which is the dividend of
+    `editable_source` existing: the sentence was never about katas, it was about
+    exercises you solve by editing a file.
+
     Printed on two lines because a Windows workspace path plus a uuid plus
     `--source` is well past 80 characters, and a wrapped instruction is an
     instruction somebody mistypes.
@@ -1496,15 +1500,15 @@ def _next_step(resumed: StartedAttempt) -> str:
 
 
 def _solution_path(resumed: StartedAttempt) -> Path:
-    """Where this attempt's kata source lives on disk.
+    """Where this attempt's editable source lives on disk.
 
     Through `Workspace.resolve` rather than by joining paths here: the interface
     layer has no business knowing that a workspace keeps its repository in a
     subdirectory, and the port exists to answer exactly this.
     """
-    spec = resumed.exercise.spec
-    assert isinstance(spec, KataSpec)  # noqa: S101  (checked by the caller)
-    return resumed.workspace.resolve(spec.stub)
+    source = editable_source(resumed.exercise.spec)
+    assert source is not None  # noqa: S101  (checked by the caller)
+    return resumed.workspace.resolve(source.filename)
 
 
 def _describe(state: WorkspaceState) -> str:
@@ -1618,12 +1622,12 @@ def _solution_source(
     if source is not None:
         return source.read_text(encoding="utf-8"), str(source)
 
-    spec = started.exercise.spec
-    if not isinstance(spec, KataSpec):  # pragma: no cover - the registry refuses first
+    editable = editable_source(started.exercise.spec)
+    if editable is None:  # pragma: no cover - the registry refuses first
         message = f"{started.exercise.id} has no stub to fall back to"
         raise ApplicationError(message)
 
-    name = spec.reference if reference else spec.stub
+    name = editable.reference if reference else editable.filename
     text = (library / started.exercise.id.value / name).read_text(encoding="utf-8")
     return text, f"{name} (the exercise's own)"
 

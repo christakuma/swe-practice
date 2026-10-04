@@ -93,9 +93,19 @@
   {% endif %}
 </div>
 
-{% if workbench.is_active and is_kata %}
+{#
+  `editor_mode_file` rather than a hardcoded `codemirror-python.min.js`, which
+  is the half of §15 Q3's prediction Phase 14 found. `vendor.py` said a second
+  language was "a second line here and nothing else"; the second line was
+  right, but this tag had the Python tokenizer written into it, so a SQL drill
+  loaded Python and then asked CodeMirror for a `sql` mode it did not have --
+  failing by silently giving you a plain textarea. The route hands down the
+  filename from the manifest, so the set of modes that have a file stays a fact
+  about `vendor.py` instead of a path guessed at here.
+#}
+{% if workbench.is_active and is_kata and editor_mode_file %}
   <script src="{{ static }}/vendor/codemirror.min.js"></script>
-  <script src="{{ static }}/vendor/codemirror-python.min.js"></script>
+  <script src="{{ static }}/{{ editor_mode_file }}"></script>
   <script>
     // CodeMirror replaces the textarea with its own document, so the element the
     // form would serialise stops tracking what is on screen. Everything that

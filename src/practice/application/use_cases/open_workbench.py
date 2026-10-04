@@ -26,7 +26,7 @@ copied into the workspace when the attempt is provisioned, so reading it there
 reads what this attempt actually started from — a library edited since would
 otherwise silently reseed an open attempt with different code. It is also the
 only place the application layer can read it from: `ContentRepository` hands back
-an `Exercise` whose `KataSpec.stub` is a *filename*, and resolving that against a
+an `Exercise` whose spec names its stub as a *filename*, and resolving that against a
 content directory would put a path join in a layer that has no filesystem.
 """
 
@@ -41,7 +41,7 @@ from practice.application.errors import (
     ExerciseNotFoundError,
     WorkspaceGoneError,
 )
-from practice.domain.exercise import KataSpec
+from practice.domain.exercise import editable_source
 
 if TYPE_CHECKING:
     from practice.domain.exercise import Exercise, ExerciseSpec
@@ -107,10 +107,16 @@ def _seed(spec: ExerciseSpec, workspace: Workspace | None) -> str | None:
     blank. A missing stub file is also `None` rather than an exception -- the
     content suite is what holds a kata to having one, and a workbench that refused
     to load would be the wrong place to find out.
+
+    **Through `editable_source` rather than `isinstance(spec, KataSpec)` as of
+    Phase 14.** The two were the same test while there were two kinds; a SQL
+    drill is also edited in a file, and the question this function is asking has
+    always been the second one.
     """
-    if workspace is None or not isinstance(spec, KataSpec):
+    source = editable_source(spec)
+    if workspace is None or source is None:
         return None
     try:
-        return workspace.read_file(spec.stub)
+        return workspace.read_file(source.filename)
     except OSError:
         return None

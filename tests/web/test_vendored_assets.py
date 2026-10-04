@@ -48,8 +48,12 @@ def test_the_manifest_is_not_empty() -> None:
     The same shape of guard the architecture test puts on its own walk: a
     verification that iterates an empty list is green forever while checking
     nothing.
+
+    A literal count rather than `> 0`, so adding an asset is a deliberate edit
+    here. Five since Phase 14, which vendored CodeMirror's SQL mode for the
+    drill workbench.
     """
-    assert len(ASSETS) == 4
+    assert len(ASSETS) == 5
     assert all(asset.sha256 for asset in ASSETS)
 
 

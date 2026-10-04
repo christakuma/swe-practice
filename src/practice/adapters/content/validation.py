@@ -48,9 +48,11 @@ from practice.adapters.content.loader import (
     load_exercise,
     load_exercise_file,
 )
+from practice.domain.checks import registry as checks
 from practice.domain.commands import parse_command_list
+from practice.domain.drills import registry as drills
 from practice.domain.errors import InvalidValueError
-from practice.domain.exercise import GitScenarioSpec
+from practice.domain.exercise import GitScenarioSpec, SqlDrillSpec
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
@@ -267,8 +269,58 @@ def _best_effort_id(directory: Path) -> str | None:
 def _audit(directory: Path, exercise: Exercise) -> Iterator[str]:
     yield from _audit_quality(exercise)
     yield from _audit_referenced_files(directory, exercise)
+    yield from _audit_something_is_graded(exercise)
     if isinstance(exercise.spec, GitScenarioSpec):
         yield from _audit_command_lists(directory, exercise.spec)
+
+
+def _audit_something_is_graded(exercise: Exercise) -> Iterator[str]:
+    """Every declaratively-graded exercise must require at least one *state* check.
+
+    **A rule the third kind made visible rather than one it needed.** The domain
+    already refuses a spec whose checks are all advisory, because that passes
+    vacuously (§5.4). This is the narrower hole that guard leaves open: an
+    exercise whose only *required* check reads the solver's text rather than any
+    state. For a drill that is a required `sql_matches`; for a scenario it is a
+    required `command_used`. Both would pass an answer that is wrong and mentions
+    the right keyword, which is precisely the string matching
+    [ADR 0003](../../../../docs/adr/0003-declarative-assertions-over-string-matching.md)
+    was written to reject — reintroduced through the back door, one `severity:`
+    at a time.
+
+    **Checked for both kinds, not just the new one.** The hole had been open on
+    the git side since Phase 5 and nothing had fallen into it: the 24 scenarios
+    all require a ref, a tree or a worktree check, and `command_used` is advisory
+    in every one of them. Writing the rule for drills alone would have been
+    writing down a standard the older half of the library was meeting by habit.
+
+    Here rather than in the domain, and the reason is the line `exercise.py`
+    draws. A spec that requires only a craft check is *representable* — somebody
+    is halfway through drafting one, with the state checks still to write — and
+    the domain refusing it would refuse the draft. What must not happen is
+    shipping it, and `practice validate` is the thing that runs in CI.
+    """
+    spec = exercise.spec
+    if isinstance(spec, GitScenarioSpec):
+        state = checks.CONTENT_ASSERTIONS
+        craft = "command_used"
+    elif isinstance(spec, SqlDrillSpec):
+        state = drills.STATE_ASSERTIONS
+        craft = "sql_matches / query_plan_matches"
+    else:
+        # A kata's checks come out of its test suite rather than its spec, so
+        # there is nothing declared here to audit. `tests/content/test_katas.py`
+        # holds the equivalent claim by grading the stub and requiring it to
+        # fail.
+        return
+
+    required = [check for check in spec.checks if check.is_required]
+    if not any(check.assertion in state for check in required):
+        yield (
+            f"requires no check that reads state: every required check is a "
+            f"craft assertion ({craft}), so a wrong answer that mentions the "
+            f"right keyword would pass"
+        )
 
 
 def _audit_quality(exercise: Exercise) -> Iterator[str]:

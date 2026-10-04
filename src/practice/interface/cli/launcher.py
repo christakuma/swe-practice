@@ -44,6 +44,7 @@ consequences they cannot otherwise see.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -56,6 +57,7 @@ from practice.domain.errors import InvalidValueError
 from practice.domain.exercise import ExerciseKind
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from pathlib import Path
 
 __all__ = ["FirstRun", "Step", "prepare"]
@@ -178,8 +180,7 @@ def _library(root: Path) -> Step:
             detail=str(root),
             problem=f"the exercise library at {root} could not be read ({exc})",
         )
-    katas = sum(1 for one in exercises if one.kind is ExerciseKind.KATA)
-    scenarios = len(exercises) - katas
+    counts = Counter(one.kind for one in exercises)
     if not exercises:
         return Step(
             label="library",
@@ -194,11 +195,7 @@ def _library(root: Path) -> Step:
     # replacement character. This is the first line a stranger reads.
     return Step(
         label="library",
-        detail=(
-            f"{len(exercises)} exercises ({scenarios} git "
-            f"{_plural('scenario', scenarios)}, {katas} "
-            f"{_plural('kata', katas)}) in {root}"
-        ),
+        detail=(f"{len(exercises)} exercises ({_by_kind(counts)}) in {root}"),
     )
 
 
@@ -272,6 +269,37 @@ def _scheduler(name: str) -> Step:
     except InvalidValueError as exc:
         return Step(label="scheduler", detail=name, problem=str(exc))
     return Step(label="scheduler", detail=f"{name} ({chosen!r})")
+
+
+def _by_kind(counts: Mapping[ExerciseKind, int]) -> str:
+    """`24 git scenarios, 30 katas, 8 SQL drills`, in enum order.
+
+    **This line used to be computed by subtraction** --
+    `scenarios = len(exercises) - katas` -- which was correct for exactly as
+    long as there were two kinds, and silently reported Phase 14's eight SQL
+    drills as eight more git scenarios the moment there were three. It is the
+    same defect as the five `isinstance(spec, KataSpec)` call sites
+    `editable_source` replaced, in the one place a type checker could not see
+    it: the arithmetic is valid, it is the *claim* that stopped being true.
+
+    Kinds with no exercises are left out rather than printed as zero. The
+    library this ships with has all three, so the only reader of that branch is
+    someone pointing `--content-root` at a library of their own, and
+    `0 SQL drills` is noise in the first line a stranger reads.
+
+    ASCII only and `_plural`, for the reasons the caller gives.
+    """
+    names = {
+        ExerciseKind.GIT_SCENARIO: "git scenario",
+        ExerciseKind.KATA: "kata",
+        ExerciseKind.SQL_DRILL: "SQL drill",
+    }
+    parts = [
+        f"{counts[kind]} {_plural(names[kind], counts[kind])}"
+        for kind in names
+        if counts.get(kind)
+    ]
+    return ", ".join(parts)
 
 
 def _plural(noun: str, count: int) -> str:

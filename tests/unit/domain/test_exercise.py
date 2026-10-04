@@ -15,12 +15,15 @@ from practice.domain.exercise import (
     ComplexityExpectation,
     CounterExample,
     Difficulty,
+    EditableSource,
     Exercise,
     ExerciseFilter,
     ExerciseKind,
     GitScenarioSpec,
     Hint,
     KataSpec,
+    SqlDrillSpec,
+    editable_source,
 )
 from practice.domain.ids import ExerciseId, tag
 from practice.domain.verdict import Severity
@@ -49,6 +52,13 @@ _SCENARIO = GitScenarioSpec(
     allowed_commands=frozenset({"git", "cat"}),
 )
 
+_DRILL = SqlDrillSpec(
+    seed="seed.sql",
+    stub="stub.sql",
+    reference="solution.sql",
+    checks=(_CHECK,),
+)
+
 _EXERCISE = Exercise(
     id=ExerciseId("git/revert-a-pushed-commit"),
     kind=ExerciseKind.GIT_SCENARIO,
@@ -65,6 +75,10 @@ _EXERCISE = Exercise(
 
 def a_check(**overrides: Any) -> CheckSpec:
     return replace(_CHECK, **overrides)
+
+
+def a_drill(**overrides: Any) -> SqlDrillSpec:
+    return replace(_DRILL, **overrides)
 
 
 def a_kata(**overrides: Any) -> KataSpec:
@@ -330,3 +344,149 @@ class TestExerciseFilter:
         )
 
         assert criteria.matches(an_exercise()) is True
+
+
+class TestSqlDrillSpec:
+    """The third kind's spec, and the invariants it shares with a scenario.
+
+    The shared ones are tested here as well as under `TestGitScenarioSpec`
+    rather than only against `validate_checks` directly. They are the rules that
+    stop an exercise being vacuously passable, and the claim worth holding is
+    that *a drill* cannot be built vacuously -- which is a claim about this
+    constructor, not about a helper it happens to call today.
+    """
+
+    def test_knows_its_own_kind(self) -> None:
+        assert a_drill().kind is ExerciseKind.SQL_DRILL
+
+    @pytest.mark.parametrize("field", ["seed", "stub", "reference"])
+    def test_requires_each_of_its_three_files(self, field: str) -> None:
+        with pytest.raises(InvalidValueError, match=f"needs a {field}"):
+            a_drill(**{field: "   "})
+
+    def test_requires_at_least_one_check(self) -> None:
+        with pytest.raises(InvalidValueError, match="a drill needs at least one check"):
+            a_drill(checks=())
+
+    def test_rejects_a_drill_whose_checks_are_all_advisory(self) -> None:
+        """The vacuous-pass guard, in a drill's own vocabulary.
+
+        A drill graded only by advisories reports `PASS_WITH_ADVISORIES` for an
+        empty file, which is worse than not shipping the exercise.
+        """
+        with pytest.raises(InvalidValueError, match="a drill needs at least one"):
+            a_drill(checks=(a_check(severity=Severity.ADVISORY),))
+
+    def test_rejects_duplicate_check_ids(self) -> None:
+        with pytest.raises(InvalidValueError, match="duplicate check ids: rows-match"):
+            a_drill(
+                checks=(
+                    a_check(id="rows-match"),
+                    a_check(id="rows-match", assertion="result_row_count"),
+                )
+            )
+
+    def test_rejects_a_counter_example_naming_a_check_that_does_not_exist(self) -> None:
+        with pytest.raises(InvalidValueError, match="expects unknown check"):
+            a_drill(
+                counter_examples=(
+                    CounterExample(
+                        file="forgot-the-join.sql",
+                        expect_failures=frozenset({"no-such-check"}),
+                    ),
+                )
+            )
+
+    def test_accepts_a_counter_example_naming_a_real_check(self) -> None:
+        spec = a_drill(
+            counter_examples=(
+                CounterExample(
+                    file="forgot-the-join.sql",
+                    expect_failures=frozenset({"content-restored"}),
+                ),
+            )
+        )
+
+        assert spec.counter_example_files == ("forgot-the-join.sql",)
+
+    def test_rejects_a_timeout_below_a_second(self) -> None:
+        with pytest.raises(InvalidValueError, match="statement_timeout_seconds"):
+            a_drill(statement_timeout_seconds=0)
+
+    def test_required_checks_are_separable_from_advisories(self) -> None:
+        spec = a_drill(
+            checks=(
+                a_check(id="rows-match"),
+                a_check(id="used-an-index", severity=Severity.ADVISORY),
+            )
+        )
+
+        assert [check.id for check in spec.required_checks] == ["rows-match"]
+        assert spec.check_ids == frozenset({"rows-match", "used-an-index"})
+
+    def test_looking_up_an_unknown_check_is_an_error_not_a_none(self) -> None:
+        with pytest.raises(InvalidValueError, match="no such check"):
+            a_drill().check("nope")
+
+    def test_lists_every_sibling_file_it_names(self) -> None:
+        """What validation checks the existence of and what the provisioner copies.
+
+        All four roles, which is what makes a drill different from a kata: the
+        counter-examples are SQL files like the reference, so they are named by
+        the same list rather than by a second one.
+        """
+        spec = a_drill(
+            counter_examples=(
+                CounterExample(
+                    file="forgot-the-join.sql",
+                    expect_failures=frozenset({"content-restored"}),
+                ),
+            )
+        )
+
+        assert spec.referenced_files == (
+            "seed.sql",
+            "stub.sql",
+            "solution.sql",
+            "forgot-the-join.sql",
+        )
+
+
+class TestEditableSource:
+    """The question five call sites were asking by way of `isinstance(.., KataSpec)`.
+
+    Held as a property of the union rather than of any one kind, because the
+    whole reason it exists is that the answer is no longer derivable from "is
+    this a kata".
+    """
+
+    def test_a_kata_is_edited_in_its_stub(self) -> None:
+        assert editable_source(a_kata()) == EditableSource(
+            filename="stub.py", language="python", reference="solution.py"
+        )
+
+    def test_a_drill_is_edited_in_its_stub_too(self) -> None:
+        assert editable_source(a_drill()) == EditableSource(
+            filename="stub.sql", language="sql", reference="solution.sql"
+        )
+
+    def test_a_scenario_has_no_editable_file_at_all(self) -> None:
+        """`None` is an answer and not a gap -- a scenario's surface is a console."""
+        assert editable_source(a_scenario()) is None
+
+    def test_the_language_comes_from_the_spec_not_the_extension(self) -> None:
+        """So a second kata language is a content change, per §15 Q3."""
+        assert editable_source(a_kata(language="javascript", stub="stub.js")) == (
+            EditableSource(
+                filename="stub.js", language="javascript", reference="solution.py"
+            )
+        )
+
+    def test_it_carries_the_authors_own_answer_as_well(self) -> None:
+        """Which is why `--reference` needs no second `isinstance`: the
+        reference grades through the same path a solver's file takes.
+        """
+        source = editable_source(a_drill(reference="model-answer.sql"))
+
+        assert source is not None
+        assert source.reference == "model-answer.sql"

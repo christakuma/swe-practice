@@ -89,6 +89,37 @@ def a_kata(**overrides: Any) -> dict[str, Any]:
     return document
 
 
+def a_drill(**overrides: Any) -> dict[str, Any]:
+    """A complete, valid SQL drill document."""
+    document: dict[str, Any] = {
+        "schema_version": 1,
+        "id": "sql/one-row-per-customer",
+        "kind": "sql_drill",
+        "title": "One row per customer",
+        "difficulty": "easy",
+        "tags": ["joins"],
+        "estimated_minutes": 12,
+        "prompt": "Return every customer with how many orders they have placed.",
+        "hints": ["Which side of the join keeps its rows?"],
+        "drill": {
+            "seed": "seed.sql",
+            "stub": "stub.sql",
+            "reference": "solution.sql",
+            "checks": [
+                {
+                    "id": "rows-match",
+                    "label": "Every customer appears exactly once",
+                    "severity": "required",
+                    "assert": "result_matches",
+                    "with": {"rows": [["alice", 2], ["bob", 0]]},
+                },
+            ],
+        },
+    }
+    document.update(overrides)
+    return document
+
+
 type WriteExercise = Callable[..., Path]
 
 
@@ -144,6 +175,15 @@ def write_exercise(library: Path) -> WriteExercise:
             "stub.py": "def two_sum(): ...\n",
             "tests.py": "def test_it(): ...\n",
             "solution.py": "def two_sum(): ...\n",
+            # Phase 14's three. A drill's seed is real SQL rather than a
+            # placeholder comment, because it is the one default here that
+            # something *runs*: a seed that will not execute is a
+            # `DrillSeedError`, and every drill test would then fail for one
+            # uninteresting reason -- which is exactly what this defaulting
+            # arrangement exists to prevent.
+            "seed.sql": "CREATE TABLE customers (name TEXT);\n",
+            "stub.sql": "-- your answer here\n",
+            "solution.sql": "SELECT name FROM customers;\n",
         }
         for name, content in {**defaults, **(files or {})}.items():
             if content:

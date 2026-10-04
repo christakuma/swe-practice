@@ -30,10 +30,11 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Mapping
 
 __all__ = [
     "ASSETS",
@@ -42,6 +43,7 @@ __all__ = [
     "VENDOR_DIRNAME",
     "VendoredAsset",
     "digest",
+    "mode_file",
     "static_root",
     "verify",
 ]
@@ -97,9 +99,22 @@ ASSETS: Final[tuple[VendoredAsset, ...]] = (
         ),
         sha256="22f18b4dec95cc981a96f8e69f61f595314162fd102ba401abcd20b0674d9846",
     ),
-    # The Python mode, flattened out of the library's own `mode/python/` nesting.
-    # One language is vendored because one language has katas (PLAN.md §15, Q3);
-    # a second is a second line here and nothing else.
+    # The language modes, flattened out of the library's own `mode/<name>/`
+    # nesting. PLAN.md §15 Q3 asked what a second language costs, and this file
+    # answered "a second line here and nothing else".
+    #
+    # **Phase 14 tested that and it was nearly right.** Adding SQL is one line
+    # here, one file committed beside the others, and no change to `verify`, the
+    # offline grep, the asset route or the hash test. What it is *not* is
+    # nothing else: `workbench.html` had `codemirror-python.min.js` written into
+    # the script tag, so the page served a Python tokenizer and then asked
+    # CodeMirror for a `sql` mode it had not loaded — which fails by silently
+    # giving you a plain textarea, the worst available way for it to fail.
+    #
+    # The fix is that the template builds the filename from `editor_mode`, which
+    # is why `_MODE_FILES` below exists: the set of modes that have a file is a
+    # fact about this manifest, so the one place that knows it is this module
+    # rather than a template guessing at a path.
     VendoredAsset(
         path=f"{VENDOR_DIRNAME}/codemirror-python.min.js",
         url=(
@@ -108,7 +123,39 @@ ASSETS: Final[tuple[VendoredAsset, ...]] = (
         ),
         sha256="d545dba0fd28b288f13383440a8f763228bc38cbf987d28ee870e4baa1438b21",
     ),
+    VendoredAsset(
+        path=f"{VENDOR_DIRNAME}/codemirror-sql.min.js",
+        url=(
+            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
+            f"/mode/sql/sql.min.js"
+        ),
+        sha256="4c89a2e950b4c627d7ace5642495f815d5c3cf26302eeaaa92882636d5026af6",
+    ),
 )
+
+#: CodeMirror mode name to the vendored file that defines it.
+#:
+#: The template reads this through `mode_file`, rather than interpolating the
+#: mode name into a path itself. A missing entry is then a `None` the template
+#: can branch on, instead of a 404 on a script tag — and a mode whose file was
+#: never vendored degrades to a plain textarea *visibly*, in the one place that
+#: can tell the difference.
+_MODE_FILES: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "python": f"{VENDOR_DIRNAME}/codemirror-python.min.js",
+        "sql": f"{VENDOR_DIRNAME}/codemirror-sql.min.js",
+    }
+)
+
+
+def mode_file(mode: str | None) -> str | None:
+    """The vendored file defining a CodeMirror mode, or `None` if there is none.
+
+    `None` for `None` as well as for an unknown name, so a git scenario — which
+    has no editor at all — takes the same branch as a language nobody vendored.
+    The template renders no CodeMirror either way, which is correct for both.
+    """
+    return _MODE_FILES.get(mode) if mode is not None else None
 
 
 def static_root() -> Path:

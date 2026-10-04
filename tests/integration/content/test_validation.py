@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from practice.adapters.content import validate_exercise, validate_library
 from practice.adapters.content.validation import discover, unproven_by_design
 
-from ..conftest import a_kata, a_scenario
+from ..conftest import a_drill, a_kata, a_scenario
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -28,6 +28,21 @@ def test_a_complete_exercise_has_no_problems(write_exercise: WriteExercise) -> N
 
 def test_a_complete_kata_has_no_problems(write_exercise: WriteExercise) -> None:
     assert problems(write_exercise(a_kata())) == ()
+
+
+def test_a_complete_drill_has_no_problems(write_exercise: WriteExercise) -> None:
+    assert problems(write_exercise(a_drill())) == ()
+
+
+def test_a_missing_drill_file_is_reported(write_exercise: WriteExercise) -> None:
+    """`referenced_files` is generic over the spec union, so a drill's four files
+    are audited by the rule that already existed rather than by a new one. The
+    content-as-data bet (§5) holding up for a third kind.
+    """
+    directory = write_exercise(a_drill())
+    (directory / "seed.sql").unlink()
+
+    assert problems(directory) == ("seed.sql: named by the spec but not on disk",)
 
 
 def test_a_report_names_the_exercise_by_id(write_exercise: WriteExercise) -> None:
@@ -336,3 +351,105 @@ def test_the_caveats_name_a_division_of_labour_and_not_a_missing_phase() -> None
 
     assert caveats
     assert not any("phase" in line.casefold() for line in caveats)
+
+
+# --- the rule about what is actually graded --------------------------------
+
+
+def test_a_drill_whose_only_required_check_reads_the_sql_is_reported(
+    write_exercise: WriteExercise,
+) -> None:
+    """**The hole the vacuous-check guard leaves open.**
+
+    The domain already refuses an all-advisory spec. This is the narrower case:
+    a required check that reads the solver's *text* and nothing else. It would
+    pass a wrong answer that mentions the right keyword, which is the string
+    matching ADR 0003 rejects, reintroduced one `severity:` at a time.
+    """
+    document = a_drill()
+    document["drill"]["checks"] = [
+        {
+            "id": "used-a-join",
+            "label": "You used a join",
+            "severity": "required",
+            "assert": "sql_matches",
+            "with": {"pattern": "join"},
+        },
+    ]
+
+    [problem] = problems(write_exercise(document))
+
+    assert problem.startswith("requires no check that reads state")
+    assert "sql_matches / query_plan_matches" in problem
+
+
+def test_a_drill_with_one_state_check_among_craft_ones_is_fine(
+    write_exercise: WriteExercise,
+) -> None:
+    document = a_drill()
+    document["drill"]["checks"].append(
+        {
+            "id": "used-a-join",
+            "label": "You used a join",
+            "severity": "required",
+            "assert": "sql_matches",
+            "with": {"pattern": "join"},
+        },
+    )
+
+    assert problems(write_exercise(document)) == ()
+
+
+def test_a_scenario_whose_only_required_check_reads_the_log_is_reported(
+    write_exercise: WriteExercise,
+) -> None:
+    """The same rule for the older half of the library.
+
+    The hole had been open on the git side since Phase 5 and nothing had fallen
+    into it -- all 24 scenarios require a ref, tree or worktree check and keep
+    `command_used` advisory. Writing the rule for drills alone would have been
+    writing down a standard the rest of the library was meeting by habit.
+    """
+    document = a_scenario()
+    document["scenario"]["checks"] = [
+        {
+            "id": "used-revert",
+            "label": "You used revert",
+            "severity": "required",
+            "assert": "command_used",
+            "with": {"pattern": "revert"},
+        },
+    ]
+    document["scenario"]["counter_examples"] = []
+
+    [problem] = problems(write_exercise(document))
+
+    assert problem.startswith("requires no check that reads state")
+    assert "command_used" in problem
+
+
+def test_an_advisory_craft_check_does_not_trip_the_rule(
+    write_exercise: WriteExercise,
+) -> None:
+    """Advisory is the convention; the rule is only about *required* checks."""
+    document = a_scenario()
+    document["scenario"]["checks"].append(
+        {
+            "id": "no-force-push",
+            "label": "You did not force-push",
+            "severity": "advisory",
+            "assert": "command_used",
+            "not": True,
+            "with": {"pattern": "push.*--force"},
+        },
+    )
+
+    assert problems(write_exercise(document)) == ()
+
+
+def test_a_kata_is_not_subject_to_the_rule(write_exercise: WriteExercise) -> None:
+    """A kata's checks come out of its test suite rather than its spec, so there
+    is nothing declared to audit. `tests/content/test_katas.py` holds the
+    equivalent claim by grading the stub and requiring it to fail.
+    """
+    assert problems(write_exercise(a_kata())) == ()

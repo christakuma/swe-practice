@@ -5,7 +5,7 @@ package in the project allowed to import `sqlite3` — see
 `tests/unit/test_architecture.py`, where the rule that used to say *only the
 persistence adapter speaks SQLite* now says which two do and why each one does.
 
-The split between the two modules is by lifetime, the same way
+The split between the modules is by lifetime, the same way
 `adapters/sandbox/workspace.py` splits:
 
 * `engine.py` runs things. It owns the four controls that make running an
@@ -13,6 +13,8 @@ The split between the two modules is by lifetime, the same way
   wall-clock deadline, and statement splitting that is not a `split(";")`.
 * `drill_query.py` answers questions. It holds the connection the engine left
   open, because `table()` and `tables()` are questions about a live database.
+* `grader.py` turns the answers into a verdict, and satisfies `Grader` for
+  `ExerciseKind.SQL_DRILL`.
 
 There is no `SqlDrillRunner` protocol between the grader and the engine, and
 that is deliberate rather than an omission. `KataRunner` exists because a pytest
@@ -24,9 +26,17 @@ says to delete.
 
 from practice.adapters.sql.drill_query import SqliteDrillQuery
 from practice.adapters.sql.engine import DrillSeedError, run_answer, split_statements
+from practice.adapters.sql.grader import (
+    ANSWER_CHECK_ID,
+    SqlDrillGrader,
+    SqlDrillGraderError,
+)
 
 __all__ = [
+    "ANSWER_CHECK_ID",
     "DrillSeedError",
+    "SqlDrillGrader",
+    "SqlDrillGraderError",
     "SqliteDrillQuery",
     "run_answer",
     "split_statements",

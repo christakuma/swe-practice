@@ -67,12 +67,13 @@ from starlette.responses import HTMLResponse, Response
 from practice.application.errors import ApplicationError
 from practice.domain.attempt import ComplexityClaim
 from practice.domain.errors import DomainError
-from practice.domain.exercise import KataSpec
+from practice.domain.exercise import GitScenarioSpec, editable_source
 from practice.domain.ids import AttemptId
 from practice.interface.web.errors import render_problem
 from practice.interface.web.routes.console import COMMAND_URL, SCENARIO_SUBMIT_URL
 from practice.interface.web.routes.editor import EDITOR_URL, WATCH_URL
 from practice.interface.web.routes.review import REVIEW_URL
+from practice.interface.web.vendor import mode_file
 
 if TYPE_CHECKING:
     from fastapi.templating import Jinja2Templates
@@ -110,18 +111,31 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
             )
 
         spec = opened.exercise.spec
-        is_kata = isinstance(spec, KataSpec)
+        # Two questions, and Phase 14 is where they stopped having one answer.
+        # `editable` is *is there a file to edit* -- true for a kata and for a
+        # SQL drill. `is_scenario` is *is there a console over a repository*.
+        # Asking `isinstance(spec, KataSpec)` and using it for both was correct
+        # for exactly as long as there were two kinds.
+        editable = editable_source(spec)
+        is_scenario = isinstance(spec, GitScenarioSpec)
         return templates.TemplateResponse(
             request=request,
             name="workbench.html",
             context={
                 "title": opened.exercise.title,
                 "workbench": opened,
-                "is_kata": is_kata,
+                "is_kata": editable is not None,
                 # The mode name CodeMirror knows this language by. From the spec
                 # rather than hardcoded, so a second language is a content change
-                # and a vendored mode file -- which is the whole claim of §15 Q3.
-                "editor_mode": spec.language if isinstance(spec, KataSpec) else None,
+                # and a vendored mode file -- which is the whole claim of §15 Q3,
+                # and the claim a third kind is the first real test of: `sql` is
+                # a mode CodeMirror already has, so the drill workbench needed a
+                # vendored file and no code.
+                "editor_mode": editable.language if editable else None,
+                # The vendored file that *defines* that mode, from the manifest
+                # rather than built from the name here -- see the comment in
+                # `workbench.html` and `vendor.mode_file`.
+                "editor_mode_file": mode_file(editable.language if editable else None),
                 "submit_url": SUBMIT_URL.format(attempt_id=parsed),
                 # Both console endpoints, formatted here for the same reason the
                 # kata's is: the page builds every URL it posts to from the
@@ -132,7 +146,7 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # `InspectRepository` *refuses* a kata, because a directory with a
                 # stub in it is not a repository in a strange state, it is a
                 # question that does not apply.
-                "repo": None if is_kata else services.inspect_repository(parsed),
+                "repo": services.inspect_repository(parsed) if is_scenario else None,
                 # Only meaningful for an active kata, and the template only
                 # draws the control for one -- formatted unconditionally for the
                 # same reason the console's two URLs are, so that there is one

@@ -40,7 +40,7 @@ from practice.application.errors import (
     WorkspaceGoneError,
 )
 from practice.domain.errors import AttemptStateError
-from practice.domain.exercise import KataSpec
+from practice.domain.exercise import editable_source
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -114,8 +114,8 @@ def load_solution_file(
             f"no longer in the library; abandon it"
         )
 
-    spec = exercise.spec
-    if not isinstance(spec, KataSpec):
+    source = editable_source(exercise.spec)
+    if source is None:
         raise UnsupportedExerciseKindError(
             f"{exercise.id} is a {exercise.kind.value}: it is graded on the "
             f"repository in its workspace, so there is no solution file to open"
@@ -132,8 +132,8 @@ def load_solution_file(
         attempt=attempt,
         exercise=exercise,
         workspace=workspace,
-        path=workspace.resolve(spec.stub),
-        relative=spec.stub,
+        path=workspace.resolve(source.filename),
+        relative=source.filename,
     )
 
 

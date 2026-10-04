@@ -25,6 +25,7 @@ from practice.domain.exercise import (
     GitScenarioSpec,
     Hint,
     KataSpec,
+    SqlDrillSpec,
 )
 from practice.domain.ids import ExerciseId, tag
 from practice.domain.verdict import Severity
@@ -34,7 +35,7 @@ if TYPE_CHECKING:
 
     from practice.domain.exercise import ExerciseFilter
 
-__all__ = ["FakeContentRepository", "a_kata", "a_scenario"]
+__all__ = ["FakeContentRepository", "a_drill", "a_kata", "a_scenario"]
 
 
 def a_kata(
@@ -99,6 +100,54 @@ def a_scenario(*, exercise_id: str = "git/revert-a-pushed-commit") -> Exercise:
                 ),
             ),
             allowed_commands=frozenset({"git", "cat"}),
+        ),
+    )
+
+
+def a_drill(
+    *,
+    exercise_id: str = "sql/one-row-per-customer",
+    checks: tuple[CheckSpec, ...] = (),
+    estimated_minutes: int = 12,
+    hints: tuple[str, ...] = ("Which side of the join keeps its rows?",),
+    tags: tuple[str, ...] = ("joins", "aggregation"),
+) -> Exercise:
+    """A SQL drill, named and shaped like the real ones.
+
+    `checks` is overridable and defaults to one required `result_matches`,
+    because the drill grader's interesting cases are all about *which* checks
+    ran -- which is the opposite of `a_kata`, whose checks come out of a test
+    suite and cannot be stated here at all.
+    """
+    return Exercise(
+        id=ExerciseId(exercise_id),
+        kind=ExerciseKind.SQL_DRILL,
+        title="One row per customer",
+        prompt="Return every customer with how many orders they have placed.",
+        difficulty=Difficulty.EASY,
+        tags=tuple(tag(name) for name in tags),
+        estimated_minutes=estimated_minutes,
+        hints=tuple(Hint(text) for text in hints),
+        notes="Why a LEFT JOIN and not an INNER one.",
+        spec=SqlDrillSpec(
+            seed="seed.sql",
+            stub="stub.sql",
+            reference="solution.sql",
+            checks=checks
+            or (
+                CheckSpec(
+                    id="rows-match",
+                    label="Every customer appears exactly once, with their count.",
+                    severity=Severity.REQUIRED,
+                    assertion="result_matches",
+                    # Params, not just an assertion name. A default check with
+                    # no `with:` mapping evaluates to "this exercise is
+                    # misconfigured", so a test using the builder's default
+                    # would get an authoring error where it expected a grade.
+                    params={"rows": (("alice", 2), ("bob", 0), ("carol", 1))},
+                    explanation="A customer with no orders still has a row.",
+                ),
+            ),
         ),
     )
 

@@ -39,6 +39,14 @@ if it is not, that is the finding. It was. No use case, no grader and no CLI
 command changed, because none of them had ever held anything but an
 `AttemptRepository`.
 
+**Phase 14 ran it a third time, on the exercise-kind registry, and this file
+is the half of the prediction that held.** `application/registry.py` claimed a
+third kind would cost "a spec and a registry entry". The entry is three lines
+below, two of them a comment, and `build_services` did not change at all -- no
+new port, no new field on `Services`, no use case rewired. Where the prediction
+broke is not here: it is the five call sites that had learnt to read
+`isinstance(spec, KataSpec)` as *has a file to edit*. ADR 0019.
+
 **Phase 13 ran the same experiment on the `Scheduler` port, and the answer was
 one line *plus a registry*.** ADR 0008 predicted FSRS would be "a second class
 satisfying the same protocol and one line in `composition.py`", and the line was
@@ -74,6 +82,7 @@ from practice.adapters.sandbox import (
     SubprocessSandboxProvisioner,
     WatchfilesFileWatcher,
 )
+from practice.adapters.sql import SqlDrillGrader
 from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
@@ -451,7 +460,7 @@ def build_services(  # noqa: PLR0913
 
 
 def build_graders(query_for: RepoQueryFactory | None = None) -> GraderRegistry:
-    """One grader per exercise kind, and as of Phase 5 that is both of them.
+    """One grader per exercise kind, and as of Phase 14 that is all three.
 
     Each is constructed with its own collaborator rather than reaching for one:
     `KataGrader` takes the pytest runner, `ScenarioGrader` takes the `RepoQuery`
@@ -471,5 +480,13 @@ def build_graders(query_for: RepoQueryFactory | None = None) -> GraderRegistry:
     graders: dict[ExerciseKind, Grader] = {
         ExerciseKind.KATA: KataGrader(PytestKataRunner()),
         ExerciseKind.GIT_SCENARIO: ScenarioGrader(query_for),
+        # No collaborator, and that is the whole report on the third kind's cost
+        # here. `KataGrader` takes a runner because a pytest subprocess has to be
+        # substitutable in a test; `ScenarioGrader` takes a factory because the
+        # grader and the repo-state panel must read the repository the same way.
+        # `SqlDrillGrader` runs its engine in-process in under a millisecond and
+        # nothing else reads its database, so there is nothing to inject and a
+        # protocol here would be the abstraction §13 says to delete.
+        ExerciseKind.SQL_DRILL: SqlDrillGrader(),
     }
     return GraderRegistry(graders=graders)

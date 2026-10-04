@@ -53,7 +53,7 @@ from practice.adapters.sandbox.workspace import (
     WorkspaceLayout,
     WorkspacePathError,
 )
-from practice.domain.exercise import GitScenarioSpec, KataSpec
+from practice.domain.exercise import GitScenarioSpec, KataSpec, SqlDrillSpec
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.ports import WorkspaceSummary
 
@@ -157,6 +157,19 @@ class SubprocessSandboxProvisioner:
         and that is the same somewhere. Treating it as a kind of workspace
         rather than a special case is what stops the kata engine growing its own
         parallel notion of one.
+
+        **A SQL drill is the cheapest of the three and the one that proves the
+        claim.** It needs two files copied and nothing else -- no fixture, no
+        git, no database. The drill engine builds its database in memory from
+        `seed.sql` on every grading pass (`adapters/sql/engine.py`), so there is
+        nothing here to create and nothing to keep in step: this method gained
+        four lines and the dispatch stopped being an `else`.
+
+        The `else` is worth noting as the one thing a third kind broke here.
+        `if scenario ... else kata` had been quietly asserting that
+        not-a-scenario means a kata, and widening the spec union turned that into
+        the single `mypy` error this phase's first commit produced -- which is
+        the architecture test working in the form that costs nothing to run.
         """
         layout = self.layout_for(attempt_id)
         if layout.exists:
@@ -177,8 +190,10 @@ class SubprocessSandboxProvisioner:
         if isinstance(spec, GitScenarioSpec):
             self._install_fixture(layout, directory=directory, spec=spec)
             run_fixture(layout, environment=self._environment(layout))
-        else:
+        elif isinstance(spec, KataSpec):
             self._install_kata_files(layout, directory=directory, spec=spec)
+        else:
+            self._install_drill_files(layout, directory=directory, spec=spec)
 
         return self._workspace(layout, policy=CommandPolicy.for_exercise(exercise))
 
@@ -319,6 +334,25 @@ class SubprocessSandboxProvisioner:
         reference passes.
         """
         for name in (spec.stub, spec.tests):
+            shutil.copyfile(directory / name, layout.repo / name)
+
+    def _install_drill_files(
+        self, layout: WorkspaceLayout, *, directory: Path, spec: SqlDrillSpec
+    ) -> None:
+        """Copy the seed and the stub in. The reference is left behind.
+
+        The same split as a kata's, with one deliberate difference in what the
+        solver can see. A kata's `tests.py` is copied in because pytest has to
+        run it, and a solver reading it is an accepted cost. A drill's
+        `seed.sql` is copied in because the grader reads it from the workspace
+        *and* because the solver is meant to read it: the schema is not the
+        answer, it is the question, and a drill with a hidden schema would be a
+        riddle rather than an exercise.
+
+        `solution.sql` and the counter-examples stay in the content directory,
+        which is the answer key staying outside the exam.
+        """
+        for name in (spec.seed, spec.stub):
             shutil.copyfile(directory / name, layout.repo / name)
 
     def _summarise(self, layout: WorkspaceLayout) -> WorkspaceSummary:

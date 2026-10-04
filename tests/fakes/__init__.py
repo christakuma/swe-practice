@@ -18,7 +18,12 @@ makes its tests prove nothing.
 """
 
 from tests.fakes.clock import FakeClock
-from tests.fakes.content import FakeContentRepository, a_kata, a_scenario
+from tests.fakes.content import (
+    FakeContentRepository,
+    a_drill,
+    a_kata,
+    a_scenario,
+)
 from tests.fakes.drill import FakeDrillQuery, a_result
 from tests.fakes.editor import FakeEditorLauncher
 from tests.fakes.ids import SequentialIdGenerator
@@ -52,6 +57,7 @@ __all__ = [
     "Scheduled",
     "SequentialIdGenerator",
     "StubKataRunner",
+    "a_drill",
     "a_kata",
     "a_record",
     "a_repo",
