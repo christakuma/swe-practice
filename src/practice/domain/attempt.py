@@ -14,13 +14,23 @@ an `Exercise`. Without the limits copied in at construction it could not enforce
 a single one of its rules, and every limit check would leak out into the use
 cases — where it will eventually be forgotten on one code path (PLAN.md §4.3,
 §16).
+
+**And why Phase 15's interview mode is a field on that policy rather than a flag
+somewhere else.** The policy is already *the rules this attempt was opened
+under, copied in and stored with it* — which is exactly what a mode is. Putting
+it anywhere else would make it renegotiable: a setting read at reveal time could
+be turned off halfway through, and an attempt whose hints were withheld for the
+first ten minutes and offered for the last five is not an interview and not a
+practice run either. Here it is decided once, persisted, and reread by the
+mapper, so every later question about the attempt gets the same answer
+(ADR 0020).
 """
 
 from __future__ import annotations
 
 import shlex
 from dataclasses import dataclass
-from datetime import datetime, timedelta  # noqa: TC003  (see the note below)
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -39,12 +49,15 @@ if TYPE_CHECKING:
     from practice.domain.verdict import Verdict
 
 # `datetime` and `timedelta` are imported at runtime rather than behind
-# TYPE_CHECKING because they are used in isinstance-free runtime positions
-# (constructing a timedelta, reading tzinfo) as well as in annotations.
+# TYPE_CHECKING because they are used in runtime positions as well as in
+# annotations. Phase 15 removed the `noqa: TC003` that used to be needed here:
+# `deadline` and `remaining` construct a `timedelta` from the policy's deadline,
+# so the import is now load-bearing on its own rather than by argument.
 
 __all__ = [
     "Attempt",
     "AttemptEvent",
+    "AttemptMode",
     "AttemptPolicy",
     "AttemptStatus",
     "CommandResult",
@@ -164,6 +177,28 @@ class SolutionSaved:
 type AttemptEvent = CommandRun | HintRevealed | SolutionSaved
 
 
+class AttemptMode(StrEnum):
+    """Which rules an attempt was opened under. Values match the `mode` column.
+
+    Two, and the second one is the whole of Phase 15. `PRACTICE` is everything
+    the tool did before it existed: hints on request, no clock, and the path to
+    the workspace printed so you can work in your own editor. `INTERVIEW`
+    withdraws all three.
+
+    **It is an enum rather than a `bool` because of what the column has to
+    store.** `interview: bool` reads the same in Python and migrates badly: a
+    third set of rules -- a warm-up with hints but a clock, say -- would have to
+    arrive as a second boolean, and two booleans encode four states of which two
+    are meaningless. A name per set of rules is the shape PLAN.md §5 uses for
+    every other closed vocabulary in the project, and `StrEnum` is what makes
+    the stored value readable in the database rather than a `0` nobody can
+    interpret.
+    """
+
+    PRACTICE = "practice"
+    INTERVIEW = "interview"
+
+
 @dataclass(frozen=True, slots=True)
 class AttemptPolicy:
     """Limits copied from the `Exercise` when the `Attempt` is constructed."""
@@ -171,13 +206,48 @@ class AttemptPolicy:
     max_commands: int
     hints: tuple[Hint, ...]
     allowed_commands: frozenset[str]
+    mode: AttemptMode = AttemptMode.PRACTICE
+    deadline_seconds: int | None = None
+    """How long this attempt has, or `None` when it is not timed.
+
+    Seconds rather than the `estimated_minutes` it is derived from, because it
+    is compared against an `elapsed()` that is a `timedelta` -- and a minute
+    count that has to be multiplied at every comparison is a conversion to get
+    wrong in one of them.
+    """
 
     def __post_init__(self) -> None:
         if self.max_commands < 0:
             raise InvalidValueError("max_commands cannot be negative")
+        if self.deadline_seconds is not None and self.deadline_seconds < 1:
+            raise InvalidValueError("deadline_seconds must be at least 1")
+
+        # **The mode and the deadline move together, in both directions**, which
+        # is what stops `mode` being a label an attempt can contradict. An
+        # interview with no deadline is an interview with no clock, and a
+        # practice run with one is a timed exercise that nothing shows or grades
+        # -- two states that would each have to be handled somewhere and mean
+        # nothing when they arrived. §13's rule about unproven abstractions
+        # applied to a *combination*: the day a timed practice run is wanted,
+        # this guard is the one line that has to change, and it will change with
+        # the feature that wants it.
+        timed = self.deadline_seconds is not None
+        if timed is not (self.mode is AttemptMode.INTERVIEW):
+            raise InvalidValueError(
+                f"{self.mode.value} mode and deadline_seconds="
+                f"{self.deadline_seconds!r} disagree: an interview is timed and "
+                f"a practice run is not"
+            )
+        if self.mode is AttemptMode.INTERVIEW and self.hints:
+            raise InvalidValueError(
+                f"interview mode withholds hints, so a policy cannot carry "
+                f"{len(self.hints)} of them"
+            )
 
     @classmethod
-    def for_exercise(cls, exercise: Exercise) -> AttemptPolicy:
+    def for_exercise(
+        cls, exercise: Exercise, *, mode: AttemptMode = AttemptMode.PRACTICE
+    ) -> AttemptPolicy:
         """Only a scenario has a command budget. Everything else gets zero.
 
         Not a special case so much as the honest encoding: a kata has no command
@@ -190,23 +260,73 @@ class AttemptPolicy:
         (`exercise.editable_source`). The difference is that the question here
         was always about the thing that is true of one kind, not about the thing
         that happened to be true of the other.
+
+        **`mode` is applied before the kind is looked at, and nothing about it
+        is kind-specific** -- which is the one thing Phase 15 can report as
+        cleanly as Phase 14 reported this branch. An interview withholds the
+        hints and starts the clock for a kata, a scenario and a drill alike,
+        because hints are common metadata and the estimate is too. The command
+        budget and the allowlist are untouched in both modes: a scenario under
+        interview conditions still needs its console, and an interview that took
+        the console away would not be a harder exercise, it would be an
+        unsolvable one.
+
+        The deadline is the author's own `estimated_minutes`, which is the only
+        baseline the library offers and already the one `suggest_grade` reads.
+        Deliberately not a multiple of it: an interview is the estimate, and a
+        tool that quietly granted half as long again would be grading against a
+        number no exercise states.
         """
+        interview = mode is AttemptMode.INTERVIEW
+        hints = () if interview else exercise.hints
+        deadline = exercise.estimated_minutes * 60 if interview else None
+
         spec = exercise.spec
         if isinstance(spec, GitScenarioSpec):
             return cls(
                 max_commands=spec.max_commands,
-                hints=exercise.hints,
+                hints=hints,
                 allowed_commands=spec.allowed_commands,
+                mode=mode,
+                deadline_seconds=deadline,
             )
         return cls(
             max_commands=0,
-            hints=exercise.hints,
+            hints=hints,
             allowed_commands=frozenset(),
+            mode=mode,
+            deadline_seconds=deadline,
         )
 
     @property
     def hint_count(self) -> int:
         return len(self.hints)
+
+    @property
+    def is_interview(self) -> bool:
+        return self.mode is AttemptMode.INTERVIEW
+
+    @property
+    def reveals_workspace(self) -> bool:
+        """Whether the tool may tell the solver where this attempt's files are.
+
+        **The honest name for Phase 15's third clause, and the reason it is a
+        property here rather than a check in two interface modules.** The menu
+        item called it *"no test peeking"*, which overstates what any policy can
+        do: a kata's `tests.py` is copied into the workspace because pytest has
+        to run it from there, the workspace is a directory on the solver's own
+        machine, and §8.1 settled in Phase 3 that the solver owns the machine --
+        which is the same sentence `adapters/sandbox/command_policy.py` opens
+        with to explain why it is not a security boundary.
+
+        So this withdraws an *affordance*, and says so. Own-editor mode and
+        `practice start`'s next-step line are the two places the tool hands over
+        the path; under interview mode they refuse instead, and a solver who
+        goes looking for the directory anyway will find it. Containment was
+        never on offer, and a flag named as though it were would be the only
+        dishonest thing in the feature (ADR 0020).
+        """
+        return not self.is_interview
 
 
 class Attempt:
@@ -455,6 +575,17 @@ class Attempt:
 
         index = self.hints_revealed
         if index >= self._policy.hint_count:
+            # **The first thing interview mode cost, and it is a sentence.**
+            # Withholding hints needed no new code path at all -- an empty
+            # `hints` tuple makes this guard fire on the first request, and the
+            # workbench panel is already drawn on `hint_count` -- but the
+            # message it fires with became a lie. "This exercise has 0" is
+            # false: the exercise has four and the mode is keeping them. A
+            # refusal that misdescribes why is a refusal the solver argues with.
+            if self._policy.is_interview:
+                raise PolicyViolationError(
+                    "interview mode withholds this exercise's hints"
+                )
             raise PolicyViolationError(
                 f"no hints left: this exercise has {self._policy.hint_count}"
             )
@@ -496,6 +627,51 @@ class Attempt:
         if end < self._started_at:
             raise InvalidValueError("an attempt cannot end before it started")
         return end - self._started_at
+
+    @property
+    def deadline(self) -> datetime | None:
+        """When this attempt runs out of time, or `None` when it is untimed.
+
+        Derived from `started_at` and the policy rather than stored, so there is
+        one answer and it cannot drift from the two fields it is made of.
+        """
+        seconds = self._policy.deadline_seconds
+        if seconds is None:
+            return None
+        return self._started_at + timedelta(seconds=seconds)
+
+    def remaining(self, now: datetime) -> timedelta | None:
+        """Time left, which may be negative. `None` when the attempt is untimed.
+
+        **Negative rather than clamped at zero**, because the overrun is the
+        interesting number once the deadline has passed: a page that said "0:00
+        left" for an attempt eleven minutes over would be hiding the one fact
+        the solver wants, and `suggest_grade` reads the same overrun to score
+        it. Clamping is a presentation decision, so it is left to the surface
+        that is presenting.
+
+        Frozen for a finished attempt, because `elapsed` is -- so what a verdict
+        page shows is the time that was left at submission rather than a number
+        that keeps counting down after the fact.
+        """
+        seconds = self._policy.deadline_seconds
+        if seconds is None:
+            return None
+        return timedelta(seconds=seconds) - self.elapsed(now)
+
+    def overran(self, now: datetime) -> bool:
+        """Whether this attempt is past its deadline. `False` when untimed.
+
+        `False` rather than `None` for a practice run, and the asymmetry with
+        `remaining` is deliberate: "how much time is left" has no answer without
+        a deadline, while "did it run over" does -- an attempt with no deadline
+        cannot have run over one. A tri-state here would be three branches at
+        every call site to express a fact with two.
+        """
+        seconds = self._policy.deadline_seconds
+        if seconds is None:
+            return False
+        return self.elapsed(now) > timedelta(seconds=seconds)
 
     # --- guards ------------------------------------------------------------
 

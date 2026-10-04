@@ -17,6 +17,7 @@ import pytest
 
 from practice.domain.attempt import (
     Attempt,
+    AttemptMode,
     AttemptPolicy,
     AttemptStatus,
     CommandResult,
@@ -143,6 +144,102 @@ class TestAttemptPolicy:
     def test_rejects_a_negative_budget(self) -> None:
         with pytest.raises(InvalidValueError):
             a_policy(max_commands=-1)
+
+    def test_a_practice_policy_is_the_default_and_is_untimed(self) -> None:
+        """The regression that matters most in Phase 15: every attempt that
+        existed before interview mode has to keep behaving identically, and the
+        way that is guaranteed is that `mode` defaults and the deadline is
+        `None`.
+        """
+        policy = AttemptPolicy.for_exercise(a_scenario_exercise())
+
+        assert policy.mode is AttemptMode.PRACTICE
+        assert policy.is_interview is False
+        assert policy.deadline_seconds is None
+        assert policy.reveals_workspace is True
+        assert policy.hint_count == 2
+
+
+class TestInterviewPolicy:
+    def test_withholds_the_hints_and_sets_a_deadline(self) -> None:
+        exercise = a_scenario_exercise()
+
+        policy = AttemptPolicy.for_exercise(exercise, mode=AttemptMode.INTERVIEW)
+
+        assert policy.is_interview is True
+        assert policy.hints == ()
+        assert policy.hint_count == 0
+        assert policy.deadline_seconds == 10 * 60
+
+    def test_the_deadline_is_the_authors_own_estimate_and_nothing_else(self) -> None:
+        """Not a multiple of it. An interview is the estimate, and a tool that
+        granted half as long again would be grading against a number no
+        exercise states.
+        """
+        exercise = a_kata_exercise()
+        assert exercise.estimated_minutes == 15
+
+        policy = AttemptPolicy.for_exercise(exercise, mode=AttemptMode.INTERVIEW)
+
+        assert policy.deadline_seconds == 15 * 60
+
+    def test_withdraws_the_workspace_path(self) -> None:
+        policy = AttemptPolicy.for_exercise(
+            a_kata_exercise(), mode=AttemptMode.INTERVIEW
+        )
+
+        assert policy.reveals_workspace is False
+
+    def test_keeps_the_command_budget_and_the_allowlist_untouched(self) -> None:
+        """An interview that took the console away would not be a harder
+        exercise, it would be an unsolvable one.
+        """
+        policy = AttemptPolicy.for_exercise(
+            a_scenario_exercise(), mode=AttemptMode.INTERVIEW
+        )
+
+        assert policy.max_commands == 25
+        assert policy.allowed_commands == frozenset({"git", "cat"})
+
+    @pytest.mark.parametrize(
+        ("kind", "minutes"),
+        [(ExerciseKind.GIT_SCENARIO, 10), (ExerciseKind.KATA, 15)],
+    )
+    def test_nothing_about_the_mode_is_kind_specific(
+        self, kind: ExerciseKind, minutes: int
+    ) -> None:
+        """The claim `for_exercise`'s docstring makes: the mode is applied before
+        the kind is looked at, so every kind withholds and times identically.
+        """
+        exercise = (
+            a_scenario_exercise()
+            if kind is ExerciseKind.GIT_SCENARIO
+            else a_kata_exercise()
+        )
+
+        policy = AttemptPolicy.for_exercise(exercise, mode=AttemptMode.INTERVIEW)
+
+        assert policy.hints == ()
+        assert policy.deadline_seconds == minutes * 60
+
+    def test_a_mode_and_a_deadline_that_disagree_are_refused(self) -> None:
+        with pytest.raises(InvalidValueError, match="disagree"):
+            a_policy(mode=AttemptMode.INTERVIEW, deadline_seconds=None, hints=())
+
+    def test_a_practice_run_cannot_be_timed(self) -> None:
+        """The other direction of the same guard. A deadline nothing shows and
+        nothing grades is a state that would have to be handled somewhere.
+        """
+        with pytest.raises(InvalidValueError, match="disagree"):
+            a_policy(mode=AttemptMode.PRACTICE, deadline_seconds=600)
+
+    def test_an_interview_policy_cannot_carry_hints(self) -> None:
+        with pytest.raises(InvalidValueError, match="withholds hints"):
+            a_policy(mode=AttemptMode.INTERVIEW, deadline_seconds=600, hints=HINTS)
+
+    def test_rejects_a_deadline_of_no_time_at_all(self) -> None:
+        with pytest.raises(InvalidValueError, match="at least 1"):
+            a_policy(mode=AttemptMode.INTERVIEW, deadline_seconds=0, hints=())
 
 
 class TestRecordCommand:
@@ -683,6 +780,106 @@ class TestRestore:
 
         with pytest.raises(AttemptStateError, match="completed"):
             restored.complete(a_verdict(), at=at(5))
+
+
+class TestTheInterviewClock:
+    """What `deadline`, `remaining` and `overran` answer, and when.
+
+    All three derive from `elapsed()` rather than from `started_at` directly, so
+    there is one opinion about when an attempt's clock stops -- which is the
+    property that makes a verdict page show the time that was left at
+    submission rather than a number still counting down afterwards.
+    """
+
+    def test_an_untimed_attempt_has_no_deadline_and_cannot_overrun(self) -> None:
+        attempt = an_attempt()
+
+        assert attempt.deadline is None
+        assert attempt.remaining(at(999)) is None
+        assert attempt.overran(at(999)) is False
+
+    def test_the_deadline_is_the_start_plus_the_policy(self) -> None:
+        attempt = an_interview()
+
+        assert attempt.deadline == at(10)
+
+    def test_remaining_counts_down(self) -> None:
+        attempt = an_interview()
+
+        assert attempt.remaining(at(0)) == timedelta(minutes=10)
+        assert attempt.remaining(at(4)) == timedelta(minutes=6)
+
+    def test_remaining_goes_negative_rather_than_clamping(self) -> None:
+        """The overrun is the interesting number once the deadline has passed,
+        and clamping it would hide the one fact the solver wants. Presentation
+        is the surface's decision, not the aggregate's.
+        """
+        attempt = an_interview()
+
+        assert attempt.remaining(at(21)) == timedelta(minutes=-11)
+
+    def test_the_deadline_itself_is_not_an_overrun(self) -> None:
+        """Strictly greater than, so arriving exactly on time is on time."""
+        attempt = an_interview()
+
+        assert attempt.overran(at(10)) is False
+        assert attempt.remaining(at(10)) == timedelta()
+
+    def test_a_second_past_the_deadline_is(self) -> None:
+        attempt = an_interview()
+
+        assert attempt.overran(at(10) + timedelta(seconds=1)) is True
+
+    def test_both_freeze_when_the_attempt_finishes(self) -> None:
+        attempt = an_interview()
+        attempt.complete(a_verdict(), at=at(6))
+
+        # Four minutes were left at submission, and still are an hour later.
+        assert attempt.remaining(at(6)) == timedelta(minutes=4)
+        assert attempt.remaining(at(66)) == timedelta(minutes=4)
+        assert attempt.overran(at(66)) is False
+
+    def test_an_attempt_submitted_late_stays_over(self) -> None:
+        """Submitting is not refused for being late -- it is recorded as late,
+        which is the core bet applied to the clock (ADR 0020).
+        """
+        attempt = an_interview()
+        attempt.complete(a_verdict(), at=at(14))
+
+        assert attempt.overran(at(14)) is True
+        assert attempt.remaining(at(14)) == timedelta(minutes=-4)
+        assert attempt.status is AttemptStatus.COMPLETED
+
+
+class TestHintsUnderInterviewMode:
+    def test_a_hint_is_refused_and_the_refusal_says_why(self) -> None:
+        """Withholding the hints needed no new code path -- an empty tuple makes
+        the existing guard fire -- but the message it fired with said "this
+        exercise has 0", which is false. The exercise has two.
+        """
+        attempt = an_interview()
+
+        with pytest.raises(PolicyViolationError, match="interview mode withholds"):
+            attempt.reveal_next_hint(at=at(1))
+
+        assert attempt.hints_revealed == 0
+        assert attempt.remaining_hints == 0
+
+    def test_a_practice_attempt_out_of_hints_still_says_so_instead(self) -> None:
+        """The old sentence is still the right one when it is true."""
+        attempt = an_attempt()
+        attempt.reveal_next_hint(at=at(1))
+        attempt.reveal_next_hint(at=at(2))
+
+        with pytest.raises(PolicyViolationError, match="no hints left"):
+            attempt.reveal_next_hint(at=at(3))
+
+
+def an_interview() -> Attempt:
+    """An attempt opened under interview rules: ten minutes, no hints."""
+    return an_attempt(
+        a_policy(mode=AttemptMode.INTERVIEW, deadline_seconds=600, hints=())
+    )
 
 
 def a_scenario_exercise() -> Exercise:
