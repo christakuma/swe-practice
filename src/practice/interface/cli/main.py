@@ -4,7 +4,14 @@ A second driving adapter over the same core as the web app, which is the point
 of it: if the core were secretly coupled to HTTP, this would not work. It also
 keeps `practice validate` runnable in CI without booting a server (PLAN.md §2).
 
-Nine commands, in three groups.
+Ten commands, in four groups.
+
+**One front door.** `up` is the command a stranger runs: it checks what a fresh
+machine is missing, migrates the database, opens a browser and then serves. It
+exists because `serve` deliberately does none of that, and the difference is
+recorded in ADR 0017 -- `serve` starting a server and nothing else is a property
+the test suite depends on (`test_building_the_app_reads_no_database`), so the
+setup went into a second command rather than into that one.
 
 **Three tools, all in CI, each for a different reason.** `validate` audits the
 library without running anything. `fixtures` runs every fixture and checks what it
@@ -68,7 +75,7 @@ from practice.adapters.content import (
     validate_library,
 )
 from practice.adapters.content.validation import unproven_by_design
-from practice.adapters.sandbox import CommandRejectedError
+from practice.adapters.sandbox import CommandRejectedError, open_in_browser
 from practice.adapters.sandbox.env import ToolNotFoundError
 from practice.adapters.sandbox.fixture_lock import (
     LOCK_FILENAME,
@@ -86,6 +93,7 @@ from practice.config import (
     DATABASE_PATH_ENV,
     WORKSPACE_ROOT_ENV,
     content_root,
+    database_path,
     workspace_root,
 )
 from practice.domain.attempt import ComplexityClaim
@@ -94,6 +102,7 @@ from practice.domain.errors import DomainError, InvalidValueError
 from practice.domain.exercise import GitScenarioSpec, KataSpec
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.verdict import Outcome
+from practice.interface.cli.launcher import prepare
 from practice.interface.web import create_app
 from practice.interface.web.security import NotLoopbackError, require_loopback
 
@@ -125,6 +134,7 @@ __all__ = [
     "solve",
     "start",
     "submit",
+    "up",
     "validate",
 ]
 
@@ -178,6 +188,117 @@ _TRANSCRIPT_LINES: Final = 12
 @app.callback()
 def main() -> None:
     """Offline practice for data-structure katas and operational git."""
+
+
+@app.command()
+def up(
+    host: Annotated[
+        str,
+        typer.Option(
+            "--host",
+            help="Must be a loopback address. Anything else is refused.",
+        ),
+    ] = DEFAULT_HOST,
+    port: Annotated[
+        int,
+        typer.Option("--port", help="The port to listen on."),
+    ] = DEFAULT_PORT,
+    open_browser: Annotated[
+        bool,
+        typer.Option(
+            "--open/--no-open",
+            help="Open your browser on the app. --no-open for a headless box.",
+        ),
+    ] = True,
+    content: Annotated[
+        Path | None,
+        typer.Option(
+            "--content-root",
+            envvar=CONTENT_ROOT_ENV,
+            help="The exercise library to serve. Defaults to this project's.",
+        ),
+    ] = None,
+    workspaces: Annotated[
+        Path | None,
+        typer.Option(
+            "--workspace-root",
+            envvar=WORKSPACE_ROOT_ENV,
+            help="Where attempts are provisioned. Defaults to the user cache.",
+        ),
+    ] = None,
+    db: Annotated[
+        Path | None,
+        typer.Option(
+            "--database",
+            envvar=DATABASE_PATH_ENV,
+            help="The attempt database. Defaults to the user data directory.",
+        ),
+    ] = None,
+) -> None:
+    """Set this machine up, open a browser, and serve. The one command to run.
+
+    **The front door, and `serve` is now the plumbing behind it.** Phase 12's
+    exit criterion is that a stranger can clone this and be practising in two
+    minutes, and `serve` could not meet it: it starts a server and nothing else,
+    on purpose, so the three things a fresh machine is missing -- git, the
+    directories, a migrated database -- were each discovered later, inside an
+    HTTP request, as a 500 with no instruction in it. This command asks all of
+    those up front while there is still a terminal to answer in, then hands over
+    to the same `uvicorn.run` (ADR 0017).
+
+    **It refuses rather than serving degraded.** Every step `prepare` runs is a
+    prerequisite with no fallback behind it: with no git there is no fixture, with
+    no library there is nothing to offer, with no database an attempt cannot be
+    saved. A server that booted anyway would be a tool that looks fine until the
+    moment you have done the work, which is the failure this whole command exists
+    to move earlier. Exit 2, matching every other "this invocation cannot be
+    satisfied" in the CLI.
+
+    **The browser is opened before `uvicorn.run`, not after, because there is no
+    after** -- `run` blocks until Ctrl-C. So the tab races the server coming up,
+    and loses sometimes; what makes that acceptable is that the loser is a
+    reload. The alternatives are a thread that waits on the port and a uvicorn
+    lifespan hook, and both are real machinery for an outcome the solver can
+    reach by pressing F5.
+    """
+    bind = _bound(host)
+    library = content.resolve() if content is not None else content_root()
+    provisioned = workspaces.resolve() if workspaces is not None else workspace_root()
+    storage = db.resolve() if db is not None else database_path()
+
+    first_run = prepare(content=library, workspaces=provisioned, database=storage)
+    # Padded to the widest label so the paths form a column. Four lines of
+    # ragged left margin is the difference between a report and a dump.
+    width = max(len(step.label) for step in first_run.steps)
+    for step in first_run.steps:
+        marker = _OK if step.ok else _BAD
+        colour = typer.colors.GREEN if step.ok else typer.colors.RED
+        typer.secho(f"{marker}{step.label:<{width}}", fg=colour, nl=False)
+        typer.echo(f"  {step.detail}")
+    if not first_run.ok:
+        typer.echo("")
+        for step in first_run.blockers:
+            typer.secho(f"{_BAD}{step.problem}", fg=typer.colors.RED)
+        raise typer.Exit(code=2)
+
+    if first_run.fresh:
+        typer.echo("")
+        typer.echo(f"First run: your attempt history now lives at {storage}.")
+
+    url = f"http://{bind}:{port}"
+    typer.echo("")
+    typer.echo(url)
+    typer.echo("")
+    typer.echo("Offline: every asset is served from disk, and nothing is fetched.")
+    if open_browser:
+        refusal = open_in_browser(url)
+        if refusal is not None:
+            typer.secho(f"{_NOTE}{refusal}", fg=typer.colors.YELLOW)
+    _listen(
+        build_services(content=library, workspaces=provisioned, database=storage),
+        bind,
+        port,
+    )
 
 
 @app.command()
@@ -1053,12 +1174,7 @@ def serve(
     from a global -- and `create_app` taking the object graph is the thing that
     keeps the web adapter from becoming a second wiring point.
     """
-    try:
-        bind = require_loopback(host)
-    except NotLoopbackError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=2) from exc
-
+    bind = _bound(host)
     services = build_services(
         content=content.resolve() if content is not None else None,
         workspaces=workspaces.resolve() if workspaces is not None else None,
@@ -1068,6 +1184,29 @@ def serve(
     typer.echo(f"http://{bind}:{port}")
     typer.echo("")
     typer.echo("Offline: every asset is served from disk, and nothing is fetched.")
+    _listen(services, bind, port)
+
+
+def _bound(host: str) -> str:
+    """The address to bind, or exit 2 saying why this one will not be bound.
+
+    Shared by `serve` and `up` so that §8.3's first guard has one
+    implementation and one test. A second command with its own copy of this
+    check is a second command somebody can forget to update.
+    """
+    try:
+        return require_loopback(host)
+    except NotLoopbackError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
+
+
+def _listen(services: Services, bind: str, port: int) -> None:
+    """Hand the built app to uvicorn and block until Ctrl-C.
+
+    One call site for `uvicorn.run`, which is also what lets
+    `tests/web/test_serve.py` substitute it once and cover both commands.
+    """
     typer.echo("Stop it with Ctrl-C.")
     uvicorn.run(create_app(services), host=bind, port=port, log_level="warning")
 

@@ -1,6 +1,6 @@
 """The sandbox: a throwaway directory an attempt runs real commands inside.
 
-Nine modules, split by what each one knows about:
+Ten modules, split by what each one knows about:
 
 * `env` — the environment a sandboxed process gets, where git is installed, and
   the commit clock that spans the whole attempt. Knows about reproducibility.
@@ -16,6 +16,9 @@ Nine modules, split by what each one knows about:
   anyway: the architecture test allows exactly one package to start a process,
   and relaxing that to two would cost more than the oddity of this one living
   next to the two that are scoped (PLAN.md §16, Phase 10).
+* `browser` — the solver's browser, opened on the URL `practice up` bound.
+  Here for the same reason `editor` is, and the module docstring says what the
+  architecture test would and would not have caught.
 * `watcher` — notices the solver saving that file, over `watchfiles`. Knows
   that editors save by rename rather than by writing in place.
 * `fixture_runner` — finds the bash git bundles, and runs a fixture under the
@@ -48,6 +51,7 @@ the half that *reads* one — `GitRepoQuery` and the commit graph, in Phase 5.
 Recorded in PLAN.md §16.
 """
 
+from practice.adapters.sandbox.browser import open_in_browser
 from practice.adapters.sandbox.command_policy import (
     CommandPolicy,
     CommandRejectedError,
@@ -114,6 +118,7 @@ __all__ = [
     "find_git",
     "fingerprint_library",
     "is_virtual",
+    "open_in_browser",
     "run_fixture",
     "run_process",
     "sandbox_environment",
