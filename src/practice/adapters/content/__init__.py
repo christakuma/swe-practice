@@ -1,6 +1,6 @@
 """Reading the exercise library off disk.
 
-Five modules, split by what each one knows about:
+Six modules, split by what each one knows about:
 
 * `schema` — what a valid `exercise.yaml` looks like, as Pydantic models. Knows
   nothing about files.
@@ -12,6 +12,8 @@ Five modules, split by what each one knows about:
   library is offered in (Phase 11, ADR 0014). Knows about one small YAML file
   and nothing about exercises beyond their ids.
 * `filesystem` — the `ContentRepository` port over a content root.
+* `pack` — a library as one deterministic archive with its own digests, which
+  is what makes a content root something you can send somebody (Phase 16).
 
 Loading and validating are separate because the two callers want different
 answers: browsing the library should not fail because an exercise someone is
@@ -33,6 +35,15 @@ from practice.adapters.content.curriculum import (
 from practice.adapters.content.errors import ContentError
 from practice.adapters.content.filesystem import FilesystemContentRepository
 from practice.adapters.content.loader import load_exercise, load_exercise_file
+from practice.adapters.content.pack import (
+    MANIFEST_FILENAME,
+    PACK_SUFFIX,
+    PackManifest,
+    install_pack,
+    read_manifest,
+    verify_pack,
+    write_pack,
+)
 from practice.adapters.content.validation import (
     ExerciseReport,
     LibraryReport,
@@ -42,15 +53,22 @@ from practice.adapters.content.validation import (
 
 __all__ = [
     "CURRICULUM_FILENAME",
+    "MANIFEST_FILENAME",
+    "PACK_SUFFIX",
     "ContentError",
     "Curriculum",
     "ExerciseReport",
     "FilesystemContentRepository",
     "LibraryReport",
+    "PackManifest",
     "Track",
+    "install_pack",
     "load_curriculum",
     "load_exercise",
     "load_exercise_file",
+    "read_manifest",
     "validate_exercise",
     "validate_library",
+    "verify_pack",
+    "write_pack",
 ]
