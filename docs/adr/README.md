@@ -39,6 +39,7 @@ an afternoon do not need one.
 | [0015](0015-verify-on-the-working-tree-not-every-commit.md) | Verify on the working tree, not on every commit | accepted |
 | [0016](0016-a-generated-demo-not-a-recorded-one.md) | The demo is generated from captured output, not recorded | accepted |
 | [0017](0017-a-front-door-separate-from-the-server.md) | A front door (`practice up`) separate from the server | accepted |
+| [0018](0018-fsrs-as-a-second-scheduler-not-a-replacement.md) | FSRS as a second scheduler, not a replacement | accepted |
 
 0015 is the one record here that was not written on the day the decision was
 made — it was decided in Phase 11 and written up in Phase 12. Its own first
@@ -53,3 +54,9 @@ be written until Phase 11 had shipped fifty-one exercises and found out what
 writing them cost.
 
 Every number reserved in PLAN.md §12 is now written.
+
+0018 is the first record written after v1.0.0, and the first that exists to
+report on an *earlier* one: ADR 0008 made two checkable predictions about the day
+FSRS arrived, and 0018 says which of them held. That is the shape worth repeating
+— a decision deferred with a stated prediction is a decision that can later be
+graded, and the grade belongs in the record rather than in a commit message.

@@ -15,11 +15,14 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status: v1.0.0.** All twelve planned phases are done — **54 exercises, 24 git
-scenarios and 30 katas, every one of them graded.** The core bet works, a session
-survives the terminal it was opened in, both exercise kinds are solved in a
-browser *or in your own editor*, and the tool answers *what should I practise
-today?* instead of leaving it to you. A git scenario is graded on what your
+**Status: v1.0.0, plus one stretch item.** All twelve planned phases are done —
+**54 exercises, 24 git scenarios and 30 katas, every one of them graded.** The
+core bet works, a session survives the terminal it was opened in, both exercise
+kinds are solved in a browser *or in your own editor*, and the tool answers
+*what should I practise today?* instead of leaving it to you. Phase 13 is a menu
+of post-v1 ideas and the first one taken is **FSRS behind the same `Scheduler`
+port as SM-2** — chosen because it was the only item with a prediction attached,
+and the prediction held ([ADR 0018](docs/adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)). A git scenario is graded on what your
 commands actually did, from a console or from the terminal:
 
 ![A terminal replaying `practice solve git/revert-a-pushed-commit`: three commands run, the content check passes, and the history check fails.](docs/demo.svg)
@@ -64,14 +67,15 @@ uv run practice up
 ```
 
 `up` is the front door. It resolves git, counts the library, creates the
-workspace directory, migrates the database and then opens your browser on
-`http://127.0.0.1:8765`:
+workspace directory, migrates the database, names the scheduler, and then opens
+your browser on `http://127.0.0.1:8765`:
 
 ```
   ok   git         /usr/bin/git
   ok   library     54 exercises (24 git scenarios, 30 katas) in ~/swe-practice/content
   ok   workspaces  ~/.cache/swe-practice/ws
-  ok   database    ~/.local/share/swe-practice/practice.db (created v1)
+  ok   database    ~/.local/share/swe-practice/practice.db (created v2)
+  ok   scheduler   sm2 (Sm2Scheduler())
 
 First run: your attempt history now lives at ~/.local/share/swe-practice/practice.db.
 
@@ -247,14 +251,46 @@ make an override impossible to honour. One attempt moves a card once — a
 double-click is refused, because advancing the interval twice for one piece of
 evidence is not undoable.
 
-The scheduler is SM-2, the four-grade Anki variant, as a pure function with no
-clock and no repository — forty lines held to the four properties the plan states
-by hypothesis over thousands of generated cards, including the
-`max(previous + 1, ...)` interval clamp without which "consecutive *good*
-strictly increases the interval" is false at the ease floor. FSRS is the obvious
-upgrade and is behind the same port;
-[ADR 0008](docs/adr/0008-sm2-first-with-fsrs-behind-a-port.md) records why not
-yet, and the cost of waiting.
+The scheduler is SM-2 by default, the four-grade Anki variant, as a pure function
+with no clock and no repository — forty lines held by hypothesis over thousands of
+generated cards, including the `max(previous + 1, ...)` interval clamp without
+which "consecutive *good* strictly increases the interval" is false at the ease
+floor.
+
+**FSRS is the second implementation, and `PRACTICE_SCHEDULER=fsrs` is the whole
+of switching to it.** Phase 9 deferred it and wrote down what the swap would cost
+([ADR 0008](docs/adr/0008-sm2-first-with-fsrs-behind-a-port.md)): one line at the
+composition root, and a migration that adds columns rather than reusing SM-2's.
+Both halves held
+([ADR 0018](docs/adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)) —
+twelve files under `src/`, not one of them a use case, a grader or a route, with
+the SQLite mapper and the review repository each gaining the two new column
+names and nothing else touched. And a card SM-2 left at fifteen days is
+*adopted* by FSRS rather than reset, because at 90% retention an FSRS interval is
+exactly its stability.
+
+Three things came out of writing the second one that could not have come out of
+writing the first.
+
+- **One of the four properties the plan calls the scheduler's turns out to be
+  SM-2's.** "*`again` always resets to one day or less*" is a policy, not a law:
+  FSRS schedules a lapse from its own post-lapse stability, which on an
+  established card is weeks. The other three, and the weaker *a lapse never
+  lengthens an established interval*, are now a conformance suite run against
+  both.
+- **The interval clamp is not an SM-2 artefact.** FSRS stalls too — its stability
+  growth term is exactly zero when no days have passed, so grading a card twice
+  in one day returns the stability it was given. Two unrelated causes, one fix:
+  the clamp belongs to whole-day intervals.
+- **One number on this page was meaningless under FSRS.** The panel printed the
+  ease factor unconditionally, which FSRS never moves. Present, correctly
+  formatted, and wrong — so no fragment assertion was ever going to fail on it.
+  Found by switching the scheduler and looking.
+
+SM-2 stays the default, and the reason is the honest one: FSRS's advantage comes
+from parameters fitted to a log of your own reviews, this tool keeps one row per
+exercise and no log, and FSRS on unfitted defaults is FSRS without the thing that
+makes it better.
 
 `/` then answers the question. Everything due comes first, longest-overdue first,
 followed by everything that has never been scheduled — which on a fresh install
@@ -456,7 +492,7 @@ Two rules shape what gets added to it:
 src/practice/
 ├── domain/        pure data and functions; zero I/O
 │   ├── checks/      the 20 assertions, as pure functions over a read-only port
-│   └── scheduling/  SM-2, and the grade the tool reads off a finished attempt
+│   └── scheduling/  SM-2 and FSRS behind one port, and the grade read off an attempt
 ├── application/   use cases over ports, the kind registry, graph layout, progress
 ├── adapters/
 │   ├── sandbox/     builds a repository, runs commands in it, opens your editor

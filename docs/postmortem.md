@@ -168,6 +168,20 @@ Stated plainly, because the alternative is pretending v1.0.0 is finished:
   meets §13's two-implementation rule only by counting its test double. It is
   the weakest instance of that rule in the project.
 
+  **Resolved in Phase 13** ([ADR
+  0018](adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)). The text
+  above is left as it was written, because the useful half of a postmortem is
+  what was believed at the time — and because this is the one item on the list
+  that was fixed by doing exactly what the list said was missing. What it got
+  wrong is interesting: it framed this as a *rule-compliance* problem, and the
+  payoff turned out to be a defect and two wrong beliefs. Writing the second
+  implementation found a meaningless number on a page no fragment assertion
+  could have caught, and showed that one of the four scheduler properties
+  PLAN.md §9.7 states is SM-2's policy rather than a law. **A port with one
+  implementation is not an unproven abstraction; it is a set of untested claims
+  about what is general**, which is a worse thing and was not what this bullet
+  said.
+
 ## The one-sentence version
 
 The two things that paid for themselves many times over were **running a real

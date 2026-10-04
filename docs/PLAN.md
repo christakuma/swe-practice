@@ -4,17 +4,44 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** **v1.0.0 — Phase 12 complete, and the plan is done.** Phases 0–10
-> built the engine, Phase 11 filled it with 54 exercises, and Phase 12 is the
-> front door and the portfolio artifacts: `uv sync && uv run practice up` is the
-> whole of getting started, and it refuses with an instruction rather than
-> serving a tool that breaks twenty minutes later
+> **Status:** **v1.0.0, and Phase 13 has begun — one stretch item taken.**
+> Phases 0–10 built the engine, Phase 11 filled it with 54 exercises, and Phase
+> 12 is the front door and the portfolio artifacts: `uv sync && uv run practice
+> up` is the whole of getting started, and it refuses with an instruction rather
+> than serving a tool that breaks twenty minutes later
 > ([ADR 0017](adr/0017-a-front-door-separate-from-the-server.md)). The README
 > carries a hand-written architecture diagram and a demo that is *generated from
 > real captured output* rather than recorded
 > ([ADR 0016](adr/0016-a-generated-demo-not-a-recorded-one.md)), and
-> [the postmortem](postmortem.md) is the honest version of what it cost. Phase
-> 13 is stretch, by appetite.
+> [the postmortem](postmortem.md) is the honest version of what it cost.
+>
+> **Phase 13 is stretch, by appetite, and the first item taken is FSRS** — not
+> because a second scheduling algorithm is the most valuable thing in §11's menu,
+> but because it was the only one with a *prediction* attached.
+> [ADR 0008](adr/0008-sm2-first-with-fsrs-behind-a-port.md) deferred FSRS in
+> Phase 9 and wrote down in advance what the swap would cost: one line in
+> `composition.py`, and a migration that adds columns rather than reusing SM-2's.
+> **Both halves held** — twelve files under `src/`, and not one of them a use
+> case, a grader or a route: the two that are not `domain/scheduling/`,
+> `composition.py` or the interface are the SQLite mapper and the review
+> repository, each gaining the two column names, which is the migration showing
+> up where it has to. `PRACTICE_SCHEDULER` now selects between them
+> ([ADR 0018](adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)). What
+> the prediction missed is that one line is not shipping: a scheduler nobody can
+> select is written rather than shipped, so the real cost was a registry, a config
+> question, a preflight step and a template branch, all four of them in the
+> interface and at the root.
+>
+> **And three things only a second implementation could find.** One of §9.7's
+> four scheduler properties turns out to be SM-2's policy rather than a law —
+> *"`AGAIN` always resets to one day or less"*, which FSRS does not and should not
+> do. §9.7's interval clamp is a property of **whole-day intervals**, not of
+> SM-2's arithmetic: FSRS stalls too, from an unrelated cause, and needs the same
+> `max(previous + 1, ...)`. And the schedule panel had been printing an ease
+> factor that FSRS never moves — present, correctly formatted and meaningless, so
+> no fragment assertion could have caught it. The default stays SM-2, for the
+> reason ADR 0008 already gave: FSRS without fitted parameters is FSRS without the
+> thing that makes it better, and this tool still keeps no review log.
 >
 > **The library is the product: 54 exercises, 24 git scenarios and 30 katas,
 > every one of them graded.** Phase 11 is the content that makes the engine
@@ -83,6 +110,7 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > a fresh Windows console.
 >
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
+> · **Last phase:** 13 (FSRS), 2026-10-04
 
 ---
 
@@ -1834,21 +1862,74 @@ of this plan and into the record it belonged in
 
 ---
 
-### Phase 13 — Stretch (post-v1, pick by appetite)
+### Phase 13 — Stretch (post-v1, pick by appetite) · **FSRS taken, 1 session**
 
 Each one is intended to be an **adapter or content addition, not a rewrite** —
 which is the real test of whether the architecture earned its keep.
 
-| Idea | Touches |
-|---|---|
-| Docker sandbox adapter | a new `SandboxProvisioner` implementation only |
-| FSRS scheduler | a new `Scheduler` implementation only |
-| Shell/CLI drills (grep, awk, jq, logs) | new exercise kind + content |
-| Concept recall with rubric self-grading | new exercise kind + content |
-| Embedded terminal (xterm.js + pty) | a new interaction adapter |
-| SQL drills against seeded SQLite | new exercise kind |
-| Exportable content packs | a content repository adapter |
-| Interview mode (timed, no hints, no test peeking) | application-layer policy |
+| Idea | Touches | Status |
+|---|---|---|
+| FSRS scheduler | a new `Scheduler` implementation only | **done** ([ADR 0018](adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)) |
+| Docker sandbox adapter | a new `SandboxProvisioner` implementation only | open |
+| Shell/CLI drills (grep, awk, jq, logs) | new exercise kind + content | open |
+| Concept recall with rubric self-grading | new exercise kind + content | open |
+| Embedded terminal (xterm.js + pty) | a new interaction adapter | open |
+| SQL drills against seeded SQLite | new exercise kind | open |
+| Exportable content packs | a content repository adapter | open |
+| Interview mode (timed, no hints, no test peeking) | application-layer policy | open |
+
+**FSRS was taken first because it was the only one with a prediction attached.**
+[ADR 0008](adr/0008-sm2-first-with-fsrs-behind-a-port.md) deferred FSRS in Phase
+9 and wrote down, in advance, what the swap would cost: *"a second class
+satisfying the same protocol and one line in `composition.py`"*, plus a migration
+that *"would add columns rather than reuse them"*. Every other row in the table
+would have produced a feature; this one produced a **graded prediction**, which
+is worth more at this point in the project than another exercise kind. It also
+cleared the one port that had been satisfying §13's two-implementation rule on an
+IOU.
+
+**Commits** — five, in dependency order
+1. `feat(domain): add FSRS memory state to the review card`
+2. `feat(domain): schedule with FSRS behind the Scheduler port`
+3. `test(domain): hold both schedulers to one conformance suite`
+4. `feat: choose the scheduler at the composition root`
+5. `docs: close phase 13 with ADR 0018`
+
+**Exit:** a second scheduler is selectable in the shipped product, and it
+arrives as an addition rather than as a change to anything that was already
+working. **Met**, and each clause has a named owner:
+
+- *a second implementation* —
+  `tests/unit/test_ports.py::test_the_fsrs_scheduler_satisfies_the_scheduler_port_too`
+  for the shape, and
+  `tests/unit/domain/scheduling/test_fsrs.py` (37 tests) for the arithmetic.
+- *selectable in the shipped product* —
+  `tests/integration/test_cli_up.py::test_the_scheduler_can_be_chosen_for_real`
+  sets `PRACTICE_SCHEDULER=fsrs`, runs `practice up`, and requires it to serve
+  with FSRS named in the first-run report. A scheduler nobody can select is
+  written, not shipped, which is the one thing ADR 0008's prediction missed.
+- *an addition rather than a change* — `tests/unit/test_architecture.py` is
+  unchanged and still passes, and `git diff --stat v1.0.0..HEAD -- src/` is the
+  evidence: twelve files, of which **none is a use case, a grader or a route**,
+  and nothing under `application/`, `domain/checks/`, `adapters/sandbox/`,
+  `adapters/git/`, `adapters/kata/` or `adapters/content/` was touched at all.
+  What did change: `domain/scheduling/fsrs.py` (new), two nullable fields on
+  `ReviewCard`, migration 0002, the two column names in the SQLite mapper and
+  the review repository's column tuple, a registry in `composition.py`, a
+  question in `config.py`, a step in the launcher, and a branch in one template.
+  The persistence pair is the honest asterisk on "one line at the composition
+  root" — a new column has to be named where rows are built, and ADR 0008
+  predicted exactly that cost.
+- *the port is proved rather than claimed* —
+  `tests/unit/domain/scheduling/test_scheduler_conformance.py`, parametrized over
+  both, plus `test_every_real_scheduler_is_covered_here` so a third
+  implementation cannot be added without being held to it.
+
+**Three findings, all in §16.** Three of §9.7's four properties belong to the
+port and one belongs to SM-2; §9.7's interval clamp is a property of whole-day
+intervals rather than of SM-2's arithmetic; and the schedule panel had been
+printing a number that is meaningless under FSRS, which no fragment assertion
+could have caught.
 
 ---
 
@@ -1878,6 +1959,7 @@ changed"* is worth more than any code sample.
 | [0015](adr/0015-verify-on-the-working-tree-not-every-commit.md) | Verify on the working tree, not on every commit | accepted |
 | [0016](adr/0016-a-generated-demo-not-a-recorded-one.md) | The demo is generated from captured output, not recorded | accepted |
 | [0017](adr/0017-a-front-door-separate-from-the-server.md) | A front door (`practice up`) separate from the server | accepted |
+| [0018](adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md) | FSRS as a second scheduler, not a replacement | accepted |
 
 ---
 
@@ -3652,3 +3734,145 @@ repeating here are that the longest *file* sets the floor for the parallel suite
 describing the passing state even when it fails, so "You did not force-update a
 shared branch" appears directly above the evidence that you did. It reads wrongly
 in exactly the output this project puts in its README.
+
+---
+
+**2026-10-04 — Phase 13, first item: FSRS, and a prediction graded.** Five
+commits, exactly the five sketched, one session. Phase 13 is a menu of eight
+stretch ideas to be picked by appetite, and the appetite had a tiebreaker:
+**every other row in the table would have produced a feature, and this one
+produced a graded prediction.** ADR 0008 deferred FSRS in Phase 9 and wrote down
+in advance what the swap would cost, which makes it the only item in the menu
+whose outcome could be *wrong*. It also cleared the last port satisfying §13's
+two-implementation rule on an IOU: `Scheduler` had one real implementation and a
+double that does no arithmetic.
+
+**ADR 0008's prediction held, and the part it missed is the interesting part.**
+It said FSRS would be "a second class satisfying the same protocol and one line
+in `composition.py`", and the line was exactly where it said: `Sm2Scheduler()`
+became `build_scheduler()`. It said an honest migration "would add columns rather
+than reuse them", and `0002_fsrs_memory_state.sql` adds two nullable ones.
+Twelve files under `src/`, and **not one of them a use case, a grader or a
+route** — `application/`, `domain/checks/` and the sandbox, git, kata and
+content adapters are untouched. The two that are neither scheduler, root nor
+interface are the SQLite mapper and the review repository, each gaining the two
+column names, which is the honest asterisk on "one line": a new column has to be
+named where rows are built, and the ADR predicted that half too.
+**What it did not foresee is that one line is not shipping.** A second
+implementation nobody can select is written rather than shipped, so the real bill
+was one line *plus* a registry in `composition.py`, a question in `config.py`, a
+fifth preflight step, and a branch in one template — four additions, all four of
+them in the interface or at the root, which is the shape §13 asked for and not
+the shape the ADR promised. The correction is in ADR 0018 rather than left as a
+prediction that was nearly right.
+
+**Finding one: three of §9.7's four properties belong to the port, and one
+belongs to SM-2.** This is the finding the whole phase was worth. §9.7 names four
+properties of "the scheduler" and Phase 9 held them in `test_sm2.py`, because
+with one implementation there was nowhere else to put them and no way to tell
+which kind of claim each one was. The ease floor, monotonicity under consecutive
+`GOOD`, and `due_on` always falling after the review are properties of *a*
+scheduler, and they now live in
+`tests/unit/domain/scheduling/test_scheduler_conformance.py`, parametrized over
+both. *"`AGAIN` always resets to one day or less"* is **SM-2's policy**: FSRS
+schedules a lapse from its own post-lapse stability, which on a card established
+for a year is weeks, and bending it to a day would have been bending the second
+implementation into the first's shape to protect a sentence in this document.
+What replaces it as a shared property is the weaker and still useful *a lapse
+never lengthens an established interval*.
+
+The general lesson is worth stating because it will recur: **a property believed
+universal and actually local is a liability**, and the only way to find one is a
+second implementation. The conformance suite is where any third scheduler gets
+held, and `test_every_real_scheduler_is_covered_here` exists because a scheduler
+added and not parametrized in is one nothing holds to the contract and no other
+test would notice.
+
+**Finding two: §9.7's interval clamp is a property of whole-day intervals, not
+of SM-2.** §9.7 introduces `max(previous + 1, round(interval * ease))` as the fix
+for a stall at the ease floor — `round(1 * 1.3) == 1` — and reads like a quirk of
+one algorithm's arithmetic. FSRS stalls too, from a cause with nothing in common:
+its stability grows by `1 + k * (exp(w10 * (1 - R)) - 1)`, which is **exactly 1
+when `R == 1`**, and retrievability is 1 whenever no days have passed. Grade a
+card twice in one day and FSRS hands back the stability it was given. Two
+unrelated causes, one fix, and §9.7's instruction to "write the test first and
+watch it catch this" was vindicated a second time by a test written for a
+different implementation.
+
+**Finding three: the one defect the test suite could not see was in a template
+again.** The schedule panel printed `Ease 2.50` unconditionally. Correct under
+SM-2; under FSRS a constant that never moves and means nothing — and *present,
+and correctly formatted*, so no fragment assertion in `tests/web/` was ever going
+to fail on it. Found by setting `PRACTICE_SCHEDULER=fsrs` and reading the page,
+which is now the third time this project has found a real defect that way: Phase
+9's four accent-on-accent buttons with no words on them, Phase 12's em dash
+arriving as a replacement character on a fresh Windows console, and this. **The
+pattern is stable enough to state as a rule: a surface whose correctness depends
+on which implementation is wired behind it cannot be covered by asserting on its
+output alone.** The fix pushes the claim down to where a test can hold it —
+`ReviewCard.has_memory_state` decides which numbers are meaningful, the template
+decides what to call them, and `tests/web/test_review.py` now has both branches.
+
+**Two deviations from FSRS-4.5 as published, both deliberate.** A lapse is
+clamped so it never lengthens an established interval: the published post-lapse
+term can exceed the input stability where stability is small, and the property is
+worth more than fidelity to a formula whose seventeen parameters this project
+cannot fit. And there is **no maximum interval**, which FSRS implementations
+normally have, because `min(ceiling, ...)` and `max(previous + 1, ...)` cannot
+both hold — a ceiling would break the monotonicity property the moment a card
+reached it, to protect against a card nobody will own.
+
+**The thing that made a mid-history switch survivable was an identity, not a
+migration.** At 90% retention an FSRS interval *is* its stability, exactly,
+because `0.9 ** -2 - 1 == 0.19 / 0.81 == 19 / 81` is the forgetting curve's own
+factor and the two cancel by construction. So a card SM-2 left at fifteen days is
+read as a card with a stability of fifteen and **adopted** rather than reset. The
+alternative — treat an unknown memory state as a new card — would have discarded
+a month of real review history on the day the choice was changed, invisibly. One
+ulp out in float64, so the test asserts it with `isclose`; exact in arithmetic,
+which is what makes it a conversion rather than a guess.
+
+**Three test-suite repairs, two of which had been passing for the wrong reason.**
+A migration-count assertion compared the applied versions to a literal `[1]`, and
+a second test fabricated "a database written by a newer `practice`" as version
+**2** — which this `practice` now ships, so it had stopped testing a refusal and
+started constructing an entirely ordinary database. Both now derive from
+`load_migrations()`. **A literal that names a version from the future is
+guaranteed to stop being one**, which is a small enough lesson to have missed and
+a sharp enough one to write down. The third: `conftest.py` now clears
+`PRACTICE_SCHEDULER`, for the reason it already redirects the database — a
+developer with `fsrs` exported would otherwise run a different wiring than CI,
+and only on their machine.
+
+**What was not taken, and why.** The Docker sandbox adapter is the one item that
+cannot be verified on this machine or kept inside the offline claim (§8.2), so it
+stays open as a design sketch rather than a half-tested adapter. Shell drills, SQL
+drills and concept recall each mean a new *exercise kind* — a grader, a schema
+entry and authored content — which is Phase 11's shape and not a stretch item's.
+Interview mode is the cheapest remaining item and the most self-contained, and it
+is the one to take next if the appetite returns.
+
+**Final numbers.** 3,219 passing and one skipped, in 8m11s on four workers —
+81 more tests and 31 seconds more than Phase 12 left it. 100% statement and
+branch coverage over `domain/` and `application/` against the 90% gate, and the
+covered surface **grew** for the first time since Phase 10: 2,077 statements and
+402 branches, against Phase 11's 1,977 and 384. That is this phase in one line
+and it is the mirror image of Phase 11's, which shrank the gated surface while
+multiplying the library — a hundred statements of new arithmetic, all of it
+inside the gate, because a scheduler is the kind of thing that can be quietly
+wrong and `domain/scheduling/` is where this project puts those. 54 exercises
+unchanged, 24 fixtures pinned on both platforms, **18 ADRs**, 2 schema
+migrations. Two real `Scheduler` implementations and a double, which is the
+first time §13's two-implementation rule is met by this port without counting
+the double.
+
+**One cost worth recording against this phase specifically.** FSRS is shipped and
+not defaulted, and the reason is the one ADR 0008 already gave: its advantage
+comes from parameters fitted to a log of real reviews, `sqlite/reviews.py`
+replaces a card on every review and keeps none, and **FSRS on unfitted defaults
+is FSRS without the thing that makes it better than SM-2**. So this phase bought
+a proof about the architecture and a finding about the properties, and bought the
+user almost nothing. That is a fair trade for a stretch item and would not be one
+for a planned phase. The review log is the thing that would change it, and it is
+a phase rather than an afternoon: a schema change, a repository method, a backfill
+with nothing to backfill from, and a fitting procedure.
