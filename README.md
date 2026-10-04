@@ -15,13 +15,12 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status:** Phase 11 complete — **54 exercises, 24 git scenarios and 30 katas,
-every one of them graded.** The engine was finished in Phase 10; this is the
-library that makes it worth opening. The core bet works, a session survives the
-terminal it was opened in, both exercise kinds are solved in a browser *or in
-your own editor*, and the tool answers *what should I practise today?* instead of
-leaving it to you. A git scenario is graded on what your commands actually did,
-from a console or from the terminal:
+**Status: v1.0.0.** All twelve planned phases are done — **54 exercises, 24 git
+scenarios and 30 katas, every one of them graded.** The core bet works, a session
+survives the terminal it was opened in, both exercise kinds are solved in a
+browser *or in your own editor*, and the tool answers *what should I practise
+today?* instead of leaving it to you. A git scenario is graded on what your
+commands actually did, from a console or from the terminal:
 
 ![A terminal replaying `practice solve git/revert-a-pushed-commit`: three commands run, the content check passes, and the history check fails.](docs/demo.svg)
 
@@ -48,8 +47,11 @@ state exactly what the grader checks, and what makes the notes the product rathe
 than a restatement of someone else's problem statement.
 
 See [docs/PLAN.md](docs/PLAN.md) for the full design and the phase plan, and
-[docs/adr/](docs/adr/) for the decisions and the alternatives that were
-rejected.
+[docs/adr/](docs/adr/) for the seventeen decisions and the alternatives that were
+rejected — the rejected half is usually the half worth reading.
+[docs/postmortem.md](docs/postmortem.md) is the honest version: what the bet
+bought, six things that would be done differently, and five that are still
+wrong.
 
 ## Getting started
 

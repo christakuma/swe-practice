@@ -4,11 +4,22 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** Phase 11 complete — **the library is the product now: 54
-> exercises, 24 git scenarios and 30 katas, every one of them graded.** Phases
-> 0–10 built the engine; this phase is the content that makes it worth opening,
-> and the exit bar was never "they load" — `uv run pytest -m content` replays
-> every reference solution through the real use cases, holds all 52
+> **Status:** **v1.0.0 — Phase 12 complete, and the plan is done.** Phases 0–10
+> built the engine, Phase 11 filled it with 54 exercises, and Phase 12 is the
+> front door and the portfolio artifacts: `uv sync && uv run practice up` is the
+> whole of getting started, and it refuses with an instruction rather than
+> serving a tool that breaks twenty minutes later
+> ([ADR 0017](adr/0017-a-front-door-separate-from-the-server.md)). The README
+> carries a hand-written architecture diagram and a demo that is *generated from
+> real captured output* rather than recorded
+> ([ADR 0016](adr/0016-a-generated-demo-not-a-recorded-one.md)), and
+> [the postmortem](postmortem.md) is the honest version of what it cost. Phase
+> 13 is stretch, by appetite.
+>
+> **The library is the product: 54 exercises, 24 git scenarios and 30 katas,
+> every one of them graded.** Phase 11 is the content that makes the engine
+> worth opening, and its exit bar was never "they load" — `uv run pytest -m
+> content` replays every reference solution through the real use cases, holds 52
 > counter-examples to failing **exactly** the checks they declare, grades every
 > kata's stub to prove the suite rejects it, and pins all 24 fixtures to
 > `content/fixtures.lock` on both platforms. Phases 0–9 are a complete product:
@@ -60,7 +71,18 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > ([ADR 0014](adr/0014-a-hand-ordered-curriculum-manifest.md)) — it had been
 > `sorted(ExerciseId)`, which put the hardest kata fifth.
 >
-> **Owner:** Chris Sweet · **Plan written:** 2026-09-30
+> **Phase 12 is the two minutes between cloning this and solving something.**
+> `practice up` asks the four questions a fresh machine fails — is git
+> resolvable, does the content root list exercises, can the cache directory be
+> created, can every migration be applied — while there is still a terminal to
+> answer in, and reports all of their problems in one pass rather than one per
+> run. It exists as a second command rather than as a change to `serve` because
+> `serve` starting a server *and nothing else* is a property the web suite
+> depends on. The phase also found the one thing the test suite could not: an em
+> dash in the first line a stranger reads arrives as a replacement character on
+> a fresh Windows console.
+>
+> **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
 
 ---
 
@@ -1770,21 +1792,45 @@ about them.
 
 ---
 
-### Phase 12 — Polish and portfolio artifacts · 3 sessions
+### Phase 12 — Polish and portfolio artifacts · 3 sessions — **complete**
 
 - `practice` launcher: first-run setup, migrations, browser open
 - README with the architecture diagram and a demo GIF
 - Remaining ADRs plus an honest "what I'd do differently" postmortem
 - Tag `v1.0.0`
 
-**Commits**
+**Commits** — four, exactly as sketched, which had not happened before
 1. `feat: add launcher with first-run setup`
 2. `docs: add README with architecture diagram and demo`
 3. `docs: add remaining ADRs and a project postmortem`
 4. `chore(release): tag v1.0.0`
 
 **Exit:** a stranger can clone, run one command, and be practicing in under two
-minutes.
+minutes. **Met**, and the criterion is a test rather than a claim:
+`tests/integration/test_cli_up.py::test_a_clean_machine_is_set_up_in_one_command`
+starts with no database and no workspace root, runs `practice up` once, and
+requires a migrated database file, a created workspace directory, a browser
+opened on the bound URL and a server started. Each clause of the criterion has
+a named owner:
+
+- *one command* — `practice up`, which runs the four preflight steps, creates
+  what it can and hands the same object graph to the same `uvicorn.run`
+  ([ADR 0017](adr/0017-a-front-door-separate-from-the-server.md)).
+- *under two minutes* — `uv sync` against a lock file resolved at Phase 0, then
+  one command. Nothing is downloaded at run time, which is the offline claim
+  (§8.2) doing double duty.
+- *a stranger* — the refusal tests, which are where this command earns its
+  keep: no git, an empty library, a library with one unloadable exercise, a
+  database written by a newer `practice`, and two blockers reported in one pass
+  rather than one per run.
+
+**Three deviations from the plan**, all recorded in §16: the demo is a generated
+animated SVG rather than a recorded GIF
+([ADR 0016](adr/0016-a-generated-demo-not-a-recorded-one.md)); the launcher is a
+*second* command rather than a change to `serve`, because `serve` has a contract
+the test suite depends on; and one of the three ADRs is Phase 11's, promoted out
+of this plan and into the record it belonged in
+([ADR 0015](adr/0015-verify-on-the-working-tree-not-every-commit.md)).
 
 ---
 
@@ -1829,6 +1875,9 @@ changed"* is worth more than any code sample.
 | [0012](adr/0012-inspect-the-repository-through-the-grading-port.md) | The repo state panel reads through the grading port, not a second git path | accepted |
 | [0013](adr/0013-grade-on-save-is-a-preview.md) | Grade-on-save is a preview that persists nothing | accepted |
 | [0014](adr/0014-a-hand-ordered-curriculum-manifest.md) | A hand-ordered curriculum manifest, not a prerequisite graph | accepted |
+| [0015](adr/0015-verify-on-the-working-tree-not-every-commit.md) | Verify on the working tree, not on every commit | accepted |
+| [0016](adr/0016-a-generated-demo-not-a-recorded-one.md) | The demo is generated from captured output, not recorded | accepted |
+| [0017](adr/0017-a-front-door-separate-from-the-server.md) | A front door (`practice up`) separate from the server | accepted |
 
 ---
 
@@ -3510,3 +3559,84 @@ currently leaves the longest file — `test_scenarios` at 138s — setting the f
 for the whole run. That is the next lever and it needs a
 `pytest_collection_modifyitems` hook to assign the groups, which is why it was
 not taken today.
+
+
+**2026-10-03 — Phase 12 complete, and v1.0.0.** Four commits, exactly the four
+§11 sketched, which had not happened in any previous phase. Three deviations,
+and the interesting one is not the demo.
+
+**`practice up` is a second command, not a change to `serve`, and a test is why.**
+The plan says "`practice` launcher: first-run setup, migrations, browser open",
+and the obvious reading is that `serve` grows those. It cannot:
+`test_building_the_app_reads_no_database` pins `serve` to creating no database
+on startup, and that property is what makes `serve` the command CI and the whole
+web suite can boot. A `serve` that migrated eagerly would have to give it up, or
+grow a `--setup/--no-setup` flag — which is two commands again, spelled worse.
+So the setup went into `up`, and the loopback guard and the `uvicorn.run` call
+were extracted into `_bound` and `_listen` so §8.3's first guard still has one
+implementation and one test covering both ([ADR 0017](adr/0017-a-front-door-separate-from-the-server.md)).
+
+**The design question underneath it was whether to stop at the first failure.**
+A chain is the tempting shape and it is wrong for a tool somebody has just
+cloned: a machine with no git plausibly also has no writable data directory, and
+two runs to learn two facts is one too many. So every step runs and `FirstRun`
+collects them, every step catches its own exceptions rather than letting one
+propagate and take the other three with it, and
+`test_it_reports_every_blocker_rather_than_the_first` holds it. The price is a
+side effect on a run that then refuses — the workspace directory and the
+database file are created even when git is missing — which is bounded by
+`test_prepare_creates_nothing_it_was_not_asked_to` and is cheaper than a report
+that cannot tell you whether the next thing is also broken.
+
+**The demo is generated, not recorded.** A GIF needs a recording tool and an
+encoder, which means re-resolving a lock file this project resolves once on
+purpose; and a GIF of a terminal is a picture of text, so a reviewer who wants
+to check that the verdict in the README is the verdict the tool prints has
+nothing to check against. `docs/demo/session.txt` is the captured output of a
+real `practice solve` and `docs/demo/render.py` draws it
+([ADR 0016](adr/0016-a-generated-demo-not-a-recorded-one.md)). Two findings
+while writing the renderer, both from running it:
+
+- **The obvious animation encoding does not loop.** One shared keyframes plus a
+  per-line `animation-delay` seems right and is not: with `infinite`, each line
+  repeats on *its own* cycle starting from its delay, so the screen never clears
+  at once — every line flickers off at a different moment. One keyframes block
+  per line, with the reveal point baked in as a percentage of one shared
+  duration, is what makes them start and end together.
+- **The static fallback is the reason this is safe.** Every line is authored
+  with `opacity="1"` and hidden by the stylesheet, so a renderer that strips CSS
+  shows the whole transcript rather than an empty box. That is the opposite of
+  the usual failure mode for an animated SVG, and it is why depending on CSS
+  inside an image is an acceptable risk here.
+
+**The third deviation is an ADR for a decision this plan already held.**
+[ADR 0015](adr/0015-verify-on-the-working-tree-not-every-commit.md) records the
+removal of the per-commit greenness rule, which was Phase 11's decision and
+lived only in §11 and §16. The ADR index says a retrofitted record keeps the
+justification and loses the alternatives, so the file says up front that it is
+an exception and why it is not a reconstruction: the reasoning and the
+measurements were written at the time, and what the ADR adds is the alternatives
+section the plan never had.
+
+**One defect, and the fast tier could not have found it.** The first line a
+stranger reads — `54 exercises (24 git scenarios, 30 katas) in …` — had an em
+dash in it, and `chcp 437` is still the default on a fresh Windows console, so
+it arrived as a replacement character. Found by running the command, not by any
+test: every assertion on that line matches a substring that does not contain the
+dash, and would have gone on passing. The report is ASCII now, with a comment
+saying why. **The general shape:** a test suite asserts on the string the
+program *produced*, and the console is a second encoder between that string and
+the reader.
+
+**Final numbers.** 3,138 tests, 100% statement and branch coverage over
+`domain/` and `application/` against the 90% gate, 54 exercises, 24 fixtures
+pinned on both platforms, 17 ADRs. Seventeen use cases, 13 ports, 20 assertions.
+`uv run practice up` is the whole of getting started.
+
+**What is still wrong is written down rather than implied** —
+[the postmortem](postmortem.md) names five things, of which the two worth
+repeating here are that the longest *file* sets the floor for the parallel suite
+(`--dist loadgroup` is the known lever) and that an advisory check prints a label
+describing the passing state even when it fails, so "You did not force-update a
+shared branch" appears directly above the evidence that you did. It reads wrongly
+in exactly the output this project puts in its README.

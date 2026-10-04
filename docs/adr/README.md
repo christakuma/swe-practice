@@ -36,6 +36,15 @@ an afternoon do not need one.
 | [0012](0012-inspect-the-repository-through-the-grading-port.md) | The repo state panel reads through the grading port, not a second git path | accepted |
 | [0013](0013-grade-on-save-is-a-preview.md) | Grade-on-save is a preview that persists nothing | accepted |
 | [0014](0014-a-hand-ordered-curriculum-manifest.md) | A hand-ordered curriculum manifest, not a prerequisite graph | accepted |
+| [0015](0015-verify-on-the-working-tree-not-every-commit.md) | Verify on the working tree, not on every commit | accepted |
+| [0016](0016-a-generated-demo-not-a-recorded-one.md) | The demo is generated from captured output, not recorded | accepted |
+| [0017](0017-a-front-door-separate-from-the-server.md) | A front door (`practice up`) separate from the server | accepted |
+
+0015 is the one record here that was not written on the day the decision was
+made -- it was decided in Phase 11 and written up in Phase 12. Its own first
+section says so and says why it is an exception rather than a precedent: the
+reasoning and the measurements were recorded contemporaneously in PLAN.md, so
+what the ADR adds is the alternatives section, not a reconstruction.
 
 0009, 0010 and 0011 are out of sequence because their numbers were reserved in
 PLAN.md §12 before the decisions were written up, and numbers are never reused.
