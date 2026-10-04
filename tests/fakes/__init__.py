@@ -19,6 +19,7 @@ makes its tests prove nothing.
 
 from tests.fakes.clock import FakeClock
 from tests.fakes.content import FakeContentRepository, a_kata, a_scenario
+from tests.fakes.drill import FakeDrillQuery, a_result
 from tests.fakes.editor import FakeEditorLauncher
 from tests.fakes.ids import SequentialIdGenerator
 from tests.fakes.kata import StubKataRunner, a_record, a_run, a_timeout
@@ -39,6 +40,7 @@ __all__ = [
     "Commit",
     "FakeClock",
     "FakeContentRepository",
+    "FakeDrillQuery",
     "FakeEditorLauncher",
     "FakeFileWatcher",
     "FakeProvisioner",
@@ -53,6 +55,7 @@ __all__ = [
     "a_kata",
     "a_record",
     "a_repo",
+    "a_result",
     "a_run",
     "a_scenario",
     "a_timeout",

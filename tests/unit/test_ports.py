@@ -27,13 +27,14 @@ from practice.adapters.persistence import InMemoryAttemptRepository
 from practice.domain.attempt import Attempt, AttemptPolicy
 from practice.domain.exercise import ExerciseFilter, ExerciseKind, KataSpec
 from practice.domain.ids import AttemptId, ExerciseId, Sha
-from practice.domain.ports import CommitInfo, WorktreeStatus
+from practice.domain.ports import CommitInfo, ResultSet, WorktreeStatus
 from practice.domain.review import Grade, ReviewCard
 from practice.domain.scheduling import FsrsScheduler, Sm2Scheduler
 from tests.fakes import (
     BuilderRepoQueryFactory,
     FakeClock,
     FakeContentRepository,
+    FakeDrillQuery,
     FakeEditorLauncher,
     FakeProvisioner,
     FakeWorkspace,
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
         AttemptRepository,
         Clock,
         ContentRepository,
+        DrillQuery,
         EditorLauncher,
         IdGenerator,
         RepoQuery,
@@ -401,6 +403,74 @@ def test_the_builder_factory_hands_out_a_fresh_query_each_call() -> None:
 
 
 # --- the scheduler, twice over --------------------------------------------
+
+
+def test_the_fake_drill_query_satisfies_the_drill_query_port() -> None:
+    """`DrillQuery`'s second implementation, which is what §13 asks of a port.
+
+    The first is `SqliteDrillQuery`. This one is built from rows rather than
+    from SQL, which is what makes the ten assertions in `domain/drills/` cost
+    milliseconds -- and what lets them be tested against states a real database
+    cannot reach, the same property `FakeRepoQuery` has.
+    """
+    query: DrillQuery = FakeDrillQuery(
+        result=ResultSet(columns=("name",), rows=(("alice",),)),
+        tables={"customers": ResultSet(columns=("name",), rows=(("alice",),))},
+        plan=("SCAN customers",),
+        statements=("SELECT name FROM customers",),
+    )
+
+    assert query.error() is None
+    assert query.tables() == frozenset({"customers"})
+    assert query.plan() == ("SCAN customers",)
+
+
+def test_a_fake_drill_query_with_nothing_in_it_reports_an_empty_drill() -> None:
+    """The default state is "the answer returned nothing", not "it failed".
+
+    Those are different answers and `rows.py` reports them differently, so the
+    fake must be able to express the first without inventing an error.
+    """
+    query = FakeDrillQuery()
+
+    assert query.error() is None
+    assert query.result() is None
+    assert query.table("orders") is None
+    assert query.tables() == frozenset()
+    assert query.statements() == ()
+
+
+class TestResultSet:
+    """The port vocabulary both `DrillQuery` implementations answer in.
+
+    Here rather than beside the assertions for the same reason `WorktreeStatus`
+    is: these are the derivations the real adapter and the fake must not be able
+    to disagree about.
+    """
+
+    def test_an_empty_result_set_has_no_rows(self) -> None:
+        assert ResultSet().row_count == 0
+
+    def test_a_column_is_read_by_name(self) -> None:
+        result = ResultSet(columns=("name", "orders"), rows=(("alice", 2),))
+
+        assert result.column("orders") == (2,)
+
+    def test_a_column_that_is_not_there_is_none_rather_than_an_error(self) -> None:
+        """An assertion naming a column the answer did not select is a clean
+        failure a solver can act on; a traceback is not (§6.5).
+        """
+        assert ResultSet(columns=("name",), rows=(("alice",),)).column("total") is None
+
+    def test_a_repeated_column_name_reads_the_first_of_them(self) -> None:
+        """`SELECT a.id, b.id` is legal SQL and the reason `rows` is positional.
+
+        The same rule SQLite's own row access uses, stated here so both
+        implementations are held to it.
+        """
+        result = ResultSet(columns=("id", "id"), rows=((1, 2),))
+
+        assert result.column("id") == (1,)
 
 
 def test_the_sm2_scheduler_satisfies_the_scheduler_port() -> None:

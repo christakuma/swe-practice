@@ -5,11 +5,11 @@ implements a port without importing it and without an inheritance relationship
 pointing the wrong way, and a fake needs no base class — `FakeClock` is five
 lines (ADR 0002).
 
-The port's own data vocabulary lives here too — `WorktreeStatus` and
-`CommitInfo`. They are pure value objects describing git state, and keeping them
-next to the protocol that returns them means `GitRepoQuery` and `FakeRepoQuery`
-cannot disagree about their shape, which is the drift that stops a fake being
-evidence of anything.
+The port's own data vocabulary lives here too — `WorktreeStatus`, `CommitInfo`
+and `ResultSet`. They are pure value objects describing the state a grading
+assertion reads, and keeping them next to the protocol that returns them means a
+real adapter and its fake cannot disagree about their shape, which is the drift
+that stops a fake being evidence of anything.
 
 Per PLAN.md §13, every port has to earn its keep with at least two real or test
 implementations. `RepoQuery` earns it on day one. Where a port ends up with one
@@ -37,14 +37,17 @@ __all__ = [
     "Clock",
     "CommitInfo",
     "ContentRepository",
+    "DrillQuery",
     "EditorLauncher",
     "FileWatcher",
     "Grader",
     "IdGenerator",
     "RepoQuery",
     "RepoQueryFactory",
+    "ResultSet",
     "ReviewRepository",
     "SandboxProvisioner",
+    "Scalar",
     "Scheduler",
     "Workspace",
     "WorkspaceSummary",
@@ -137,6 +140,144 @@ class CommitInfo:
     @property
     def is_merge(self) -> bool:
         return len(self.parents) > 1
+
+
+# --- the DrillQuery vocabulary --------------------------------------------
+
+
+#: Every type SQLite hands back from a cursor. Deliberately the real set rather
+#: than `str`: a port that stringified on the way out would be deciding grading
+#: policy, and how `NULL` compares to an author's expected value is a *domain*
+#: question (`domain/drills/evaluation.as_text`) rather than a driver detail.
+type Scalar = str | int | float | bytes | None
+
+
+@dataclass(frozen=True, slots=True)
+class ResultSet:
+    """Column names and rows, as a cursor produced them.
+
+    The shape both halves of a drill are read through: the rows an answer
+    *returned*, and the rows a table was *left holding*. One type for both,
+    because every assertion that can compare a result set can compare a table —
+    `result_matches` and `table_matches` differ in where the rows came from and
+    in nothing else.
+
+    `rows` is a tuple of tuples rather than a tuple of mappings. A SQL result is
+    positional, two columns can share a name (`SELECT a.id, b.id`), and an
+    assertion about *column order* could not be written over a mapping at all.
+    """
+
+    columns: tuple[str, ...] = ()
+    rows: tuple[tuple[Scalar, ...], ...] = ()
+
+    @property
+    def row_count(self) -> int:
+        return len(self.rows)
+
+    def column(self, name: str) -> tuple[Scalar, ...] | None:
+        """One column's values top to bottom, or `None` if there is no such column.
+
+        `None` rather than a raise, for the reason the whole grading layer gives:
+        an assertion naming a column the answer did not select is a clean failure
+        a solver can act on, and a traceback is not (PLAN.md §6.5). The *first*
+        column of that name, which is the same rule SQLite's own row access uses.
+        """
+        if name not in self.columns:
+            return None
+        index = self.columns.index(name)
+        return tuple(row[index] for row in self.rows)
+
+
+class DrillQuery(Protocol):
+    """Read-only interrogation of a finished SQL drill. `RepoQuery`'s counterpart.
+
+    The port that makes the drill assertions pure, and it is deliberately the
+    same shape of thing as `RepoQuery`: an answer has already been run against a
+    seeded database by the time anything here is called, and every method is a
+    question about the state that run left behind. All ten assertions in
+    `domain/drills/` are pure functions of one of these, so they are unit-tested
+    against an in-memory fake with no SQLite file touched.
+
+    **It covers both halves of what a drill grades**, which is the whole reason
+    it is one port rather than two. `result` is what the answer *returned* — the
+    half a `SELECT` drill is about. `table` and `tables` are what the database
+    was *left holding* — the half an `INSERT`, `UPDATE`, `DELETE` or `CREATE`
+    drill is about, and the half that is the project's core bet applied to SQL:
+    grade the end state, not the text of the statement that produced it.
+
+    `error` is how a drill says the answer did not run, and like `RepoQuery`'s
+    `None` returns it is reported rather than raised. A syntax error is the most
+    ordinary thing a solver does, and it has to arrive as a failing check with
+    the message in it.
+    """
+
+    def error(self) -> str | None:
+        """Why the answer did not run, or `None` if it did.
+
+        A string and not an exception: SQLite's own message is the single most
+        useful thing a solver can be shown — `near "FORM": syntax error` ends the
+        problem where a traceback would start one.
+        """
+        ...
+
+    def result(self) -> ResultSet | None:
+        """What the answer's final row-returning statement produced.
+
+        **The final one, not the only one.** An answer may legitimately be
+        several statements — a `CREATE TEMP VIEW` then a `SELECT` over it, or a
+        `DELETE` then a `SELECT` showing what is left — and the one being graded
+        is the one at the end. `None` means the answer returned no rows at all,
+        which is the normal case for a drill graded purely on `table`.
+        """
+        ...
+
+    def table(self, name: str) -> ResultSet | None:
+        """Every row of one table as the answer left it, or `None` if it is gone.
+
+        Column order is the table's declared order and row order is `rowid`, so
+        the result is stable enough to compare against an author's literal rows
+        without the drill having to specify an `ORDER BY` it never wrote.
+        """
+        ...
+
+    def tables(self) -> frozenset[str]:
+        """Every table and view in the database, for `table_exists`.
+
+        A set, because the one question anybody asks of it is membership, and an
+        order would be an invitation to assert on something SQLite does not
+        promise.
+        """
+        ...
+
+    def plan(self) -> tuple[str, ...]:
+        """`EXPLAIN QUERY PLAN` over the answer's final statement, one line each.
+
+        What makes `query_plan_matches` possible, and with it the advisory family
+        that is this kind's reason for existing beyond "the rows are right".
+        `SCAN orders` in a plan where `SEARCH orders USING INDEX` was available is
+        the SQL shape of §4.4's *you achieved the goal, and here is what it cost* —
+        exactly the judgement a force-push advisory makes about git.
+
+        Empty rather than `None` when there is no plan to be had, because the
+        assertion over it is a pattern match and "no lines matched" is already the
+        right answer for "there were no lines".
+        """
+        ...
+
+    def statements(self) -> tuple[str, ...]:
+        """The answer as it was submitted, split into statements.
+
+        The one method here that reads the solver's text rather than the
+        database's state, and it exists for the same reason `command_used` reads
+        the attempt's command log rather than the repository: some lessons are
+        about *how*, and no end state can hold them. A drill that wants "do it
+        with a window function, not a correlated subquery" has nowhere else to
+        look.
+
+        Advisory by convention, like `command_used`. A required check over the
+        text of an answer would be the string matching ADR 0003 rejected.
+        """
+        ...
 
 
 # --- content, attempts, reviews -------------------------------------------

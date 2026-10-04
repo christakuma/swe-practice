@@ -61,6 +61,7 @@ __all__ = [
     "evaluate",
     "is_registered",
     "suggest",
+    "suggest_from",
 ]
 
 #: Refs, ancestry, and the shape of history.
@@ -199,9 +200,26 @@ def suggest(name: str, *, limit: int = 3) -> tuple[str, ...]:
 
     A validation error that says `unknown assertion 'tree_equal'` is correct and
     unhelpful; one that adds `did you mean tree_equals?` ends the problem at the
-    error message. Matching is on shared character trigrams rather than edit
-    distance so that a wrong word order — `equals_tree` — still finds its target,
-    which plain Levenshtein does not.
+    error message.
+    """
+    return suggest_from(name, ASSERTIONS, limit=limit)
+
+
+def suggest_from(
+    name: str, candidates: frozenset[str], *, limit: int = 3
+) -> tuple[str, ...]:
+    """The matcher itself, over whichever vocabulary the caller is validating.
+
+    Matching is on shared character trigrams rather than edit distance so that a
+    wrong word order — `equals_tree` — still finds its target, which plain
+    Levenshtein does not.
+
+    **`candidates` is a parameter as of Phase 14**, when the drill family arrived
+    with a second, deliberately disjoint vocabulary (`domain/drills/registry.py`
+    says why they are not one table). The threshold below was measured against
+    the git names and is the sort of constant that gets re-guessed if it is
+    copied, so what the two registries share is this function and what differs is
+    the set handed to it.
     """
 
     def trigrams(value: str) -> frozenset[str]:
@@ -213,7 +231,7 @@ def suggest(name: str, *, limit: int = 3) -> tuple[str, ...]:
     # the normal path. Coverage caught the guard as dead before this shipped.
     target = trigrams(name)
     scored = []
-    for candidate in ASSERTIONS:
+    for candidate in candidates:
         other = trigrams(candidate)
         overlap = len(target & other) / len(target | other)
         if overlap >= _SUGGESTION_THRESHOLD:
