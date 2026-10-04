@@ -340,3 +340,21 @@ def test_starting_with_the_box_ticked_opens_an_interview(
     opened = wiring.services.list_open_attempts()
     assert len(opened) == 1
     assert opened[0].attempt.policy.is_interview is True
+
+
+def test_the_hint_endpoint_refuses_an_interview_outright(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """What makes the missing button a withdrawal rather than a hidden control.
+
+    The sentence is the aggregate's, not this layer's: `reveal_next_hint` is the
+    only place it is written, and it says interview mode is withholding them
+    rather than that the exercise has none -- which was the one thing Phase 15's
+    first commit had to change about an existing message.
+    """
+    started = wiring.services.start_attempt(KATA, mode=AttemptMode.INTERVIEW)
+
+    response = client.post(f"/api/attempt/{started.attempt.id}/hint")
+
+    assert "interview mode withholds" in response.text
+    assert "this exercise has 0" not in response.text
