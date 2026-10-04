@@ -42,6 +42,7 @@ an afternoon do not need one.
 | [0018](0018-fsrs-as-a-second-scheduler-not-a-replacement.md) | FSRS as a second scheduler, not a replacement | accepted |
 | [0019](0019-sql-drills-as-a-third-exercise-kind.md) | SQL drills as a third exercise kind | accepted |
 | [0020](0020-interview-mode-withdraws-affordances-it-cannot-contain.md) | Interview mode withdraws affordances it cannot contain | accepted |
+| [0021](0021-content-packs-install-rather-than-mount.md) | A content pack is installed to a directory, not mounted as a library | accepted |
 
 0015 is the one record here that was not written on the day the decision was
 made — it was decided in Phase 11 and written up in Phase 12. Its own first
@@ -82,3 +83,16 @@ promised, names the weaker thing it ships instead, and spends its longest
 alternative on the stronger version it rejected and what would justify building
 it. A record that quietly redefined "no test peeking" to mean what was built
 would have been the easier document and a useless one.
+
+0021 is the fourth of that shape, and the first where the menu's **Touches**
+column was wrong in the *useful* direction. It said a content pack costs "a
+content repository adapter"; the adapter was exactly that cheap, and what the
+claim missed is that `ContentRepository` is not the only way to the library.
+`SandboxProvisioner` is handed a content *root* and reaches exercise files by
+path, because `pytest`, `bash` and SQLite all need a real file on a real disk.
+So a pack-backed library can be browsed and not solved, and 0021's longest
+alternative is the widened port that would have fixed that -- rejected because
+the files have to be written to a directory either way, so widening the port
+moves the extraction into `provision` and makes it happen per attempt rather
+than once. Two readers of one library, named on the port so the next person does
+not have to rediscover it.

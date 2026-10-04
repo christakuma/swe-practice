@@ -4,7 +4,7 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** **v1.0.0, and three stretch items taken — Phases 13, 14 and 15.**
+> **Status:** **v1.0.0, and four stretch items taken — Phases 13 through 16.**
 > Phases 0–10 built the engine, Phase 11 filled it with 54 exercises, and Phase
 > 12 is the front door and the portfolio artifacts: `uv sync && uv run practice
 > up` is the whole of getting started, and it refuses with an instruction rather
@@ -173,8 +173,40 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > been wrong for an exercise authored without hints, latent only because the
 > content suite requires every shipped exercise to carry some.
 >
+> **Phase 16 took the fourth item, and it is the first the project nominated for
+> itself.** Phase 15's log closed by calling exportable content packs "the
+> cheapest item on the menu and the only one that would give a port its second
+> real implementation", and both halves held: `ContentRepository` was the last
+> port taking §13's two-implementation rule on credit, and
+> `PackContentRepository` reads a library out of a zip without extracting it
+> ([ADR 0021](adr/0021-content-packs-install-rather-than-mount.md)). The 62
+> exercises are now a 360 KB file that `practice pack --check` verifies and
+> `--install` lays out as a content root, and a *subset* is a library in its own
+> right — which took deriving `curriculum.yaml` and `fixtures.lock` rather than
+> copying them, because a pack of part of a library that carried them verbatim
+> installs to a root that fails both of the commands CI runs over `content/`.
+>
+> **The menu's `Touches` column said "a content repository adapter", and the
+> adapter was exactly that cheap while the feature was not.**
+> `SandboxProvisioner` is constructed with a `content_root: Path` and resolves
+> `content_root / exercise_id` itself, so a fixture, a stub, a `tests.py` and a
+> `seed.sql` reach a workspace by being copied from a directory and **never
+> through the port.** The library has two readers and only one is behind a
+> protocol: the port is the *catalogue*, and a pack-backed library can therefore
+> be browsed and not solved. ADR 0021 rejects the widened port for a reason that
+> only emerged while writing it down — the files have to be written to a
+> directory either way, so carrying bytes on the port moves the extraction inside
+> `provision` and makes it happen per attempt rather than once per install.
+>
+> **And the number that did not move is the phase in one line.** 100% coverage
+> over a gated surface of 2,419 statements and 496 branches — *exactly* Phase
+> 15's figures, because a pack format, a second repository and a CLI command are
+> an adapter, an adapter and an interface, and the only thing this phase put in
+> `domain/` is a docstring. The first phase to ship a feature and add nothing at
+> all inside the gate.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 15 (interview mode), 2026-10-04
+> · **Last phase:** 16 (content packs), 2026-10-04
 
 ---
 
@@ -2258,6 +2290,118 @@ interview with "14 minutes left of 15", which only running it could find.
 
 ---
 
+### Phase 16 — Content packs: the library as something you can send · **1 session**
+
+The fourth item from Phase 13's menu, and the first that the project nominated
+for itself. Phase 15's revision log closed by naming it: *"exportable content
+packs are now the cheapest item on the menu and the only one that would give a
+port its second real implementation."* That is two predictions in one sentence —
+one about cost, one about §13 — and the **Touches** column adds a third by
+saying the whole thing is *a content repository adapter*.
+
+| Idea | Touches | Status |
+|---|---|---|
+| FSRS scheduler | a new `Scheduler` implementation only | **done** ([ADR 0018](adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)) |
+| SQL drills against seeded SQLite | new exercise kind | **done** ([ADR 0019](adr/0019-sql-drills-as-a-third-exercise-kind.md)) |
+| Interview mode (timed, no hints, no test peeking) | application-layer policy | **done, with one clause scoped down** ([ADR 0020](adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md)) |
+| Exportable content packs | a content repository adapter | **done, and the column was wrong in a useful direction** ([ADR 0021](adr/0021-content-packs-install-rather-than-mount.md)) |
+| Docker sandbox adapter | a new `SandboxProvisioner` implementation only | open |
+| Shell/CLI drills (grep, awk, jq, logs) | new exercise kind + content | open |
+| Concept recall with rubric self-grading | new exercise kind + content | open |
+| Embedded terminal (xterm.js + pty) | a new interaction adapter | open |
+
+**It is the last port that was taking §13's two-implementation rule on credit.**
+`ContentRepository` had `FilesystemContentRepository` and a fake, which is the
+arrangement §13 accepts and the weakest version of it: a protocol whose only
+real implementation is the one it was extracted from has not been shown to
+abstract anything. It also carried the thinnest docstring in `ports.py` — one
+line — which is usually a sign nobody has had to think about what a thing
+promises.
+
+**Commits** — six, in dependency order
+1. `refactor(content): a parsing core that has never heard of a disk`
+2. `feat(content): a library as one deterministic file, with its own digests`
+3. `feat(content): read the library out of a pack`
+4. `feat(interface): export a pack, check one, and install one`
+5. `test(e2e): install a pack, and solve out of what it installed`
+6. `docs: close phase 16 with ADR 0021`
+
+Six rather than five, and the extra one is the e2e test standing alone for
+Phase 15's reason: it is the only thing in the phase that can hold the claim the
+whole design rests on, and every other test would pass without it.
+
+**Exit:** the library can be exported as one file, verified, and installed
+somewhere else as a library that works — and it arrives as an addition rather
+than as a change to anything that was already working. **Met on both clauses,
+and the menu's `Touches` column is what needed correcting** — which is the
+phase's value. Each clause has a named owner:
+
+- *the port has a second real implementation* —
+  `tests/integration/content/test_pack_repository.py` (19 tests). The one worth
+  reading is `test_both_build_identical_aggregates`: `Exercise` is a frozen
+  dataclass the whole way down, so one assertion compares every field of every
+  check of every spec across both implementations. `test_nothing_is_extracted`
+  is the other half, because a repository that unpacked to a temporary
+  directory and delegated would be §13's forbidden abstraction-forwarding-one-
+  call and would prove only that `extractall` works.
+- *exported, verified and installed in the shipped product* —
+  `tests/integration/test_cli_pack.py` (19 tests) drives all three modes of
+  `practice pack` and their refusals. ADR 0018's lesson for the third time: a
+  format nobody can write and a pack nobody can install are written, not
+  shipped.
+- *an installed pack is a library that works* — two suites, because the claim
+  has two halves. `tests/content/test_pack.py` (11 tests) round-trips the real
+  62-exercise library and holds the installed root to `validate_library`, whole
+  and as a SQL-only subset; `tests/e2e/test_install_a_content_pack.py` grades a
+  kata and a git scenario out of an installed root with nothing pointing at
+  `content/`. Only the second can say anything about solvability, for the
+  reason in the asterisk.
+- *determinism survives the format* — `test_exporting_twice_gives_identical_bytes`
+  at both sizes, and `test_an_installed_library_is_byte_identical_to_the_source`
+  over all 355 exercise files. The second is the Phase 3 line-ending claim
+  stated directly: a fixture that gained CRLF in transit builds a *different and
+  valid-looking* history, so the e2e scenario test grades the reference against
+  the pinned checks as the backstop.
+- *an addition rather than a change* — `git diff --stat v1.0.0..HEAD -- src/`
+  is the evidence. Nothing under `adapters/sandbox/`, `adapters/kata/`,
+  `adapters/git/`, `adapters/sql/`, `domain/checks/`, `domain/drills/` or
+  `application/` changed at all; no port was widened; no grader, fixture or
+  exercise was touched. Two new modules in `adapters/content/`, a text-taking
+  half added to two existing ones, one widened error type, one command, and one
+  docstring on the port.
+
+**The asterisk, and it is the whole reason this phase was worth taking.**
+*A content repository adapter* is one adapter, and it is not enough.
+`SandboxProvisioner` is constructed with a `content_root: Path` and resolves
+`content_root / exercise_id` itself, so a fixture, a stub, a `tests.py` and a
+`seed.sql` reach a workspace by being copied from a directory and **never
+through the port**. The library therefore has two readers: the port is the
+*catalogue* — everything that reads *about* an exercise, which is browsing,
+filtering, scheduling, validating and counting — and the provisioner is the
+*content*. A pack satisfies the first for free and the second not at all, so a
+pack-backed library can be browsed and not solved.
+
+What ships is the install step, and ADR 0021 spends its longest alternative on
+the widened port that would have avoided it — rejected because **the files have
+to be written to a directory either way.** `pytest` runs a kata's tests from the
+workspace, `bash` executes a fixture from a file, SQLite reads `seed.sql`; a
+port carrying bytes moves the extraction inside `provision` and makes it happen
+per attempt instead of once. Same work, done more often, in the one function
+that is hardest to test. The finding is now written on `ContentRepository`
+itself rather than left in the record, so the next person does not rediscover
+it.
+
+**Five findings, all in §16.** A pack's two indexes have to be *derived* rather
+than copied or a subset installs to a library that fails both CI commands; the
+determinism claim extends to the archive and nearly did not; `__pycache__` in
+the content tree would have made packs non-deterministic for a reason invisible
+in a diff; the export reads its own pack back because that is the only cheap way
+to check the derivation; and `practice solve`'s `--content-root` turned out to
+be the whole of what an installed library needs, which is ADR 0017's
+`--content-root` paying off in a phase that did not plan to use it.
+
+---
+
 ## 12. Architecture decision records
 
 Written as they are decided, not retrofitted. These are the artifacts to bring
@@ -2287,6 +2431,7 @@ changed"* is worth more than any code sample.
 | [0018](adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md) | FSRS as a second scheduler, not a replacement | accepted |
 | [0019](adr/0019-sql-drills-as-a-third-exercise-kind.md) | SQL drills as a third exercise kind | accepted |
 | [0020](adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md) | Interview mode withdraws affordances it cannot contain | accepted |
+| [0021](adr/0021-content-packs-install-rather-than-mount.md) | A content pack is installed to a directory, not mounted as a library | accepted |
 
 ---
 
@@ -4540,3 +4685,120 @@ are unchanged. Shell drills and concept recall are still cheaper than they look
 for Phase 14's reason; Docker still cannot be verified offline on both platforms;
 exportable content packs are now the cheapest item on the menu and the only one
 that would give a port its second real implementation.
+
+---
+
+**2026-10-04 — Phase 16: content packs, and a port that was taking §13 on
+credit.** Six commits, one session. The fourth item from Phase 13's menu and the
+first the project nominated for itself: Phase 15's log closed by calling
+exportable content packs "the cheapest item on the menu and the only one that
+would give a port its second real implementation". Both halves of that held. The
+**Touches** column's claim — *a content repository adapter* — held for the
+adapter and was wrong about the feature, in the direction that was worth finding
+out.
+
+**`ContentRepository` is the catalogue, not the content, and nothing had said
+so.** `SandboxProvisioner` is constructed with a `content_root: Path` and
+resolves `content_root / exercise_id` itself, so a fixture, a stub, a `tests.py`
+and a `seed.sql` reach a workspace by being copied from a directory and never
+through the port. The library has two readers and only one of them is behind a
+protocol. So a pack-backed `ContentRepository` serves a library that can be
+browsed, filtered, counted, scheduled against and validated, and in which
+nothing can be attempted — which is not a bug in the adapter but a fact about
+where the port sits. ADR 0021 spends its longest alternative on the widened port
+that would have fixed it and rejects it for a reason that only became clear while
+writing it down: **the files have to be written to a directory either way.**
+`pytest` runs a kata's tests from the workspace, `bash` executes a fixture from a
+file, SQLite reads `seed.sql`. A port carrying bytes does not remove the
+extraction; it moves it inside `provision` and makes it happen per attempt
+instead of once per install. The finding is now a paragraph on the port rather
+than a line in a record.
+
+**The two indexes have to be derived, and this is the one thing the format could
+not do naively.** `curriculum.yaml` and `fixtures.lock` are both per-exercise
+indexes over a whole library. A pack of *part* of one that carried them verbatim
+installs to a content root that fails **both** of the commands CI runs over
+`content/` — `practice validate` because the manifest names exercises that are
+not there, and `practice fixtures --check` because a lock entry has no exercise.
+Deriving them is four lines and the interesting part is that the failure lands
+in two different commands with two unrelated-looking messages. A pack with no
+scenarios in it still carries a lock file, header and nothing else, because
+`--check` refuses a root without one and an empty lock is exactly right about a
+library with no fixtures.
+
+**The determinism claim extends to the archive, and a zip is built to break it.**
+A zip entry records a modification time and a unix mode, both properties of the
+machine that wrote it, so the same library exported on two machines would
+differ — and a pack that cannot be compared across platforms cannot carry the
+Phase 3 claim it ships `fixtures.lock` to make. Fixed timestamp, fixed mode,
+sorted entries. The one that matters most is the dullest: **bytes copied as
+bytes.** A fixture read in text mode on Windows gains CRLF, and the history it
+then builds is different *and valid-looking* — so the failure would not be a
+missing file but twenty-four hash mismatches that read like a broken
+environment. `test_an_installed_library_is_byte_identical_to_the_source`
+compares all 355 exercise files directly, and the e2e scenario test grades the
+reference against the pinned checks as the backstop.
+
+**`__pycache__` was already in the content tree.** `content/katas/two-sum/`
+holds one, because a kata's `tests.py` is importable and the content suite runs
+it. A packer that copied whatever it found in an exercise directory would
+therefore have produced a different pack depending on what had been run
+recently — non-determinism arriving from outside the library, invisible in a
+diff of it. Excluded by name, with the reason in the constant rather than in a
+commit message.
+
+**The export reads its own pack back before calling it good**, which was added
+as belt and braces and turned out to be the only cheap check on the derivation.
+Writing an archive is the easy half; a derived `curriculum.yaml` that the parser
+which produced it would reject is a failure the writer cannot see in itself, and
+opening the pack through the real `ContentRepository` costs milliseconds.
+
+**And one thing that cost nothing, which is ADR 0017 paying off in a phase that
+did not plan to use it.** An installed pack needs no new way to be reached:
+`--content-root` is already on `solve`, `validate`, `fixtures`, `serve` and
+`up`, so `practice pack --install` finishes by printing two commands that
+already worked. The e2e test grades a kata and a git scenario out of an
+installed root with nothing pointing at `content/`, and not one line of the
+solve path was touched to allow it.
+
+**One stale suppression, found by lint rather than by thought.** The CLI's
+`from pathlib import Path` carried a `noqa: TC003` because Typer reads the
+annotation at runtime; `pack` gave the module a runtime `Path(...)` call, the
+rule stopped firing on its own, and `RUF100` then flagged the directive. The
+reason it existed is kept as a comment, because the next person to remove that
+call needs it.
+
+
+**Final numbers, and the most interesting one is a number that did not move.**
+**3,737 passing and one skipped, in 3m49s on four workers** — 81 more tests than
+Phase 15 left it. **100% statement and branch coverage** over `domain/` and
+`application/` against the 90% gate, with the covered surface at 2,419
+statements and 496 branches — *exactly* Phase 15's figures, to the statement.
+This is the first phase to ship a feature and add nothing at all inside the
+gate, and that is the architecture reporting its own shape rather than a
+coincidence: a pack format, a second repository and a CLI command are an
+adapter, an adapter and an interface, and the only thing the phase put in
+`domain/` is a docstring on `ContentRepository`. 62 exercises unchanged, 24
+fixtures pinned on both platforms, **21 ADRs**, 3 schema migrations.
+
+**What this bought, and what it did not.** It bought the library an exit: the
+62 exercises are now a 360 KB file that somebody else can check and install, and
+a subset of them is a library in its own right, which is what makes "here is my
+SQL track" a sentence the tool can honour. It bought `ContentRepository` the
+second real implementation it had been owed since Phase 2, and the honest
+version of that is that writing one is how the port's actual scope was
+discovered — it is the *catalogue*, and the thing that had been standing in for
+the rest of it is a `Path` on the provisioner. What it did not buy is any way to
+work from a pack without installing it, and ADR 0021 argues that is not a
+missing feature.
+
+The remaining four items are unchanged. Shell drills and concept recall are
+still cheaper than they look for Phase 14's reason, and Phase 16 adds a small
+cost to both: a fourth kind now has to be packable, which
+`test_every_kind_in_the_library_survives_the_round_trip` is phrased to catch on
+the day it is added. Docker still cannot be verified offline on both platforms
+and still stays open as a sketch. The embedded terminal is now the only item
+left whose **Touches** column has never been tested against anything, and on the
+evidence of the last four phases that column is worth about as much as the
+prediction it is attached to.
+

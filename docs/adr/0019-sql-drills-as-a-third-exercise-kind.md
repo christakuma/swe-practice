@@ -162,7 +162,7 @@ might not hold a repository. The cost would be paid by the code with the most
 coverage and the least reason to change.
 
 **Grade a drill on the text of its SQL.** Rejected by
-[ADR 0003](0003-declarative-assertions-over-string-matching.md) before this phase
+[ADR 0003](0003-grade-git-exercises-by-repo-state.md) before this phase
 began, and worth restating because a SQL exercise is where the temptation is
 strongest: "did they write JOIN" is so easy to check. It would fail every correct
 answer spelled differently, which is the one thing a grading engine must not do —

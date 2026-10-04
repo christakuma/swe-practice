@@ -284,7 +284,7 @@ def _audit_something_is_graded(exercise: Exercise) -> Iterator[str]:
     state. For a drill that is a required `sql_matches`; for a scenario it is a
     required `command_used`. Both would pass an answer that is wrong and mentions
     the right keyword, which is precisely the string matching
-    [ADR 0003](../../../../docs/adr/0003-declarative-assertions-over-string-matching.md)
+    [ADR 0003](../../../../docs/adr/0003-grade-git-exercises-by-repo-state.md)
     was written to reject — reintroduced through the back door, one `severity:`
     at a time.
 

@@ -15,16 +15,15 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status: v1.0.0, plus three stretch items.** All twelve planned phases are done —
+**Status: v1.0.0, plus four stretch items.** All twelve planned phases are done —
 **62 exercises: 24 git scenarios, 30 katas and 8 SQL drills, every one of them
 graded.** The core bet works, a session survives the terminal it was opened in,
 every exercise kind is solved in a browser *or in your own editor*, and the tool
 answers *what should I practise today?* instead of leaving it to you.
 
-Phases 13, 14 and 15 are post-v1, taken from a menu by appetite, and all three
-were chosen for the same reason: they were the items with a **prediction**
-attached. **FSRS behind the same `Scheduler` port as SM-2**, and the prediction
-held ([ADR 0018](docs/adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)).
+Phases 13 to 16 are post-v1, taken from a menu by appetite, and all four were
+chosen for the same reason: they were the items with a **prediction** attached.
+**FSRS behind the same `Scheduler` port as SM-2**, and the prediction held ([ADR 0018](docs/adr/0018-fsrs-as-a-second-scheduler-not-a-replacement.md)).
 Then **SQL drills as a third exercise kind** — seed a database, write the SQL,
 and get graded on the rows you returned *and the state you left the database in*
 — where the prediction was half right, which was the more useful outcome
@@ -32,6 +31,12 @@ and get graded on the rows you returned *and the state you left the database in*
 **interview mode**, where the prediction was in the menu entry itself and one of
 its three clauses turned out not to be buildable at all
 ([ADR 0020](docs/adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md)).
+And then **content packs** — the whole library as one verifiable file you can
+send somebody — where the prediction was right about the adapter and wrong about
+the feature, because it turned out the library has *two* readers and only one of
+them is behind a port
+([ADR 0021](docs/adr/0021-content-packs-install-rather-than-mount.md)).
+
 A git scenario is graded on what your commands actually did, from a console or
 from the terminal:
 
@@ -527,6 +532,61 @@ explain it nor collect it. A workspace that *is* in use is never deleted, with o
 without the flag, and there is no force option — the way to get rid of one is
 `practice abandon`.
 
+## Sending the library to somebody else
+
+```bash
+uv run practice pack --out library.practicepack
+```
+
+The 62 exercises become one 360 KB file, with a manifest listing every file in
+it and the sha256 of its bytes. `--kind` and `--difficulty` export a subset, and
+a subset is a **library in its own right** rather than a library with holes in
+it: `curriculum.yaml` and `fixtures.lock` are both per-exercise indexes, so they
+are regenerated from whatever you selected. A pack that carried the full
+ordering would install to a content root that `practice validate` refuses,
+naming fifty-four exercises that are not there.
+
+```bash
+uv run practice pack --check library.practicepack
+```
+
+Hashes every file against the manifest, then opens the library inside the pack
+through the real `ContentRepository`. Those are two different claims — the
+archive arrived intact, and the library in it loads — and the output tells them
+apart, because a pack can be a perfectly good archive of a broken library and
+sending somebody to re-download it would waste their afternoon.
+
+The digests are for **corruption and truncation, not tampering**. A pack is not
+signed; anyone who can rewrite a file inside one can rewrite that file's digest.
+The tool says "fetch it again" rather than accusing anybody, because from here
+those two cases are indistinguishable and only one of them is likely.
+
+```bash
+uv run practice pack --install library.practicepack --into ~/practice-content
+uv run practice up --content-root ~/practice-content
+```
+
+**Verification is all-or-nothing, and installing is the step that makes a pack
+solvable.** Half a library looks like a library, and the next command run
+against it would report a missing exercise rather than a bad download — so
+nothing is written unless every digest matches.
+
+The reason there *is* an install step is the most interesting thing this phase
+found. A pack-backed library can be browsed, filtered, counted and scheduled
+against, and nothing in it can be attempted: `pytest` runs a kata's `tests.py`
+from the workspace, `bash` executes a fixture from a file, SQLite reads
+`seed.sql`, and the sandbox therefore copies exercise files out of a content
+*root* by path — never through the repository port. The library has two readers
+and only one of them is an abstraction
+([ADR 0021](docs/adr/0021-content-packs-install-rather-than-mount.md)).
+
+Packs are **byte-deterministic**: fixed entry timestamps, a fixed mode, sorted
+entries, and bytes copied as bytes. The same library exports to the same file on
+Linux and on Windows, which is the Phase 3 determinism claim extended to the
+thing that carries it — a fixture that gained CRLF in transit would build a
+different and entirely valid-looking history, so the tests compare all 355
+exercise files byte for byte and then run the fixtures anyway.
+
 ## Architecture
 
 ![Dependencies point inward: the CLI and the web app call the application layer, the application layer and the domain sit at the centre, and the adapters implement the domain's ports.](docs/architecture.svg)
@@ -537,8 +597,11 @@ Two rules shape what gets added to it:
 
 - **A port needs two or more real or test implementations, or it gets deleted.**
   A protocol nothing has had to satisfy has not been shown to work. The rule has
-  been applied in anger rather than quoted: Phase 11 deleted two assertions and
-  a port method after 24 git scenarios wanted none of them.
+  been applied in anger rather than quoted, in both directions: Phase 11 deleted
+  two assertions and a port method after 24 git scenarios wanted none of them,
+  and Phase 16 went the other way — `ContentRepository` had one real
+  implementation and a fake until a pack became the second, which is how the
+  port's actual scope got discovered.
 - **Deliberate duplication is a pattern here, not a smell.** The aggregate
   refuses to *reach* an impossible state, the schema refuses to *store* one, and
   the adapter refuses to *execute* a disallowed command. Three layers, three
@@ -558,7 +621,7 @@ src/practice/
 │   ├── git/         reads one back: GitRepoQuery, ScenarioGrader
 │   ├── kata/        the pytest runner and its grader
 │   ├── sql/         seeds a database in memory, runs one answer, grades the result
-│   ├── content/     the exercise library on disk
+│   ├── content/     the exercise library, as a directory or as a pack
 │   └── persistence/ in-memory stores, and sqlite/ behind the same ports
 ├── interface/
 │   ├── web/         FastAPI + Jinja2 + HTMX; routes, templates, three SVG charts
