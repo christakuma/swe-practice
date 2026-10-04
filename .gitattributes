@@ -42,3 +42,8 @@
 # the moment anything hashes the result.
 src/practice/interface/web/static/vendor/** -text linguist-vendored
 uv.lock -diff linguist-generated
+
+# Drawn by docs/demo/render.py from docs/demo/session.txt. Still LF text — it
+# is reviewable and the generator is the thing to review — but neither a diff
+# nor a language this project is written in.
+docs/demo.svg -diff linguist-generated

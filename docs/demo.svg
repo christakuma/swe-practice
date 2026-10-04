@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 745"
+     width="980" height="745" font-size="13"
+     font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+     xml:space="preserve" role="img" aria-label="A terminal replaying practice solve git/revert-a-pushed-commit, which produces the right files and fails the history-preserved check.">
+  <style>
+    text { white-space: pre }
+    .l { animation: 19.0s steps(1, end) infinite both }
+    .l0 { animation-name: r0 }
+    @keyframes r0 { 0%, 1.886% { opacity: 0 } 1.886%, 100% { opacity: 1 } }
+    .l1 { animation-name: r1 }
+    @keyframes r1 { 0%, 3.771% { opacity: 0 } 3.771%, 100% { opacity: 1 } }
+    .l2 { animation-name: r2 }
+    @keyframes r2 { 0%, 5.657% { opacity: 0 } 5.657%, 100% { opacity: 1 } }
+    .l3 { animation-name: r3 }
+    @keyframes r3 { 0%, 7.543% { opacity: 0 } 7.543%, 100% { opacity: 1 } }
+    .l4 { animation-name: r4 }
+    @keyframes r4 { 0%, 9.429% { opacity: 0 } 9.429%, 100% { opacity: 1 } }
+    .l5 { animation-name: r5 }
+    @keyframes r5 { 0%, 11.314% { opacity: 0 } 11.314%, 100% { opacity: 1 } }
+    .l6 { animation-name: r6 }
+    @keyframes r6 { 0%, 13.2% { opacity: 0 } 13.2%, 100% { opacity: 1 } }
+    .l7 { animation-name: r7 }
+    @keyframes r7 { 0%, 15.086% { opacity: 0 } 15.086%, 100% { opacity: 1 } }
+    .l8 { animation-name: r8 }
+    @keyframes r8 { 0%, 16.971% { opacity: 0 } 16.971%, 100% { opacity: 1 } }
+    .l9 { animation-name: r9 }
+    @keyframes r9 { 0%, 18.857% { opacity: 0 } 18.857%, 100% { opacity: 1 } }
+    .l10 { animation-name: r10 }
+    @keyframes r10 { 0%, 20.743% { opacity: 0 } 20.743%, 100% { opacity: 1 } }
+    .l11 { animation-name: r11 }
+    @keyframes r11 { 0%, 22.629% { opacity: 0 } 22.629%, 100% { opacity: 1 } }
+    .l12 { animation-name: r12 }
+    @keyframes r12 { 0%, 24.514% { opacity: 0 } 24.514%, 100% { opacity: 1 } }
+    .l13 { animation-name: r13 }
+    @keyframes r13 { 0%, 26.4% { opacity: 0 } 26.4%, 100% { opacity: 1 } }
+    .l14 { animation-name: r14 }
+    @keyframes r14 { 0%, 28.286% { opacity: 0 } 28.286%, 100% { opacity: 1 } }
+    .l15 { animation-name: r15 }
+    @keyframes r15 { 0%, 30.171% { opacity: 0 } 30.171%, 100% { opacity: 1 } }
+    .l16 { animation-name: r16 }
+    @keyframes r16 { 0%, 32.057% { opacity: 0 } 32.057%, 100% { opacity: 1 } }
+    .l17 { animation-name: r17 }
+    @keyframes r17 { 0%, 33.943% { opacity: 0 } 33.943%, 100% { opacity: 1 } }
+    .l18 { animation-name: r18 }
+    @keyframes r18 { 0%, 35.829% { opacity: 0 } 35.829%, 100% { opacity: 1 } }
+    .l19 { animation-name: r19 }
+    @keyframes r19 { 0%, 37.714% { opacity: 0 } 37.714%, 100% { opacity: 1 } }
+    .l20 { animation-name: r20 }
+    @keyframes r20 { 0%, 39.6% { opacity: 0 } 39.6%, 100% { opacity: 1 } }
+    .l21 { animation-name: r21 }
+    @keyframes r21 { 0%, 41.486% { opacity: 0 } 41.486%, 100% { opacity: 1 } }
+    .l22 { animation-name: r22 }
+    @keyframes r22 { 0%, 43.371% { opacity: 0 } 43.371%, 100% { opacity: 1 } }
+    .l23 { animation-name: r23 }
+    @keyframes r23 { 0%, 45.257% { opacity: 0 } 45.257%, 100% { opacity: 1 } }
+    .l24 { animation-name: r24 }
+    @keyframes r24 { 0%, 47.143% { opacity: 0 } 47.143%, 100% { opacity: 1 } }
+    .l25 { animation-name: r25 }
+    @keyframes r25 { 0%, 49.029% { opacity: 0 } 49.029%, 100% { opacity: 1 } }
+    .l26 { animation-name: r26 }
+    @keyframes r26 { 0%, 50.914% { opacity: 0 } 50.914%, 100% { opacity: 1 } }
+    .l27 { animation-name: r27 }
+    @keyframes r27 { 0%, 52.8% { opacity: 0 } 52.8%, 100% { opacity: 1 } }
+    .l28 { animation-name: r28 }
+    @keyframes r28 { 0%, 54.686% { opacity: 0 } 54.686%, 100% { opacity: 1 } }
+    .l29 { animation-name: r29 }
+    @keyframes r29 { 0%, 56.571% { opacity: 0 } 56.571%, 100% { opacity: 1 } }
+    .l30 { animation-name: r30 }
+    @keyframes r30 { 0%, 58.457% { opacity: 0 } 58.457%, 100% { opacity: 1 } }
+    .l31 { animation-name: r31 }
+    @keyframes r31 { 0%, 60.343% { opacity: 0 } 60.343%, 100% { opacity: 1 } }
+    .l32 { animation-name: r32 }
+    @keyframes r32 { 0%, 62.229% { opacity: 0 } 62.229%, 100% { opacity: 1 } }
+    .l33 { animation-name: r33 }
+    @keyframes r33 { 0%, 64.114% { opacity: 0 } 64.114%, 100% { opacity: 1 } }
+    .l34 { animation-name: r34 }
+    @keyframes r34 { 0%, 66.0% { opacity: 0 } 66.0%, 100% { opacity: 1 } }
+  </style>
+  <rect width="980" height="745" rx="8" fill="#13171f"/>
+  <path d="M8 0h964a8 8 0 0 1 8 8v34H0V8a8 8 0 0 1 8-8z" fill="#1b2029"/>
+  <circle cx="24" cy="21" r="5.5" fill="#e8716d"/><circle cx="44" cy="21" r="5.5" fill="#d8a657"/><circle cx="64" cy="21" r="5.5" fill="#7ec07a"/>
+  <text x="490.0" y="26" fill="#8b95a7" font-size="11" text-anchor="middle">practice</text>
+  <text class="l l0" x="22" y="62" opacity="1"><tspan fill="#7ec07a">$ </tspan><tspan fill="#d7dce5" font-weight="600">practice solve git/revert-a-pushed-commit -c my-attempt.cmds</tspan></text>
+  <text class="l l1" x="22" y="81" opacity="1"><tspan fill="#d7dce5" font-weight="600">git/revert-a-pushed-commit  Undo a commit that is already on origin</tspan></text>
+  <text class="l l2" x="22" y="100" opacity="1"><tspan fill="#d7dce5"></tspan></text>
+  <text class="l l3" x="22" y="119" opacity="1"><tspan fill="#7ec07a" font-weight="600">  ok   </tspan><tspan fill="#d7dce5">$ git log --oneline</tspan></text>
+  <text class="l l4" x="22" y="138" opacity="1"><tspan fill="#8b95a7">         bab6eca Rename parse_line to parse</tspan></text>
+  <text class="l l5" x="22" y="157" opacity="1"><tspan fill="#8b95a7">         dc52587 Add CSV line parser</tspan></text>
+  <text class="l l6" x="22" y="176" opacity="1"><tspan fill="#8b95a7">         906e5c9 Add project skeleton and build check</tspan></text>
+  <text class="l l7" x="22" y="195" opacity="1"><tspan fill="#7ec07a" font-weight="600">  ok   </tspan><tspan fill="#d7dce5">$ git reset --hard 'HEAD~1'</tspan></text>
+  <text class="l l8" x="22" y="214" opacity="1"><tspan fill="#8b95a7">         HEAD is now at dc52587 Add CSV line parser</tspan></text>
+  <text class="l l9" x="22" y="233" opacity="1"><tspan fill="#7ec07a" font-weight="600">  ok   </tspan><tspan fill="#d7dce5">$ git push --force origin main</tspan></text>
+  <text class="l l10" x="22" y="252" opacity="1"><tspan fill="#8b95a7">         To C:/tmp/p/ws/b22df351/remotes/origin.git</tspan></text>
+  <text class="l l11" x="22" y="271" opacity="1"><tspan fill="#8b95a7">          + bab6eca...dc52587 main -&gt; main (forced update)</tspan></text>
+  <text class="l l12" x="22" y="290" opacity="1"><tspan fill="#d7dce5"></tspan></text>
+  <text class="l l13" x="22" y="309" opacity="1"><tspan fill="#8b95a7">graded my-attempt.cmds</tspan></text>
+  <text class="l l14" x="22" y="328" opacity="1"><tspan fill="#d7dce5"></tspan></text>
+  <text class="l l15" x="22" y="347" opacity="1"><tspan fill="#7ec07a" font-weight="600">  ok   </tspan><tspan fill="#d7dce5">The committed tree matches the state before the bad commit</tspan></text>
+  <text class="l l16" x="22" y="366" opacity="1"><tspan fill="#7ec07a" font-weight="600">  ok   </tspan><tspan fill="#d7dce5">Nothing left staged or half-finished</tspan></text>
+  <text class="l l17" x="22" y="385" opacity="1"><tspan fill="#e8716d" font-weight="600">  FAIL </tspan><tspan fill="#d7dce5">The bad commit is still reachable — you did not rewrite published history</tspan></text>
+  <text class="l l18" x="22" y="404" opacity="1"><tspan fill="#8b95a7">         expected @c3 (bab6eca) reachable from HEAD (dc52587), got not reachable</tspan></text>
+  <text class="l l19" x="22" y="423" opacity="1"><tspan fill="#8b95a7">         Your teammate already has c3. If it stops being an ancestor of `main`,</tspan></text>
+  <text class="l l20" x="22" y="442" opacity="1"><tspan fill="#8b95a7">         their next pull either conflicts or silently reintroduces the bad</tspan></text>
+  <text class="l l21" x="22" y="461" opacity="1"><tspan fill="#8b95a7">         commit, and anyone who branched off c3 is stranded. `git revert` undoes</tspan></text>
+  <text class="l l22" x="22" y="480" opacity="1"><tspan fill="#8b95a7">         the change with a new commit and leaves c3 in history, which is what</tspan></text>
+  <text class="l l23" x="22" y="499" opacity="1"><tspan fill="#8b95a7">         makes it safe for a branch other people have pulled.</tspan></text>
+  <text class="l l24" x="22" y="518" opacity="1"><tspan fill="#7ec07a" font-weight="600">  ok   </tspan><tspan fill="#d7dce5">The fix is on origin, not just on your machine</tspan></text>
+  <text class="l l25" x="22" y="537" opacity="1"><tspan fill="#d8a657" font-weight="600">  note </tspan><tspan fill="#d7dce5">You did not force-update a shared branch</tspan></text>
+  <text class="l l26" x="22" y="556" opacity="1"><tspan fill="#8b95a7">         expected not a command matching /push\b.*(--force|--force-with-lease|-f)\b/, got 'git push --force origin main'</tspan></text>
+  <text class="l l27" x="22" y="575" opacity="1"><tspan fill="#8b95a7">         A correct revert fast-forwards `origin`, so a plain `git push` is</tspan></text>
+  <text class="l l28" x="22" y="594" opacity="1"><tspan fill="#8b95a7">         enough. Reaching for `--force` on a shared branch is the habit this</tspan></text>
+  <text class="l l29" x="22" y="613" opacity="1"><tspan fill="#8b95a7">         exercise exists to break — it is how you silently overwrite work a</tspan></text>
+  <text class="l l30" x="22" y="632" opacity="1"><tspan fill="#8b95a7">         colleague has already pushed.</tspan></text>
+  <text class="l l31" x="22" y="651" opacity="1"><tspan fill="#7ec07a" font-weight="600">  ok   </tspan><tspan fill="#d7dce5">You inspected the repository before changing it</tspan></text>
+  <text class="l l32" x="22" y="670" opacity="1"><tspan fill="#d7dce5"></tspan></text>
+  <text class="l l33" x="22" y="689" opacity="1"><tspan fill="#e8716d" font-weight="600">FAIL</tspan></text>
+  <text class="l l34" x="22" y="708" opacity="1"><tspan fill="#8b95a7">  - The bad commit is still reachable — you did not rewrite published history</tspan></text>
+</svg>

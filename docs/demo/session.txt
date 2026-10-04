@@ -1,0 +1,35 @@
+$ practice solve git/revert-a-pushed-commit -c my-attempt.cmds
+git/revert-a-pushed-commit  Undo a commit that is already on origin
+
+  ok   $ git log --oneline
+         bab6eca Rename parse_line to parse
+         dc52587 Add CSV line parser
+         906e5c9 Add project skeleton and build check
+  ok   $ git reset --hard 'HEAD~1'
+         HEAD is now at dc52587 Add CSV line parser
+  ok   $ git push --force origin main
+         To C:/tmp/p/ws/b22df351/remotes/origin.git
+          + bab6eca...dc52587 main -> main (forced update)
+
+graded my-attempt.cmds
+
+  ok   The committed tree matches the state before the bad commit
+  ok   Nothing left staged or half-finished
+  FAIL The bad commit is still reachable — you did not rewrite published history
+         expected @c3 (bab6eca) reachable from HEAD (dc52587), got not reachable
+         Your teammate already has c3. If it stops being an ancestor of `main`,
+         their next pull either conflicts or silently reintroduces the bad
+         commit, and anyone who branched off c3 is stranded. `git revert` undoes
+         the change with a new commit and leaves c3 in history, which is what
+         makes it safe for a branch other people have pulled.
+  ok   The fix is on origin, not just on your machine
+  note You did not force-update a shared branch
+         expected not a command matching /push\b.*(--force|--force-with-lease|-f)\b/, got 'git push --force origin main'
+         A correct revert fast-forwards `origin`, so a plain `git push` is
+         enough. Reaching for `--force` on a shared branch is the habit this
+         exercise exists to break — it is how you silently overwrite work a
+         colleague has already pushed.
+  ok   You inspected the repository before changing it
+
+FAIL
+  - The bad commit is still reachable — you did not rewrite published history

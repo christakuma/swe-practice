@@ -23,25 +23,18 @@ your own editor*, and the tool answers *what should I practise today?* instead o
 leaving it to you. A git scenario is graded on what your commands actually did,
 from a console or from the terminal:
 
-```
-$ practice solve git/revert-a-pushed-commit -c my-attempt.cmds
-  ok   $ git reset --hard HEAD~1
-         HEAD is now at dc52587 Add CSV line parser
-  ok   $ git push --force origin main
-  ...
-  ok   The committed tree matches the state before the bad commit
-  FAIL The bad commit is still reachable — you did not rewrite published history
-         expected @c3 (bab6eca) reachable from HEAD (dc52587), got not reachable
-         Your teammate already has c3. If it stops being an ancestor of `main`,
-         their next pull either conflicts or silently reintroduces the bad commit.
-  note You did not force-update a shared branch
-```
+![A terminal replaying `practice solve git/revert-a-pushed-commit`: three commands run, the content check passes, and the history check fails.](docs/demo.svg)
 
 That is the whole argument in one verdict. The **content check passes** — the
 files are byte-identical to what a correct `git revert` produces — and the
 ancestry check is what tells the two apart. A tool grading on file content
 accepts this answer; a tool matching command text would have to guess which of
 two dozen correct phrasings to allow.
+
+The demo is not a recording. `docs/demo/session.txt` is the captured output of
+that command and `docs/demo/render.py` draws it, so the transcript above is
+regenerated rather than redrawn — and you can select the text in it
+([ADR 0016](docs/adr/0016-a-generated-demo-not-a-recorded-one.md)).
 
 Underneath it: 20 pure assertion functions over a read-only port, implemented
 twice (real git, in-memory fake) and proved to agree by a conformance suite, and
@@ -60,18 +53,41 @@ rejected.
 
 ## Getting started
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.13. Nothing else — no npm,
-no bundler, no network.
+Requires [uv](https://docs.astral.sh/uv/), Python 3.13 and git. Nothing else — no
+npm, no bundler, no network.
 
 ```bash
 uv sync
-uv run practice serve
+uv run practice up
 ```
 
-That opens the web app on `http://127.0.0.1:8765`: see what is due, start an
-attempt, write a solution in the editor or type real git into a console, read the
-verdict, and schedule the next sighting. Everything it serves comes off the disk,
-so it works with the wifi off.
+`up` is the front door. It resolves git, counts the library, creates the
+workspace directory, migrates the database and then opens your browser on
+`http://127.0.0.1:8765`:
+
+```
+  ok   git         /usr/bin/git
+  ok   library     54 exercises (24 git scenarios, 30 katas) in ~/swe-practice/content
+  ok   workspaces  ~/.cache/swe-practice/ws
+  ok   database    ~/.local/share/swe-practice/practice.db (created v1)
+
+First run: your attempt history now lives at ~/.local/share/swe-practice/practice.db.
+
+http://127.0.0.1:8765
+```
+
+It **refuses** rather than serving degraded, and it reports every problem in one
+pass rather than one per run: with no git there is no fixture, with no library
+there is nothing to offer, with no database an attempt cannot be saved. A server
+that booted anyway would be a tool that looks fine right up until the moment you
+have done the work
+([ADR 0017](docs/adr/0017-a-front-door-separate-from-the-server.md)).
+
+From there: see what is due, start an attempt, write a solution in the editor or
+type real git into a console, read the verdict, and schedule the next sighting.
+Everything it serves comes off the disk, so it works with the wifi off.
+`practice serve` is the same server *without* the setup — that is what CI and the
+test suite boot — and `practice up --no-open` is for a box with no browser on it.
 
 The terminal is a second adapter over the same use cases, documented below. It is
 not a fallback — it is the proof that the core is not secretly coupled to HTTP.
@@ -84,7 +100,7 @@ The same four commands CI runs, on Linux and Windows:
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy
-uv run pytest --cov --cov-report=term-missing
+uv run pytest --cov --cov-report=term-missing -n 4 --dist loadfile
 ```
 
 Test selection follows the directory layout under `tests/` — markers are applied
@@ -92,10 +108,20 @@ automatically, so `uv run pytest -m unit` gets the fast pure tests,
 `-m integration` gets the ones that touch the filesystem, and `-m content` runs
 the library checks over every exercise on disk.
 
+**Four workers, not `-n auto`, and the number is measured rather than chosen.**
+Every worker spawns its own subprocesses — a bash fixture and a dozen `git`
+invocations per scenario, a `pytest` per kata — so the useful worker count tracks
+subprocess load rather than cores. On twelve cores, `-n auto` ran the suite in
+3m42s, then 7m36s, then 8m41s, and one of those runs *failed* by taking a kata
+past the ten-second wall-clock limit the suite grades against on purpose. `-n 4`
+is 7m20s and repeatable, which is the property that matters in the tier that
+decides. `--dist loadfile` keeps every test in a file on one worker, which is
+what lets the content suite share its workspaces instead of rebuilding them.
+
 ## The web app
 
 ```bash
-uv run practice serve
+uv run practice up
 ```
 
 `/` is the dashboard — what is due, your streak, your weakest tags.
@@ -405,6 +431,23 @@ explain it nor collect it. A workspace that *is* in use is never deleted, with o
 without the flag, and there is no force option — the way to get rid of one is
 `practice abandon`.
 
+## Architecture
+
+![Dependencies point inward: the CLI and the web app call the application layer, the application layer and the domain sit at the centre, and the adapters implement the domain's ports.](docs/architecture.svg)
+
+Ports and adapters, with the boundary enforced by a test rather than by a
+convention ([ADR 0002](docs/adr/0002-ports-and-adapters-with-an-enforced-boundary.md)).
+Two rules shape what gets added to it:
+
+- **A port needs two or more real or test implementations, or it gets deleted.**
+  A protocol nothing has had to satisfy has not been shown to work. The rule has
+  been applied in anger rather than quoted: Phase 11 deleted two assertions and
+  a port method after 24 git scenarios wanted none of them.
+- **Deliberate duplication is a pattern here, not a smell.** The aggregate
+  refuses to *reach* an impossible state, the schema refuses to *store* one, and
+  the adapter refuses to *execute* a disallowed command. Three layers, three
+  different jobs, and each one says in its docstring which job it is doing.
+
 ## Layout
 
 ```
@@ -421,7 +464,7 @@ src/practice/
 │   └── persistence/ in-memory stores, and sqlite/ behind the same ports
 ├── interface/
 │   ├── web/         FastAPI + Jinja2 + HTMX; routes, templates, three SVG charts
-│   └── cli/         Typer: the second driving adapter over the same use cases
+│   └── cli/         Typer: the second driving adapter, plus the first-run launcher
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
 content/           54 exercises as declarative data — adding one needs no code
@@ -429,6 +472,7 @@ content/           54 exercises as declarative data — adding one needs no code
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform
 tools/             the one module that opens a socket, deliberately outside the wheel
 docs/adr/          architecture decision records
+docs/demo/         the captured session, and the script that draws docs/demo.svg
 tests/             unit · integration · content · web · e2e
 ```
 

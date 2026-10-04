@@ -124,6 +124,10 @@ ignore = [
     "ANN401",
 ]
 "tools/**" = ["T20"] # vendoring scripts are allowed to talk
+# Same reason as `tools/`: `docs/demo/render.py` is a script somebody runs by
+# hand to regenerate `docs/demo.svg`, and the filename it wrote is the only
+# useful thing it can say when it is done.
+"docs/demo/render.py" = ["T20"]
 # A Typer command's signature *is* its command line: every parameter is an
 # option someone types, so the argument count is a fact about the interface
 # rather than a function that grew too many knobs.
