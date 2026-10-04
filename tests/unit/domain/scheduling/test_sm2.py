@@ -1,19 +1,25 @@
-"""The scheduler, held to the four properties PLAN.md §9.7 states.
+"""SM-2's own arithmetic: the learning steps, the clamp, and the lapse reset.
 
-**Properties first, examples second, and the order is the point.** §9.7 names the
-clamp the monotonicity property requires and says it is *"worth writing the test
-first and watching it catch this"* — a naive `round(interval * ease)` leaves a
-one-day interval at one day when the ease is at its 1.3 floor, so the
+**Most of what was in here is now in `test_scheduler_conformance.py`**, and the
+move is the result rather than a tidy-up. Phase 9 wrote §9.7's four properties as
+properties of this file because there was only one scheduler, so there was no way
+to tell which of them were claims about *a* scheduler and which about *this*
+algorithm. Phase 13's second implementation answered it: three are the port's,
+and one -- "`AGAIN` always resets to one day or less" -- is SM-2's, and stays
+here. FSRS schedules a lapse from its own post-lapse stability, which on a
+long-established card is weeks.
+
+**Properties first, examples second, and the order is still the point.** §9.7
+names the clamp the monotonicity property requires and says it is *"worth writing
+the test first and watching it catch this"* — a naive `round(interval * ease)`
+leaves a one-day interval at one day when the ease is at its 1.3 floor, so the
 implementation passes every example anyone would think to write and fails its own
-stated invariant. The examples below exist for the arithmetic a property cannot
-pin down: which of the learning steps a given grade lands on.
+stated invariant. That property is next door now; `TestTheClampItself` stays,
+because the worked example is about this arithmetic and reads as "the clamp is
+gone" rather than as a counter-example someone has to interpret.
 
-The cards hypothesis builds are deliberately allowed to be *incoherent* — a `NEW`
-card with a 500-day interval, a `REVIEW` card with no reps. Those states are not
-reachable through this scheduler, and that is exactly why they are worth feeding
-it: a stored card is only what the last `save` wrote, and a scheduler that assumed
-its own output as its input would be making a claim about the whole system that
-nothing enforces.
+What is left here is the arithmetic a shared property cannot pin down: the two
+learning steps, the ease deltas, and which factor each grade multiplies by.
 """
 
 from __future__ import annotations
@@ -40,15 +46,15 @@ TWO_SUM = ExerciseId("katas/two-sum")
 NOW = datetime(2026, 10, 2, 9, 0, tzinfo=UTC)
 TODAY = NOW.date()
 
-#: Bounded so that `due_on` cannot run off the end of the calendar: the longest
-#: interval this can produce from the widest card is a few decades, and `date`
-#: stops at 9999. A strategy that overflowed would be testing `timedelta`.
-instants = st.datetimes(
-    min_value=datetime(2020, 1, 1),  # noqa: DTZ001  (hypothesis attaches the zone)
-    max_value=datetime(2100, 1, 1),  # noqa: DTZ001
-    timezones=st.just(UTC),
-)
-
+#: Deliberately incoherent -- a `NEW` card with a 500-day interval, a `REVIEW`
+#: card with no reps. Those states are not reachable through this scheduler, and
+#: that is exactly why they are worth feeding it: a stored card is only what the
+#: last `save` wrote, and a scheduler that assumed its own output as its input
+#: would be making a claim about the whole system that nothing enforces.
+#:
+#: Narrower than the conformance suite's, which also varies the FSRS memory
+#: state. SM-2 does not read those two fields, so varying them here would be
+#: generating a dimension the subject ignores.
 cards = st.builds(
     ReviewCard,
     exercise_id=st.just(TWO_SUM),
@@ -60,19 +66,51 @@ cards = st.builds(
     interval_days=st.integers(min_value=0, max_value=3650),
     reps=st.integers(min_value=0, max_value=500),
     lapses=st.integers(min_value=0, max_value=500),
-    last_reviewed_at=st.none() | instants,
+    last_reviewed_at=st.none()
+    | st.datetimes(
+        min_value=datetime(2020, 1, 1),  # noqa: DTZ001  (hypothesis attaches the zone)
+        max_value=datetime(2100, 1, 1),  # noqa: DTZ001
+        timezones=st.just(UTC),
+    ),
 )
 
 grades = st.sampled_from(Grade)
-
-#: Everything but `AGAIN`, which is the only grade that does not grow the interval
-#: by multiplying — it resets.
-passing_grades = st.sampled_from([Grade.HARD, Grade.GOOD, Grade.EASY])
 
 
 @pytest.fixture
 def scheduler() -> Sm2Scheduler:
     return Sm2Scheduler()
+
+
+# --- the one of §9.7's four that turned out to be SM-2's own ---------------
+
+
+@given(
+    card=cards,
+    now=st.datetimes(
+        min_value=datetime(2020, 1, 1),  # noqa: DTZ001
+        max_value=datetime(2100, 1, 1),  # noqa: DTZ001
+        timezones=st.just(UTC),
+    ),
+)
+def test_again_always_resets_to_a_day_or_less(card: ReviewCard, now: datetime) -> None:
+    """Stated by §9.7 as a property of the scheduler, and it is a property of
+    *this* scheduler.
+
+    Phase 13 is where that distinction was forced. FSRS schedules a lapse from
+    its own post-lapse stability, which on a card established for a year is weeks
+    rather than a day, so holding both implementations to this would have meant
+    either deleting the claim or bending FSRS into SM-2's shape. The shared half
+    -- a lapse never lengthens an established interval -- is in
+    `test_scheduler_conformance.py`; this is the half that is SM-2's policy, and
+    the module docstring in `sm2.py` argues for it: one day is the shortest
+    honest answer, because `ReviewCard.is_due` is `<=` and a card reset to zero
+    would be offered again in the same session.
+    """
+    reviewed = Sm2Scheduler().next_card(card, Grade.AGAIN, now)
+
+    assert reviewed.interval_days <= 1
+    assert reviewed.due_on <= now.date() + timedelta(days=1)
 
 
 #: A card a week into its review phase: the state the multiplying cases start in.
@@ -91,103 +129,6 @@ ESTABLISHED = ReviewCard(
 def a_card(**overrides: Any) -> ReviewCard:
     """`ESTABLISHED` with fields replaced, so each test names only what it varies."""
     return replace(ESTABLISHED, **overrides)
-
-
-# --- the four properties PLAN.md §9.7 names --------------------------------
-
-
-class TestTheStatedProperties:
-    """One test per bullet in §9.7, named after the bullet."""
-
-    @given(card=cards, grade=grades, now=instants)
-    def test_ease_never_drops_below_the_floor(
-        self, card: ReviewCard, grade: Grade, now: datetime
-    ) -> None:
-        """SM-2's own floor, and the one `ReviewCard` also refuses to store.
-
-        Belt and braces on purpose (`domain/review.py`): if the arithmetic here
-        ever drove the ease under 1.3 the dataclass would raise, so this would
-        fail as an error rather than an assertion — which is still a failure, and
-        still names the grade that caused it.
-        """
-        assert Sm2Scheduler().next_card(card, grade, now).ease >= MINIMUM_EASE
-
-    @given(card=cards, now=instants)
-    def test_consecutive_good_strictly_increases_the_interval(
-        self, card: ReviewCard, now: datetime
-    ) -> None:
-        """The property the clamp exists for. Two reviews, not one, because the
-        case that breaks a naive multiply is the *second* one: the first pushes a
-        new card to a day, and `round(1 * 1.3)` is then 1 again.
-        """
-        scheduler = Sm2Scheduler()
-
-        first = scheduler.next_card(card, Grade.GOOD, now)
-        second = scheduler.next_card(first, Grade.GOOD, now + timedelta(days=1))
-
-        assert first.interval_days > card.interval_days
-        assert second.interval_days > first.interval_days
-
-    @given(card=cards, now=instants)
-    def test_again_always_resets_to_a_day_or_less(
-        self, card: ReviewCard, now: datetime
-    ) -> None:
-        reviewed = Sm2Scheduler().next_card(card, Grade.AGAIN, now)
-
-        assert reviewed.interval_days <= 1
-        assert reviewed.due_on <= now.date() + timedelta(days=1)
-
-    @given(card=cards, grade=grades, now=instants)
-    def test_due_on_is_always_after_the_review(
-        self, card: ReviewCard, grade: Grade, now: datetime
-    ) -> None:
-        """The property that made the port take a `datetime` rather than a `date`.
-
-        It is a statement about two fields of *one* returned card, so the thing
-        that sets them has to be one function — which `today: date` made
-        impossible, since nothing could then stamp `last_reviewed_at`.
-        """
-        reviewed = Sm2Scheduler().next_card(card, grade, now)
-
-        assert reviewed.last_reviewed_at == now
-        assert reviewed.due_on > now.date()
-
-
-# --- properties the four imply but do not say ------------------------------
-
-
-@given(card=cards, grade=passing_grades, now=instants)
-def test_every_grade_but_again_grows_the_interval(
-    card: ReviewCard, grade: Grade, now: datetime
-) -> None:
-    """`HARD` included, which is a decision rather than an oversight.
-
-    A `HARD` that shortened the interval would punish honesty: the solver who
-    admits a card was a struggle would see it more often than the one who clicks
-    `GOOD` out of impatience, and the grade would stop being used. It grows
-    slowly — 1.2x and never the ease — and the lapse is what shortens.
-    """
-    assert Sm2Scheduler().next_card(card, grade, now).interval_days > card.interval_days
-
-
-@given(card=cards, grade=grades, now=instants)
-def test_a_review_is_always_counted_and_only_a_lapse_is(
-    card: ReviewCard, grade: Grade, now: datetime
-) -> None:
-    reviewed = Sm2Scheduler().next_card(card, grade, now)
-
-    assert reviewed.reps == card.reps + 1
-    assert reviewed.lapses == card.lapses + (1 if grade is Grade.AGAIN else 0)
-
-
-@given(card=cards, grade=grades, now=instants)
-def test_the_card_stays_the_same_card(
-    card: ReviewCard, grade: Grade, now: datetime
-) -> None:
-    """Nothing in SM-2 touches identity, and a scheduler that lost it would
-    reschedule one exercise onto another's queue entry.
-    """
-    assert Sm2Scheduler().next_card(card, grade, now).exercise_id == card.exercise_id
 
 
 # --- the arithmetic a property cannot pin down -----------------------------
