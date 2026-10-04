@@ -29,13 +29,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from practice.adapters.content import load_exercise
-from practice.adapters.content.validation import discover
 from practice.adapters.sandbox import SubprocessSandboxProvisioner, find_bash, find_git
 from practice.adapters.sandbox.env import FIXTURE_EPOCH, FIXTURE_STEP
 from practice.adapters.sandbox.fixture_lock import (
     LOCK_FILENAME,
+    FixtureFingerprint,
     compare,
-    fingerprint_library,
     lock_path,
     parse,
 )
@@ -67,18 +66,22 @@ def tools() -> tuple[Path, Path]:
     return find_git(), find_bash()
 
 
-@pytest.fixture(params=SCENARIO_DIRECTORIES, ids=identify)
+# Module-scoped, so that one `provisioned` workspace can be shared by every
+# read-only test for a scenario. A function-scoped parametrized fixture would
+# force a fresh fixture run per test, which is what this file used to do: ten
+# per scenario where four are needed (§16).
+@pytest.fixture(params=SCENARIO_DIRECTORIES, ids=identify, scope="module")
 def scenario_directory(request: pytest.FixtureRequest) -> Path:
     directory: Path = request.param
     return directory
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def exercise(scenario_directory: Path) -> Exercise:
     return load_exercise(scenario_directory)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def spec(exercise: Exercise) -> GitScenarioSpec:
     assert isinstance(exercise.spec, GitScenarioSpec)
     return exercise.spec
@@ -123,10 +126,39 @@ def provision(
             workspace.dispose()
 
 
-@pytest.fixture
-def provisioned(provision: Provision) -> SubprocessWorkspace:
-    """One workspace, for the tests that only need the fixture's end state."""
-    return provision()
+@pytest.fixture(scope="module")
+def provisioned(
+    tools: tuple[Path, Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    exercise: Exercise,
+) -> Iterator[SubprocessWorkspace]:
+    """One workspace per scenario, shared by every test that only *reads* it.
+
+    **Six tests used to provision six workspaces to look at the same end
+    state.** Running a fixture is a bash process, a `git init` and a commit per
+    alias, so that was five wasted fixture runs per scenario and about a minute
+    across the library (§16).
+
+    Module-scoped, which is only safe because the tests using it are read-only:
+    they run `git status`, `git log`, `git rev-parse`. The two tests that
+    *mutate* a repository — replaying the reference, replaying each
+    counter-example — take their own from `provision` instead, so nothing here
+    depends on the order tests happen to run in. That separation is the
+    invariant to keep if a test is added: if it changes the repository, it does
+    not belong on this fixture.
+    """
+    del tools  # requested so a missing tool fails here, not mid-fixture
+    provisioner = SubprocessSandboxProvisioner(
+        content_root=CONTENT_ROOT,
+        workspace_root=tmp_path_factory.mktemp("pristine") / "ws",
+    )
+    workspace = provisioner.provision(
+        exercise, AttemptId.parse("0ead0000-0000-4000-8000-000000000000")
+    )
+    try:
+        yield workspace
+    finally:
+        workspace.dispose()
 
 
 # --- the walk --------------------------------------------------------------
@@ -286,23 +318,41 @@ def test_each_counter_example_replays_far_enough_to_be_wrong(
 # --- the lock file ---------------------------------------------------------
 
 
-def test_the_lock_file_matches_the_library() -> None:
-    """The Phase 3 exit criterion, in the suite rather than only in the CLI.
+def test_its_fixture_matches_the_lock_file(
+    provisioned: SubprocessWorkspace, scenario_directory: Path
+) -> None:
+    """The Phase 3 exit criterion, per exercise, off a workspace already built.
 
     Duplicates `practice fixtures --check` deliberately, for the reason the CI
     `validate` step is duplicated: what the command adds is proof that the
     command itself works, and what this adds is a failure message that names the
     exercise inside a test report.
+
+    **It used to run every fixture a second time to get that.** This file
+    provisions each scenario anyway, and a `FixtureFingerprint` is just the
+    workspace's aliases and refs — so comparing one exercise against its own
+    lock entry costs nothing, where `fingerprint_library` over the whole
+    library cost twenty-four more fixture runs and twenty-seven seconds (§16).
+    Same claim, better failure message, no extra work.
     """
     lock = lock_path(CONTENT_ROOT)
     assert lock.is_file(), (
         f"{LOCK_FILENAME} is missing; run `practice fixtures --write`"
     )
+    exercise_id = identify(scenario_directory)
 
-    problems = compare(
-        parse(lock.read_text(encoding="utf-8")),
-        fingerprint_library(_all_exercises(), content_root=CONTENT_ROOT),
+    found = FixtureFingerprint(
+        exercise_id=exercise_id,
+        aliases={name: sha.value for name, sha in provisioned.aliases().items()},
+        refs={name: sha.value for name, sha in provisioned.snapshot().items()},
     )
+    locked = tuple(
+        entry
+        for entry in parse(lock.read_text(encoding="utf-8"))
+        if entry.exercise_id == exercise_id
+    )
+
+    problems = compare(locked, (found,))
 
     assert problems == (), "\n".join(problems)
 
@@ -317,10 +367,6 @@ def test_the_lock_file_covers_every_scenario() -> None:
     }
 
     assert locked == {identify(directory) for directory in SCENARIO_DIRECTORIES}
-
-
-def _all_exercises() -> list[Exercise]:
-    return [load_exercise(directory) for directory in discover(CONTENT_ROOT)]
 
 
 def test_the_fixture_library_is_shared_rather_than_copied() -> None:

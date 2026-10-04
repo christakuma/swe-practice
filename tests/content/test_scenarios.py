@@ -92,6 +92,24 @@ def spec(exercise: Exercise) -> GitScenarioSpec:
     return exercise.spec
 
 
+#: Reference verdicts already computed, keyed by exercise id.
+#:
+#: **Memoised rather than fixture-scoped, and the reason is the database.** Two
+#: tests read this verdict and a function-scoped fixture graded it twice — a
+#: workspace, a bash fixture and every command in the list, per test, for an
+#: answer that cannot differ. The obvious fix is `scope="module"`, and it would
+#: be wrong: `services` is built over `config.database_path()`, which the
+#: autouse `_own_database` fixture in `tests/conftest.py` monkeypatches
+#: *per test*. A module-scoped `Services` would outlive the environment it was
+#: built under and write into whichever database happened to be current when
+#: the first test in the module ran.
+#:
+#: So the grading stays function-scoped and only its *result* is cached. A
+#: `Submission` is data — the verdict and the attempt it came from — and nothing
+#: here mutates it.
+_REFERENCE_VERDICTS: dict[str, Submission] = {}
+
+
 @pytest.fixture
 def reference(
     services: Services,
@@ -100,7 +118,11 @@ def reference(
     scenario_directory: Path,
 ) -> Submission:
     """`solution.cmds`, graded once for every test that reads the result."""
-    return grade(services, exercise, scenario_directory / spec.reference)
+    cached = _REFERENCE_VERDICTS.get(str(exercise.id))
+    if cached is None:
+        cached = grade(services, exercise, scenario_directory / spec.reference)
+        _REFERENCE_VERDICTS[str(exercise.id)] = cached
+    return cached
 
 
 @pytest.fixture

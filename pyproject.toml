@@ -48,6 +48,13 @@ dev = [
     # error -- so the deprecated pairing does not merely work-for-now here, it
     # fails outright. Worth the note: the obvious choice is the broken one.
     "httpx2>=2.13.1",
+    # The full run is 10m10s serial and 7m20s on four workers. Four, not
+    # `-n auto`: every worker spawns its own git, bash and pytest, so twelve
+    # of them oversubscribe a twelve-core machine -- the times swing by 2x
+    # and one run breached a kata's wall-clock limit (PLAN.md 16). `--dist
+    # loadfile` keeps a file's module-scoped workspaces and memoised verdicts
+    # on one worker instead of rebuilt on each.
+    "pytest-xdist>=3.6",
 ]
 
 # `practice validate` runs in CI and `practice` is the second driving adapter
@@ -182,7 +189,7 @@ markers = [
 
 # --- coverage --------------------------------------------------------------
 # The gate covers domain/ and application/ only: that is where the correctness
-# critical code lives, including the ~25 check functions (PLAN.md §9).
+# critical code lives, including the 20 check functions (PLAN.md §9).
 
 [tool.coverage.run]
 branch = true

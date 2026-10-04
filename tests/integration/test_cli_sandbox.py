@@ -5,9 +5,18 @@ whole job of both commands is to read what is on disk and say what is there, and
 the exit code is the contract CI depends on. A test that stubbed the filesystem
 would verify neither.
 
-`fixtures --check` against the real library is the slowest test in the project,
-because it runs every fixture. It is also the Phase 3 exit criterion, so it runs
-on every invocation rather than behind a marker.
+**This was the slowest file in the project and the reason is worth recording.**
+Every `fixtures` invocation runs every git scenario's fixture, and the tests that
+needed a library they could break copied the *whole* shipped one. At two
+scenarios that cost a couple of seconds; at twenty-four it cost 288 seconds
+across nine tests — 27% of the entire suite, spent fingerprinting the same
+library nine times (§16).
+
+So the tests that break a library now work on a **two-exercise subset**, built
+once per session and copied per test. They are still real exercises, which was
+the point of copying rather than hand-building: what is dropped is twenty-two
+*repetitions* of the same evidence, not the evidence. The two tests that must
+see the shipped library share one invocation of it.
 """
 
 from __future__ import annotations
@@ -16,11 +25,17 @@ import shutil
 from typing import TYPE_CHECKING
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from practice.adapters.content import FilesystemContentRepository
 from practice.adapters.sandbox import SubprocessSandboxProvisioner
-from practice.adapters.sandbox.fixture_lock import LOCK_FILENAME
+from practice.adapters.sandbox.fixture_lock import (
+    LOCK_FILENAME,
+    fingerprint_library,
+    lock_path,
+    render,
+)
 from practice.config import content_root
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.interface.cli.main import app
@@ -40,42 +55,105 @@ def run(*arguments: str) -> tuple[int, str]:
     return result.exit_code, result.output
 
 
-@pytest.fixture
-def copied_library(tmp_path: Path) -> Path:
-    """The real library, copied so a fixture or the lock file can be broken.
+#: The exercises a breakable library is built from. Two, and both chosen:
+#: `revert-a-pushed-commit` is the flagship whose three aliases the
+#: commit-moved test asserts on, and a second one is needed so that "it named
+#: every exercise it checked" is a claim about more than one.
+SUBSET = ("git/revert-a-pushed-commit", "git/recover-a-lost-commit")
 
-    A copy rather than a synthetic library, because what these tests are about
-    is the real exercises: a hand-built one would prove the command works on
-    hand-built exercises.
+
+@pytest.fixture(scope="session")
+def subset_library(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Two real exercises and a lock file, built once for the whole session.
+
+    The lock is generated rather than copied-and-trimmed: `render` over a fresh
+    fingerprint is two fixture runs and cannot disagree with what `--check` is
+    about to compute, where editing the shipped lock file by hand could.
+
+    Session-scoped and never mutated — `copied_library` hands out copies. That
+    is what makes this two fixture runs for the file rather than two per test.
+    """
+    root = tmp_path_factory.mktemp("subset-content")
+    shutil.copytree(content_root() / "_lib", root / "_lib")
+    for exercise_id in SUBSET:
+        shutil.copytree(content_root() / exercise_id, root / exercise_id)
+
+    (root / "curriculum.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "tracks": [
+                    {
+                        "name": "subset",
+                        "title": "The two exercises these tests run on",
+                        "exercises": list(SUBSET),
+                    }
+                ]
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    exercises = FilesystemContentRepository(root).list_exercises()
+    lock_path(root).write_text(
+        render(fingerprint_library(exercises, content_root=root)),
+        encoding="utf-8",
+        newline="",
+    )
+    return root
+
+
+@pytest.fixture
+def copied_library(subset_library: Path, tmp_path: Path) -> Path:
+    """A disposable copy of the subset, for a test that breaks something.
+
+    A copy of real exercises rather than a synthetic library, because what these
+    tests are about is the real thing: a hand-built exercise would prove the
+    command works on hand-built exercises.
     """
     destination = tmp_path / "content"
-    shutil.copytree(content_root(), destination)
+    shutil.copytree(subset_library, destination)
     return destination
 
 
 # --- practice fixtures -----------------------------------------------------
 
 
-def test_the_shipped_fixtures_match_the_lock_file() -> None:
+@pytest.fixture(scope="module")
+def shipped_check() -> tuple[int, str]:
+    """`fixtures --check` against the real library, run once for this module.
+
+    The one invocation here that has to see all twenty-four fixtures, and the
+    most expensive single thing in the suite at about thirty seconds. Two tests
+    make two different claims about it, so it is a fixture rather than being
+    inlined into one of them — granularity in the report without paying for it
+    twice.
+    """
+    return run("fixtures", "--check")
+
+
+def test_the_shipped_fixtures_match_the_lock_file(
+    shipped_check: tuple[int, str],
+) -> None:
     """The Phase 3 exit criterion, as far as one machine can take it.
 
     The other half is CI running this same command on the other platform. That
     is the whole design: the lock file is the shared reference, so a
     disagreement names which platform diverged instead of just going red.
     """
-    code, output = run("fixtures", "--check")
+    code, output = shipped_check
 
     assert code == 0, output
     assert f"match {LOCK_FILENAME}" in output
 
 
-def test_it_names_every_exercise_it_checked() -> None:
+def test_it_names_every_exercise_it_checked(shipped_check: tuple[int, str]) -> None:
     """A run that fingerprinted nothing would exit zero just as happily.
 
     The same hole `test_the_library_was_found` guards in the content suite, and
     the reason this asserts on names rather than on the exit code.
     """
-    _, output = run("fixtures", "--check")
+    _, output = shipped_check
 
     assert "git/revert-a-pushed-commit" in output
     assert "git/recover-a-lost-commit" in output

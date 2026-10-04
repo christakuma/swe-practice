@@ -58,10 +58,31 @@ def kata(library: FilesystemContentRepository) -> Exercise:
     return exercise
 
 
+#: Long enough that no amount of load on the machine can breach it, which is
+#: the point: it is a *wall-clock* budget on a subprocess.
+#:
+#: **Found by running the suite in parallel.** Every test on this fixture is
+#: about what the runner reports — parsed records, docstring labels, ANSI
+#: escapes, which config it obeyed — and none is about the limit; the one that
+#: is has `kata_spec_with_a_short_limit`. They nonetheless inherited two-sum's
+#: real ten seconds, and a run that normally takes about a second and a half
+#: went over it under twelve-way oversubscription: pytest was killed, no report
+#: was written, and the assertion failed as "no failures were reported", which
+#: looks like a parsing bug and is not. A loaded CI runner could have done the
+#: same thing at any point (PLAN.md §16).
+_GENEROUS_LIMIT_SECONDS = 120
+
+
 @pytest.fixture
 def spec(kata: Exercise) -> KataSpec:
+    """The real kata's spec, with the time limit lifted out of the way.
+
+    `replace` rather than a different kata, so everything these tests are about
+    — the files, the hidden suite, the complexity expectation — is the shipped
+    exercise. Only the number that nothing here asserts on is changed.
+    """
     assert isinstance(kata.spec, KataSpec)
-    return kata.spec
+    return replace(kata.spec, time_limit_seconds=_GENEROUS_LIMIT_SECONDS)
 
 
 @pytest.fixture
@@ -126,5 +147,8 @@ def kata_spec_with_a_short_limit(spec: KataSpec) -> KataSpec:
     `replace` rather than a second exercise file, so the spec under test is the
     real one in every respect but the number being exercised. Ten seconds of
     waiting to prove a timeout works is ten seconds on every CI run, twice.
+
+    This is the only test in the file that is *about* the limit, which is what
+    lets `spec` lift it for everything else.
     """
     return replace(spec, time_limit_seconds=1)

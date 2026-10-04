@@ -74,8 +74,13 @@ jobs:
       # from pyproject. Splitting by marker still waits: `web` has no tests yet
       # and pytest exits non-zero on an empty selection, so that step would fail
       # for the wrong reason. (`e2e` has had one since Phase 4.)
+      #
+      # `--dist loadfile`, not the default `load`: every test in a file goes to
+      # one worker, which is what keeps the content suite's module-scoped
+      # workspaces and memoised verdicts shared rather than rebuilt per worker.
+      # Plain `-n auto` is still correct, just slower (§16).
       - name: Tests
-        run: uv run pytest --cov --cov-report=term-missing
+        run: uv run pytest --cov --cov-report=term-missing -n auto --dist loadfile
 
       # Redundant with tests/content/, and kept anyway. PLAN.md §5.4 puts this
       # command in CI, and what it proves that the suite does not is that the

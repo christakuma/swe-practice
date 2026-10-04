@@ -185,30 +185,48 @@ def test_its_reference_solution_passes_every_check(
     )
 
 
-def test_its_stub_fails(grade: Grade, spec: KataSpec, kata_directory: Path) -> None:
+#: Stub verdicts already computed, keyed by exercise id.
+#:
+#: Two tests read this verdict and a plain fixture graded it twice — a
+#: provisioned workspace and a pytest subprocess each time, for an answer that
+#: cannot differ. Memoised rather than made module-scoped because the `grade`
+#: factory is built over a per-test workspace root and the autouse
+#: `_own_database` fixture in `tests/conftest.py` is function-scoped; what is
+#: cached is the `Verdict`, which is data.
+_STUB_VERDICTS: dict[str, Verdict] = {}
+
+
+@pytest.fixture
+def stub_verdict(grade: Grade, spec: KataSpec, kata_directory: Path) -> Verdict:
+    """The stub, graded once for every test that reads the result."""
+    key = _identify(kata_directory)
+    cached = _STUB_VERDICTS.get(key)
+    if cached is None:
+        cached = grade(_read(kata_directory, spec.stub), None)
+        _STUB_VERDICTS[key] = cached
+    return cached
+
+
+def test_its_stub_fails(stub_verdict: Verdict) -> None:
     """A suite that passes an unimplemented stub grades nothing at all.
 
     Only that the verdict *fails* is asserted, not that every single check does:
     a stub that happens to satisfy a trivial case — an empty-input test, say — is
     a legitimate kata, while one that satisfies all of them is a broken one.
     """
-    verdict = grade(_read(kata_directory, spec.stub), None)
-
-    assert verdict.outcome is Outcome.FAIL
+    assert stub_verdict.outcome is Outcome.FAIL
 
 
-def test_its_hidden_suite_holds_more_than_one_test(
-    grade: Grade, spec: KataSpec, kata_directory: Path
-) -> None:
+def test_its_hidden_suite_holds_more_than_one_test(stub_verdict: Verdict) -> None:
     """One check is not a kata.
 
-    Reusing the reference run would be faster, but a check *count* taken from a
-    passing run cannot distinguish a one-test suite from a one-test suite that
-    passed — which is the thing being ruled out. The stub run is the cheap one
-    to count, since the complexity advisory is excluded by severity.
+    Counted off the *stub* run rather than the reference, and that is deliberate
+    rather than incidental: a check count taken from a passing run cannot
+    distinguish a one-test suite from a one-test suite that passed, which is the
+    thing being ruled out. The stub run is also the cheap one to count, since the
+    complexity advisory is excluded by severity.
     """
-    verdict = grade(_read(kata_directory, spec.stub), None)
-    required = [report for report in verdict.reports if report.is_required]
+    required = [report for report in stub_verdict.reports if report.is_required]
 
     assert len(required) > 1, [report.check_id for report in required]
 
