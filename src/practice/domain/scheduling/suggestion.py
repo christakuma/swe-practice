@@ -27,6 +27,23 @@ different adapters read these and whichever formatted first would own the
 other's formatting — applies with more force here, because the sentence a panel
 wants ("suggested *good*: two hints") is not the sentence a terminal wants. The
 domain has no prose except its own refusals.
+
+**Phase 15 changed nothing about the rule, which is the finding.** Interview
+mode times an attempt, and the obvious expectation was that a timed attempt
+would need its own baseline here. It does not: `AttemptPolicy` derives the
+deadline from `estimated_minutes`, which is the number this module has compared
+against since Phase 9, so `elapsed > timedelta(minutes=estimated_minutes)` was
+*already* the deadline test and an interview's clock was already graded. A
+second comparison would have been two spellings of one number.
+
+What did change is one field, and it is the Phase 13 finding not repeated.
+`hints_used` is 0 for every interview attempt because no hint was ever on offer,
+so a surface reading it alone prints "no hints" as though the solver had shown
+restraint — present, correctly formatted and meaningless, which is exactly what
+the schedule panel's ease factor was under FSRS (§16). `hints_offered` is the
+missing denominator. It also makes honest a case that was always wrong and never
+visible: an exercise with no hints at all got the same credit, latent only
+because the content suite requires every shipped exercise to have some.
 """
 
 from __future__ import annotations
@@ -65,16 +82,42 @@ class GradeSuggestion:
     advisories: int
     hints_used: int
     overran: bool
+    hints_offered: int = 0
+    """How many hints this attempt could have revealed.
+
+    The denominator `hints_used` has always needed and never had. Zero means no
+    hint was on offer — interview mode withheld them, or the exercise has none —
+    and *that* is the case a surface must not describe as restraint.
+
+    Defaulted rather than required because every caller but `suggest_grade`
+    constructs one of these in a test, and the field is a reading rather than an
+    input: a suggestion built without it is one nobody asked about hints.
+    """
 
     @property
     def penalties(self) -> int:
-        """How many of the three readings counted against a passing attempt."""
+        """How many of the three readings counted against a passing attempt.
+
+        Unchanged by `hints_offered`, deliberately. Revealing no hint is worth
+        no penalty whether or not one was available, so the *grade* was always
+        right — it was the explanation that was misleading, and explanations are
+        the surface's business.
+        """
         return sum((self.advisories > 0, self.hints_used > 0, self.overran))
 
     @property
     def is_clean(self) -> bool:
         """Passed with no advisory, no hint and inside the estimate."""
         return self.passed and self.penalties == 0
+
+    @property
+    def declined_a_hint(self) -> bool:
+        """Whether "used no hints" describes a choice the solver made.
+
+        False when none was offered, which is the distinction a sentence like
+        "passed clean, no hints" turns on.
+        """
+        return self.hints_offered > 0 and self.hints_used == 0
 
 
 def suggest_grade(attempt: Attempt, exercise: Exercise) -> GradeSuggestion:
@@ -112,6 +155,9 @@ def suggest_grade(attempt: Attempt, exercise: Exercise) -> GradeSuggestion:
         advisories=advisories,
         hints_used=hints_used,
         overran=overran,
+        # The *policy's* count, not the exercise's: an interview withheld them
+        # and a mid-attempt edit cannot retroactively offer them (§4.3).
+        hints_offered=attempt.policy.hint_count,
     )
 
 
