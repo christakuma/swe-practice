@@ -284,7 +284,30 @@ class DrillQuery(Protocol):
 
 
 class ContentRepository(Protocol):
-    """Read-only access to the exercise library on disk."""
+    """Read-only access to the exercise library. *The catalogue*, not the files.
+
+    **Two real implementations as of Phase 16**, which is what §13 asks and what
+    this port had been getting by without: `FilesystemContentRepository` over a
+    content root and `PackContentRepository` over an archive, read without
+    extracting it. A protocol whose only real implementation is the one it was
+    extracted from has not been shown to abstract anything, and the result of
+    writing the second is that these two methods did not have to move —
+    `ExerciseFilter.matches` and `curriculum.yaml` are the shared mechanisms, so
+    a packed library and a directory cannot disagree about order or filtering.
+
+    **What it is deliberately not is the only way to content**, and Phase 16 is
+    where that stopped being invisible. `SandboxProvisioner` is handed a content
+    *root* and copies a fixture, a stub, a `tests.py` or a `seed.sql` out of it
+    by path, because a solver's workspace is a real directory and a grading
+    subprocess needs real files. So this port serves everything that reads
+    *about* an exercise — browsing, filtering, scheduling, validating, counting
+    — and nothing that runs one.
+
+    Widening it to carry file bytes was considered and rejected in
+    [ADR 0021](../../../docs/adr/0021-content-packs-install-rather-than-mount.md):
+    it would reach into `adapters/sandbox/` to buy a mounted pack, when
+    installing one costs a command and leaves every existing path alone.
+    """
 
     def list_exercises(
         self, criteria: ExerciseFilter | None = None

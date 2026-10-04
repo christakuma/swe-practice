@@ -1,6 +1,6 @@
 """Reading the exercise library off disk.
 
-Six modules, split by what each one knows about:
+Seven modules, split by what each one knows about:
 
 * `schema` — what a valid `exercise.yaml` looks like, as Pydantic models. Knows
   nothing about files.
@@ -14,6 +14,8 @@ Six modules, split by what each one knows about:
 * `filesystem` — the `ContentRepository` port over a content root.
 * `pack` — a library as one deterministic archive with its own digests, which
   is what makes a content root something you can send somebody (Phase 16).
+* `packed` — the `ContentRepository` port over a pack, read without extracting
+  it. The port's second real implementation (PLAN.md §13).
 
 Loading and validating are separate because the two callers want different
 answers: browsing the library should not fail because an exercise someone is
@@ -44,6 +46,7 @@ from practice.adapters.content.pack import (
     verify_pack,
     write_pack,
 )
+from practice.adapters.content.packed import PackContentRepository
 from practice.adapters.content.validation import (
     ExerciseReport,
     LibraryReport,
@@ -60,6 +63,7 @@ __all__ = [
     "ExerciseReport",
     "FilesystemContentRepository",
     "LibraryReport",
+    "PackContentRepository",
     "PackManifest",
     "Track",
     "install_pack",
