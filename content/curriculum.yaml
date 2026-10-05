@@ -85,6 +85,7 @@ tracks:
       - katas/best-time-to-buy-and-sell
       - katas/three-sum-to-zero
       - katas/the-largest-container
+      - katas/longest-consecutive-run
 
   - name: sql-reading
     title: "SQL: asking the right question"
@@ -132,18 +133,66 @@ tracks:
       - git/undo-a-merge-you-have-not-pushed
       - git/undo-a-rebase-with-orig-head
 
-  - name: trees-and-graphs
-    title: "Katas: trees and graphs"
+  # Split out of `trees-and-graphs` by the Blind 75 fill-in. That track held
+  # nine exercises and four of them were about trees; seven more arrived at
+  # once, and a sixteen-exercise track mixing binary trees with grid search
+  # teaches neither. The graph half kept the exercises and lost the trees.
+  #
+  # Ordered so that each exercise's lesson is available to the next.
+  # `are-two-trees-the-same` establishes that a missing node must not match a
+  # present one, which is the load-bearing base case; `is-it-a-subtree` then
+  # reuses that comparison verbatim as the predicate of a search, and
+  # `serialize-and-deserialize-a-tree` is the same fact a third time -- the
+  # absences are what carry the shape.
+  #
+  # `best-path-sum-in-a-tree` is late and hard for a reason unrelated to
+  # traversal: it is the only one where the recursion's return value and the
+  # answer it computes are different quantities.
+  - name: trees
+    title: "Katas: binary trees"
     exercises:
       - katas/max-depth-of-a-binary-tree
+      - katas/invert-a-binary-tree
       - katas/level-order-traversal
+      - katas/are-two-trees-the-same
+      - katas/is-it-a-subtree
       - katas/validate-a-binary-search-tree
       - katas/lowest-common-ancestor
+      - katas/kth-smallest-in-a-bst
+      - katas/rebuild-a-tree-from-traversals
+      - katas/serialize-and-deserialize-a-tree
+      - katas/best-path-sum-in-a-tree
+
+  # Grown from five to ten by the Blind 75 fill-in, and ordered by what each
+  # exercise needs to already be understood.
+  #
+  # `clone-a-graph` comes early because it settles what a visited set *means*:
+  # "already done" and permanent, against the "on the current path" mark that
+  # `find-a-word-in-a-grid` undoes. Those two are one line apart in the code
+  # and the failures are nothing alike.
+  #
+  # `count-connected-components` introduces union-find -- a structure the
+  # library had none of -- and `is-this-graph-a-tree` then applies it, which is
+  # why they are adjacent. `alien-alphabet-order` is last because it is
+  # `topological-order` plus a hard input-modelling problem, and it is
+  # unreadable before it.
+  #
+  # Deliberately *not* here: `longest-consecutive-run`, which Blind 75 files
+  # under graphs and which has no graph in it -- it is a hash set and an
+  # amortised counting argument, so it sits with the array katas.
+  - name: graphs
+    title: "Katas: graphs, grids and traversal order"
+    exercises:
       - katas/flood-fill
       - katas/count-islands
+      - katas/clone-a-graph
+      - katas/water-flowing-to-both-oceans
       - katas/shortest-path-in-a-grid
+      - katas/count-connected-components
+      - katas/is-this-graph-a-tree
       - katas/detect-a-dependency-cycle
       - katas/topological-order
+      - katas/alien-alphabet-order
 
   # Added with the Blind 75 fill-in. Ordered by dependency rather than by
   # difficulty alone: the three-pointer reversal and the fast/slow pair are both

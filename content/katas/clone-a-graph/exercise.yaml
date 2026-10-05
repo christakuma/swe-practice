@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/clone-a-graph
+kind: kata
+title: Clone a Graph
+difficulty: medium
+tags: [graphs, dfs, hash-map, recursion]
+estimated_minutes: 28
+
+prompt: |
+  Deep-copy a connected undirected graph. Return the copy of the node you were
+  given.
+
+  ```
+  1 --- 2        every node copied, every edge copied,
+  |     |   ->   and no node in the copy is a node from the original
+  4 --- 3
+  ```
+
+  The graph may contain cycles — in fact an undirected edge *is* a cycle, since
+  it appears in both nodes' neighbour lists. It may be a single node with no
+  neighbours, or empty (`None`).
+
+  The copy must share **no** nodes with the original: every node is new, and
+  every neighbour list points only at new nodes. The shape must match exactly.
+
+  The tests build graphs with the `Node` class in the stub.
+
+hints:
+  - "A naive recursion into every neighbour never terminates. Node 1 copies
+     node 2, which copies node 1, which copies node 2."
+  - "The fix is to remember what you have already copied: a map from original
+     node to its copy. Before copying a node, check the map."
+  - "Put the new node into the map *before* recursing into its neighbours. If
+     you add it afterwards, the cycle comes back around and finds nothing."
+  - "That map is doing two jobs at once -- it is the visited set *and* the
+     lookup for wiring edges. Realising those are the same structure is the
+     tidy part of this problem."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(V + E)"
+    expected_space: "O(V)"

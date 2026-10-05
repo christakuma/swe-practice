@@ -1,0 +1,50 @@
+schema_version: 1
+id: katas/kth-smallest-in-a-bst
+kind: kata
+title: Kth Smallest in a BST
+difficulty: medium
+tags: [trees, dfs, binary-search, scanning]
+estimated_minutes: 25
+
+prompt: |
+  Return the kth smallest value in a binary **search** tree. `k` is 1-based, so
+  `k = 1` is the smallest value.
+
+  ```
+       5
+      / \
+     3   7        kth_smallest(root, 1)  ->  2
+    / \   \       kth_smallest(root, 3)  ->  4
+   2   4   9      kth_smallest(root, 6)  ->  9
+
+  ```
+
+  The tree is a valid BST: every value in a node's left subtree is smaller than
+  the node, every value in its right subtree is larger, and values are distinct.
+  `k` is always between 1 and the number of nodes.
+
+  **Stop as soon as you have the answer.** Collecting every value and indexing
+  is correct and reads the whole tree; the tests check you did not.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "A BST has an ordering you can exploit rather than discover. Which
+     traversal visits a BST's nodes in increasing order?"
+  - "In-order -- left subtree, node, right subtree. So the kth node visited is
+     the kth smallest, and no sorting or comparing is needed anywhere."
+  - "Count the nodes as you visit them. When the counter reaches k you are
+     standing on the answer, and everything to the right is irrelevant."
+  - "Returning early out of a recursion needs the answer to propagate back up
+     through the frames. An explicit stack makes the early exit a plain
+     `return` instead."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(h + k)"
+    expected_space: "O(h)"

@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/rebuild-a-tree-from-traversals
+kind: kata
+title: Rebuild a Tree From Traversals
+difficulty: medium
+tags: [trees, recursion, hash-map, invariants]
+estimated_minutes: 32
+
+prompt: |
+  Rebuild a binary tree from its pre-order and in-order traversals.
+
+  ```
+  preorder = [3, 9, 20, 15, 7]           3
+  inorder  = [9, 3, 15, 20, 7]          / \
+                              ->       9   20
+                                          /  \
+                                        15    7
+  ```
+
+  Both lists hold the same values, all **distinct**. Empty lists give an empty
+  tree.
+
+  `O(n)`. The obvious recursion is `O(n^2)` because of one repeated lookup —
+  find it and remove it.
+
+hints:
+  - "Pre-order visits the root first, so `preorder[0]` is the root. In-order
+     visits the whole left subtree before the root, so finding the root in
+     `inorder` splits it into the two subtrees."
+  - "That split gives you the left subtree's *size*, which is what lets you cut
+     the pre-order list in the same place: the next `size` values after the
+     root are the left subtree's pre-order."
+  - "Searching `inorder` for the root on every call is the O(n) step that makes
+     the whole thing quadratic. Build a value-to-index dictionary once up
+     front."
+  - "Pass index ranges rather than slicing the lists. Slicing copies, so it
+     reintroduces the linear cost you just removed."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"

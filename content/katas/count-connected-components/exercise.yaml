@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/count-connected-components
+kind: kata
+title: Count Connected Components
+difficulty: medium
+tags: [graphs, union-find, connected-components]
+estimated_minutes: 30
+
+prompt: |
+  `n` nodes are labelled `0` to `n - 1`. Given a list of undirected edges,
+  count the connected components.
+
+  ```
+  count_components(5, [(0, 1), (1, 2), (3, 4)])  ->  2
+  count_components(5, [])                         ->  5
+  count_components(1, [])                         ->  1
+  count_components(0, [])                         ->  0
+  ```
+
+  An isolated node is a component of its own. Edges may repeat, and an edge may
+  join two nodes that are already connected — such an edge changes nothing.
+
+  Edges are given as `(a, b)` pairs and are undirected.
+
+hints:
+  - "Start from the answer with no edges at all: `n` components, one per node.
+     Every edge that joins two *different* components reduces the count by one."
+  - "So you need to answer \"are these two already together?\" and \"put these
+     two together\" repeatedly. That is a disjoint-set structure: each node
+     points at a representative, and two nodes are together when their
+     representatives match."
+  - "Finding a representative means walking up the parent chain. Point every
+     node you pass directly at the root on the way back -- that is path
+     compression, and it keeps the chains short."
+  - "Union the smaller tree under the larger one. Without that, a chain of
+     unions can build a tall tree and finding degrades to linear."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O((V + E) * almost-constant)"
+    expected_space: "O(V)"

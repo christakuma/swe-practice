@@ -1,0 +1,61 @@
+schema_version: 1
+id: katas/is-it-a-subtree
+kind: kata
+title: Is It a Subtree
+difficulty: easy
+tags: [trees, recursion, dfs]
+estimated_minutes: 18
+
+prompt: |
+  Return `True` if `candidate` appears somewhere inside `tree` as a **complete
+  subtree** — some node of `tree` whose whole structure below it matches
+  `candidate` exactly.
+
+  ```
+       3                 4
+      / \               / \        ->  True
+     4   5             1   2
+    / \
+   1   2
+
+       3                 4
+      / \               / \        ->  False
+     4   5             1   2
+    / \
+   1   2
+      /
+     0
+  ```
+
+  Complete is the operative word. In the second example the node `4` has the
+  right children but one of them has an extra child of its own, so the subtree
+  rooted at `4` is not `candidate`.
+
+  An empty candidate is a subtree of anything, including an empty tree. A
+  non-empty candidate is never a subtree of an empty tree.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "Two different questions are in play: \"are these two trees identical?\"
+     and \"does this tree contain that one?\". Write the first as its own
+     function and the second becomes short."
+  - "At each node of the tree, either the subtree rooted here matches the
+     candidate, or the answer is somewhere in the left subtree, or in the right
+     one."
+  - "The identity check must compare shape, not just values -- a candidate
+     matches only if the node's descendants stop exactly where the candidate's
+     do."
+  - "An extra child below a matching node makes it *not* a match. That is the
+     case that separates \"contains these values\" from \"contains this
+     subtree\"."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n * m) in the worst case"
+    expected_space: "O(h)"

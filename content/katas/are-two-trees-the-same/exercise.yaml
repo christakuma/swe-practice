@@ -1,0 +1,54 @@
+schema_version: 1
+id: katas/are-two-trees-the-same
+kind: kata
+title: Are Two Trees the Same
+difficulty: easy
+tags: [trees, recursion, dfs]
+estimated_minutes: 12
+
+prompt: |
+  Return `True` if two binary trees have the same shape and the same values in
+  the same positions.
+
+  ```
+     1        1
+    / \      / \      ->  True
+   2   3    2   3
+
+     1        1
+    /          \      ->  False   (same values, different shape)
+   2            2
+
+  None, None                 ->  True
+  ```
+
+  Two empty trees are the same. A tree is never the same as an empty tree.
+
+  Shape matters as much as values: a tree with a single left child is not the
+  same as a tree with a single right child, even though both hold the same two
+  numbers.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "Two trees are the same when their roots match *and* their left subtrees
+     are the same *and* their right subtrees are the same. That sentence is the
+     program."
+  - "There are three base cases, not one: both empty is True, exactly one empty
+     is False, and values differing is False."
+  - "Getting \"exactly one empty\" right is what makes shape matter. Treat a
+     missing node as equal to anything and a chain becomes equal to a different
+     chain."
+  - "Comparing a serialisation of each tree also works, and only if the
+     serialisation records absent children. Two trees with the same values in
+     different shapes have identical traversals otherwise."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n) for the smaller tree"
+    expected_space: "O(h)"

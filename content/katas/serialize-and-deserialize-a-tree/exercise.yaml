@@ -1,0 +1,50 @@
+schema_version: 1
+id: katas/serialize-and-deserialize-a-tree
+kind: kata
+title: Serialize and Deserialize a Tree
+difficulty: hard
+tags: [trees, recursion, invariants, dfs]
+estimated_minutes: 35
+
+prompt: |
+  Write a pair of functions that survive a round trip: `serialize` turns a
+  binary tree into a string, and `deserialize` turns it back into exactly the
+  same tree.
+
+  ```
+  deserialize(serialize(tree))  ->  a tree identical in shape and values
+  serialize(None)               ->  some string
+  deserialize(serialize(None))  ->  None
+  ```
+
+  The tree is an arbitrary binary tree — **not** a search tree, so there is no
+  ordering to lean on. Values may be negative and may repeat. The tree may be
+  empty, a single node, or a chain a thousand deep.
+
+  Shape must survive. Two trees holding the same values in different positions
+  must not serialise to the same string.
+
+  You may not use `json`, `pickle`, `repr`, `ast`, or any other serialiser.
+  Build the format yourself.
+
+hints:
+  - "A plain pre-order traversal of the values is not enough. Two different
+     trees can produce the same list of values, so the string has to record
+     something a traversal of present nodes does not."
+  - "Record the absences. Write a marker where a child is missing, and the
+     shape becomes recoverable."
+  - "With markers in place, pre-order deserialises beautifully: read a token;
+     if it is the marker return nothing, otherwise make a node and read its two
+     children, in that order, from whatever comes next."
+  - "The reader needs to consume tokens in sequence across recursive calls --
+     an iterator, or an index you advance, rather than a fresh scan each time."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(n) both directions"
+    expected_space: "O(n)"

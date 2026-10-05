@@ -1,0 +1,57 @@
+schema_version: 1
+id: katas/alien-alphabet-order
+kind: kata
+title: Alien Alphabet Order
+difficulty: hard
+tags: [graphs, topological-sort, heap, invariants]
+estimated_minutes: 40
+
+prompt: |
+  A list of words is sorted according to an unknown alphabet. Work out the
+  alphabet.
+
+  Return the characters in order as a string. Where several orderings are
+  consistent with the input, return the **lexicographically smallest** one — by
+  ordinary Python string comparison — so the answer is unique. Return `""` if
+  no ordering is consistent.
+
+  ```
+  alien_order(["wrt", "wrf", "er", "ett", "rftt"])  ->  "wertf"
+  alien_order(["z", "x"])                            ->  "zx"
+  alien_order(["z", "x", "z"])                       ->  ""      # z before and after x
+  alien_order(["abc", "ab"])                         ->  ""      # a prefix cannot follow
+  alien_order(["a", "b", "c"])                       ->  "abc"
+  alien_order([])                                    ->  ""
+  ```
+
+  Every character appearing in any word must appear exactly once in the result,
+  including characters that no comparison constrains.
+
+  Two ways the input can be inconsistent, and both must give `""`: the
+  constraints may form a **cycle**, or a word may be followed by a **proper
+  prefix of itself**, which no alphabet permits.
+
+hints:
+  - "Each adjacent pair of words gives you exactly one fact: at the first
+     position where they differ, the earlier word's character precedes the
+     later word's. Positions after that tell you nothing."
+  - "If they do not differ anywhere in their common length, the shorter must
+     come first. If it does not, the input is impossible -- no alphabet makes
+     \"abc\" sort before \"ab\"."
+  - "Those facts are edges in a directed graph over the characters, and the
+     answer is a topological order of it. A cycle means no answer."
+  - "For the *smallest* valid order, always take the available character that
+     is smallest. Kahn's algorithm with a min-heap instead of a plain queue
+     does exactly that."
+  - "Deduplicate the edges. The same pair can be implied by many word pairs,
+     and counting it twice leaves an in-degree that never reaches zero."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(total input length + C log C) for C distinct characters"
+    expected_space: "O(C^2) worst case for the edges"

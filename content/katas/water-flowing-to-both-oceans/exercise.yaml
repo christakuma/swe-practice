@@ -1,0 +1,59 @@
+schema_version: 1
+id: katas/water-flowing-to-both-oceans
+kind: kata
+title: Water Flowing to Both Oceans
+difficulty: medium
+tags: [grids, dfs, graphs, invariants]
+estimated_minutes: 32
+
+prompt: |
+  A grid gives the height of each cell. Water flows from a cell to any
+  orthogonal neighbour whose height is **less than or equal** to its own, and
+  off the edge of the grid into the ocean.
+
+  The **top and left** edges border one ocean; the **bottom and right** edges
+  border the other. Return every cell from which water can reach **both**, as
+  a sorted list of `(row, column)` pairs.
+
+  ```
+  [[1, 2, 2, 3],
+   [3, 2, 3, 4],   ->  [(0, 3), (1, 0), (1, 3), (2, 0), (2, 1), (2, 2)]
+   [2, 4, 5, 3]]
+  ```
+
+  `(0, 3)` sits on the top edge, so it already touches one ocean, and it is on
+  the right edge too. `(2, 2)` holds the 5 — the highest cell — and drains both
+  ways. The 2 at `(1, 1)` is left out for the more interesting reason: it can
+  step sideways onto the equal 2 above it and reach the top edge, but
+  everything between it and the bottom-right is higher, so it reaches one ocean
+  and not both.
+
+  Equal heights flow in both directions, so a plateau is connected. The grid
+  may be empty, a single cell, or entirely flat — a flat grid drains everywhere,
+  so every cell qualifies.
+
+  Searching downhill from every cell is `O((m*n)^2)` in the worst case. There is
+  an `O(m*n)` solution, and finding it is the exercise.
+
+hints:
+  - "Searching from each cell asks \"can water get out from here?\" m*n times,
+     and each search can cover the whole grid. The repeated work is the whole
+     problem."
+  - "Turn the question round. Instead of asking which cells reach the ocean,
+     ask which cells the ocean can reach -- walking *uphill* from the edges."
+  - "Uphill is the reverse of the flow rule: from a cell, move to a neighbour
+     whose height is greater than or equal to it. Everything reachable that way
+     from an edge can drain to that edge."
+  - "Two searches, one per ocean, each seeded with its whole border. The answer
+     is the intersection of what they reach -- and each search visits every
+     cell at most once."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(m * n)"
+    expected_space: "O(m * n)"
