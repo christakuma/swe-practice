@@ -146,6 +146,37 @@ def test_schema_problems_are_reported_with_their_location(
     )
 
 
+def test_a_filename_that_escapes_the_exercise_is_refused_and_located(
+    write_exercise: WriteExercise,
+) -> None:
+    """A `stub:` pointing outside its directory is a load failure, not a
+    runtime one.
+
+    It used to be neither: `validate_library` only asked whether the named file
+    existed, which a traversal satisfies, so the exercise was reported valid and
+    the provisioner then copied a file from outside the library to outside the
+    workspace.
+
+    Located at `kata:` rather than at `kata.stub:`, which is this mechanism
+    working as designed rather than a rough edge. The invariant lives on the
+    domain spec, `_SpecModel` builds that spec during validation, and Pydantic
+    attributes a model-level validator to the block — the same place
+    `validate_checks` failures land. The field is named in the sentence instead,
+    which is why the sentence names it.
+    """
+    document = a_kata()
+    document["kata"]["stub"] = "../../../secret.py"
+    directory = write_exercise(document)
+
+    with pytest.raises(ContentError) as caught:
+        load_exercise(directory)
+
+    (problem,) = caught.value.problems
+    assert problem.startswith("kata:")
+    assert "names a stub of '../../../secret.py'" in problem
+    assert "cannot be a path" in problem
+
+
 def test_every_schema_problem_is_reported_at_once(
     write_exercise: WriteExercise,
 ) -> None:

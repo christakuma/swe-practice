@@ -322,9 +322,30 @@ class PytestKataRunner:
         )
 
     def _install(self, workspace: Workspace) -> None:
+        """Write the mechanism, and truncate the report this run has to produce.
+
+        **Emptying `report.json` is the load-bearing line**, and leaving it out
+        is a wrong verdict rather than a stale display. The plugin writes the
+        report in `pytest_sessionfinish`, so a run that is killed on
+        `time_limit_seconds` -- or whose solution takes the interpreter down
+        with it -- never writes one; `_read_report` would then parse the
+        *previous* pass's file, whose `version` still matches, and
+        `parse_records` would hand the grader somebody else's passing tests.
+        `KataRun.ran` would be true, so neither `timed_out` nor
+        `why_it_did_not_run` would ever be consulted, and `reports_for` reads
+        only `run.tests` -- a solution that hung would be graded PASS on the
+        results of the one before it. Own-editor mode makes that a routine
+        sequence rather than a corner: it grades on every save, into one
+        workspace (ADR 0013).
+
+        Truncated rather than deleted because truncation is what the `Workspace`
+        port can express, and an empty file is read as "no report" by the same
+        `ValueError` path that already covers a half-written one.
+        """
         workspace.write_file(f"{PLUGIN_MODULE}.py", self._plugin_source)
         workspace.write_file("conftest.py", CONFTEST)
         workspace.write_file("pytest.ini", PYTEST_INI)
+        workspace.write_file(REPORT_FILE, "")
 
     def _read_report(self, workspace: Workspace) -> dict[str, Any] | None:
         """`None` when there is nothing readable there.

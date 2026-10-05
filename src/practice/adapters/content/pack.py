@@ -63,6 +63,7 @@ from practice.adapters.content.curriculum import (
     CURRICULUM_FILENAME,
     Curriculum,
     Track,
+    curriculum_path,
     load_curriculum,
 )
 from practice.adapters.content.errors import ContentError
@@ -339,11 +340,47 @@ def _derived(
 ) -> Iterator[tuple[str, bytes]]:
     """`curriculum.yaml` and `fixtures.lock`, narrowed to this selection."""
     selected = {exercise.id for exercise in exercises}
-    yield (
-        CURRICULUM_FILENAME,
-        _render_curriculum(_narrowed(load_curriculum(content_root), selected)),
-    )
+    curriculum = load_curriculum(content_root)
+    _require_listed(content_root, curriculum, selected)
+    yield (CURRICULUM_FILENAME, _render_curriculum(_narrowed(curriculum, selected)))
     yield (LOCK_FILENAME, _narrowed_lock(content_root, exercises))
+
+
+def _require_listed(
+    content_root: Path, curriculum: Curriculum, selected: Iterable[ExerciseId]
+) -> None:
+    """Refuse a selection the source library's own ordering does not name.
+
+    **The derived indexes can only narrow, and a selection can be wider than
+    the thing being narrowed.** `Curriculum.position` deliberately sorts an
+    unlisted exercise last rather than refusing it, so somebody can draft one
+    before writing its line — and `FilesystemContentRepository` lists it, so it
+    reaches `write_pack`. `_narrowed` keeps only ids the curriculum already
+    names, so that exercise was packed, counted in `pack.yaml`, and absent from
+    the ordering: a pack whose manifest claimed 2 exercises, whose own read-back
+    listed 1, and which installed to a content root failing the
+    `practice validate` the install step prints as the next command.
+
+    Refused rather than appended, which is ADR 0014's position restated: an
+    exercise with no line in `curriculum.yaml` fails CI instead of quietly
+    appearing at the end, and a packer that invented a position for one would be
+    making the ordering decision the manifest exists to take away from it.
+    """
+    unlisted = sorted(
+        exercise_id.value
+        for exercise_id in frozenset(selected) - frozenset(curriculum.exercise_ids)
+    )
+    if unlisted:
+        raise ContentError(
+            curriculum_path(content_root),
+            [
+                (
+                    f"does not list: {', '.join(unlisted)}; a pack carries a "
+                    f"derived ordering, so an exercise with no line here would "
+                    f"install to a library that `practice validate` refuses"
+                )
+            ],
+        )
 
 
 def _narrowed(curriculum: Curriculum, selected: Iterable[ExerciseId]) -> Curriculum:

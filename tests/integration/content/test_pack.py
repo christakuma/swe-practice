@@ -139,6 +139,34 @@ def test_an_empty_selection_is_refused(tmp_path: Path, stocked: Path) -> None:
     assert caught.value.problems == ("a pack must hold at least one exercise",)
 
 
+def test_a_selection_the_curriculum_does_not_name_is_refused(
+    tmp_path: Path, stocked: Path, write_exercise: WriteExercise
+) -> None:
+    """The derived indexes can only narrow, and a selection can be wider.
+
+    `Curriculum.position` deliberately sorts an unlisted exercise last rather
+    than refusing it, so one can be drafted before its line is written — and
+    the filesystem repository lists it, so it reached `write_pack`. `_narrowed`
+    keeps only ids the curriculum names, so the exercise was packed, counted in
+    `pack.yaml`, and missing from the ordering: a pack claiming two exercises
+    whose own read-back listed one, which then installed to a content root
+    failing the `practice validate` that the install step prints as the next
+    command to run.
+    """
+    write_exercise(a_kata(id="katas/draft"), curriculum=False)
+    everything = FilesystemContentRepository(stocked).list_exercises()
+
+    with pytest.raises(ContentError) as caught:
+        write_pack(
+            tmp_path / "out.practicepack",
+            content_root=stocked,
+            exercises=everything,
+        )
+
+    (problem,) = caught.value.problems
+    assert "does not list: katas/draft" in problem
+
+
 # --- determinism -----------------------------------------------------------
 
 

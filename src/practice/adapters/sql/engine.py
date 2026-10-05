@@ -84,21 +84,37 @@ class DrillSeedError(Exception):
 def split_statements(sql: str) -> tuple[str, ...]:
     """SQL text as a tuple of complete statements, comments and blanks dropped.
 
-    Accumulates lines until `sqlite3.complete_statement` says the buffer is a
-    statement, which is how the stdlib spells "find the boundary" and is correct
-    about a `;` inside a string literal. A trailing fragment with no terminating
-    semicolon is still returned: a solver who left the last `;` off meant the
-    statement, and SQLite will run it.
+    Asks `sqlite3.complete_statement` at every semicolon, which is how the
+    stdlib spells "find the boundary" and is correct about a `;` inside a string
+    literal, inside a comment, and inside a `CREATE TRIGGER` body. A trailing
+    fragment with no terminating semicolon is still returned: a solver who left
+    the last `;` off meant the statement, and SQLite will run it.
+
+    **At every semicolon rather than at every end of line**, which is the whole
+    content of this function and was a real defect until it was. The boundary
+    this looks for is a character, not a line: `DELETE FROM t WHERE a = 1;
+    SELECT * FROM t;` typed on one line made the buffer complete exactly once,
+    so both statements came back as a single string and `connection.execute`
+    refused it outright with *"You can only execute one statement at a time."* —
+    nothing ran, the `DELETE` never took effect, and the one sentence the panel
+    put in front of the solver blamed SQL that was correct. Line endings are the
+    one thing about an answer that is purely how it was typed, and they were
+    deciding whether it ran.
     """
     statements: list[str] = []
-    buffer = ""
-    for line in sql.splitlines(keepends=True):
-        buffer += line
-        if buffer.strip() and sqlite3.complete_statement(buffer):
-            statements.append(buffer.strip())
-            buffer = ""
-    if buffer.strip():
-        statements.append(buffer.strip())
+    start = 0
+    for index, character in enumerate(sql):
+        # Only a `;` can end a statement, so it is the only place worth asking —
+        # which also keeps this one pass over the text rather than one per line.
+        if character != ";":
+            continue
+        candidate = sql[start : index + 1]
+        if sqlite3.complete_statement(candidate):
+            statements.append(candidate.strip())
+            start = index + 1
+    remainder = sql[start:]
+    if remainder.strip():
+        statements.append(remainder.strip())
     return tuple(statement for statement in statements if _is_executable(statement))
 
 

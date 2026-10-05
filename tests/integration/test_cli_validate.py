@@ -215,6 +215,29 @@ def test_the_subcommand_is_required_rather_than_implied() -> None:
     assert "validate" in result.output
 
 
+def test_a_library_level_problem_is_not_summarised_as_all_valid(
+    library: Path, write_exercise: WriteExercise
+) -> None:
+    """The last line has to agree with the `FAIL` lines above it.
+
+    An exercise left out of `curriculum.yaml` is a problem with the *library*
+    rather than with any one exercise, and the summary counted only the latter
+    — so this printed "1 exercise, all valid." directly underneath its own
+    `FAIL curriculum.yaml: does not list: ...`. The exit code was right
+    throughout, which is why CI never noticed and a reader would.
+    """
+    write_exercise(a_scenario())
+    write_exercise(a_kata(), curriculum=False)
+
+    code, output = run("--content-root", str(library), "--no-caveats")
+
+    assert code == 1
+    assert "does not list: katas/two-sum" in output
+    assert "all valid" not in output
+    assert "2 exercises, each valid on its own" in output
+    assert "1 problem with the library" in output
+
+
 def test_an_unloadable_yaml_file_does_not_produce_a_traceback(
     library: Path, write_exercise: WriteExercise
 ) -> None:

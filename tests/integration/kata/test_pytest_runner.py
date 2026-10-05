@@ -253,6 +253,36 @@ def test_a_solution_that_never_returns_is_killed_by_the_time_limit(
     assert "killed after" in run.why_it_did_not_run(kata_spec_with_a_short_limit)
 
 
+def test_a_timeout_after_a_pass_does_not_inherit_the_pass(
+    runner: PytestKataRunner,
+    workspace: SubprocessWorkspace,
+    spec: KataSpec,
+    kata_spec_with_a_short_limit: KataSpec,
+    reference: str,
+) -> None:
+    """**Two runs in one workspace, deliberately**, which every other test here
+    avoids and this one is about.
+
+    The report is written in `pytest_sessionfinish`, so a killed run writes
+    none — and until `_install` truncated it, the second run read the first
+    one's file, whose `version` still matched. `ran` was then true, so neither
+    `timed_out` nor `why_it_did_not_run` was ever consulted and `reports_for`
+    built a PASS out of the earlier run's records. Own-editor mode grades on
+    every save into one workspace (ADR 0013), so this is the ordinary sequence
+    rather than a corner: pass, break it, save.
+    """
+    passed = runner.run(workspace, spec, reference)
+    assert passed.ran
+    assert passed.failures == ()
+
+    run = runner.run(workspace, kata_spec_with_a_short_limit, LOOPS_FOREVER)
+
+    assert not run.ran
+    assert run.tests == ()
+    assert run.timed_out
+    assert run.exit_status is None
+
+
 def test_a_solution_that_cannot_be_imported_collects_nothing(
     runner: PytestKataRunner,
     workspace: SubprocessWorkspace,

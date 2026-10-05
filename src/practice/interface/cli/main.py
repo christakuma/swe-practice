@@ -401,7 +401,9 @@ def validate(
             typer.echo(f"{_INDENT}{problem}")
 
     typer.echo("")
-    typer.echo(_summarise(len(report.exercises), len(report.failures)))
+    typer.echo(
+        _summarise(len(report.exercises), len(report.failures), len(report.problems))
+    )
 
     # Printed on success too. A command that reports "3 exercises, all valid"
     # and stops there invites exactly the misreading PLAN.md §11 warns about —
@@ -2047,11 +2049,26 @@ def _size(total: int) -> str:
     return f"{total / (_KB * _KB):.1f} MB"
 
 
-def _summarise(total: int, failed: int) -> str:
-    exercises = "exercise" if total == 1 else "exercises"
+def _summarise(total: int, failed: int, problems: int) -> str:
+    """The last line `validate` prints, which has to agree with the ones above it.
+
+    `problems` is the library-level count — a curriculum that does not list an
+    exercise, a duplicate id, a missing manifest — and it is a separate argument
+    because it is a separate claim: every exercise can be individually valid in
+    a library that is not. Without it this said "62 exercises, all valid."
+    directly underneath its own `FAIL` line, which is the one sentence a reader
+    takes away from the command.
+    """
+    exercises = _plural("exercise", total)
     if not total:
         return "No exercises found."
-    if not failed:
+    if failed:
+        verb = "has" if failed == 1 else "have"
+        body = f"{failed} of {total} {exercises} {verb} problems"
+    elif problems:
+        body = f"{total} {exercises}, each valid on its own"
+    else:
         return f"{total} {exercises}, all valid."
-    verb = "has" if failed == 1 else "have"
-    return f"{failed} of {total} {exercises} {verb} problems."
+    if not problems:
+        return f"{body}."
+    return f"{body}, and {problems} {_plural('problem', problems)} with the library."

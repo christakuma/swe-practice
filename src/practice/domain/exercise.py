@@ -62,6 +62,7 @@ __all__ = [
     "SqlDrillSpec",
     "editable_source",
     "validate_checks",
+    "validate_filename",
 ]
 
 _CHECK_ID: Final = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -189,14 +190,16 @@ class KataSpec:
     complexity: ComplexityExpectation | None = None
 
     def __post_init__(self) -> None:
+        if not self.language.strip():
+            raise InvalidValueError("kata spec needs a language")
         for name, value in (
-            ("language", self.language),
             ("stub", self.stub),
             ("tests", self.tests),
             ("reference", self.reference),
         ):
             if not value.strip():
                 raise InvalidValueError(f"kata spec needs a {name}")
+            validate_filename(value, field=name, subject="kata spec")
         if self.time_limit_seconds < 1:
             raise InvalidValueError("time_limit_seconds must be at least 1")
 
@@ -234,11 +237,53 @@ class CounterExample:
     def __post_init__(self) -> None:
         if not self.file.strip():
             raise InvalidValueError("a counter-example needs a file")
+        validate_filename(self.file, field="file", subject="a counter-example")
         if not self.expect_failures:
             raise InvalidValueError(
                 f"counter-example {self.file!r} must declare at least one check it "
                 f"is expected to fail"
             )
+
+
+#: What makes a string a path rather than a name. `:` is in here for two
+#: spellings at once: a Windows drive (`C:evil.py`) and an NTFS alternate data
+#: stream (`stub.py:evil`), neither of which is a legal filename anywhere in
+#: this library.
+_PATH_CHARACTERS: Final = ("/", "\\", ":")
+
+
+def validate_filename(value: str, *, field: str, subject: str) -> None:
+    """Refuse a spec filename that is anything but a name beside the exercise.
+
+    **Every one of these filenames is resolved twice, against two different
+    roots, and a path escapes both.** The provisioner copies
+    `content_root / exercise_id / name` to `<workspace>/repo/name`, so a `stub:
+    ../../../x` reads a file from outside the library and writes it outside the
+    workspace — and the audit in `adapters/content/validation.py` could not
+    catch it, because `(directory / name).is_file()` is satisfied by a traversal
+    that points at something real.
+
+    **A bare name rather than a confined relative path**, which is the stricter
+    of the two and the one that matches what the adapters can actually do:
+    `_install_kata_files` copies into `layout.repo` without creating
+    directories, so `tests/suite.py` would fail to provision even though it
+    escapes nothing. Every filename in the shipped library is already a bare
+    name, so this refuses a capability nothing has rather than removing one.
+
+    Raised from the domain rather than checked in the schema so that both
+    `ContentRepository` implementations inherit it: a pack's `exercise.yaml` is
+    content somebody else wrote (Phase 16), and `install_pack` guards archive
+    members against exactly this for exactly that reason. `_SpecModel` builds
+    its domain object during validation, so Pydantic reports this against the
+    field it came from for free.
+    """
+    if value.strip() in {".", ".."} or any(
+        character in value for character in _PATH_CHARACTERS
+    ):
+        raise InvalidValueError(
+            f"{subject} names a {field} of {value!r}; a {field} is the name of a "
+            f"file beside the exercise and cannot be a path"
+        )
 
 
 def validate_checks(
@@ -321,6 +366,8 @@ class GitScenarioSpec:
     def __post_init__(self) -> None:
         if not self.fixture.strip() or not self.reference.strip():
             raise InvalidValueError("a scenario needs a fixture and a reference")
+        validate_filename(self.fixture, field="fixture", subject="a scenario")
+        validate_filename(self.reference, field="reference", subject="a scenario")
         validate_checks(self.checks, self.counter_examples, subject="scenario")
 
         if not self.allowed_commands:
@@ -415,6 +462,7 @@ class SqlDrillSpec:
         ):
             if not value.strip():
                 raise InvalidValueError(f"a drill needs a {name}")
+            validate_filename(value, field=name, subject="a drill")
         validate_checks(self.checks, self.counter_examples, subject="drill")
         if self.statement_timeout_seconds < 1:
             raise InvalidValueError("statement_timeout_seconds must be at least 1")

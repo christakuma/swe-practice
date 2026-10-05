@@ -5,7 +5,7 @@ an exercise from being vacuously passable.
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -270,6 +270,68 @@ class TestKataSpec:
     def test_rejects_a_zero_time_limit(self) -> None:
         with pytest.raises(InvalidValueError):
             a_kata(time_limit_seconds=0)
+
+
+class TestSpecFilenamesAreNamesAndNotPaths:
+    """Every filename a spec names is resolved against two different roots, and
+    a path escapes both.
+
+    The provisioner copies `content_root / exercise_id / name` to
+    `<workspace>/repo/name`, so `stub: ../../../x` reads outside the library and
+    writes outside the workspace — and `validate_library` could not catch it,
+    because `(directory / name).is_file()` is satisfied by a traversal pointing
+    at something real. Held in the domain rather than in the schema so both
+    `ContentRepository` implementations inherit it: a pack's `exercise.yaml` is
+    content somebody else wrote, and `install_pack` guards archive members
+    against the same thing for the same reason.
+    """
+
+    #: Three spellings of a path and two of a name that is not one. The
+    #: backslash matters on its own: a POSIX `PurePath` reads it as one
+    #: component, so a check that only split on `/` would pass it through to a
+    #: Windows `joinpath`, where it is a separator.
+    ESCAPES: ClassVar = [
+        "../../../secret.txt",
+        "..\\..\\secret.txt",
+        "/etc/passwd",
+        "sub/stub.py",
+        "C:stub.py",
+        "..",
+    ]
+
+    @pytest.mark.parametrize("value", ESCAPES)
+    @pytest.mark.parametrize("field_name", ["stub", "tests", "reference"])
+    def test_a_kata_refuses_one(self, field_name: str, value: str) -> None:
+        with pytest.raises(InvalidValueError, match="cannot be a path"):
+            a_kata(**{field_name: value})
+
+    @pytest.mark.parametrize("value", ESCAPES)
+    @pytest.mark.parametrize("field_name", ["fixture", "reference"])
+    def test_a_scenario_refuses_one(self, field_name: str, value: str) -> None:
+        with pytest.raises(InvalidValueError, match="cannot be a path"):
+            a_scenario(**{field_name: value})
+
+    @pytest.mark.parametrize("value", ESCAPES)
+    @pytest.mark.parametrize("field_name", ["seed", "stub", "reference"])
+    def test_a_drill_refuses_one(self, field_name: str, value: str) -> None:
+        with pytest.raises(InvalidValueError, match="cannot be a path"):
+            a_drill(**{field_name: value})
+
+    @pytest.mark.parametrize("value", ESCAPES)
+    def test_a_counter_example_refuses_one(self, value: str) -> None:
+        """Counter-examples are in `referenced_files` too, and are read by the
+        content suite rather than the provisioner — which is a second reader of
+        the same path, not a reason to trust it.
+        """
+        with pytest.raises(InvalidValueError, match="cannot be a path"):
+            CounterExample(file=value, expect_failures=frozenset({"content-restored"}))
+
+    def test_an_ordinary_filename_is_still_accepted(self) -> None:
+        """The rule refuses a capability nothing in the library uses: every
+        filename it ships is already a bare name.
+        """
+        assert a_kata(stub="stub.py").stub == "stub.py"
+        assert a_drill(seed="seed.sql").seed == "seed.sql"
 
 
 class TestExercise:

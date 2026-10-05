@@ -76,6 +76,33 @@ class TestRunningAnAnswer:
         assert result is not None
         assert result.rows == ((2,),)
 
+    def test_an_answer_written_on_one_line_runs_and_is_graded(
+        self, held: Runner
+    ) -> None:
+        """The same answer as above with the newline taken out, which used to
+        run no statements at all.
+
+        Driven through `run_answer` rather than `split_statements` because the
+        splitter was only half the failure: the concatenation reached
+        `connection.execute`, which refused it at prepare time, so the verdict
+        carried a SQLite error about correct SQL and the database was never
+        touched. Both halves have to be true -- it parses as two, and both take
+        effect.
+        """
+        query = held(
+            "DELETE FROM orders WHERE status = 'pending'; "
+            "SELECT COUNT(*) AS n FROM orders;"
+        )
+        result = query.result()
+
+        assert query.error() is None
+        assert len(query.statements()) == 2
+        assert result is not None
+        assert result.rows == ((2,),)
+        table = query.table("orders")
+        assert table is not None
+        assert table.row_count == 2
+
     def test_a_syntax_error_is_reported_not_raised(self, answered: Runner) -> None:
         """The most ordinary thing a solver does, and it has to arrive as a
         message rather than a traceback.
@@ -296,6 +323,41 @@ class TestSplittingStatements:
         statement would give `sql_matches` a line that is not SQL to search.
         """
         assert split_statements(sql) == ()
+
+    def test_two_statements_on_one_line_are_two_statements(self) -> None:
+        """The boundary is a semicolon, not a line ending.
+
+        This split on lines until it was found by reading it: both statements
+        came back as one string, `connection.execute` refused it with "You can
+        only execute one statement at a time", and a correct answer was graded
+        as broken SQL with its first statement never applied.
+        """
+        sql = "DELETE FROM t WHERE a = 1; SELECT * FROM t;"
+
+        assert split_statements(sql) == (
+            "DELETE FROM t WHERE a = 1;",
+            "SELECT * FROM t;",
+        )
+
+    def test_a_semicolon_in_a_trailing_comment_is_not_a_boundary(self) -> None:
+        """Asking at every semicolon means asking inside comments too, and
+        `complete_statement` is what knows the difference.
+        """
+        sql = "SELECT 1 -- what about ; this\n;"
+
+        assert len(split_statements(sql)) == 1
+
+    def test_a_trigger_body_is_one_statement(self) -> None:
+        """The case a naive `split(';')` cannot survive and this one must: the
+        semicolons inside `BEGIN ... END` are not boundaries, which
+        `sqlite3_complete` tracks and nothing in this module does.
+        """
+        sql = (
+            "CREATE TRIGGER t AFTER INSERT ON orders BEGIN "
+            "UPDATE totals SET n = n + 1; END;"
+        )
+
+        assert split_statements(sql) == (sql,)
 
 
 class TestABrokenSeed:
