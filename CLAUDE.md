@@ -70,15 +70,25 @@ faster on average *and* repeatable. `--dist loadfile` so every test in a file
 lands on one worker, which is what keeps the content suite's module-scoped
 workspaces and memoised verdicts shared rather than rebuilt per worker.
 
-**Those figures predate Phase 17 and the shape has changed.** Measured after the
-Blind 75 fill-in: `-n 4` with the gate is **5m27s**, and the critical path is now
-`tests/content/test_katas.py` at **240s serially** — up from ~85s at 30 katas —
-having overtaken `tests/content/test_scenarios.py` at 162s. Because
-`--dist loadfile` puts a whole file on one worker, the suite cannot finish much
-faster than that file does, so **adding katas now moves the floor directly.**
-Most of the growth is ADR 0022's exhaustive sweeps; if they start to hurt, the
-fix is to mark them and run them as a separate tier rather than to thin them
-out.
+**Those figures predate Phase 17, and the shape has changed.** The critical path
+is now `tests/content/test_katas.py` — it has overtaken
+`tests/content/test_scenarios.py` (~162s), and because `--dist loadfile` puts a
+whole file on one worker, **adding katas now moves the suite's floor
+directly.**
+
+**Do not trust a single timing measurement on this machine.** Three serial runs
+of that file, on an otherwise idle box, gave **240s, 414s and ~500s** — the last
+inferred from timing it in two halves that summed to more than the whole. Three
+runs of the full gate gave **5m12s, 5m27s and 12m02s**. A 2.3x spread is wider
+than most changes you would make, so **a single run is not a measurement**:
+before claiming something got faster or slower, run it enough times to see the
+noise. §11's recorded 7m20s baseline is one run too, and the earlier version of
+this note quoted "240s serially" as a fact.
+
+Most of the growth is ADR 0022's exhaustive sweeps. If they start to hurt, the
+fix is to mark them and run the exhaustive tier separately rather than to thin
+them out — which is a real change to the two-tier scheme above and should be
+argued for rather than drifted into.
 
 Not in `addopts`, deliberately: four workers to run one file is slower than one,
 and the fast tier runs one file. `-n0` turns it off.

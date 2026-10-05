@@ -114,12 +114,18 @@ def test_returns_a_plain_integer() -> None:
 
 
 def test_counts_a_long_uniform_string_without_cubic_work() -> None:
-    """Counts a three-thousand character uniform string within the time limit.
+    """Counts a five-thousand character uniform string within the time limit.
 
     The worst case for centre expansion: every centre grows to the full width,
-    and there are about four and a half million palindromes to count. Building
-    or slicing a string per palindrome does not finish.
+    and there are twelve and a half million palindromes to count.
+
+    Five thousand rather than three, because the size is what makes this test
+    discriminate. Measured at n = 3000 the cubic solution -- slice every
+    substring, compare it with its reverse -- finished in 5.4s against the 15s
+    limit and so *passed*, which made the docstring's claim false. At n = 5000
+    it takes **30.9s** while centre expansion takes **1.3s**: two times over the
+    limit against eleven times under it.
     """
-    size = 3_000
+    size = 5_000
 
     assert count_palindromes("a" * size) == size * (size + 1) // 2

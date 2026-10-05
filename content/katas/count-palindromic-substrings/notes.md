@@ -71,6 +71,23 @@ in the problem statement — "distinct triples" against "substrings at different
 positions count separately" — and reading which one you have been given is the
 actual skill.
 
+## The long test had to be resized to mean anything
+
+`test_counts_a_long_uniform_string_without_cubic_work` originally used a
+3000-character string and claimed the cubic solution "does not finish". It
+finishes in **5.4 seconds**, against a 15-second limit — so the enumerate-and-
+slice solution passed the kata, and the claim was simply false.
+
+At 5000 characters the cubic version takes **30.9s** and centre expansion takes
+**1.3s**, which is two times over the limit against eleven times under it. That
+is the margin a timing test needs in *both* directions: enough to fail the slow
+solution on a fast machine, and enough to pass the fast one on a loaded CI box.
+
+The general point, and the reason this is in the notes rather than quietly
+fixed: **a timing test is a claim about two numbers, and writing down only the
+asymptotics does not establish either of them.** `O(n³)` beats `O(n²)` in the
+limit and not necessarily at the size you chose.
+
 ## What to take away
 
 **A one-line change to the consumer is often the whole difference between two

@@ -72,9 +72,18 @@ whenever exact membership is all you need.
 
 It cannot answer `starts_with` at all without scanning every stored word —
 `O(total characters)`. **The trie's entire value is the prefix query**, and
-`test_scales_with_word_length_not_vocabulary_size` is the test that separates
-them: a hundred thousand stored words, a thousand queries, and the scanning
-version does not finish.
+`test_scales_with_word_length_not_vocabulary_size` is the only test that
+separates them, because every other one inspects return values and cannot see
+the difference.
+
+Getting that test to actually separate them took two goes, which is worth
+recording. The first version used a thousand rounds and a present prefix that
+matched halfway through the vocabulary, so the scan short-circuited and finished
+in **5.0s against a 15s limit** — the set-plus-scan solution passed the whole
+kata, and the docstring claiming otherwise was wrong. The queries now deny the
+scan its short-circuit: one prefix matches nothing and one matches only the last
+word, so each round is two full passes. Measured: **25.7s** scanning against
+**0.01s** for the trie.
 
 Reaching for a trie when a set would do is as much a mistake as the reverse.
 The question to ask is whether any query is about *prefixes*.

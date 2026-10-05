@@ -216,11 +216,13 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > already covered eight to nine deep. NeetCode 150's remaining ~87 are
 > deliberately unscheduled for the same reason.
 >
-> **What the phase actually found is about its own tests.** Nine adversarial
-> tests were wrong about the bug they named, and the content suite could not
-> have caught one of them — it proves the reference passes and the stub fails,
-> and says so carefully in its own docstring, while every one of the nine left
-> the reference passing. Two could not fail at all: a palindrome
+> **What the phase actually found is about its own tests.** Sixteen were wrong,
+> in three kinds, and the kinds are the finding: seven wrong expected values,
+> which the content suite caught immediately; **six tests that could not fail or
+> did not discriminate**, which it cannot see at all, because it proves only
+> that the reference passes and the stub fails; and three wrong prose claims.
+> Three of the six were found by a code review *after* the ADR was written, all
+> three of them timing claims that no longer held at the size chosen. Two could not fail at all: a palindrome
 > counter-example that inserted a mismatching character at the *exact centre* of
 > a palindrome, and an interval test whose expected value was hand-counted using
 > the very arithmetic it existed to check. One was a false *claim* rather than a
@@ -231,12 +233,17 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > that back it swept 380,100 grid/word-list pairs, 140,680 trees and ~62,000
 > word lists among others.
 >
-> **And the number that moved was not the one predicted.** The guess going in
-> was that the pre-push suite would get slower; it did not — 5m27s on four
-> workers. What moved is the critical path: `tests/content/test_katas.py` went
-> from ~85s at 30 katas to **240s at 83**, overtaking `test_scenarios.py` at
-> 162s, and under `--dist loadfile` the whole file lands on one worker. The
-> gated surface is untouched, because 53 katas put nothing inside it.
+> **And the one number this phase cannot give you is a runtime.** The guess
+> going in was that the pre-push suite would get slower, and the honest answer is
+> that **this machine cannot tell**: three runs of the full gate on an idle box
+> gave 5m12s, 5m27s and 12m02s, and three serial runs of
+> `tests/content/test_katas.py` gave 240s, 414s and ~500s. The variance is
+> larger than any effect 53 katas could have, so every precise figure in the
+> first draft of this entry was a single run quoted as a fact. What *is*
+> established is the shape: that file has overtaken `test_scenarios.py` (~162s)
+> as the critical path, and under `--dist loadfile` a whole file lands on one
+> worker, so adding katas moves the floor. The gated surface is untouched,
+> because 53 katas put nothing inside it.
 >
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
 > · **Last phase:** 17 (the Blind 75 fill-in), 2026-10-05
@@ -2434,7 +2441,7 @@ be the whole of what an installed library needs, which is ADR 0017's
 `--content-root` paying off in a phase that did not plan to use it.
 
 
-### Phase 17 — The Blind 75 fill-in: 53 katas, and nine tests that were wrong · **1 session**
+### Phase 17 — The Blind 75 fill-in: 53 katas, and the tests that were wrong about their own point · **1 session**
 
 The fifth stretch item and the first that is mostly content rather than code.
 Phase 13's menu does not list it, because it is not a feature — it is the thing
@@ -2462,23 +2469,26 @@ reps inside families already covered.
 | The library still packs and installs | `tests/content/test_pack.py`; `practice pack` reports 115 exercises, 622 files, 726 KB |
 | The first screen still offers every kind | `test_the_first_screen_of_the_curriculum_offers_every_kind` |
 
-**One finding, and it is about the tests rather than the content.** Nine
-adversarial tests were wrong about the bug they named, and the content suite
-could not have caught any of them — it proves the reference passes and the stub
-fails, which every one of the nine satisfied. Two of the nine could not fail at
-all. That earned
+**One finding, and it is about the tests rather than the content.** Sixteen
+adversarial tests were wrong about the bug they named. Seven were wrong expected
+values and the content suite caught those at once; six could not fail or did not
+discriminate, which it cannot see at all, since it proves only that the
+reference passes and the stub fails. That earned
 [ADR 0022](adr/0022-counter-examples-are-run-against-the-bug-they-name.md),
 which makes executing the buggy variant part of authoring the test, and it is
 the first ADR here about **how content is authored** rather than how code is
 arranged.
 
-**Two things that were measured rather than assumed.** The curriculum was
+**One thing measured, and one thing that could not be.** The curriculum was
 reordered, not appended to, because appending had produced 43 consecutive katas
 before the next git exercise — and strict alternation is now impossible at 14
 kata tracks against 7 git and sql ones, so the manifest header records the
-achievable bound of two. And the pre-push suite did not get slower (5m27s on
-four workers), but its critical path moved: `tests/content/test_katas.py` went
-from ~85s to 240s and overtook `test_scenarios.py` at 162s.
+achievable bound of two. The runtime claim is the one that failed: three gate
+runs on an idle machine spread from 5m12s to 12m02s, which is wider than
+anything the content could have caused, so "the suite did not get slower" is not
+a statement this phase is entitled to make. The critical path did move —
+`tests/content/test_katas.py` has overtaken `test_scenarios.py` — and that part
+is a ranking rather than a duration, which is why it survives the noise.
 
 ---
 
@@ -4883,8 +4893,8 @@ left whose **Touches** column has never been tested against anything, and on the
 evidence of the last four phases that column is worth about as much as the
 prediction it is attached to.
 
-**2026-10-05 — Phase 17: the Blind 75 fill-in, and nine tests that were wrong
-about their own point.** 53 katas, taking the library from 62 exercises to 115.
+**2026-10-05 — Phase 17: the Blind 75 fill-in, and sixteen tests and claims
+that were wrong about their own point.** 53 katas, taking the library from 62 exercises to 115.
 The first phase since Phase 11 to be mostly content, and the first to produce an
 ADR about *authoring* rather than about architecture.
 
@@ -4901,18 +4911,21 @@ exercise in a family the library cannot teach at all, and the 53 were taken in
 that order: linked lists, bit manipulation, grid index work and binary-search
 variants first, because those were the families at zero or one.
 
-**Nine adversarial tests were wrong, and the content suite could not have caught
-any of them.** This is the phase's finding and it earned
+**Sixteen adversarial tests and claims were wrong, and the six that mattered
+were ones the content suite cannot see.** This is the phase's finding and it earned
 [ADR 0022](adr/0022-counter-examples-are-run-against-the-bug-they-name.md).
 `tests/content/test_katas.py` proves `solution.py` passes and `stub.py` fails,
-and says so carefully in its own docstring; every one of the nine defects left
-the reference passing. The cheapest to describe: `find-a-word-in-a-grid`'s
+and says so carefully in its own docstring. It caught all seven of the wrong
+*expected values* immediately, which is the half it is good at. The six that
+left the reference passing — tests that could not fail, or did not discriminate
+— were invisible to it, and **three of those were found only by a code review
+after the ADR was written.** The cheapest to describe: `find-a-word-in-a-grid`'s
 counter-example for a permanent `visited` set in place of real backtracking was
 a 3×3 ring of `A`s around a central `B`, which reads as obviously discriminating
 and which the broken solution passes. Brute-forcing every 2×2 and 2×3 grid found
 the real minimal case, a 2×2 `AA`/`AB` with the word `AAAB`.
 
-**Two of the nine could not fail at all**, which is worse than being wrong. A
+**Two could not fail at all**, which is worse than being wrong. A
 long-string palindrome test inserted a mismatching character at the *exact
 centre* of a palindrome — which leaves it a palindrome. And an
 `insert-an-interval` test asserted a hand-counted length of
@@ -4979,16 +4992,21 @@ composes the trie with that same grid search and needs both parents first.
 `start-here` was not touched, so
 `test_the_first_screen_of_the_curriculum_offers_every_kind` still holds.
 
-**The content suite's critical path moved, measured rather than assumed.**
-`tests/content/test_katas.py` was ~85s at 30 katas and is **240s at 83**; under
-`--dist loadfile` the whole file lands on one worker, so it has overtaken
-`test_scenarios.py` (162s, unchanged) as the thing the pre-push suite waits for.
-Worth recording because the prediction going in was that the *total* would grow,
-and it did not — the full suite is **5m27s on four workers**, against §11's
-recorded 7m20s. The honest reading is that the earlier figure was measured under
-different conditions and the per-file numbers are the ones to trust; the sweeps
-are most of the growth, and ADR 0022's **Revisit if** names splitting them into
-their own tier as the fix when they start to hurt.
+**The content suite's critical path moved; the durations are not reportable.**
+`tests/content/test_katas.py` has overtaken `test_scenarios.py` (~162s) as the
+thing the pre-push suite waits for, because `--dist loadfile` puts a whole file
+on one worker. That ranking is solid. The *numbers* are not: three serial runs
+of that file on an idle machine gave **240s, 414s and ~500s**, and three runs of
+the full gate gave **5m12s, 5m27s and 12m02s**. A 2.3x spread swamps anything 53
+katas could contribute, so the first draft of this entry — which quoted 240s and
+5m27s as facts and concluded "the total did not grow" — was asserting single
+runs as measurements.
+
+Worth recording as a finding in its own right, because it is the same error as
+the tests this phase is about: **a number you observed once is not a
+measurement.** It also re-reads §11's 7m20s baseline, which was presumably one
+run too. ADR 0022's **Revisit if** now carries the range rather than a point,
+and names splitting the sweeps into their own tier as the fix when they hurt.
 
 **Final numbers, with one of them corrected on the way in.** 4,330 passing and
 one skipped, 593 more than Phase 16. 100% statement and branch coverage over a

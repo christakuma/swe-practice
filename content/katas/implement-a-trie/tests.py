@@ -203,16 +203,24 @@ def test_agrees_with_a_set_model_across_every_small_vocabulary() -> None:
 def test_scales_with_word_length_not_vocabulary_size() -> None:
     """Answers queries against a hundred thousand words within the time limit.
 
-    Every operation should cost O(len(word)) regardless of how much is stored.
-    The words share long prefixes, so a solution scanning stored words per
-    query is O(total characters) and does not finish.
+    Every operation should cost O(len(word)) regardless of how much is stored,
+    so this is the only test that can tell a trie from a set of strings with a
+    linear prefix scan -- the rest inspect return values, and the structure is
+    opaque to them.
+
+    The queries are chosen to deny that scan its short-circuit: `"absent"`
+    matches nothing, and `"prefix-09999"` matches only at the very end of the
+    vocabulary, so each round costs two full passes over all hundred thousand
+    words. Measured: the scanning version takes **25.7s** against this kata's
+    15s limit, and the trie answers the same three thousand rounds in **0.01s**
+    once built.
     """
     trie = Trie()
     for value in range(100_000):
         trie.insert(f"prefix-{value:06d}")
 
-    for _ in range(1_000):
+    for _ in range(3_000):
         assert trie.contains("prefix-050000") is True
         assert trie.contains("prefix-999999") is False
-        assert trie.starts_with("prefix-05") is True
         assert trie.starts_with("absent") is False
+        assert trie.starts_with("prefix-09999") is True

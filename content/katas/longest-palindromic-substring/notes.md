@@ -64,14 +64,25 @@ odd-length case in the suite passes without even-centre handling — which is wh
 if len(text[start:stop]) > len(best):     # O(n) copy per centre
 ```
 
-Slicing a candidate at every centre to compare lengths turns each `O(1)`
-bookkeeping step into an `O(n)` copy, and the whole algorithm back into
-`O(n³)` — the bound the reframing was meant to beat. Carry the best as a
-`(start, length)` pair and slice **once**, at the end.
+Carry the best as a `(start, length)` pair and slice **once**, at the end.
 
-`test_handles_a_long_string_without_cubic_work` uses `"a" * 3000`, the worst
-case for centre expansion: every centre grows to the full width, so a per-centre
-slice is at its most expensive.
+The first version of this note claimed that slicing per centre "turns the whole
+algorithm back into `O(n³)`", and that was wrong twice over. There are `2n - 1`
+centres and one slice each, so slicing per centre is **`O(n²)`** — cubic only
+arises if you slice at every *step* of each expansion. And neither is slow
+enough to matter: measured on `"a" * 3000`, per-centre slicing runs in 0.33s, and per-step
+slicing extrapolates from smaller sizes to about 3s, because CPython's slice is
+a memcpy with a very small constant.
+
+So the `(start, length)` pair is worth carrying for a weaker and more honest
+reason: it allocates nothing, and the allocation it avoids is pointless rather
+than fatal. **An asymptotic argument is not a performance claim until you have
+measured the constant.**
+
+`test_handles_a_long_uniform_string` is what the long input is actually good
+for. At `"a" * 5000` every centre grows to the full width, and the comparison
+that does separate is against *enumerating every substring*: 1.6s for centre
+expansion against 39.0s, with a 15s limit.
 
 ## The tie-break is one character
 

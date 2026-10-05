@@ -136,14 +136,23 @@ def test_returns_an_actual_substring() -> None:
     assert result == "geeksskeeg"
 
 
-def test_handles_a_long_string_without_cubic_work() -> None:
-    """Searches a few thousand characters within the time limit.
+def test_handles_a_long_uniform_string() -> None:
+    """Searches five thousand identical characters within the time limit.
 
-    A uniform run is the worst case for centre expansion -- every centre grows
-    to the full width -- so this is where slicing a candidate per centre turns
-    quadratic into cubic.
+    The worst case for centre expansion -- every centre grows to the full
+    width -- and the one input that separates it from enumerating every
+    substring and testing each. Measured at n = 5000: centre expansion 1.6s,
+    enumerate-and-test 39.0s, against a 15s limit.
+
+    It does **not** catch either slicing mistake, and the docstring used to
+    claim otherwise. Slicing a candidate once per centre is O(n^2), not cubic;
+    slicing at every expansion step is cubic but CPython's slice is a memcpy,
+    so even that extrapolates to only about 3s here. Both are wasteful and
+    neither is
+    slow enough to fail a wall-clock limit, which is why the advice to carry
+    `(start, length)` is about allocation rather than about the bound.
     """
-    text = "a" * 3_000
+    text = "a" * 5_000
 
     assert longest_palindrome(text) == text
 

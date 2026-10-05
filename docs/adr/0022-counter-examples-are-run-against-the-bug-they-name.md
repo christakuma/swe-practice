@@ -16,23 +16,52 @@ deliberately against a named failure mode: "a solution that clamps the tally at
 zero returns …", "a start-ordered greedy reports …". Those docstrings are
 claims about code that was never written.
 
-Nine of them were wrong.
+**Sixteen of them were wrong, in three kinds**, and the kinds are the whole
+argument:
 
-The cheapest to describe: `find-a-word-in-a-grid` gained a counter-example meant
-to separate real backtracking from a permanent `visited` set — a 3×3 ring of
-`A`s around a central `B`, with the word `AAAB`. It reads as obviously
-discriminating. The broken solution passes it. Brute-forcing every 2×2 and 2×3
-grid found the actual minimal case, a 2×2 `AA`/`AB`.
+- **Seven wrong expected values** — `max_product([2, -5, -2, -4, 3])` written as
+  120 when it is 24, `smallest_window("aBb", "ab")` as `"Bb"` when it is
+  `"aBb"`, `best_haul([5, 0, 0, 5])` as 10 when a circle of four makes
+  positions 0 and 3 neighbours, two in `fewest-intervals-to-remove`,
+  `alien_order(["ba", "ca"])` as `"bca"`, and a level-order reading written
+  unpadded. **The content suite caught every one of these immediately**, because
+  the reference disagreed.
+- **Six tests that could not fail, or did not discriminate.** Invisible to the
+  content suite, because the reference passes them too. These are the ones this
+  record exists for.
+- **Three wrong prose claims** — a prompt example missing a combination, a
+  prompt explaining a cell as reaching neither ocean when it reaches one, and a
+  reference docstring asserting a statement-ordering bug that is not one.
 
-The rest were plainer but the same shape. Hand-computed expected values:
-`max_product([2, -5, -2, -4, 3])` written as 120 when it is 24;
-`smallest_window("aBb", "ab")` as `"Bb"` when it is `"aBb"`;
-`best_haul([5, 0, 0, 5])` as 10 when a circle of four makes positions 0 and 3
-neighbours. Two were worse than wrong — they could not fail. A long-string
-palindrome test inserted a mismatching character at the **exact centre** of a
-palindrome, which leaves it a palindrome. An `insert-an-interval` test asserted
-a hand-counted length of `25_000 + 1 + 25_000`, which is the very off-by-one the
-test existed to catch.
+The six are worth listing, because three of them were only found by a code
+review *after* this ADR was first written — which is the strongest evidence the
+decision below is load-bearing rather than tidy.
+
+`find-a-word-in-a-grid` gained a counter-example meant to separate real
+backtracking from a permanent `visited` set — a 3×3 ring of `A`s around a
+central `B`, with the word `AAAB`. It reads as obviously discriminating. The
+broken solution passes it. Brute-forcing every 2×2 and 2×3 grid found the actual
+minimal case, a 2×2 `AA`/`AB`.
+
+Two could not fail at all. A long-string palindrome test inserted a mismatching
+character at the **exact centre** of a palindrome, which leaves it a palindrome.
+An `insert-an-interval` test asserted a hand-counted length of
+`25_000 + 1 + 25_000`, which is the very off-by-one the test existed to catch.
+
+And three were **timing** claims that no longer held at the size chosen, all
+three found by review. `implement-a-trie` claimed a scanning solution "does not
+finish"; it finished in 5.0s against a 15s limit, so a `set` with a linear
+prefix scan passed the kata whose entire subject is that it should not.
+`count-palindromic-substrings` claimed the same of the cubic solution, which
+finished in 5.4s. And `longest-palindromic-substring` claimed per-centre slicing
+"turns quadratic into cubic", which is wrong arithmetic — `2n - 1` centres times
+one `O(n)` slice is `O(n²)` — *and* undetectable, since CPython's slice is a
+memcpy and even per-step slicing only reached ~3s.
+
+That third kind is the one worth naming separately: **an asymptotic argument is
+not a performance claim until the constant is measured.** `O(n³)` beats `O(n²)`
+in the limit and not necessarily at the size you picked, and a wall-clock limit
+tests the size you picked.
 
 And one was a claim rather than a value: `best-time-to-buy-and-sell`'s reference
 docstring asserted that updating the running minimum before recording the profit
@@ -103,8 +132,9 @@ harness rather than of the content.
 
 **Rely on the existing content suite.** It proves the reference passes and the
 stub fails, which is the claim §11 is careful to limit itself to. Rejected
-because it is exactly the claim that misses all nine defects: every one of them
-left the reference passing.
+because it is exactly the claim that misses the six that matter: every one of
+them left the reference passing. It did catch all seven wrong expected values,
+immediately, which is the half it is good at.
 
 **Require a counter-example per kata, declared as data.** Git scenarios already
 do this — §5.4 has `counter_examples` in the schema, with the checks each must
@@ -121,8 +151,11 @@ is — "every 0/1 matrix up to 3×4" is a stronger statement than "200 random
 ones", and it is reproducible without a seed. Worth revisiting if a future kata
 has an input space too large to enumerate.
 
-**Trust the author and review the prose.** This is what produced the nine
-defects. The failure mode is specifically that the prose reads correctly; a
+**Trust the author and review the prose.** This is what produced the sixteen
+defects — though it is worth conceding that a review *did* find the last three,
+which suggests prose review and this procedure are complements rather than
+alternatives. What a review cannot do is find them reliably; these three
+survived the phase that wrote the rule. The failure mode is specifically that the prose reads correctly; a
 reviewer who could spot a non-discriminating counter-example by eye could have
 written it correctly in the first place.
 
@@ -135,9 +168,15 @@ honest move is property-based testing with explicit invariants, and this ADR
 should say so rather than pretending a sweep is available.
 
 Also revisit if the sweeps come to dominate the content suite's runtime.
-`tests/content/test_katas.py` is now the critical path under
-`--dist loadfile` — 240s serially against `test_scenarios.py`'s 162s — and the
-sweeps are most of the growth. The fix would be to mark them and run the
-exhaustive tier separately from the per-kata correctness tier, which is a real
-change to §11's two-tier scheme and should be argued for rather than drifted
-into.
+`tests/content/test_katas.py` is now the critical path under `--dist loadfile`,
+having overtaken `test_scenarios.py` at ~162s, and the sweeps are most of the
+growth. The fix would be to mark them and run the exhaustive tier separately
+from the per-kata correctness tier, which is a real change to §11's two-tier
+scheme and should be argued for rather than drifted into.
+
+An earlier draft of this clause put that file at "240s serially". Three runs on
+an idle machine gave 240s, 414s and ~500s, so the number is **400s give or take
+a hundred** and a single measurement of it is not evidence. Worth leaving in the
+record, because quoting one timing run as a fact is the same error as asserting
+a counter-example without executing it — and this ADR managed both in the same
+commit.
