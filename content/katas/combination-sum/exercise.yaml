@@ -1,0 +1,49 @@
+schema_version: 1
+id: katas/combination-sum
+kind: kata
+title: Combination Sum
+difficulty: medium
+tags: [backtracking, recursion, counting, dynamic-programming]
+estimated_minutes: 30
+
+prompt: |
+  Given distinct positive candidates and a target, return every distinct
+  combination of candidates that sums to the target. **A candidate may be used
+  as many times as you like.**
+
+  ```
+  combination_sum([2, 3, 6, 7], 7)   ->  [(2, 2, 3), (7,)]
+  combination_sum([2, 3, 5], 8)      ->  [(2, 2, 2, 2), (2, 3, 3), (3, 5)]
+  combination_sum([2], 1)            ->  []
+  combination_sum([2, 3], 0)         ->  [()]      # one way: take nothing
+  ```
+
+  Each combination is a tuple in **ascending** order, and the returned list is
+  sorted ascending. Two combinations using the same multiset of candidates are
+  the same combination — `(2, 3, 2)` and `(2, 2, 3)` are one answer, not two.
+
+  Candidates are distinct and positive. The target is non-negative; a target of
+  zero has exactly one combination, the empty one.
+
+hints:
+  - "Build combinations by choosing candidates one at a time, subtracting from
+     the target as you go. Success is a target of exactly zero; failure is
+     going below it."
+  - "To reuse a candidate, recurse without advancing past it. To avoid
+     duplicates, never go *back* to an earlier candidate -- pass the current
+     index down rather than starting from zero."
+  - "That index rule is what makes combinations rather than permutations. It
+     enforces non-decreasing order, so each multiset is built exactly one way."
+  - "Sort the candidates first. Then a candidate larger than the remaining
+     target means every later one is too, so you can stop rather than
+     continue."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(number of combinations * target / smallest candidate)"
+    expected_space: "O(target / smallest candidate) for the recursion"

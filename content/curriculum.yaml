@@ -7,8 +7,8 @@
 # Tracks here are pedagogical and finer than the three directories on disk. An
 # exercise id is exactly <track>/<slug> and the loader enforces two path
 # segments, so `git/`, `katas/` and `sql/` are all the filesystem can express;
-# the eleven runs below are a second grouping over the same files, and nothing
-# is moved to express them.
+# the twenty-one runs below are a second grouping over the same files, and
+# nothing is moved to express them.
 #
 # Within a track the order is difficulty and dependency: an exercise should only
 # need ideas the ones above it have already introduced. Across tracks it is
@@ -16,11 +16,29 @@
 # tool is to practise both and a solver working down the list should not spend a
 # fortnight on one before meeting the other.
 #
+# The Blind 75 fill-in reordered the tracks rather than appending to the end,
+# because appending had produced a run of five consecutive kata tracks -- 43
+# katas before the next git exercise, which is exactly the fortnight the rule
+# above exists to prevent. Strict alternation is no longer possible and will not
+# become possible: there are 14 kata tracks against 7 git and sql ones, so the
+# best available shape is at most **two** kata tracks between non-kata ones, and
+# that is what the order below is. If a later phase adds kata tracks without
+# adding git or sql ones, that bound is the thing to re-check.
+#
+# Two orderings here are load-bearing rather than aesthetic.
+# `grids-and-matrices` precedes `graphs` because `clone-a-graph`'s notes argue
+# against `find-a-word-in-a-grid` -- a permanent visited mark against one that
+# is undone -- and that contrast is unreadable in the other order. And
+# `data-structure-design` is last among the katas because
+# `find-words-in-a-grid` composes the trie with that same grid search, so both
+# parents have to come first.
+#
 # `practice validate` requires this file to name every exercise exactly once and
 # nothing that is not on disk, so an exercise added without a line here fails
 # rather than quietly appearing at the end.
 
 tracks:
+
   # Deliberately mixed, and deliberately exactly six long -- which is the
   # dashboard's queue limit, so this track *is* the product's front page on a
   # fresh install. A first track of six git exercises would push every kata off
@@ -44,14 +62,6 @@ tracks:
       - katas/valid-parentheses
       - sql/one-row-per-customer
 
-  - name: git-foundations
-    title: "Git: the operations you undo things with"
-    exercises:
-      - git/move-commits-off-main
-      - git/squash-fixups-before-pushing
-      - git/drop-a-secret-from-a-commit
-      - git/split-a-commit-into-two
-
   - name: arrays-strings-hashing
     title: "Katas: arrays, strings and hashing"
     exercises:
@@ -59,10 +69,17 @@ tracks:
       - katas/longest-common-prefix
       - katas/group-anagrams
       - katas/longest-substring-without-repeats
-      - katas/merge-intervals
       - katas/top-k-frequent
       - katas/product-except-self
       - katas/subarray-sum-equals-k
+
+  - name: git-foundations
+    title: "Git: the operations you undo things with"
+    exercises:
+      - git/move-commits-off-main
+      - git/squash-fixups-before-pushing
+      - git/drop-a-secret-from-a-commit
+      - git/split-a-commit-into-two
 
   # Added with the Blind 75 fill-in. Extends `arrays-strings-hashing` rather
   # than replacing it: those eight are about the hash map, these four are about
@@ -86,13 +103,6 @@ tracks:
       - katas/three-sum-to-zero
       - katas/the-largest-container
       - katas/longest-consecutive-run
-
-  - name: sql-reading
-    title: "SQL: asking the right question"
-    exercises:
-      - sql/the-two-biggest-spenders
-      - sql/the-null-that-broke-the-report
-      - sql/use-the-index-you-were-given
 
   # Added with the Blind 75 fill-in. The library had `strings` as a tag on six
   # exercises but no track: string work was scattered through
@@ -121,6 +131,50 @@ tracks:
       - katas/longest-run-after-k-replacements
       - katas/smallest-window-covering
       - katas/encode-and-decode-strings
+
+  - name: sql-reading
+    title: "SQL: asking the right question"
+    exercises:
+      - sql/the-two-biggest-spenders
+      - sql/the-null-that-broke-the-report
+      - sql/use-the-index-you-were-given
+
+  # Added with the Blind 75 fill-in. Ordered by dependency rather than by
+  # difficulty alone: the three-pointer reversal and the fast/slow pair are both
+  # prerequisites for `reorder-a-linked-list`, which is those two composed, and
+  # the two-list merge is a prerequisite for the k-list one, which is the same
+  # merge with a heap deciding what to merge next.
+  #
+  # `detect-a-cycle-in-a-linked-list` moved here out of `trees-and-graphs`,
+  # where it was the only linked-list exercise in the library and sat among
+  # trees for want of anywhere better.
+  - name: linked-lists
+    title: "Katas: linked lists and pointer discipline"
+    exercises:
+      - katas/reverse-a-linked-list
+      - katas/merge-two-sorted-lists
+      - katas/detect-a-cycle-in-a-linked-list
+      - katas/remove-the-nth-node-from-the-end
+      - katas/reorder-a-linked-list
+      - katas/merge-k-sorted-lists
+
+  # Added with the Blind 75 fill-in. Two exercises, deliberately paired: they
+  # are the same structure and they want *different* binary searches, and
+  # doing them in this order is the point. The minimum hunts a boundary that
+  # must exist (`low < high`, `high = mid`, read the survivor); the search
+  # hunts a value that may be absent (`low <= high`, `high = mid - 1`, let the
+  # window close). Picking the wrong skeleton is the dominant failure mode in
+  # this family, well ahead of arithmetic slips, and the contrast is what
+  # teaches it.
+  #
+  # The `binary-search` tag already appeared on `longest-increasing-subsequence`
+  # and `validate-a-binary-search-tree`; neither moved, because in those the
+  # search is a step inside a different idea rather than the subject.
+  - name: binary-search
+    title: "Katas: binary search past the textbook case"
+    exercises:
+      - katas/find-the-minimum-in-a-rotated-array
+      - katas/search-a-rotated-array
 
   - name: git-recovery
     title: "Git: getting work back"
@@ -163,6 +217,32 @@ tracks:
       - katas/serialize-and-deserialize-a-tree
       - katas/best-path-sum-in-a-tree
 
+  # Added with the Blind 75 fill-in. The library had grid *traversal* already
+  # (flood-fill, count-islands, shortest-path-in-a-grid, all in
+  # `trees-and-graphs`); what it had none of was grid *index* work, where the
+  # difficulty is the coordinate arithmetic and the in-place constraint rather
+  # than the search.
+  #
+  # The first three are ordered by how much state the in-place rule forces you
+  # to invent: none, four boundaries, then a marker strip hidden inside the
+  # data. `find-a-word-in-a-grid` is last and is the odd one out -- it is the
+  # library's first backtracking exercise, and it is here rather than in a
+  # track of its own because the grid is what makes the mark-and-undo visible.
+  - name: grids-and-matrices
+    title: "Katas: grids, coordinates and in-place rules"
+    exercises:
+      - katas/rotate-a-matrix-in-place
+      - katas/read-a-matrix-in-spiral-order
+      - katas/zero-out-rows-and-columns
+      - katas/find-a-word-in-a-grid
+
+  - name: sql-writing
+    title: "SQL: changing data and living with it"
+    exercises:
+      - sql/cancel-an-order-without-deleting-it
+      - sql/delete-only-the-empty-carts
+      - sql/a-view-the-report-can-reuse
+
   # Grown from five to ten by the Blind 75 fill-in, and ordered by what each
   # exercise needs to already be understood.
   #
@@ -194,68 +274,35 @@ tracks:
       - katas/topological-order
       - katas/alien-alphabet-order
 
-  # Added with the Blind 75 fill-in. Ordered by dependency rather than by
-  # difficulty alone: the three-pointer reversal and the fast/slow pair are both
-  # prerequisites for `reorder-a-linked-list`, which is those two composed, and
-  # the two-list merge is a prerequisite for the k-list one, which is the same
-  # merge with a heap deciding what to merge next.
+  # Split by dimension when the Blind 75 fill-in added five. Eleven plus five
+  # in one track is the same problem `trees-and-graphs` had, and the two halves
+  # want different things explained: a linear recurrence is about *what to
+  # carry forward*, a table is about *which neighbours the recurrence reads*,
+  # which is what decides how far it can be collapsed.
   #
-  # `detect-a-cycle-in-a-linked-list` moved here out of `trees-and-graphs`,
-  # where it was the only linked-list exercise in the library and sat among
-  # trees for want of anywhere better.
-  - name: linked-lists
-    title: "Katas: linked lists and pointer discipline"
-    exercises:
-      - katas/reverse-a-linked-list
-      - katas/merge-two-sorted-lists
-      - katas/detect-a-cycle-in-a-linked-list
-      - katas/remove-the-nth-node-from-the-end
-      - katas/reorder-a-linked-list
-      - katas/merge-k-sorted-lists
-
-  # Added with the Blind 75 fill-in. The library had grid *traversal* already
-  # (flood-fill, count-islands, shortest-path-in-a-grid, all in
-  # `trees-and-graphs`); what it had none of was grid *index* work, where the
-  # difficulty is the coordinate arithmetic and the in-place constraint rather
-  # than the search.
+  # `count-the-decodings` sits straight after `climbing-stairs` because it is
+  # that exact recurrence with validity gates on each term, and
+  # `house-robber-in-a-circle` straight after `house-robber` because it is that
+  # exact problem reduced to itself twice.
   #
-  # The first three are ordered by how much state the in-place rule forces you
-  # to invent: none, four boundaries, then a marker strip hidden inside the
-  # data. `find-a-word-in-a-grid` is last and is the odd one out -- it is the
-  # library's first backtracking exercise, and it is here rather than in a
-  # track of its own because the grid is what makes the mark-and-undo visible.
-  - name: grids-and-matrices
-    title: "Katas: grids, coordinates and in-place rules"
+  # `combination-sum` is last and is the odd one: backtracking rather than a
+  # table. It is here rather than in a track of its own because it is the
+  # *enumerating* counterpart of `coin-change` -- same structure, one counting
+  # and one listing -- and that contrast is the reason to meet it alongside.
+  - name: dynamic-programming
+    title: "Katas: linear recurrences and greedy"
     exercises:
-      - katas/rotate-a-matrix-in-place
-      - katas/read-a-matrix-in-spiral-order
-      - katas/zero-out-rows-and-columns
-      - katas/find-a-word-in-a-grid
-
-  # Added with the Blind 75 fill-in. Two exercises, deliberately paired: they
-  # are the same structure and they want *different* binary searches, and
-  # doing them in this order is the point. The minimum hunts a boundary that
-  # must exist (`low < high`, `high = mid`, read the survivor); the search
-  # hunts a value that may be absent (`low <= high`, `high = mid - 1`, let the
-  # window close). Picking the wrong skeleton is the dominant failure mode in
-  # this family, well ahead of arithmetic slips, and the contrast is what
-  # teaches it.
-  #
-  # The `binary-search` tag already appeared on `longest-increasing-subsequence`
-  # and `validate-a-binary-search-tree`; neither moved, because in those the
-  # search is a step inside a different idea rather than the subject.
-  - name: binary-search
-    title: "Katas: binary search past the textbook case"
-    exercises:
-      - katas/find-the-minimum-in-a-rotated-array
-      - katas/search-a-rotated-array
-
-  - name: sql-writing
-    title: "SQL: changing data and living with it"
-    exercises:
-      - sql/cancel-an-order-without-deleting-it
-      - sql/delete-only-the-empty-carts
-      - sql/a-view-the-report-can-reuse
+      - katas/climbing-stairs
+      - katas/count-the-decodings
+      - katas/maximum-subarray
+      - katas/maximum-product-subarray
+      - katas/jump-game
+      - katas/house-robber
+      - katas/house-robber-in-a-circle
+      - katas/coin-change
+      - katas/word-break
+      - katas/longest-increasing-subsequence
+      - katas/combination-sum
 
   - name: git-collaboration
     title: "Git: working with other people"
@@ -266,18 +313,15 @@ tracks:
       - git/rebase-a-feature-branch
       - git/cherry-pick-a-fix-to-a-release-branch
 
-  - name: dynamic-programming
-    title: "Katas: dynamic programming and greedy"
+  # The two-dimensional half. Ordered by how much state survives the collapse:
+  # `count-paths-through-a-grid` needs one row and nothing else,
+  # `longest-common-subsequence` needs one row plus the diagonal it is about to
+  # overwrite, and the last two need the full table to be worth reading.
+  - name: dp-over-tables
+    title: "Katas: dynamic programming over tables"
     exercises:
-      - katas/climbing-stairs
-      - katas/maximum-subarray
-      - katas/maximum-product-subarray
-      - katas/jump-game
-      - katas/house-robber
-      - katas/coin-change
-      - katas/meeting-rooms
-      - katas/word-break
-      - katas/longest-increasing-subsequence
+      - katas/count-paths-through-a-grid
+      - katas/longest-common-subsequence
       - katas/knapsack
       - katas/edit-distance
 
@@ -304,6 +348,58 @@ tracks:
       - git/resolve-a-conflict-during-a-rebase
       - git/force-push-your-own-branch-safely
       - git/recover-after-a-colleague-force-pushed
+
+  # Added with the Blind 75 fill-in, and it collects two exercises that had
+  # nowhere better to live: `merge-intervals` was in `arrays-strings-hashing`
+  # and `meeting-rooms` was in `dynamic-programming`, which it has nothing to
+  # do with.
+  #
+  # Ordered so the endpoint convention is met three times with three different
+  # consequences, which is the thing this track is really for. Touching
+  # intervals *merge* in the first two, *coexist* in
+  # `fewest-intervals-to-remove`, and *share a room* in
+  # `how-many-meeting-rooms`. Same closed-interval convention every time; what
+  # changes is the operation. Carrying the comparison over from the previous
+  # exercise is the characteristic bug, and meeting it repeatedly is the cure.
+  #
+  # `merge-intervals` before `insert-an-interval` on purpose: the first has to
+  # sort because its input is unordered, and the second must not, because it
+  # was handed the guarantee the first had to manufacture.
+  - name: intervals
+    title: "Katas: intervals and endpoint conventions"
+    exercises:
+      - katas/merge-intervals
+      - katas/insert-an-interval
+      - katas/meeting-rooms
+      - katas/how-many-meeting-rooms
+      - katas/fewest-intervals-to-remove
+
+  # Added with the Blind 75 fill-in, and the library's first exercises where
+  # the deliverable is a *structure* rather than a function. Both families were
+  # entirely absent: no trie, and no heap outside `top-k-frequent` and
+  # `merge-k-sorted-lists` where it was a step rather than the subject.
+  #
+  # The first three are strictly cumulative. `implement-a-trie` establishes the
+  # end-of-word marker, without which a prefix and a word are the same thing;
+  # `add-and-search-a-word` turns the walk into a search and shows that the
+  # literals are what prune; `find-words-in-a-grid` composes that with
+  # `find-a-word-in-a-grid` and is where the real lesson lands -- one DFS over
+  # two structures at once, where the cell mark must be undone and the trie
+  # descent must not. Whether a search needs backtracking marks is a property
+  # of the structure, not the algorithm, and this is the third and clearest
+  # place the library says so.
+  #
+  # `median-of-a-stream` is the heap one and shares no code with the others. It
+  # is here because it answers the same design question -- what is the least I
+  # can store and still answer this? -- and answers it with two structures
+  # facing each other rather than one.
+  - name: data-structure-design
+    title: "Katas: structures you build yourself"
+    exercises:
+      - katas/implement-a-trie
+      - katas/add-and-search-a-word
+      - katas/find-words-in-a-grid
+      - katas/median-of-a-stream
 
   - name: git-search
     title: "Git: finding out what happened"

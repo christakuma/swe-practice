@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/insert-an-interval
+kind: kata
+title: Insert an Interval
+difficulty: medium
+tags: [intervals, scanning, sorting, invariants]
+estimated_minutes: 25
+
+prompt: |
+  A list of **non-overlapping** intervals is given in ascending order. Insert a
+  new interval, merging anything it overlaps, and return the result — still
+  sorted and still non-overlapping.
+
+  ```
+  insert([(1, 3), (6, 9)], (2, 5))                 ->  [(1, 5), (6, 9)]
+  insert([(1, 2), (3, 5), (6, 7), (8, 10)], (4, 8)) ->  [(1, 2), (3, 10)]
+  insert([], (5, 7))                                ->  [(5, 7)]
+  insert([(1, 5)], (2, 3))                          ->  [(1, 5)]
+  ```
+
+  Intervals are `(start, end)` with `start <= end`, and they **touch** when they
+  merely meet at a point: `(1, 3)` and `(3, 5)` merge into `(1, 5)`.
+
+  `O(n)` — the input is already sorted, so there is no reason to sort anything.
+
+hints:
+  - "Three groups, in order: intervals entirely before the new one, intervals
+     that overlap it, and intervals entirely after. Walk the list once and
+     handle each group in turn."
+  - "An interval is entirely before the new one when its end is less than the
+     new start. Everything from there until the overlap ends gets absorbed."
+  - "Absorbing means widening the new interval: take the smaller start and the
+     larger end each time. Do not emit the new interval until the overlapping
+     run is finished."
+  - "Touching counts as overlapping, so the comparison is strict in one
+     direction only -- `end < new_start` is 'before', not `end <= new_start`."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n) for the output"

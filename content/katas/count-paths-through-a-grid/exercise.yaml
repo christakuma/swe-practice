@@ -1,0 +1,48 @@
+schema_version: 1
+id: katas/count-paths-through-a-grid
+kind: kata
+title: Count Paths Through a Grid
+difficulty: medium
+tags: [dynamic-programming, grids, counting, recurrence]
+estimated_minutes: 20
+
+prompt: |
+  Starting at the top-left of an `m x n` grid and moving only **right or down**,
+  count the distinct paths to the bottom-right.
+
+  ```
+  count_paths(3, 2)   ->  3      # RR D, R D R, D RR  (3 wide, 2 tall)
+  count_paths(3, 7)   ->  28
+  count_paths(1, 1)   ->  1      # already there
+  count_paths(1, 5)   ->  1      # only one way down a single column
+  count_paths(0, 5)   ->  0      # no grid at all
+  ```
+
+  `count_paths(width, height)`. Either dimension may be zero, in which case
+  there is no path.
+
+  `O(m * n)` time, and `O(min(m, n))` space is achievable — one row of the
+  table is enough.
+
+hints:
+  - "How many ways are there to reach a given cell? You can only have arrived
+     from the cell above it or the cell to its left, so it is the sum of those
+     two."
+  - "The top row and the left column each have exactly one way to reach them --
+     straight along the edge. Those are the base cases."
+  - "Fill the table row by row. Every cell you need has already been computed:
+     the one above is in the previous row, the one to the left is earlier in
+     this one."
+  - "You never look further back than one row, so keep one row and overwrite it
+     in place. `row[c] += row[c - 1]` is the whole update -- work out why the
+     value already in `row[c]` is the cell above."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(m * n)"
+    expected_space: "O(min(m, n))"

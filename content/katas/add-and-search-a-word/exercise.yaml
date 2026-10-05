@@ -1,0 +1,59 @@
+schema_version: 1
+id: katas/add-and-search-a-word
+kind: kata
+title: Add and Search a Word
+difficulty: medium
+tags: [tries, strings, dfs, backtracking, recursion]
+estimated_minutes: 30
+
+prompt: |
+  Build a word store supporting two operations:
+
+  - `add(word)` — store a word.
+  - `search(pattern)` — does any stored word match? A `.` in the pattern
+    matches **exactly one** character of any kind.
+
+  ```
+  store = WordStore()
+  store.add("bad")
+  store.add("dad")
+  store.add("mad")
+
+  store.search("pad")   ->  False
+  store.search("bad")   ->  True
+  store.search(".ad")   ->  True
+  store.search("b..")   ->  True
+  store.search("b.")    ->  False    # length must match
+  store.search("...")   ->  True
+  ```
+
+  A `.` matches one character and never zero or many, so the pattern's length
+  must equal the word's. `search("")` is `True` only if `""` was added.
+
+  Characters are arbitrary. A literal `.` cannot be stored and searched for
+  distinctly — treat `.` in a pattern as always a wildcard.
+
+  A pattern of all wildcards may have to look everywhere, but a pattern with
+  literal characters must not: `search("b..")` should only descend below `b`.
+
+hints:
+  - "Build on a prefix tree. A pattern with no wildcards is an ordinary trie
+     walk -- the wildcards are what turn the walk into a search."
+  - "At a literal character there is at most one child to follow. At a `.`
+     there are as many as the node has children, and any one of them matching
+     is enough."
+  - "That is depth-first search with the pattern position as part of the state:
+     succeed when the pattern is exhausted *and* the node is a stored word."
+  - "No backtracking marks are needed here -- unlike a grid search, the
+     recursion never revisits a node, because each step consumes a character of
+     the pattern and the pattern only gets shorter."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(len(pattern)) with no wildcards; O(nodes) in the worst case"
+    expected_space: "O(total characters added)"

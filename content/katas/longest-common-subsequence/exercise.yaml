@@ -1,0 +1,49 @@
+schema_version: 1
+id: katas/longest-common-subsequence
+kind: kata
+title: Longest Common Subsequence
+difficulty: medium
+tags: [dynamic-programming, strings, tables, recurrence]
+estimated_minutes: 30
+
+prompt: |
+  Return the length of the longest subsequence common to two strings. A
+  subsequence keeps the original order but need not be contiguous.
+
+  ```
+  lcs_length("abcde", "ace")   ->  3     # "ace"
+  lcs_length("abc", "abc")     ->  3
+  lcs_length("abc", "def")     ->  0
+  lcs_length("", "abc")        ->  0
+  ```
+
+  Characters may repeat. Case matters.
+
+  Note the difference from a common *substring*: `"ace"` is a subsequence of
+  `"abcde"` but not a substring of it, because the characters are not adjacent.
+
+  `O(m * n)` time. `O(min(m, n))` space is achievable.
+
+hints:
+  - "Compare the last characters of the two strings. If they match, that
+     character can be used -- and the rest of the problem is the two strings
+     without it."
+  - "If they do not match, at least one of the two last characters is unusable.
+     You do not know which, so try both: drop the last of one string, or the
+     last of the other, and take the better answer."
+  - "That gives a table over (prefix of one, prefix of two). An empty prefix
+     has a common subsequence of length zero, which is the base case along two
+     edges."
+  - "The recurrence reaches back only one row, so one row plus a single saved
+     value is enough -- the saved value is the diagonal neighbour you are about
+     to overwrite."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(m * n)"
+    expected_space: "O(min(m, n))"

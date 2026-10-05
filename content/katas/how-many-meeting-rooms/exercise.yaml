@@ -1,0 +1,45 @@
+schema_version: 1
+id: katas/how-many-meeting-rooms
+kind: kata
+title: How Many Meeting Rooms
+difficulty: medium
+tags: [intervals, heap, sorting, counting]
+estimated_minutes: 28
+
+prompt: |
+  Given meeting intervals, return the fewest rooms needed to hold all of them.
+
+  ```
+  rooms_needed([(0, 30), (5, 10), (15, 20)])  ->  2
+  rooms_needed([(7, 10), (2, 4)])              ->  1
+  rooms_needed([])                              ->  0
+  rooms_needed([(1, 5), (1, 5), (1, 5)])       ->  3
+  ```
+
+  A meeting ending exactly when another starts does **not** need a second room:
+  `(1, 2)` and `(2, 3)` share one. Intervals are `(start, end)` with
+  `start < end` — every meeting has positive duration — given in no particular
+  order, and may repeat.
+
+  `O(n log n)`.
+
+hints:
+  - "The answer is the largest number of meetings running at the same moment --
+     so you are looking for a maximum overlap, not an arrangement of rooms."
+  - "You only need to look at the moments when something changes: a meeting
+     starting or a meeting ending. Between events the count is constant."
+  - "So build two sorted lists -- all the starts, all the ends -- and sweep
+     through them in time order, adding one at each start and subtracting one
+     at each end. Track the peak."
+  - "At a tie, process the **end** before the start, or two meetings that
+     merely touch will be counted as overlapping."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n)"

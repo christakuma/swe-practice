@@ -1,0 +1,50 @@
+schema_version: 1
+id: katas/count-the-decodings
+kind: kata
+title: Count the Decodings
+difficulty: medium
+tags: [dynamic-programming, strings, counting, recurrence]
+estimated_minutes: 30
+
+prompt: |
+  Letters are encoded as numbers: `A` is `1`, `B` is `2`, … `Z` is `26`. Given a
+  string of digits, count the ways to decode it back into letters.
+
+  ```
+  count_decodings("12")     ->  2     # "AB" (1 2) or "L" (12)
+  count_decodings("226")    ->  3     # BBF, BZ, VF
+  count_decodings("06")     ->  0     # no letter is encoded "06"
+  count_decodings("0")      ->  0
+  count_decodings("")       ->  0
+  count_decodings("10")     ->  1     # only "J" -- 1 then 0 is not decodable
+  ```
+
+  The encoding has **no leading zeros**: `"06"` is not a valid encoding of `F`,
+  and a `0` can never stand alone. A string that cannot be decoded at all has
+  zero ways.
+
+  The input is digits only. `O(n)` time and `O(1)` space.
+
+hints:
+  - "Count the decodings of each prefix. The decodings of a prefix ending at
+     position i either take the last digit alone, or take the last two digits
+     together."
+  - "Taking one digit is allowed when that digit is not `0`. Taking two is
+     allowed when the pair reads between 10 and 26."
+  - "So each count is the sum of the one or two counts behind it -- and when
+     neither option is legal, the count is zero and stays zero, which is how an
+     undecodable string gives 0 without a special case."
+  - "You only ever look two places back, so two variables are enough. Seed the
+     count for the empty prefix at 1 -- there is exactly one way to decode
+     nothing -- and the count before that at 1 as well, for the two-digit case
+     to reach."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

@@ -1,0 +1,56 @@
+schema_version: 1
+id: katas/implement-a-trie
+kind: kata
+title: Implement a Trie
+difficulty: medium
+tags: [tries, strings, trees, hash-map]
+estimated_minutes: 28
+
+prompt: |
+  Build a prefix tree supporting three operations:
+
+  - `insert(word)` — add a word.
+  - `contains(word)` — is this exact word in the trie?
+  - `starts_with(prefix)` — is any stored word prefixed by this?
+
+  ```
+  trie = Trie()
+  trie.insert("apple")
+  trie.contains("apple")       ->  True
+  trie.contains("app")         ->  False    # a prefix is not a word
+  trie.starts_with("app")      ->  True
+  trie.insert("app")
+  trie.contains("app")         ->  True
+  ```
+
+  The empty string is a prefix of everything, so `starts_with("")` is `True`
+  once anything is stored — and `contains("")` is `True` only if `""` was
+  itself inserted. Inserting the same word twice changes nothing.
+
+  Characters are arbitrary, not just lowercase letters.
+
+  Each operation must be `O(len(word))` — **independent of how many words are
+  stored**. A set of strings answers `contains` in `O(1)` and cannot answer
+  `starts_with` at all without scanning, which is the point of the structure.
+
+hints:
+  - "A trie stores one character per edge, not per node. A node is a position
+     in the alphabet of paths, and its children are the characters that may
+     follow."
+  - "So walking a word is a loop: at each character, step to that child or stop
+     because it is absent."
+  - "`contains` and `starts_with` are the same walk and differ only in what
+     they ask at the end: one needs the node to be marked as a word ending, the
+     other only needs the node to exist."
+  - "That marker is what separates a stored word from a prefix of one. Without
+     it, `contains(\"app\")` is true as soon as `\"apple\"` is inserted."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(len(word)) per operation"
+    expected_space: "O(total characters inserted)"

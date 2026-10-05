@@ -1,0 +1,56 @@
+schema_version: 1
+id: katas/find-words-in-a-grid
+kind: kata
+title: Find Words in a Grid
+difficulty: hard
+tags: [tries, grids, backtracking, dfs, strings]
+estimated_minutes: 40
+
+prompt: |
+  A grid of characters and a list of words come in. Return every word from the
+  list that can be spelled by a path through the grid, stepping only up, down,
+  left or right and using **no cell twice**.
+
+  Return the found words sorted ascending.
+
+  ```
+  board = [["o", "a", "a", "n"],
+           ["e", "t", "a", "e"],
+           ["i", "h", "k", "r"],
+           ["i", "f", "l", "v"]]
+
+  find_words(board, ["oath", "pea", "eat", "rain"])  ->  ["eat", "oath"]
+  ```
+
+  Duplicates in the word list are returned once. The empty word list gives
+  `[]`, and so does an empty grid. A word longer than the grid has cells cannot
+  be present.
+
+  **Running `find-a-word-in-a-grid` once per word is too slow** when the words
+  share prefixes — the tests use a list where that costs thousands of
+  redundant grid walks. Search the grid **once**, carrying all the words at
+  the same time.
+
+hints:
+  - "Searching per word repeats the same grid walk for every word sharing a
+     prefix. Put the words in a prefix tree and the shared prefixes become
+     shared work."
+  - "Then the grid search carries a trie node alongside its position. Stepping
+     to a neighbour is only worth doing if that character is a child of the
+     current node."
+  - "Reaching a node marked as a word records it. Keep going afterwards -- a
+     longer word may continue from here."
+  - "The cell mark still has to be undone on the way out, because the grid is
+     the thing with cycles. The trie descent never needs undoing."
+  - "Pruning pays: once a word is found, clearing its marker stops it being
+     re-found, and a trie node with no children left is a dead end."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 20
+  complexity:
+    expected_time: "O(cells * 4^longest word) worst case, pruned heavily in practice"
+    expected_space: "O(total characters in the word list)"

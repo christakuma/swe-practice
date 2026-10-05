@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/house-robber-in-a-circle
+kind: kata
+title: House Robber in a Circle
+difficulty: medium
+tags: [dynamic-programming, greedy, arrays, recurrence]
+estimated_minutes: 25
+
+prompt: |
+  Houses stand in a **circle**, so the first and last are neighbours. Each
+  holds some amount. You may not take from two adjacent houses. Return the
+  largest total you can take.
+
+  ```
+  best_haul([2, 3, 2])        ->  3     # not 2 + 2: those two are neighbours
+  best_haul([1, 2, 3, 1])     ->  4     # 1 + 3
+  best_haul([5])              ->  5
+  best_haul([])               ->  0
+  best_haul([1, 2])           ->  2
+  ```
+
+  Values are non-negative. A single house has no neighbour but itself, so it can
+  be taken.
+
+  You have already solved the straight-line version — this is that problem with
+  one extra constraint, and the useful move is to **reduce it to the one you
+  have** rather than to write a new recurrence.
+
+hints:
+  - "The circle adds exactly one rule: the first and last houses cannot both be
+     taken. Everything else is the straight-line problem."
+  - "So any valid answer either leaves out the first house or leaves out the
+     last one -- it cannot include both. Those two cases cover everything."
+  - "Each case is a straight line: solve the line without the first house,
+     solve the line without the last, and take the better."
+  - "A single house is the one input where those two slices are both empty, so
+     it needs handling before the split."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

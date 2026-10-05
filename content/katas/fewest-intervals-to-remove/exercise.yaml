@@ -1,0 +1,45 @@
+schema_version: 1
+id: katas/fewest-intervals-to-remove
+kind: kata
+title: Fewest Intervals to Remove
+difficulty: medium
+tags: [intervals, greedy, sorting, invariants]
+estimated_minutes: 28
+
+prompt: |
+  Given a list of intervals, return the **smallest number you must remove** so
+  that none of the rest overlap.
+
+  ```
+  fewest_removals([(1, 2), (2, 3), (3, 4), (1, 3)])  ->  1     # drop (1, 3)
+  fewest_removals([(1, 2), (1, 2), (1, 2)])          ->  2
+  fewest_removals([(1, 2), (2, 3)])                  ->  0
+  fewest_removals([])                                 ->  0
+  ```
+
+  Intervals that merely **touch** do not overlap: `(1, 2)` and `(2, 3)` may both
+  stay. Intervals are `(start, end)` with `start <= end`, given in no particular
+  order, and may repeat.
+
+  `O(n log n)`.
+
+hints:
+  - "Removing the fewest is the same as *keeping* the most. Flip the problem --
+     counting what survives is much easier to reason about than choosing what
+     to delete."
+  - "Build the surviving set greedily, one interval at a time, always taking
+     the next compatible one. The question is which order to consider them in."
+  - "Sort by **end**, not by start. Among the intervals you could take next,
+     the one finishing earliest leaves the most room for everything after it."
+  - "Then walk the sorted list keeping a running \"last end kept\". Take an
+     interval when its start is at least that value; otherwise it has to go."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n) for the sort"
