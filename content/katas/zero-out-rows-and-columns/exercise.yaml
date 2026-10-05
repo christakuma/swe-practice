@@ -1,0 +1,49 @@
+schema_version: 1
+id: katas/zero-out-rows-and-columns
+kind: kata
+title: Zero Out Rows and Columns
+difficulty: medium
+tags: [grids, in-place, invariants]
+estimated_minutes: 28
+
+prompt: |
+  An `m x n` matrix comes in. Wherever it holds a zero, set that cell's whole
+  row and whole column to zero. Mutate the matrix in place and return nothing.
+
+  ```
+  [[1, 1, 1],        [[1, 0, 1],
+   [1, 0, 1],   ->    [0, 0, 0],
+   [1, 1, 1]]         [1, 0, 1]]
+  ```
+
+  The zeros that *you* write must not themselves trigger more clearing — only
+  the zeros present in the original matrix count.
+
+  Use `O(1)` extra space. Copying the matrix, or keeping a set of rows and a set
+  of columns to clear, both work and both allocate; the sets cost `O(m + n)`,
+  which is the good intermediate answer and still not the target.
+
+hints:
+  - "Clearing as you scan destroys the evidence: the zeros you write look
+     exactly like the zeros you were looking for, and the whole matrix goes to
+     zero. So you must record first and write second."
+  - "The obvious record is a set of row indices and a set of column indices.
+     Get that working -- it is O(m + n) space and the right stepping stone."
+  - "To reach O(1), notice you need one flag per row and one per column, and
+     the matrix already contains an unused strip of exactly that size: its own
+     first row and first column."
+  - "The cell where they overlap, (0,0), would have to mean two things at once.
+     Give the first column its own ordinary variable and let row zero keep
+     (0,0)."
+  - "Write the interior from the markers first, and clear the marker strip last
+     -- the moment you zero a marker you have lost what it was telling you."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(m * n)"
+    expected_space: "O(1)"

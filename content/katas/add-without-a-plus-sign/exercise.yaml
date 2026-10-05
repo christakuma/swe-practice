@@ -1,0 +1,51 @@
+schema_version: 1
+id: katas/add-without-a-plus-sign
+kind: kata
+title: Add Without a Plus Sign
+difficulty: medium
+tags: [bit-manipulation, invariants, recurrence]
+estimated_minutes: 30
+
+prompt: |
+  Add two **signed 32-bit** integers without using `+` or `-` anywhere.
+
+  ```
+  add(1, 2)              ->  3
+  add(-1, 1)             ->  0
+  add(-2, -3)            -> -5
+  add(2147483647, 1)     -> -2147483648    # it wraps, like a 32-bit word
+  ```
+
+  Both inputs are in `-2**31 .. 2**31 - 1`, and so is the result: the arithmetic
+  is 32-bit two's complement and **overflow wraps** rather than growing.
+
+  Allowed: `&`, `|`, `^`, `~`, `<<`, `>>`, comparisons, and assignment. Banned:
+  `+`, `-` (both as operators and as unary negation), `sum`, `abs`, `math.*`,
+  and any numeric type that would do the carrying for you.
+
+  Python integers are unbounded, so the wrapping is not something you get for
+  free — it is something you have to impose.
+
+hints:
+  - "Add two single bits. `0+0=0`, `0+1=1`, `1+0=1`, `1+1=10`. The low bit of
+     the answer is the XOR of the inputs; the bit that spills left is the AND."
+  - "That generalises to whole words: `a ^ b` is the sum with every carry
+     ignored, and `(a & b) << 1` is exactly the carries, shifted into the
+     column they belong to."
+  - "So adding is: compute the carry-less sum and the carries, then add *those*
+     together. Loop until there are no carries left. It terminates because each
+     round pushes the carries strictly further left."
+  - "In Python the carries never fall off the end of the word, so the loop
+     would run forever on negative inputs. Mask both values to 32 bits each
+     round -- and then decide, at the end, whether the 32-bit pattern you are
+     holding means a negative number."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(1), at most thirty-two carry rounds"
+    expected_space: "O(1)"

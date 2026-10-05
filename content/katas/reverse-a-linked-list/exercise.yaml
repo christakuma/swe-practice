@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/reverse-a-linked-list
+kind: kata
+title: Reverse a Linked List
+difficulty: easy
+tags: [linked-lists, pointers, in-place]
+estimated_minutes: 15
+
+prompt: |
+  Reverse a singly linked list and return the new head.
+
+  ```
+  1 -> 2 -> 3 -> 4 -> None    becomes    4 -> 3 -> 2 -> 1 -> None
+  ```
+
+  An empty list reverses to an empty list. A one-node list is its own reverse.
+
+  Reverse the list by relinking the nodes you were given. Building a new list
+  of fresh nodes, or copying the values into a list and reading it backwards,
+  both produce the right answer and miss the point of the exercise.
+
+  The tests build lists with the `ListNode` class in the stub, and they check
+  the nodes you return are the nodes they handed you.
+
+hints:
+  - "Draw three nodes and the arrows between them. You are not moving nodes
+     anywhere -- every node stays exactly where it is in memory. The only thing
+     that changes is which node each `next` points at."
+  - "Walk the list once, turning each arrow around as you pass it. Standing on a
+     node, you need to point its `next` at the node behind you -- so you need to
+     be carrying that node."
+  - "The moment you overwrite `node.next`, the rest of the list is unreachable.
+     Save it in a local variable *before* you clobber it, or you cannot continue
+     the walk."
+  - "Three names are enough: the node behind you, the node you are on, and the
+     node ahead. Seed the first as None -- the old head becomes the new tail,
+     and its `next` must end up None."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

@@ -89,12 +89,67 @@ tracks:
       - katas/level-order-traversal
       - katas/validate-a-binary-search-tree
       - katas/lowest-common-ancestor
-      - katas/detect-a-cycle-in-a-linked-list
       - katas/flood-fill
       - katas/count-islands
       - katas/shortest-path-in-a-grid
       - katas/detect-a-dependency-cycle
       - katas/topological-order
+
+  # Added with the Blind 75 fill-in. Ordered by dependency rather than by
+  # difficulty alone: the three-pointer reversal and the fast/slow pair are both
+  # prerequisites for `reorder-a-linked-list`, which is those two composed, and
+  # the two-list merge is a prerequisite for the k-list one, which is the same
+  # merge with a heap deciding what to merge next.
+  #
+  # `detect-a-cycle-in-a-linked-list` moved here out of `trees-and-graphs`,
+  # where it was the only linked-list exercise in the library and sat among
+  # trees for want of anywhere better.
+  - name: linked-lists
+    title: "Katas: linked lists and pointer discipline"
+    exercises:
+      - katas/reverse-a-linked-list
+      - katas/merge-two-sorted-lists
+      - katas/detect-a-cycle-in-a-linked-list
+      - katas/remove-the-nth-node-from-the-end
+      - katas/reorder-a-linked-list
+      - katas/merge-k-sorted-lists
+
+  # Added with the Blind 75 fill-in. The library had grid *traversal* already
+  # (flood-fill, count-islands, shortest-path-in-a-grid, all in
+  # `trees-and-graphs`); what it had none of was grid *index* work, where the
+  # difficulty is the coordinate arithmetic and the in-place constraint rather
+  # than the search.
+  #
+  # The first three are ordered by how much state the in-place rule forces you
+  # to invent: none, four boundaries, then a marker strip hidden inside the
+  # data. `find-a-word-in-a-grid` is last and is the odd one out -- it is the
+  # library's first backtracking exercise, and it is here rather than in a
+  # track of its own because the grid is what makes the mark-and-undo visible.
+  - name: grids-and-matrices
+    title: "Katas: grids, coordinates and in-place rules"
+    exercises:
+      - katas/rotate-a-matrix-in-place
+      - katas/read-a-matrix-in-spiral-order
+      - katas/zero-out-rows-and-columns
+      - katas/find-a-word-in-a-grid
+
+  # Added with the Blind 75 fill-in. Two exercises, deliberately paired: they
+  # are the same structure and they want *different* binary searches, and
+  # doing them in this order is the point. The minimum hunts a boundary that
+  # must exist (`low < high`, `high = mid`, read the survivor); the search
+  # hunts a value that may be absent (`low <= high`, `high = mid - 1`, let the
+  # window close). Picking the wrong skeleton is the dominant failure mode in
+  # this family, well ahead of arithmetic slips, and the contrast is what
+  # teaches it.
+  #
+  # The `binary-search` tag already appeared on `longest-increasing-subsequence`
+  # and `validate-a-binary-search-tree`; neither moved, because in those the
+  # search is a step inside a different idea rather than the subject.
+  - name: binary-search
+    title: "Katas: binary search past the textbook case"
+    exercises:
+      - katas/find-the-minimum-in-a-rotated-array
+      - katas/search-a-rotated-array
 
   - name: sql-writing
     title: "SQL: changing data and living with it"
@@ -125,6 +180,22 @@ tracks:
       - katas/longest-increasing-subsequence
       - katas/knapsack
       - katas/edit-distance
+
+  # Added with the Blind 75 fill-in, and the library's first bit-manipulation
+  # exercises -- the tag did not exist before. Dependency-ordered: the
+  # `n & (n - 1)` identity from the first is reused by the second, and the
+  # fixed-width trap introduced by `reverse-the-bits-of-a-word` (Python
+  # integers have no width, so leading zeros are the solver's problem) is what
+  # `add-without-a-plus-sign` then turns into a termination bug rather than
+  # merely a wrong answer.
+  - name: bit-manipulation
+    title: "Katas: bits, words and the width Python does not give you"
+    exercises:
+      - katas/count-the-set-bits
+      - katas/count-bits-for-every-number-up-to-n
+      - katas/find-the-missing-number
+      - katas/reverse-the-bits-of-a-word
+      - katas/add-without-a-plus-sign
 
   - name: git-conflicts
     title: "Git: conflicts and rewrites other people can see"

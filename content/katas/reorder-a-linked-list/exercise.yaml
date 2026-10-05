@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/reorder-a-linked-list
+kind: kata
+title: Reorder a Linked List
+difficulty: medium
+tags: [linked-lists, two-pointers, pointers, in-place]
+estimated_minutes: 25
+
+prompt: |
+  Reorder a list so it alternates between the front and the back: first node,
+  last node, second node, second-to-last, and so on inward.
+
+  ```
+  1 -> 2 -> 3 -> 4         ->   1 -> 4 -> 2 -> 3
+  1 -> 2 -> 3 -> 4 -> 5    ->   1 -> 5 -> 2 -> 4 -> 3
+  ```
+
+  Reorder in place and return nothing — the caller keeps the head it passed in,
+  so the node it holds must end up first. An empty list and a one-node list are
+  already correct.
+
+  Relink the nodes you were given. You may not collect them into a Python list
+  and read it from both ends, and you may not copy values between nodes.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "The hard part is that you need the list from the back, and a singly linked
+     list only goes forwards. You already know one operation that fixes that."
+  - "Three operations you have met before, composed: find the middle, reverse
+     the second half, then weave the two halves together one node at a time."
+  - "Find the middle with a slow pointer and a fast one going twice as fast.
+     When the fast pointer falls off the end, the slow one is at the middle."
+  - "Cut the list in two before reversing, or the first half's tail still points
+     into the second half and the weave builds a cycle. Decide which half the
+     middle node belongs to and be consistent about it."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

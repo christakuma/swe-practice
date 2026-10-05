@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/count-bits-for-every-number-up-to-n
+kind: kata
+title: Count Bits For Every Number Up To N
+difficulty: easy
+tags: [bit-manipulation, dynamic-programming, counting]
+estimated_minutes: 18
+
+prompt: |
+  Given a non-negative integer `n`, return a list of length `n + 1` where entry
+  `i` is the number of 1 bits in `i`.
+
+  ```
+  count_bits_up_to(2)   ->  [0, 1, 1]            # 0, 1, 10
+  count_bits_up_to(5)   ->  [0, 1, 1, 2, 1, 2]   # 0, 1, 10, 11, 100, 101
+  ```
+
+  `n` may be zero, in which case the answer is `[0]`.
+
+  Counting each number's bits independently costs `O(n log n)` and is the
+  obvious answer. Do it in `O(n)` — one constant-time step per entry, with no
+  inner loop over bits at all.
+
+  `int.bit_count()` and `bin()` are banned, as is any library popcount.
+
+hints:
+  - "You are filling a table in order, so by the time you reach `i` every
+     smaller answer is already sitting in it. The question is which smaller
+     number's answer helps."
+  - "Shifting `i` right by one drops its lowest bit. Whatever bits remain are a
+     number you have already solved -- and it is strictly smaller than `i`."
+  - "So the bits of `i` are the bits of `i >> 1` plus the one bit you dropped,
+     which is `i & 1`. That is the whole recurrence."
+  - "`i >> 1 < i` for every `i >= 1`, so the table is always read behind the
+     write cursor and a single forward pass is enough. Entry 0 is the base
+     case."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n) for the result"

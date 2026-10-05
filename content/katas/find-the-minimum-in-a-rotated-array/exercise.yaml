@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/find-the-minimum-in-a-rotated-array
+kind: kata
+title: Find the Minimum in a Rotated Array
+difficulty: medium
+tags: [binary-search, arrays, invariants]
+estimated_minutes: 25
+
+prompt: |
+  A sorted list of distinct integers has been rotated left by some unknown
+  amount. Return its smallest value.
+
+  ```
+  find_minimum([3, 4, 5, 1, 2])        ->  1
+  find_minimum([4, 5, 6, 7, 0, 1, 2])  ->  0
+  find_minimum([11, 13, 15, 17])       ->  11    # rotated by zero
+  find_minimum([1])                    ->  1
+  ```
+
+  The list is never empty and holds no duplicates. A rotation of zero is
+  allowed, so the list may be fully sorted.
+
+  Scanning for the minimum is `O(n)` and obvious. Do it in `O(log n)`.
+
+hints:
+  - "A rotation leaves the list as two sorted runs, one after the other, where
+     every value in the first run is larger than every value in the second. The
+     minimum is the first element of the second run."
+  - "Comparing the middle element with the *last* element tells you which run
+     the middle is in -- which is the question a binary search needs answered."
+  - "If the middle is greater than the last element, the middle is in the left
+     run and the minimum is strictly to its right. Otherwise the middle is in
+     the right run, and it might itself be the minimum."
+  - "So the two branches are not symmetric: `low = mid + 1` in one and
+     `high = mid` in the other, because one of them must not discard a
+     candidate. Loop while `low < high` and the answer is where they meet."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(log n)"
+    expected_space: "O(1)"

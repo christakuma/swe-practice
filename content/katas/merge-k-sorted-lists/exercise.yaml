@@ -1,0 +1,49 @@
+schema_version: 1
+id: katas/merge-k-sorted-lists
+kind: kata
+title: Merge K Sorted Lists
+difficulty: hard
+tags: [linked-lists, heap, merging, divide-and-conquer]
+estimated_minutes: 30
+
+prompt: |
+  A list of sorted linked lists comes in. Return the head of one sorted list
+  holding all of their nodes.
+
+  ```
+  [1 -> 4 -> 5,  1 -> 3 -> 4,  2 -> 6]   ->   1 -> 1 -> 2 -> 3 -> 4 -> 4 -> 5 -> 6
+  ```
+
+  The outer list may be empty, and any of the inner lists may be empty or None.
+
+  Merging them one at a time into an accumulator is correct and too slow: the
+  accumulator is rewalked on every merge, so k lists of n nodes each costs
+  `O(k * kn)`. Aim for `O(kn log k)`.
+
+  Splice the nodes you were given into one chain rather than building new ones.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "Start from the two-list merge. At every step you are choosing the smallest
+     among the current front nodes -- with two lists that is one comparison,
+     with k lists it is a linear scan, and the scan is what you want to delete."
+  - "\"Give me the smallest of these k things, repeatedly, while I keep adding
+     more\" is the exact job description of a min-heap. Python's `heapq`
+     operates on a plain list."
+  - "Push one node per list -- the fronts, not every node. Pop the smallest,
+     append it to the result, and push that node's successor if it has one. The
+     heap never holds more than k entries."
+  - "`heapq` compares whatever you push. Two ListNodes are not comparable, so
+     push a tuple whose first element is the value -- and include a tiebreaker
+     before the node, or equal values will make the heap try to compare nodes."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(kn log k) for k lists of n nodes"
+    expected_space: "O(k) beyond the input"

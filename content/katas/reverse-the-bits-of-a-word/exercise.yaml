@@ -1,0 +1,50 @@
+schema_version: 1
+id: katas/reverse-the-bits-of-a-word
+kind: kata
+title: Reverse the Bits of a Word
+difficulty: easy
+tags: [bit-manipulation, invariants]
+estimated_minutes: 18
+
+prompt: |
+  Reverse the bits of a **32-bit unsigned** integer and return the result as an
+  integer.
+
+  ```
+  reverse_bits(1)           ->  2147483648     # 0b0...01  ->  0b10...0
+  reverse_bits(2147483648)  ->  1
+  reverse_bits(0)           ->  0
+  reverse_bits(4294967295)  ->  4294967295     # all ones is its own reverse
+  ```
+
+  The input is in `0..2**32 - 1`. The output must be too.
+
+  The width matters and Python will not supply it. A Python integer has no
+  fixed size, so `0b1` is not "thirty-one zeros then a one" unless you say so —
+  the leading zeros you are reversing *into* position only exist because the
+  problem says the word is 32 bits wide.
+
+  `bin()`, string slicing and `int(..., 2)` are banned. Build the answer with
+  shifts and masks.
+
+hints:
+  - "Think of it as moving bits one at a time: read the lowest bit of the input,
+     and push it onto the *high* end of the result."
+  - "A result you shift left by one before each write grows from the bottom up,
+     which means the first bit you read ends up furthest left -- exactly the
+     reversal you want."
+  - "Read a bit with `n & 1`, drop it with `n >>= 1`. Make room in the result
+     with `result <<= 1`, then OR the bit in."
+  - "Loop exactly 32 times, not `while n`. Stopping early leaves the remaining
+     leading zeros unshifted, so a small input comes out far too small -- the
+     zeros are part of the word and have to be moved too."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(1), thirty-two steps regardless of input"
+    expected_space: "O(1)"

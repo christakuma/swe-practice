@@ -1,0 +1,49 @@
+schema_version: 1
+id: katas/remove-the-nth-node-from-the-end
+kind: kata
+title: Remove the Nth Node From the End
+difficulty: medium
+tags: [linked-lists, two-pointers, pointers]
+estimated_minutes: 18
+
+prompt: |
+  Remove the nth node counting from the end of a singly linked list and return
+  the head.
+
+  ```
+  1 -> 2 -> 3 -> 4 -> 5,  n = 2   ->   1 -> 2 -> 3 -> 5
+  1 -> 2,                 n = 2   ->   2
+  1,                      n = 1   ->   None
+  ```
+
+  `n` is always at least 1 and never more than the length of the list, so the
+  node always exists. Removing the last remaining node leaves an empty list.
+
+  Do it in **one pass**. You cannot walk the list to measure it and then walk
+  it again, and you cannot store the nodes in a list and index backwards.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "You cannot count from the end of a singly linked list, because there is no
+     way back. But you can arrange for something else to arrive at the end at a
+     known distance from the node you want."
+  - "Put two pointers on the list and move them at the same speed, holding a
+     fixed gap of n nodes between them. When the front one falls off the end,
+     where is the back one?"
+  - "To unlink a node you need the node *before* it, not the node itself --
+     a singly linked list gives you no way back. So aim the back pointer one
+     short."
+  - "Removing the head has no previous node at all, which is a second shape for
+     the same operation. A throwaway node in front of the list gives the head a
+     predecessor and the special case disappears."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n), one pass"
+    expected_space: "O(1)"

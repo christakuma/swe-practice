@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/rotate-a-matrix-in-place
+kind: kata
+title: Rotate a Matrix in Place
+difficulty: medium
+tags: [grids, in-place, invariants]
+estimated_minutes: 22
+
+prompt: |
+  Rotate an `n x n` matrix 90 degrees clockwise, **in place**. Return nothing.
+
+  ```
+  [[1, 2, 3],        [[7, 4, 1],
+   [4, 5, 6],   ->    [8, 5, 2],
+   [7, 8, 9]]         [9, 6, 3]]
+  ```
+
+  A `0 x 0` and a `1 x 1` matrix are already rotated.
+
+  In place means you mutate the list of lists you were given and allocate no
+  second grid. Building the rotated matrix and returning it is a one-liner
+  (`list(zip(*rows[::-1]))`) and is not what this asks; neither is building it
+  and then copying the values back, which allocates the thing you were told not
+  to allocate.
+
+hints:
+  - "Work out where one element has to go. The element at row r, column c ends
+     up at row c, column n-1-r. Writing it there overwrites something, so you
+     cannot just do that in a loop."
+  - "Rather than solving the four-way shuffle directly, look for two simpler
+     whole-matrix operations whose composition is a rotation. You know several:
+     transpose, reverse each row, reverse each column."
+  - "Transpose swaps rows and columns -- a reflection across the main diagonal.
+     Follow it by reversing each row and see where a corner element lands."
+  - "Transpose by swapping only the pairs above the diagonal: `j` from `i + 1`
+     onwards. Going over the full range swaps every pair twice and leaves the
+     matrix exactly as it started."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(1)"

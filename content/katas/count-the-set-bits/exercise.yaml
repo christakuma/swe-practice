@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/count-the-set-bits
+kind: kata
+title: Count the Set Bits
+difficulty: easy
+tags: [bit-manipulation, counting]
+estimated_minutes: 15
+
+prompt: |
+  Count the 1 bits in the binary representation of a non-negative integer.
+
+  ```
+  count_bits(0)     ->  0
+  count_bits(11)    ->  3      # 1011
+  count_bits(128)   ->  1      # 10000000
+  count_bits(255)   ->  8      # 11111111
+  ```
+
+  The input is non-negative and may be large — well past 64 bits, because
+  Python integers do not stop there.
+
+  `bin(n).count("1")` and `int.bit_count()` both answer this in one line. Both
+  are banned here: the point is the bit arithmetic, and a one-liner that defers
+  to the standard library teaches none of it.
+
+hints:
+  - "The obvious loop tests the lowest bit and shifts right until nothing is
+     left. Two operators do that: `n & 1` reads the lowest bit, `n >> 1` drops
+     it."
+  - "That loop runs once per *bit*, including every zero. For 2**60 it does
+     sixty-one iterations to find one 1. Can you iterate once per set bit
+     instead?"
+  - "Look at what subtracting 1 does in binary. It flips the lowest 1 to 0 and
+     turns every 0 below it into a 1 -- so `n` and `n - 1` agree above that bit
+     and disagree from it down."
+  - "Therefore `n & (n - 1)` is `n` with its lowest set bit cleared. Count how
+     many times you can do that before reaching zero."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(s) for s set bits"
+    expected_space: "O(1)"

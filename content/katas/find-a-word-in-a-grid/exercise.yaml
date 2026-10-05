@@ -1,0 +1,53 @@
+schema_version: 1
+id: katas/find-a-word-in-a-grid
+kind: kata
+title: Find a Word in a Grid
+difficulty: medium
+tags: [grids, backtracking, dfs, recursion]
+estimated_minutes: 30
+
+prompt: |
+  A grid of single characters and a word come in. Return `True` if the word can
+  be spelled by a path through the grid that steps only up, down, left or
+  right, and **uses no cell twice**.
+
+  ```
+  board = [["A", "B", "C", "E"],
+           ["S", "F", "C", "S"],
+           ["A", "D", "E", "E"]]
+
+  exists(board, "ABCCED")  ->  True
+  exists(board, "SEE")     ->  True
+  exists(board, "ABCB")    ->  False   # the second B would reuse a cell
+  ```
+
+  The empty word is present in any grid, including an empty one. Diagonal steps
+  are not allowed.
+
+  `"ABCB"` is the case that matters: the letters are all there, but spelling it
+  needs the same `B` twice. A search that forgets what it has already stepped
+  on returns `True`.
+
+hints:
+  - "From each starting cell, walk the word one letter at a time. At each step
+     you have up to four neighbours to try, and you only need one of them to
+     work out."
+  - "That is depth-first search where the state is (position in the grid,
+     position in the word). Succeed when the word is used up; fail when the
+     cell does not match or you have stepped off the grid."
+  - "The no-reuse rule is about the current path, not the whole search. A cell
+     that fails on this path may well be needed on another one, so a permanent
+     visited set is wrong."
+  - "So mark the cell before recursing and *unmark it afterwards*. Writing a
+     sentinel into the board and restoring the original letter on the way out
+     needs no extra structure at all."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(m * n * 4^L) worst case, for a word of length L"
+    expected_space: "O(L) for the recursion"

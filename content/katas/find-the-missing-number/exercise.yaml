@@ -1,0 +1,45 @@
+schema_version: 1
+id: katas/find-the-missing-number
+kind: kata
+title: Find the Missing Number
+difficulty: easy
+tags: [bit-manipulation, arrays, invariants]
+estimated_minutes: 15
+
+prompt: |
+  A list holds `n` distinct integers drawn from the range `0..n` inclusive.
+  Exactly one value from that range is missing. Return it.
+
+  ```
+  find_missing([3, 0, 1])           ->  2
+  find_missing([0, 1])              ->  2      # the missing one can be n
+  find_missing([1])                 ->  0      # or 0
+  find_missing([])                  ->  0
+  ```
+
+  Use `O(1)` extra space and one pass. Sorting the list, or building a set or a
+  seen-array of size n, all give the right answer and all spend more than the
+  problem needs.
+
+hints:
+  - "You know what the complete range *should* contain, and you can see what it
+     does contain. The answer is whatever the difference between those two is --
+     so find a summary of a collection that the missing element perturbs in a
+     recoverable way."
+  - "The sum of 0..n has a closed form: `n * (n + 1) // 2`. Subtract what you
+     actually see."
+  - "There is a second summary with the same property and no arithmetic growth
+     at all. What happens when you XOR a number with itself?"
+  - "`x ^ x == 0` and `x ^ 0 == x`, and XOR does not care about order. So XOR
+     together every index *and* every value, and everything that appears twice
+     cancels."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

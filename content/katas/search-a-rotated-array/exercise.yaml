@@ -1,0 +1,49 @@
+schema_version: 1
+id: katas/search-a-rotated-array
+kind: kata
+title: Search a Rotated Array
+difficulty: medium
+tags: [binary-search, arrays, invariants]
+estimated_minutes: 28
+
+prompt: |
+  A sorted list of distinct integers has been rotated left by some unknown
+  amount. Return the index of `target`, or `-1` if it is not there.
+
+  ```
+  search([4, 5, 6, 7, 0, 1, 2], 0)   ->  4
+  search([4, 5, 6, 7, 0, 1, 2], 3)   -> -1
+  search([1], 0)                     -> -1
+  search([], 5)                      -> -1
+  ```
+
+  The list holds no duplicates and may have been rotated by zero.
+
+  `O(log n)`, one pass of binary search. Finding the rotation point first and
+  then searching the correct run is also `O(log n)` and also acceptable — but
+  the single-pass version is the one worth getting right, because the reasoning
+  it forces is the transferable part.
+
+hints:
+  - "Binary search works when you can decide, in constant time, which half to
+     discard. Here the midpoint splits the list into two halves and **at least
+     one of them is fully sorted** -- a rotation point can only be in one."
+  - "Compare the midpoint with the low end to find out which half is the sorted
+     one. If `numbers[low] <= numbers[mid]`, the left half is clean."
+  - "Within a sorted half you can test membership with two comparisons: the
+     target is in it if it falls between its endpoints. If it does, search
+     there; if it does not, the answer must be in the other half."
+  - "Use `<=` when comparing the low end with the midpoint, not `<`. When the
+     window is two wide, `mid` equals `low` -- and with a strict comparison
+     neither half is classified as sorted and the search takes the wrong
+     branch."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(log n)"
+    expected_space: "O(1)"
