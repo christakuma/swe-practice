@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/is-it-a-palindrome
+kind: kata
+title: Is It a Palindrome
+difficulty: easy
+tags: [strings, two-pointers, in-place]
+estimated_minutes: 15
+
+prompt: |
+  Return `True` if the string reads the same forwards and backwards, **ignoring
+  case and ignoring every character that is not a letter or a digit**.
+
+  ```
+  is_palindrome("A man, a plan, a canal: Panama")  ->  True
+  is_palindrome("race a car")                      ->  False
+  is_palindrome(".,")                              ->  True    # nothing left
+  is_palindrome("")                                ->  True
+  ```
+
+  A string with no letters or digits is a palindrome, because an empty sequence
+  reads the same both ways.
+
+  Use `O(1)` extra space. Filtering the string into a new one and comparing it
+  with its reverse is correct and allocates two more strings the size of the
+  input; the input may be very large.
+
+hints:
+  - "Two pointers, one from each end, comparing as they move inward. They meet
+     in the middle and every pair has been checked."
+  - "The characters to ignore are the problem. Before comparing, advance each
+     pointer past anything that is not alphanumeric -- and do it in a loop,
+     because there may be several in a row."
+  - "`str.isalnum()` and `str.lower()` do the classification and the case
+     folding. Compare the folded characters, not the raw ones."
+  - "Guard both skip loops with `low < high`. A string of only punctuation will
+     run a pointer off the end otherwise."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

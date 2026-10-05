@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/the-largest-container
+kind: kata
+title: The Largest Container
+difficulty: medium
+tags: [arrays, two-pointers, greedy, invariants]
+estimated_minutes: 25
+
+prompt: |
+  A list gives the height of a vertical line at each position. Picking two
+  lines forms a container whose area is the shorter line's height times the
+  distance between them. Return the largest area available.
+
+  ```
+  largest_container([1, 8, 6, 2, 5, 4, 8, 3, 7])  ->  49    # the 8 and the 7, 7 apart
+  largest_container([1, 1])                        ->  1
+  largest_container([4, 4, 4])                     ->  8
+  largest_container([])                            ->  0
+  ```
+
+  Fewer than two lines holds nothing, so the answer is `0`. The lines are
+  vertical and the container cannot slope — only the shorter of the two matters.
+
+  Comparing every pair is `O(n^2)`. Do it in one pass.
+
+hints:
+  - "Start with the widest possible container: the first line and the last. Any
+     other pair is narrower, so it can only win by being taller."
+  - "You have to give up width with every move, so the only question is which
+     end to move. Move the taller one and the height cannot improve -- it is
+     still capped by the shorter one you kept -- while the width has shrunk."
+  - "So move the shorter one. It is the only move that can possibly find a
+     taller container, which means discarding every pair involving that line is
+     safe: none of them beats what you have already measured."
+  - "Equal heights: moving either is fine. Convince yourself why -- whichever
+     you keep, the pair you are abandoning was already measured at its widest."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

@@ -1,0 +1,50 @@
+schema_version: 1
+id: katas/smallest-window-covering
+kind: kata
+title: Smallest Window Covering
+difficulty: hard
+tags: [strings, sliding-window, counting, hash-map]
+estimated_minutes: 40
+
+prompt: |
+  Return the shortest substring of `text` that contains every character of
+  `needed`, counting multiplicities. If no such substring exists, return `""`.
+  If several shortest windows tie, return the one that starts earliest.
+
+  ```
+  smallest_window("ADOBECODEBANC", "ABC")  ->  "BANC"
+  smallest_window("a", "a")                ->  "a"
+  smallest_window("a", "aa")               ->  ""     # only one a available
+  smallest_window("ab", "")                ->  ""     # nothing to cover
+  ```
+
+  Multiplicity matters: covering `"aa"` requires **two** `a`s in the window.
+  The window may contain extra characters — it only has to contain at least
+  what is needed. Every character is significant and case matters.
+
+  `O(n + m)` time. Checking every substring is `O(n^2)` windows and far too
+  slow on the inputs the tests use.
+
+hints:
+  - "Grow a window on the right until it covers everything needed, then shrink
+     it from the left as far as it still covers. Record it, then keep going."
+  - "Checking \"does this window cover it?\" by comparing two tallies is O(k)
+     every step. Keep a single integer instead: how many needed characters are
+     still outstanding."
+  - "Let the tally go negative. A count below zero means the window holds more
+     of that character than required -- which is exactly the signal that the
+     leftmost occurrence is surplus and can be dropped."
+  - "Decrement the outstanding counter only when the character you just added
+     was actually still needed, which is when its remaining requirement is
+     above zero. Otherwise a repeated character satisfies the same requirement
+     twice."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(n + m)"
+    expected_space: "O(k) for k distinct needed characters"

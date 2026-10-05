@@ -1,0 +1,48 @@
+schema_version: 1
+id: katas/three-sum-to-zero
+kind: kata
+title: Three Sum to Zero
+difficulty: medium
+tags: [arrays, two-pointers, sorting]
+estimated_minutes: 32
+
+prompt: |
+  Return every distinct triple of values from the list that adds up to zero.
+
+  ```
+  three_sum([-1, 0, 1, 2, -1, -4])  ->  [(-1, -1, 2), (-1, 0, 1)]
+  three_sum([0, 0, 0, 0])           ->  [(0, 0, 0)]
+  three_sum([1, 2, 3])              ->  []
+  ```
+
+  Each triple uses three **different positions**, and each is returned once as
+  a tuple sorted ascending. The list of triples must itself be sorted ascending.
+  Duplicate values in the input are allowed and must not produce duplicate
+  triples — `[-1, 0, 1, 2, -1, -4]` contains two `-1`s and `(-1, 0, 1)` appears
+  only once.
+
+  Three nested loops is `O(n^3)`. Aim for `O(n^2)`.
+
+hints:
+  - "Sorting first costs O(n log n), which is free next to the O(n^2) you are
+     aiming for -- and it buys two things: a way to search a range from both
+     ends, and duplicates sitting next to each other."
+  - "Fix the first value and the rest is a two-sum over the remaining suffix,
+     looking for a specific target. On *sorted* data that needs no hash map:
+     walk one pointer in from each end."
+  - "If the pair sums too low, the only way to increase it is to move the left
+     pointer right. Too high, move the right pointer left. Each step discards
+     one candidate, so the scan is linear."
+  - "Deduplicate by skipping, not by filtering at the end. When the fixed value
+     equals the previous fixed value, skip it -- every triple it could start was
+     already found. Do the same for both pointers after recording a hit."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(1) beyond the output and the sort"

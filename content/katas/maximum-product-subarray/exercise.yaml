@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/maximum-product-subarray
+kind: kata
+title: Maximum Product Subarray
+difficulty: medium
+tags: [arrays, dynamic-programming, kadane, invariants]
+estimated_minutes: 28
+
+prompt: |
+  Return the largest product of any **contiguous** non-empty run of values.
+
+  ```
+  max_product([2, 3, -2, 4])      ->  6      # 2 * 3
+  max_product([-2, 0, -1])        ->  0      # the single 0 beats -2 and -1
+  max_product([-2, 3, -4])        ->  24     # the whole thing: two negatives
+  max_product([-3])               -> -3      # the run must be non-empty
+  ```
+
+  The list is never empty. The run must be contiguous and must contain at
+  least one value, so a list of only negatives has a negative answer.
+
+  Comparing every run is `O(n^2)`. Do it in one pass.
+
+hints:
+  - "This looks like `maximum-subarray` with multiplication in place of
+     addition. Try carrying \"the best product ending here\" forward and see
+     where it breaks."
+  - "It breaks on negatives. A negative multiplied by a large negative becomes
+     a large positive -- so the *worst* product ending at a position is just as
+     useful as the best one, and you have thrown it away."
+  - "Carry both. At each value the new best is the largest of three candidates:
+     the value alone, the value times the previous best, the value times the
+     previous worst. The new worst is the smallest of the same three."
+  - "Compute both from the *old* pair. Overwrite the best first and the worst
+     will be computed from a value that no longer exists -- so read both before
+     writing either."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

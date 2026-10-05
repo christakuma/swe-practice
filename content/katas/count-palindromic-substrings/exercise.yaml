@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/count-palindromic-substrings
+kind: kata
+title: Count Palindromic Substrings
+difficulty: medium
+tags: [strings, two-pointers, counting]
+estimated_minutes: 20
+
+prompt: |
+  Count the palindromic substrings in a string. Substrings at different
+  positions count separately even when they are identical.
+
+  ```
+  count_palindromes("abc")    ->  3     # a, b, c
+  count_palindromes("aaa")    ->  6     # a, a, a, aa, aa, aaa
+  count_palindromes("")       ->  0
+  ```
+
+  Every single character is a palindrome, so a string of length `n` has at
+  least `n`. The two `aa`s in `"aaa"` are different substrings — one at
+  positions 0-1 and one at 1-2 — and both count.
+
+  Every character is significant: no case folding, no skipping punctuation.
+
+  `O(n^2)` time and `O(1)` space.
+
+hints:
+  - "You have already solved the hard part if you have done
+     `longest-palindromic-substring`. Same centres, same expansion -- the only
+     change is what you do with each one you find."
+  - "Expanding from a centre produces palindromes one after another, each one
+     longer than the last. So every successful step of the expansion *is* a
+     palindrome you have found."
+  - "That means you do not count at the end -- you count inside the expansion
+     loop, once per step, before growing further."
+  - "Both centre kinds again: n character-centres and n-1 gap-centres. Counting
+     only the odd ones gives a number that is too small and looks plausible."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(1)"

@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/is-it-an-anagram
+kind: kata
+title: Is It an Anagram
+difficulty: easy
+tags: [strings, counting, hash-map]
+estimated_minutes: 12
+
+prompt: |
+  Return `True` if the second string is a rearrangement of the first — same
+  characters, same multiplicities, any order.
+
+  ```
+  is_anagram("anagram", "nagaram")  ->  True
+  is_anagram("rat", "car")          ->  False
+  is_anagram("a", "ab")             ->  False
+  is_anagram("", "")                ->  True
+  ```
+
+  Comparison is exact: case matters, and so does every character, including
+  spaces and punctuation. The strings may be long.
+
+  `sorted(a) == sorted(b)` is a correct one-liner and is banned — the lesson
+  here is that the question is about *counts*, and sorting answers a stronger
+  question than the one asked.
+
+hints:
+  - "Two strings of different lengths can never be anagrams. That check is O(1)
+     and it is the only early exit available, so take it first."
+  - "An anagram is a statement about how many times each character occurs. So
+     build that tally for one string and compare it with the other's."
+  - "You do not need two tallies. Count up for the first string and down for
+     the second; if the strings match, every count lands back at zero."
+  - "`collections.Counter` does exactly this and `Counter(a) == Counter(b)` is
+     the idiomatic answer. Write the loop by hand once anyway -- knowing what
+     the Counter is doing is the point."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(k) for k distinct characters"

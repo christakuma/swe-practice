@@ -1,0 +1,49 @@
+schema_version: 1
+id: katas/longest-palindromic-substring
+kind: kata
+title: Longest Palindromic Substring
+difficulty: medium
+tags: [strings, two-pointers, scanning]
+estimated_minutes: 28
+
+prompt: |
+  Return the longest contiguous substring that is a palindrome. If several tie
+  for longest, return the one that starts earliest.
+
+  ```
+  longest_palindrome("babad")   ->  "bab"
+  longest_palindrome("cbbd")    ->  "bb"
+  longest_palindrome("a")       ->  "a"
+  longest_palindrome("")        ->  ""
+  ```
+
+  Every character counts — no case folding, no skipping punctuation. A
+  single character is a palindrome of length one, so a non-empty string always
+  has an answer.
+
+  Checking every substring is `O(n^3)`, or `O(n^2)` with care. `O(n^2)` time and
+  `O(1)` space is the target.
+
+hints:
+  - "Rather than asking \"is this substring a palindrome?\" for every substring,
+     turn it around: every palindrome has a centre, so grow outwards from each
+     possible centre instead."
+  - "Expanding from a centre is a two-pointer walk: step both outwards while
+     the characters match. The moment they differ, or you run off an end, that
+     centre is finished."
+  - "There are two kinds of centre, not one. `aba` is centred on a character
+     and `abba` is centred on the gap between two. Both have to be tried at
+     every position -- 2n - 1 centres in all."
+  - "Track the best as a (start, length) pair rather than slicing a candidate
+     string at every centre. Slicing turns an O(1) comparison into an O(n) copy
+     and the whole thing into O(n^3)."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(1)"

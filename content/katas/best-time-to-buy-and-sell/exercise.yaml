@@ -1,0 +1,46 @@
+schema_version: 1
+id: katas/best-time-to-buy-and-sell
+kind: kata
+title: Best Time to Buy and Sell
+difficulty: easy
+tags: [arrays, greedy, scanning, invariants]
+estimated_minutes: 15
+
+prompt: |
+  A list holds a price per day. Buy on one day and sell on a **later** day, and
+  return the largest profit available. If no pair of days turns a profit, return
+  `0`.
+
+  ```
+  max_profit([7, 1, 5, 3, 6, 4])   ->  5      # buy at 1, sell at 6
+  max_profit([7, 6, 4, 3, 1])      ->  0      # prices only fall
+  max_profit([])                   ->  0
+  max_profit([5])                  ->  0      # no later day to sell on
+  ```
+
+  You must sell after you buy — a single day gives no profit, and you cannot
+  sell at the minimum and buy at the maximum when the maximum came first.
+
+  Comparing every pair of days is `O(n^2)`. Do it in one pass.
+
+hints:
+  - "The naive version fixes a buy day and scans every later day. Turn it
+     around: fix the *sell* day and ask what the best buy day before it was."
+  - "Answering that needs one number -- the cheapest price seen so far -- and
+     you already have it from the days you have walked past."
+  - "So one pass holds two running values: the minimum price so far, and the
+     best profit so far. For each day, the profit if you sold today is
+     `price - minimum_so_far`."
+  - "Seed the best profit at 0 rather than at something negative. \"Do not
+     trade\" is always available, so making it the starting value means a list
+     of falling prices needs no special case -- nothing ever improves on it."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"

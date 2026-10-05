@@ -1,0 +1,54 @@
+schema_version: 1
+id: katas/encode-and-decode-strings
+kind: kata
+title: Encode and Decode Strings
+difficulty: medium
+tags: [strings, invariants, scanning]
+estimated_minutes: 25
+
+prompt: |
+  Write a pair of functions that survive a round trip: `encode` turns a list of
+  strings into one string, and `decode` turns it back into exactly the list it
+  started from.
+
+  ```
+  decode(encode(["hello", "world"]))  ->  ["hello", "world"]
+  decode(encode([]))                  ->  []
+  decode(encode([""]))                ->  [""]
+  decode(encode(["", ""]))            ->  ["", ""]
+  ```
+
+  The strings are arbitrary. They may be empty, they may contain **any**
+  character — including whatever you were planning to use as a separator,
+  including newlines, commas, nulls and your own encoding's syntax. The list
+  itself may be empty.
+
+  `decode(encode(x)) == x` must hold for every list of strings, with no
+  exceptions and no reserved characters.
+
+  You may not use `json`, `pickle`, `repr`, `ast`, or any other serialiser.
+  Build the format yourself.
+
+hints:
+  - "Joining on a separator cannot work. Whatever character you pick, a string
+     is allowed to contain it, and the decoder has no way to tell that
+     occurrence from a real separator."
+  - "Escaping the separator is a real fix and brings its own problem: now the
+     escape character needs escaping. It is doable and it makes decoding a
+     character-by-character state machine."
+  - "There is a simpler answer. If the decoder knew how long the next string
+     was *before* reading it, the string's contents could not confuse it at
+     all."
+  - "So write the length in front of each string, with a terminator the length
+     itself cannot contain -- digits then a non-digit. Read the length, then
+     take exactly that many characters, whatever they are."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(total length) for both directions"
+    expected_space: "O(total length)"

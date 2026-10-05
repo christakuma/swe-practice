@@ -1,0 +1,47 @@
+schema_version: 1
+id: katas/longest-run-after-k-replacements
+kind: kata
+title: Longest Run After K Replacements
+difficulty: medium
+tags: [strings, sliding-window, counting]
+estimated_minutes: 32
+
+prompt: |
+  You may change at most `k` characters of the string, each to any character.
+  Return the length of the longest run of a single repeated character you can
+  produce.
+
+  ```
+  longest_run("ABAB", 2)      ->  4     # change both Bs, or both As
+  longest_run("AABABBA", 1)   ->  4     # "AABA" -> "AAAA"
+  longest_run("ABCDE", 0)     ->  1     # no changes allowed
+  longest_run("", 2)          ->  0
+  ```
+
+  `k` is never negative and may exceed the length of the string. Every
+  character is significant, and case matters.
+
+  `O(n)` time. Trying every substring is `O(n^2)` even with counts cached.
+
+hints:
+  - "A substring can be made uniform with at most k changes exactly when
+     `length - (count of its most common character)` is at most k -- every
+     other character has to be replaced."
+  - "That is a condition on a window, and it gets *harder* to satisfy as the
+     window grows. So grow a window on the right and shrink it on the left
+     whenever it stops satisfying the condition."
+  - "Keep a tally of the characters in the window, updated as each end moves.
+     The most common character's count is what the condition needs."
+  - "Once you have it working, look at what happens if you never *decrease*
+     your record of the most common count. The answer stays correct -- work out
+     why, because it is the most interesting thing in this problem."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 15
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(k) for k distinct characters"

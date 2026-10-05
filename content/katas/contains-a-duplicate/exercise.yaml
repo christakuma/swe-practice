@@ -1,0 +1,48 @@
+schema_version: 1
+id: katas/contains-a-duplicate
+kind: kata
+title: Contains a Duplicate
+difficulty: easy
+tags: [arrays, hash-map, counting]
+estimated_minutes: 12
+
+prompt: |
+  Return `True` if any value appears more than once in the list, `False` if
+  every value is distinct.
+
+  ```
+  has_duplicate([1, 2, 3, 1])     ->  True
+  has_duplicate([1, 2, 3, 4])     ->  False
+  has_duplicate([])               ->  False
+  ```
+
+  The list may be long, and the answer is often decidable long before the end
+  of it. **Return as soon as you know** — a list whose first two values match
+  must be answered without reading the rest. The tests check this directly.
+
+  `len(set(numbers)) != len(numbers)` is a correct one-liner and is banned. It
+  reads the whole list and allocates a set the size of it even when the first
+  two elements already settle the question.
+
+hints:
+  - "The question for each element is \"have I seen this before?\". A list
+     answers that in linear time, so asking it once per element is quadratic."
+  - "A set answers it in constant time. Scan once, and for each element check
+     membership before inserting."
+  - "The moment the check succeeds you have your answer -- return immediately.
+     On a list whose first two values match, that is two iterations rather than
+     a million."
+  - "Sorting puts equal values next to each other, which also finds them --
+     but it reads the whole list before it can say anything, so it cannot
+     satisfy the early-return rule. Keep it in mind as the answer to a
+     different question: what if memory, not time, is the constraint?"
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n), and often far less"
+    expected_space: "O(n)"

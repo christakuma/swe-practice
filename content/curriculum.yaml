@@ -64,12 +64,62 @@ tracks:
       - katas/product-except-self
       - katas/subarray-sum-equals-k
 
+  # Added with the Blind 75 fill-in. Extends `arrays-strings-hashing` rather
+  # than replacing it: those eight are about the hash map, these four are about
+  # the two-pointer walk and the running accumulator.
+  #
+  # `maximum-product-subarray` came in with this batch and is *not* here -- it
+  # went into `dynamic-programming` directly after `maximum-subarray`, because
+  # its whole lesson is which property of Kadane's algorithm fails when the
+  # operator changes, and that argument is unreadable before the original.
+  #
+  # The two two-pointer exercises are deliberately adjacent and deliberately
+  # unalike: `three-sum-to-zero`'s pointers move because the data is sorted,
+  # `the-largest-container`'s move because of a domination argument about the
+  # objective. Same mechanics, unrelated justifications, and conflating them is
+  # how people come to believe two pointers requires sorted input.
+  - name: arrays-and-two-pointers
+    title: "Katas: two pointers and running state"
+    exercises:
+      - katas/contains-a-duplicate
+      - katas/best-time-to-buy-and-sell
+      - katas/three-sum-to-zero
+      - katas/the-largest-container
+
   - name: sql-reading
     title: "SQL: asking the right question"
     exercises:
       - sql/the-two-biggest-spenders
       - sql/the-null-that-broke-the-report
       - sql/use-the-index-you-were-given
+
+  # Added with the Blind 75 fill-in. The library had `strings` as a tag on six
+  # exercises but no track: string work was scattered through
+  # `arrays-strings-hashing` wherever it happened to fit.
+  #
+  # Ordered so each technique is introduced before it is relied on. The two
+  # palindrome-counting exercises are adjacent and share an expansion routine
+  # verbatim -- the second changes one line of the consumer, which is the
+  # point of having both. The two sliding-window exercises are likewise a pair:
+  # `longest-run-after-k-replacements` establishes that the window predicate
+  # must be monotone in the window's size, and `smallest-window-covering` is
+  # the hard case where maintaining that predicate in O(1) is the entire
+  # problem.
+  #
+  # `encode-and-decode-strings` is last and is not an algorithm exercise at
+  # all -- it is the one place in the library where the solver designs a
+  # format, and the only one whose tests assert a round-trip property rather
+  # than expected values.
+  - name: strings-and-windows
+    title: "Katas: strings, windows and formats"
+    exercises:
+      - katas/is-it-an-anagram
+      - katas/is-it-a-palindrome
+      - katas/longest-palindromic-substring
+      - katas/count-palindromic-substrings
+      - katas/longest-run-after-k-replacements
+      - katas/smallest-window-covering
+      - katas/encode-and-decode-strings
 
   - name: git-recovery
     title: "Git: getting work back"
@@ -172,6 +222,7 @@ tracks:
     exercises:
       - katas/climbing-stairs
       - katas/maximum-subarray
+      - katas/maximum-product-subarray
       - katas/jump-game
       - katas/house-robber
       - katas/coin-change
