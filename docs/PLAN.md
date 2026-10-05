@@ -4,7 +4,7 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** **v1.0.0, and four stretch items taken — Phases 13 through 16.**
+> **Status:** **v1.0.0, and five stretch items taken — Phases 13 through 17.**
 > Phases 0–10 built the engine, Phase 11 filled it with 54 exercises, and Phase
 > 12 is the front door and the portfolio artifacts: `uv sync && uv run practice
 > up` is the whole of getting started, and it refuses with an instruction rather
@@ -77,9 +77,10 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > with no error anywhere. Nothing could have caught it, because the mode *name*
 > was already coming from the spec and already tested.
 >
-> **The library is the product: 62 exercises — 24 git scenarios, 30 katas and 8
-> SQL drills, every one of them graded.** Phase 11 is the content that makes the
-> engine worth opening, and its exit bar was never "they load" — `uv run pytest
+> **The library is the product: 115 exercises — 24 git scenarios, 83 katas and 8
+> SQL drills, every one of them graded.** Phase 11 built 54 of them and Phase 17
+> added the 53 that fill the Blind 75 gaps; the engine has not changed to hold
+> them. Phase 11 is the content that makes the engine worth opening, and its exit bar was never "they load" — `uv run pytest
 > -m content` replays every reference solution through the real use cases, holds
 > 52 scenario counter-examples and 16 drill counter-examples to failing
 > **exactly** the checks they declare, grades every kata's and every drill's stub
@@ -205,8 +206,40 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > `domain/` is a docstring. The first phase to ship a feature and add nothing at
 > all inside the gate.
 >
+> **Phase 17 is the fifth item and the only one that is mostly content** — the
+> Blind 75 fill-in, 53 katas taking the library from 62 exercises to 115. The
+> scope was chosen by *technique gap* rather than list position: of Blind 75, 22
+> were already present, and the tags said which of the rest mattered —
+> `binary-search`, `stack`, `linked-lists` and `sliding-window` had one kata
+> each while backtracking, tries, union-find, bit manipulation and heap-design
+> had **none**, against `arrays`, `trees`, `graphs` and `dynamic-programming`
+> already covered eight to nine deep. NeetCode 150's remaining ~87 are
+> deliberately unscheduled for the same reason.
+>
+> **What the phase actually found is about its own tests.** Nine adversarial
+> tests were wrong about the bug they named, and the content suite could not
+> have caught one of them — it proves the reference passes and the stub fails,
+> and says so carefully in its own docstring, while every one of the nine left
+> the reference passing. Two could not fail at all: a palindrome
+> counter-example that inserted a mismatching character at the *exact centre* of
+> a palindrome, and an interval test whose expected value was hand-counted using
+> the very arithmetic it existed to check. One was a false *claim* rather than a
+> false value, and the correction is the better lesson — an impossible case that
+> cannot win does not need excluding.
+> [ADR 0022](adr/0022-counter-examples-are-run-against-the-bug-they-name.md)
+> makes running the buggy variant part of authoring the test, and the oracles
+> that back it swept 380,100 grid/word-list pairs, 140,680 trees and ~62,000
+> word lists among others.
+>
+> **And the number that moved was not the one predicted.** The guess going in
+> was that the pre-push suite would get slower; it did not — 5m27s on four
+> workers. What moved is the critical path: `tests/content/test_katas.py` went
+> from ~85s at 30 katas to **240s at 83**, overtaking `test_scenarios.py` at
+> 162s, and under `--dist loadfile` the whole file lands on one worker. The
+> gated surface is untouched, because 53 katas put nothing inside it.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 16 (content packs), 2026-10-04
+> · **Last phase:** 17 (the Blind 75 fill-in), 2026-10-05
 
 ---
 
@@ -2400,6 +2433,53 @@ to check the derivation; and `practice solve`'s `--content-root` turned out to
 be the whole of what an installed library needs, which is ADR 0017's
 `--content-root` paying off in a phase that did not plan to use it.
 
+
+### Phase 17 — The Blind 75 fill-in: 53 katas, and nine tests that were wrong · **1 session**
+
+The fifth stretch item and the first that is mostly content rather than code.
+Phase 13's menu does not list it, because it is not a feature — it is the thing
+§11 said the library would need eventually: the kata half was 30 exercises
+against a git half that was already the deeper of the two.
+
+**The scope question is the interesting part of the planning.** "Add the Blind
+150" names no real list, and the useful answer came from the *tags* rather than
+from either candidate list. `arrays`, `dynamic-programming`, `trees` and
+`graphs` were already eight to nine deep; `binary-search`, `stack`,
+`linked-lists` and `sliding-window` had one kata each; backtracking, tries,
+union-find, bit manipulation and heap-design had none. So the rule was **fill by
+technique gap, not by list position**, which selects Blind 75's 53 missing
+exercises and explicitly declines NeetCode 150's remaining ~87 as additional
+reps inside families already covered.
+
+**Exit criteria.**
+
+| Criterion | Met by |
+|---|---|
+| Every technique Blind 75 teaches is in the library | `content/curriculum.yaml`, 21 tracks, and the five new ones for the families that were at zero |
+| Every new kata's reference passes and its stub fails | `tests/content/test_katas.py`, parametrized over `content/` |
+| Every new kata is named exactly once in the curriculum | `uv run practice validate` — 115 exercises, all valid |
+| No exercise added code to the gated surface | coverage at 2,430 statements, unchanged by this phase's commits |
+| The library still packs and installs | `tests/content/test_pack.py`; `practice pack` reports 115 exercises, 622 files, 726 KB |
+| The first screen still offers every kind | `test_the_first_screen_of_the_curriculum_offers_every_kind` |
+
+**One finding, and it is about the tests rather than the content.** Nine
+adversarial tests were wrong about the bug they named, and the content suite
+could not have caught any of them — it proves the reference passes and the stub
+fails, which every one of the nine satisfied. Two of the nine could not fail at
+all. That earned
+[ADR 0022](adr/0022-counter-examples-are-run-against-the-bug-they-name.md),
+which makes executing the buggy variant part of authoring the test, and it is
+the first ADR here about **how content is authored** rather than how code is
+arranged.
+
+**Two things that were measured rather than assumed.** The curriculum was
+reordered, not appended to, because appending had produced 43 consecutive katas
+before the next git exercise — and strict alternation is now impossible at 14
+kata tracks against 7 git and sql ones, so the manifest header records the
+achievable bound of two. And the pre-push suite did not get slower (5m27s on
+four workers), but its critical path moved: `tests/content/test_katas.py` went
+from ~85s to 240s and overtook `test_scenarios.py` at 162s.
+
 ---
 
 ## 12. Architecture decision records
@@ -2432,6 +2512,7 @@ changed"* is worth more than any code sample.
 | [0019](adr/0019-sql-drills-as-a-third-exercise-kind.md) | SQL drills as a third exercise kind | accepted |
 | [0020](adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md) | Interview mode withdraws affordances it cannot contain | accepted |
 | [0021](adr/0021-content-packs-install-rather-than-mount.md) | A content pack is installed to a directory, not mounted as a library | accepted |
+| [0022](adr/0022-counter-examples-are-run-against-the-bug-they-name.md) | Counter-examples are run against the bug they name | accepted |
 
 ---
 
@@ -4802,3 +4883,140 @@ left whose **Touches** column has never been tested against anything, and on the
 evidence of the last four phases that column is worth about as much as the
 prediction it is attached to.
 
+**2026-10-05 — Phase 17: the Blind 75 fill-in, and nine tests that were wrong
+about their own point.** 53 katas, taking the library from 62 exercises to 115.
+The first phase since Phase 11 to be mostly content, and the first to produce an
+ADR about *authoring* rather than about architecture.
+
+**The scope was chosen by technique gap, not by list position.** The request was
+"add the blind 150", which is not a list — Blind 75 and NeetCode 150 are the two,
+and the gap analysis is what made the choice answerable. Of Blind 75, 22 were
+already present. Of NeetCode 150, roughly 127 were missing, and the tags said
+why that number is misleading: `arrays`, `dynamic-programming`, `trees` and
+`graphs` were already covered eight to nine deep, while `binary-search`,
+`stack`, `linked-lists` and `sliding-window` had **one kata each** and
+backtracking, tries, union-find, bit manipulation and heap-design had **none**.
+So the marginal exercise inside a covered family buys much less than the first
+exercise in a family the library cannot teach at all, and the 53 were taken in
+that order: linked lists, bit manipulation, grid index work and binary-search
+variants first, because those were the families at zero or one.
+
+**Nine adversarial tests were wrong, and the content suite could not have caught
+any of them.** This is the phase's finding and it earned
+[ADR 0022](adr/0022-counter-examples-are-run-against-the-bug-they-name.md).
+`tests/content/test_katas.py` proves `solution.py` passes and `stub.py` fails,
+and says so carefully in its own docstring; every one of the nine defects left
+the reference passing. The cheapest to describe: `find-a-word-in-a-grid`'s
+counter-example for a permanent `visited` set in place of real backtracking was
+a 3×3 ring of `A`s around a central `B`, which reads as obviously discriminating
+and which the broken solution passes. Brute-forcing every 2×2 and 2×3 grid found
+the real minimal case, a 2×2 `AA`/`AB` with the word `AAAB`.
+
+**Two of the nine could not fail at all**, which is worse than being wrong. A
+long-string palindrome test inserted a mismatching character at the *exact
+centre* of a palindrome — which leaves it a palindrome. And an
+`insert-an-interval` test asserted a hand-counted length of
+`25_000 + 1 + 25_000`, which is precisely the off-by-one the test existed to
+catch; it now compares against the oracle, on the rule that **an expected value
+needing the same arithmetic as the code under test is not an expectation.**
+
+**One was a claim rather than a value, and the correction is a better lesson than
+the original.** `best-time-to-buy-and-sell`'s reference docstring asserted that
+updating the running minimum before recording the profit permits a same-day
+trade and is a bug. It is not: the illegal trade is worth exactly zero and the
+accumulator already floors at zero, so both orderings are correct. Brute-forcing
+every price list up to length seven found zero disagreements. The docstring now
+makes the stronger point — *an impossible case that cannot win does not need
+excluding* — which is a real habit, where the original was a memorised rule that
+happened to be false.
+
+**The exhaustive sweeps are the phase's main cost and its main defence.**
+`find-words-in-a-grid` against the single-word search over 380,100 (grid,
+word-list) pairs; `best-path-sum-in-a-tree` against a path enumerator over
+140,680 trees; `alien-alphabet-order` against a permutation search over ~62,000
+word lists; `median-of-a-stream` against `statistics.median` at every prefix of
+~140,000 streams; `water-flowing-to-both-oceans` against a forward downhill
+search over 21,297 grids; `rebuild-a-tree-from-traversals` round-tripped through
+every tree shape up to eight nodes. The oracles are usually the solutions the
+prompts *ban* — `fnmatch`, `sorted(a) == sorted(b)`, sort-and-merge — which is
+the point: two implementations that can only agree by both being right.
+
+**One sweep had to be trimmed, which is the time limit doing its job on the
+tests rather than on a solution.** `maximum-product-subarray`'s sweep over every
+list up to length seven pushed that file to eight seconds against a ten-second
+limit. Length six is a seventh of the cases and 3.3s — the kind of margin that
+passes locally and fails on a loaded CI box, and the same hazard §11 records for
+`-n auto`.
+
+**A guard was added that the contract says is unreachable.**
+`how-many-meeting-rooms` sweeps two sorted lists of endpoints, and a zero-width
+meeting walks the pointer off the end of the ends list and raises. In-contract
+input cannot do it — every meeting has positive duration, so something is always
+still running when the next starts — and the exhaustive check found it anyway,
+because degenerate intervals were in the pool. One comparison, kept: the
+contract protects the caller, not the function.
+
+**Two structural changes, both forced rather than chosen.** `trees-and-graphs`
+split into `trees` and `graphs`: it held nine exercises of which four were
+trees, seven more trees arrived at once, and a sixteen-exercise track mixing
+binary trees with grid search teaches neither. `dynamic-programming` split by
+dimension for a sharper reason than size — a linear recurrence is about what to
+carry forward, a table is about *which neighbours the recurrence reads*, which
+is what decides how far it can be collapsed, and those are different lessons.
+
+**The curriculum was reordered, not appended to, and two of the orderings turned
+out to be load-bearing.** Appending had produced a run of five consecutive kata
+tracks — 43 katas before the next git exercise, which is exactly the fortnight
+§15's interleaving rule exists to prevent. Strict alternation is no longer
+possible and will not become possible: 14 kata tracks against 7 git and sql
+ones, so the achievable bound is **two** kata tracks between non-kata ones, and
+that is now written in the manifest header as the thing to re-check. Of the two
+orderings that matter, `grids-and-matrices` now precedes `graphs` because
+`clone-a-graph`'s notes argue against `find-a-word-in-a-grid` — a permanent
+visited mark against one that is undone — and that was a forward reference;
+`data-structure-design` is last among the katas because `find-words-in-a-grid`
+composes the trie with that same grid search and needs both parents first.
+`start-here` was not touched, so
+`test_the_first_screen_of_the_curriculum_offers_every_kind` still holds.
+
+**The content suite's critical path moved, measured rather than assumed.**
+`tests/content/test_katas.py` was ~85s at 30 katas and is **240s at 83**; under
+`--dist loadfile` the whole file lands on one worker, so it has overtaken
+`test_scenarios.py` (162s, unchanged) as the thing the pre-push suite waits for.
+Worth recording because the prediction going in was that the *total* would grow,
+and it did not — the full suite is **5m27s on four workers**, against §11's
+recorded 7m20s. The honest reading is that the earlier figure was measured under
+different conditions and the per-file numbers are the ones to trust; the sweeps
+are most of the growth, and ADR 0022's **Revisit if** names splitting them into
+their own tier as the fix when they start to hurt.
+
+**Final numbers, with one of them corrected on the way in.** 4,330 passing and
+one skipped, 593 more than Phase 16. 100% statement and branch coverage over a
+gated surface of **2,430 statements and 500 branches**, against Phase 16's
+recorded 2,419 and 496.
+
+That delta is **not** this phase's, and finding out why is worth recording. The
+first draft of this entry attributed it to `practice validate`'s library audit
+growing, which was a guess; `git diff` says the 53 katas changed nothing under
+`src/` at all. The 11 statements and 4 branches come from a `Fix things` commit
+that landed on main between the two phases and touched `domain/exercise.py`
+among others — so the honest statement is that **this phase put nothing inside
+the gate**, which is ADR 0004's content-as-data bet paying out for the fourth
+consecutive time, and the gated surface moved for reasons belonging to another
+commit. A handful of the 593 new tests come from there too; the rest are the
+katas' parametrized content, library and pack cases, at four content tests per
+kata plus the per-exercise library and pack sweeps.
+
+`practice validate` reports 115 exercises, all valid; `practice fixtures
+--check` reports 24 fixtures matching, unchanged, because no git fixture was
+touched.
+
+**What this bought, and what it did not.** It bought the library every technique
+Blind 75 teaches, and tries, union-find, backtracking, bit manipulation and
+heap-design where there had been nothing. It did **not** buy "NeetCode 150
+complete", and the remaining ~87 are deliberately not scheduled: they are
+additional reps inside families already covered eight deep, and on this phase's
+evidence the expensive part of a kata is not the solution but the adversarial
+test and the oracle that proves it discriminates. Another 87 of those is a far
+larger commitment than the count suggests, and the gap-driven rule is the one to
+re-apply rather than the list.

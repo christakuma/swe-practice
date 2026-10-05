@@ -15,8 +15,8 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status: v1.0.0, plus four stretch items.** All twelve planned phases are done —
-**62 exercises: 24 git scenarios, 30 katas and 8 SQL drills, every one of them
+**Status: v1.0.0, plus five stretch items.** All twelve planned phases are done —
+**115 exercises: 24 git scenarios, 83 katas and 8 SQL drills, every one of them
 graded.** The core bet works, a session survives the terminal it was opened in,
 every exercise kind is solved in a browser *or in your own editor*, and the tool
 answers *what should I practise today?* instead of leaving it to you.
@@ -87,7 +87,7 @@ your browser on `http://127.0.0.1:8765`:
 
 ```
   ok   git         /usr/bin/git
-  ok   library     62 exercises (24 git scenarios, 30 katas, 8 SQL drills) in ~/swe-practice/content
+  ok   library     115 exercises (24 git scenarios, 83 katas, 8 SQL drills) in ~/swe-practice/content
   ok   workspaces  ~/.cache/swe-practice/ws
   ok   database    ~/.local/share/swe-practice/practice.db (created v2)
   ok   scheduler   sm2 (Sm2Scheduler())
@@ -493,7 +493,7 @@ against a plain dict with no database in the test.
 uv run practice validate
 ```
 
-Reports every problem in all 62 exercises in one pass, located to the field, and
+Reports every problem in all 115 exercises in one pass, located to the field, and
 exits non-zero if anything is wrong — so CI depends on it. It runs nothing, so
 it works on a machine with no git, and it prints what a passing run does **not**
 prove.
@@ -538,13 +538,13 @@ without the flag, and there is no force option — the way to get rid of one is
 uv run practice pack --out library.practicepack
 ```
 
-The 62 exercises become one 360 KB file, with a manifest listing every file in
+The 115 exercises become one 726 KB file, with a manifest listing every file in
 it and the sha256 of its bytes. `--kind` and `--difficulty` export a subset, and
 a subset is a **library in its own right** rather than a library with holes in
 it: `curriculum.yaml` and `fixtures.lock` are both per-exercise indexes, so they
 are regenerated from whatever you selected. A pack that carried the full
 ordering would install to a content root that `practice validate` refuses,
-naming fifty-four exercises that are not there.
+naming the hundred and seven exercises that are not there.
 
 ```bash
 uv run practice pack --check library.practicepack
@@ -628,8 +628,8 @@ src/practice/
 │   └── cli/         Typer: the second driving adapter, plus the first-run launcher
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
-content/           62 exercises as declarative data — adding one needs no code
-├── curriculum.yaml eleven tracks in order; validate holds it to covering them all
+content/           115 exercises as declarative data — adding one needs no code
+├── curriculum.yaml twenty-one tracks in order; validate holds it to covering them all
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform
 tools/             the one module that opens a socket, deliberately outside the wheel
 docs/adr/          architecture decision records

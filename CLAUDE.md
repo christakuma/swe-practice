@@ -70,6 +70,16 @@ faster on average *and* repeatable. `--dist loadfile` so every test in a file
 lands on one worker, which is what keeps the content suite's module-scoped
 workspaces and memoised verdicts shared rather than rebuilt per worker.
 
+**Those figures predate Phase 17 and the shape has changed.** Measured after the
+Blind 75 fill-in: `-n 4` with the gate is **5m27s**, and the critical path is now
+`tests/content/test_katas.py` at **240s serially** — up from ~85s at 30 katas —
+having overtaken `tests/content/test_scenarios.py` at 162s. Because
+`--dist loadfile` puts a whole file on one worker, the suite cannot finish much
+faster than that file does, so **adding katas now moves the floor directly.**
+Most of the growth is ADR 0022's exhaustive sweeps; if they start to hurt, the
+fix is to mark them and run them as a separate tier rather than to thin them
+out.
+
 Not in `addopts`, deliberately: four workers to run one file is slower than one,
 and the fast tier runs one file. `-n0` turns it off.
 
@@ -205,6 +215,17 @@ A phase ends with a `docs:` commit that:
   as the word, a float is formatted with `%g` rather than rounded, and a drill
   whose answer is an average should ask for `ROUND(..., 2)` in SQL, because
   controlling the precision of what you return is the lesson.
+- **A counter-example you have not executed against the bug it names is a
+  guess** ([ADR 0022](docs/adr/0022-counter-examples-are-run-against-the-bug-they-name.md)).
+  Phase 17 wrote nine adversarial tests that were wrong about their own point,
+  and the content suite caught none of them — it proves the reference passes and
+  the stub fails, which all nine did. Two could not fail at all: a mismatching
+  character inserted at the *exact centre* of a palindrome, and an expected
+  length hand-counted with the same arithmetic the test existed to check. So:
+  write the buggy variant in a scratch script and watch it fail, and where
+  expected values are computed by hand, check them against an oracle in bulk
+  rather than by eye. An expected value that needs the code's own arithmetic is
+  not an expectation.
 - **Run the content, do not read it.** Every drill bug in Phase 14 — a vacuous
   `LIMIT`, a counter-example that returned the reference's rows, a query plan
   that scanned the other table — was invisible on the page and obvious the

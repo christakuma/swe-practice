@@ -43,6 +43,26 @@ an afternoon do not need one.
 | [0019](0019-sql-drills-as-a-third-exercise-kind.md) | SQL drills as a third exercise kind | accepted |
 | [0020](0020-interview-mode-withdraws-affordances-it-cannot-contain.md) | Interview mode withdraws affordances it cannot contain | accepted |
 | [0021](0021-content-packs-install-rather-than-mount.md) | A content pack is installed to a directory, not mounted as a library | accepted |
+| [0022](0022-counter-examples-are-run-against-the-bug-they-name.md) | Counter-examples are run against the bug they name | accepted |
+
+0022 is the odd one in this set: the only record here about **how the content is
+authored** rather than how the code is arranged. It exists because Phase 17's
+adversarial tests -- the ones whose docstrings say "a solution that clamps the
+tally at zero returns ..." -- were claims about code nobody had written, and
+nine of them were wrong. The cheapest to describe was a counter-example meant to
+separate real backtracking from a permanent visited set: a 3x3 ring of letters
+that reads as obviously discriminating, and that the broken solution passes.
+
+What makes it an ADR rather than a note is that the existing guard genuinely
+cannot catch this. `tests/content/test_katas.py` proves the reference passes and
+the stub fails, and is careful in its own docstring to claim no more; every one
+of the nine defects left the reference passing. So the decision is a procedure
+with a cost -- an oracle per kata, usually the solution the prompt bans -- and
+0022's longest alternative is the declared `counter_examples` that git scenarios
+already have in their schema (§5.4), rejected because the useful
+counter-examples here are oracles over a swept input space rather than single
+inputs. A 2x2 grid is the minimal case only because 380,000 grids were tried,
+and a declared counter-example records the answer without the search.
 
 0015 is the one record here that was not written on the day the decision was
 made — it was decided in Phase 11 and written up in Phase 12. Its own first
