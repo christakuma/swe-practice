@@ -15,7 +15,7 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status: v1.0.0, plus five stretch items.** All twelve planned phases are done —
+**Status: v1.0.0, plus six stretch items.** All twelve planned phases are done —
 **115 exercises: 24 git scenarios, 83 katas and 8 SQL drills, every one of them
 graded.** The core bet works, a session survives the terminal it was opened in,
 every exercise kind is solved in a browser *or in your own editor*, and the tool
@@ -36,6 +36,13 @@ send somebody — where the prediction was right about the adapter and wrong abo
 the feature, because it turned out the library has *two* readers and only one of
 them is behind a port
 ([ADR 0021](docs/adr/0021-content-packs-install-rather-than-mount.md)).
+
+Phase 18 was not on the menu. It is **a tutor you bring yourself**: one button
+turns the attempt you are stuck on into text to paste into a chat with a model,
+holding what you have seen and none of what you have not. It needed no new
+tracking, because the attempt has logged every command since Phase 1 — the
+whole decision was what to leave out
+([ADR 0023](docs/adr/0023-the-tutor-context-is-what-the-solver-has-seen.md)).
 
 A git scenario is graded on what your commands actually did, from a console or
 from the terminal:
@@ -65,7 +72,7 @@ state exactly what the grader checks, and what makes the notes the product rathe
 than a restatement of someone else's problem statement.
 
 See [docs/PLAN.md](docs/PLAN.md) for the full design and the phase plan, and
-[docs/adr/](docs/adr/) for the twenty decisions and the alternatives that were
+[docs/adr/](docs/adr/) for the twenty-three decisions and the alternatives that were
 rejected — the rejected half is usually the half worth reading.
 [docs/postmortem.md](docs/postmortem.md) is the honest version: what the bet
 bought, six things that would be done differently, and five that are still
@@ -291,6 +298,53 @@ late would be enforcing a rule the verdict can simply read. And the clock in the
 browser is rendered when the page loads, with *"as of this page load"* next to
 it, rather than ticking — a countdown that ran to zero and changed nothing would
 be the one number on the page that nothing grades.
+
+## Asking an AI about the one you are stuck on
+
+The prompt column of every workbench has an **Ask an AI** panel. It prepares a
+block of text to paste into whichever chat you use — the app itself still talks
+to nothing:
+
+```bash
+uv run practice context <id>                  # the same text, on stdout
+uv run practice context <id> --format json    # the same attempt, as data
+uv run practice context <id> --output ask.md  # UTF-8 with LF endings, always
+```
+
+What is in it is the attempt **as you have seen it**: the task, every command
+you ran and what it printed, the hints you revealed, and the repository as it
+stands — including commits no longer reachable from HEAD, which is usually the
+thing you are asking about. On top is a prompt asking the model to tutor rather
+than answer: the next thing to look at, not the command.
+
+What is *not* in it is the interesting part. Hints you have not revealed, the
+author's notes and the list of checks are left out while the attempt is open,
+and not by asking the model nicely: the type the text is rendered from has no
+field for them, so there is nothing in the paste to give away. Once the attempt
+is graded, the verdict and the notes are added and the same button is a
+post-mortem. `tests/content/test_tutor_context.py` holds every exercise in the
+library to both halves — and to the second on purpose, because a check that a
+hint is *absent* proves nothing unless the same hint is *found* once it has been
+revealed ([ADR 0022](docs/adr/0022-counter-examples-are-run-against-the-bug-they-name.md)).
+
+Three things to know before relying on it:
+
+- **It is a snapshot.** Run another command and the paste is stale; prepare it
+  again.
+- **It is not recorded.** A revealed hint counts against the grade the tool
+  suggests, because the tool showed it to you. It cannot know whether you pasted
+  this anywhere, so it does not pretend to — which means "passed, with a model
+  talking me through it" is scheduled like "passed". The grade is yours to
+  correct.
+- **It repeats what your commands printed**, and `git push` prints the path of
+  the fixture's remote, which has your username in it. Read the paste before you
+  send it.
+
+An interview that is still open has no such panel, and `practice context`
+refuses it: a model asked for a nudge is a hint by another route.
+[ADR 0023](docs/adr/0023-the-tutor-context-is-what-the-solver-has-seen.md) has
+the alternatives, including the better tutor that was turned down — one that is
+handed the answer and told not to say it.
 
 ## What to practise today
 
@@ -615,7 +669,8 @@ src/practice/
 │   ├── checks/      the 20 git assertions, pure over a read-only port
 │   ├── drills/      the 10 SQL assertions, pure over a second read-only port
 │   └── scheduling/  SM-2 and FSRS behind one port, and the grade read off an attempt
-├── application/   use cases over ports, the kind registry, graph layout, progress
+├── application/   use cases over ports, the kind registry, graph layout, progress,
+│                  and the tutor bundle
 ├── adapters/
 │   ├── sandbox/     builds a repository, runs commands in it, opens your editor
 │   ├── git/         reads one back: GitRepoQuery, ScenarioGrader

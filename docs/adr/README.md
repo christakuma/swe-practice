@@ -44,6 +44,7 @@ an afternoon do not need one.
 | [0020](0020-interview-mode-withdraws-affordances-it-cannot-contain.md) | Interview mode withdraws affordances it cannot contain | accepted |
 | [0021](0021-content-packs-install-rather-than-mount.md) | A content pack is installed to a directory, not mounted as a library | accepted |
 | [0022](0022-counter-examples-are-run-against-the-bug-they-name.md) | Counter-examples are run against the bug they name | accepted |
+| [0023](0023-the-tutor-context-is-what-the-solver-has-seen.md) | The tutor context is a projection of what the solver has already seen | accepted |
 
 0022 is the odd one in this set: the only record here about **how the content is
 authored** rather than how the code is arranged. It exists because Phase 17's

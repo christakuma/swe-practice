@@ -4,7 +4,7 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** **v1.0.0, and five stretch items taken — Phases 13 through 17.**
+> **Status:** **v1.0.0, and six stretch items taken — Phases 13 through 18.**
 > Phases 0–10 built the engine, Phase 11 filled it with 54 exercises, and Phase
 > 12 is the front door and the portfolio artifacts: `uv sync && uv run practice
 > up` is the whole of getting started, and it refuses with an instruction rather
@@ -245,8 +245,35 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > worker, so adding katas moves the floor. The gated surface is untouched,
 > because 53 katas put nothing inside it.
 >
+> **Phase 18 is the sixth, and the first that was asked for rather than chosen**
+> — a way to put the attempt you are stuck on in front of an AI. A button in the
+> workbench, or `practice context`, turns an attempt into text to paste into a
+> chat: the task, every command and what it printed, the hints revealed and the
+> repository as it stands, under a prompt asking the model to tutor rather than
+> answer. The app still talks to nothing; it prepares a paste.
+>
+> **Nothing new is tracked, and that is the finding rather than a shortcut.**
+> The sketch that came with the request was a recorder. `Attempt` has been one
+> since Phase 1 and `InspectRepository` has read the live repository through the
+> grading port since Phase 8, so the phase is a projection of state the
+> application already owned, and the whole design is what the projection leaves
+> out. **That boundary is a type, not an instruction**
+> ([ADR 0023](adr/0023-the-tutor-context-is-what-the-solver-has-seen.md)):
+> `TutorContext` has no field for a hint nobody revealed, for the author's notes
+> or for a check, so the renderer cannot leak what it was never handed, and
+> `tests/content/test_tutor_context.py` holds all 115 exercises to it — each
+> absence paired with the presence that proves the needle could have matched.
+> The better tutor, handed the answer and told not to say it, was the closest
+> alternative and was turned down.
+>
+> **And one thing nobody went looking for.** Every exercise carries a `notes.md`
+> that `practice validate` requires to be non-empty, the README calls the notes
+> "the product", and **no template and no command had ever printed one.** The
+> post-mortem bundle is the first surface in the application that shows an
+> author's notes to the person who just finished the exercise.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 17 (the Blind 75 fill-in), 2026-10-05
+> · **Last phase:** 18 (the tutor context), 2026-10-06
 
 ---
 
@@ -2490,6 +2517,62 @@ a statement this phase is entitled to make. The critical path did move —
 `tests/content/test_katas.py` has overtaken `test_scenarios.py` — and that part
 is a ranking rather than a duration, which is why it survives the noise.
 
+### Phase 18 — The tutor context: an attempt, projected for somebody else to read · **1 session**
+
+The sixth stretch item, and like Phase 17 it is not on Phase 13's menu. The
+request was *an easy way to ask an AI about the scenario I am in*, with a sketch
+attached — a JSON file that tracks what you do as you go, with a prompt in it
+that makes a chat model a tutor.
+
+**The planning question was what there was left to build, and the answer was
+less than the sketch assumed.** `Attempt.events` has held every command with its
+output and every hint with its index since Phase 1, because the process
+assertions and the grade suggestion read it. `InspectRepository` has read the
+live repository through the grading port since Phase 8. So nothing needed
+tracking. The phase is a *projection* — one use case and a renderer — and the
+whole of the design is what the projection leaves out.
+
+**Commits** — seven, in dependency order
+1. `feat(domain): let the attempt policy say whether a tutor is on offer`
+2. `feat(application): project an attempt into what its solver has already seen`
+3. `feat(application): render the tutor context as markdown and json`
+4. `feat(cli): print the tutor context for an attempt`
+5. `feat(web): copy the tutor context from the workbench`
+6. `test: hold every exercise to the spoiler boundary, and ask mid-scenario end to end`
+7. `docs: close phase 18 with ADR 0023`
+
+**Exit criteria.**
+
+| Criterion | Met by |
+|---|---|
+| A bundle exists for every exercise kind, from both surfaces | `tests/web/test_tutor.py` for the workbench panel, `tests/integration/test_cli_context.py` for `practice context` |
+| An open attempt's bundle holds no hint nobody revealed, no notes and no check | `tests/content/test_tutor_context.py`, parametrized over all 115 exercises |
+| Each of those absences could have been a presence | the same file: a hint is found verbatim once revealed, and the notes and every check label once a verdict exists (ADR 0022) |
+| A kata's hidden suite is not reachable | `test_a_katas_hidden_suite_is_not_reachable_at_all`, over all 83 katas |
+| The bundle is the attempt at the moment it is asked for | `tests/e2e/test_ask_for_help_mid_scenario.py` — four bundles across one real attempt |
+| The repository a tutor is told about is the one the panel shows | `test_an_open_scenario_carries_the_repository_the_panel_shows`, by equality with `InspectRepository` |
+| An open interview is refused on every surface, and a finished one is not | `tests/unit/application/test_export_tutor_context.py`, plus one refusal each in the web and CLI suites |
+| Exporting writes nothing | `test_exporting_records_nothing_on_the_attempt`, `test_preparing_records_nothing` |
+| An addition rather than a change | `tests/unit/test_architecture.py` is unchanged; no port, no adapter, no migration and no dependency |
+
+**The one change to code that already existed** is `_view` in
+`inspect_repository.py` becoming the public `view_of`, so that the tutor and
+the repo state panel read one repository one way. Everything else under `src/`
+is new files, one property on `AttemptPolicy`, one on `Services`, a command, a
+route and a sentence in the interview banner.
+
+**What the menu's *Touches* column would have said, had this been on it:** a
+domain property, an application use case and a view model, two interface
+surfaces. That is what it was. The cheapness is not luck — it is Phase 1's
+decision to keep a full event log and Phase 8's to inspect through the grading
+port, both made for other reasons, paying for a feature neither anticipated.
+
+**Six findings, all in §16.** The author's notes had never been shown anywhere;
+the reference solution was already unreachable from the application layer; a
+pipe on Windows would have raised on 96 of the exercises; the first version of
+the test for that could not fail; the copy button's promise depends on window
+focus; and a pasted transcript carries the path of the fixture's remote.
+
 ---
 
 ## 12. Architecture decision records
@@ -2523,6 +2606,7 @@ changed"* is worth more than any code sample.
 | [0020](adr/0020-interview-mode-withdraws-affordances-it-cannot-contain.md) | Interview mode withdraws affordances it cannot contain | accepted |
 | [0021](adr/0021-content-packs-install-rather-than-mount.md) | A content pack is installed to a directory, not mounted as a library | accepted |
 | [0022](adr/0022-counter-examples-are-run-against-the-bug-they-name.md) | Counter-examples are run against the bug they name | accepted |
+| [0023](adr/0023-the-tutor-context-is-what-the-solver-has-seen.md) | The tutor context is a projection of what the solver has already seen | accepted |
 
 ---
 
@@ -5038,3 +5122,104 @@ evidence the expensive part of a kata is not the solution but the adversarial
 test and the oracle that proves it discriminates. Another 87 of those is a far
 larger commitment than the count suggests, and the gap-driven rule is the one to
 re-apply rather than the list.
+
+**2026-10-06 — Phase 18: the tutor context, and a feature that needed no new
+tracking.** One session. The request was a way to ask an AI about the scenario
+in progress, sketched as a JSON file recording actions as they happen with a
+tutor prompt inside it. What shipped is a use case, a renderer and two
+surfaces, and
+[ADR 0023](adr/0023-the-tutor-context-is-what-the-solver-has-seen.md) has the
+decision. The findings are below, in the order they turned up.
+
+**The recorder already existed, so the phase was a projection.** `Attempt` has
+kept every command with its exit code and output, and every hint with its index,
+since Phase 1; `InspectRepository` has read the live repository through
+`RepoQuery` since Phase 8. Both were built for other reasons — the process
+assertions and the grade suggestion for the first, the repo state panel for the
+second. `ExportTutorContext` takes the same four ports as `InspectRepository`
+and adds no port, no adapter, no migration and no dependency. The one change to
+code that already existed is `_view` becoming the public `view_of`.
+
+**The reference solution was already unreachable, and the rest was not.** The
+plan set out to keep the answer out of the bundle and found a third of the job
+done: `KataSpec.reference` and `GitScenarioSpec.reference` are *filenames*, the
+domain never holds a path, and no port a use case sees can open one. What an
+`Exercise` does hold is every hint, the notes and the check list — so the
+boundary had to be drawn in the DTO. `TutorContext` is the only type in
+`application/dto.py` that does not carry the `Exercise` whole, and its docstring
+says the module's own "thin on purpose" rule is being broken deliberately.
+
+**The author's notes had never been shown to anyone.** Found while deciding
+whether a post-mortem bundle should include them: `exercise.notes` is read in
+exactly one place under `src/`, which is `validation.py` checking it is not
+empty. 115 exercises have a `notes.md`, the README says the notes are "the
+product", and no template and no CLI command prints one. The bundle for a graded
+attempt is now the first place they appear. This is a gap in the product that
+long predates the phase, and the phase only half closes it: the verdict page
+still does not show the notes, and it should.
+
+**`practice context | clip` would have raised on 96 of the 115 exercises.**
+Python encodes a piped stdout in the console code page, cp1252 has no arrow and
+96 `exercise.yaml` files hold a character it cannot write. It did not fail on
+this machine, where stdout is UTF-8, which is exactly why it would have shipped.
+The command now writes UTF-8 bytes itself when it is not on a console. That
+fixes the half it controls: Windows PowerShell re-decodes a native command's
+output in its own code page before `Set-Clipboard` sees it, so `--output FILE`
+exists for the half it does not.
+
+**The first test for that could not fail, and ADR 0022 is why it was caught.**
+It ran the command under `CliRunner` and asserted the captured bytes decoded as
+UTF-8 — which `CliRunner` guarantees whichever way the command writes, because
+its fake stdout *is* UTF-8. The rewritten test runs under
+`CliRunner(charset="cp1252")` against an exercise whose task holds an em dash,
+and was then run against the bug: with the encoding left to the stream it fails
+with `UnicodeDecodeError` on a lone `0x97`. Four mutations were run this phase
+and all four were killed — that one, and three of the use case against the
+library-wide suite (notes always: 115 failures; hints appended to the prompt:
+230; the hidden suite read instead of the stub: 83).
+
+**"Is not in the bundle" is a claim that cannot fail on its own.** The same
+lesson in a second place. If the renderer wrapped a hint differently from how
+the exercise stores it, `hint not in text` would pass for a bundle with every
+hint printed in it. So `tests/content/test_tutor_context.py` pairs each absence
+with a presence: the first hint is found verbatim once revealed, and the notes
+and every check label once a verdict exists. Parametrized per kind rather than
+skipped, which is `test_library.py`'s rule and was broken in the first draft
+with 32 skip lines.
+
+**Two things only pressing the button could find.** The asynchronous clipboard
+API rejects in a document that is not focused, which is the ordinary state of
+an embedded browser pane, so the handler tries `execCommand` next and failing
+that leaves the text selected and says so. And `git push` to the fixture's
+remote prints the remote's absolute path, which holds the Windows username; the
+log records it and the bundle repeats it into a chat. The first is handled. The
+second is recorded as a cost in ADR 0023 and in the README, and not fixed: the
+place that could rewrite the path is the sandbox, and a renderer guessing at it
+would be the wrong layer.
+
+**What was verified and what was not.** Both surfaces were driven by hand
+against real attempts: a git scenario through the CLI and the workbench, and a
+kata in the workbench with source typed into CodeMirror and found in the
+bundle. The copy button's *fallback* was observed. Its success path was not —
+the pane it was pressed in never had focus — so "Copied." is untested by
+anything but reading the code.
+
+**The grade suggestion cannot see a tutor, and that is accepted.** A revealed
+hint is recorded because the tool showed it; a copied bundle is not, because the
+tool cannot know it was pasted. So a pass with a model's help is scheduled like
+a pass. ADR 0023's first **Revisit if** names what would change that, and notes
+that Phase 19's MCP server shifts the argument: a tool call is an event the
+application can vouch for.
+
+**Final numbers.** 4,967 passing and one skipped, 637 more than Phase 17 — 544
+of them the library-wide boundary suite, at four cases per exercise plus one per
+kata. 100% statement and branch coverage over a gated surface of **2,618
+statements and 554 branches**, against Phase 17's 2,430 and 500 — and unlike the
+last two phases the delta *is* this one's, all 188 statements of it:
+`git diff` shows nothing else under `domain/` or `application/` since Phase 17
+closed. `application/tutor.py`, `export_tutor_context.py`, the DTO and one
+policy property are all inside the gate, which is where a spoiler boundary
+belongs. `practice validate` reports 115 exercises, all valid, and `practice
+fixtures --check` 24 fixtures matching — both unchanged, because no content was
+touched. The gate itself took 15m29s, on one run, which by Phase 17's own
+finding is not a measurement.
