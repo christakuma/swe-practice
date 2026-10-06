@@ -55,6 +55,11 @@ dev = [
     # loadfile` keeps a file's module-scoped workspaces and memoised verdicts
     # on one worker instead of rebuilt on each.
     "pytest-xdist>=3.6",
+    # The same package as the `mcp` extra below, here so that `uv sync` on a
+    # clean checkout -- which is what CI does, and which installs no extras --
+    # can still import it. Without this line the suite would pass on the
+    # machine that ran `uv sync --extra mcp` once and fail everywhere else.
+    "mcp>=2.3",
 ]
 
 # `practice validate` runs in CI and `practice` is the second driving adapter
@@ -62,6 +67,23 @@ dev = [
 # is a valid entry point as-is.
 [project.scripts]
 practice = "practice.interface.cli.main:app"
+
+# The only extra, and it is an extra rather than a dependency on purpose
+# (Phase 19, ADR 0024). `practice mcp` serves an attempt to an MCP client over
+# stdio, and the SDK it is built on carries an HTTP client, an auth stack and
+# `cryptography` -- thirteen packages a solver who never asks an AI anything
+# should not have to install, and the first thing in this file that *could*
+# open a socket. The server uses none of that: stdio only, no network call.
+# But "nothing here may phone home" above is a claim about what is installed,
+# not about what is called, so the base set stays as it was and this is opted
+# into with `uv sync --extra mcp`.
+#
+# It does grow `uv.lock`, which the header of this file hoped a later phase
+# would not need to: thirteen packages added, and no existing pin moved.
+[project.optional-dependencies]
+mcp = [
+    "mcp>=2.3",
+]
 
 [build-system]
 requires = ["hatchling"]
