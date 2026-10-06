@@ -5,7 +5,7 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Eighteen of them, in five groups.
+Nineteen of them, in six groups.
 
 **Four about solving**, two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
@@ -45,6 +45,13 @@ pasted into a chat with a model or fetched by one, and the decision in it is
 entirely about what to leave out: the hints not yet revealed, the author's
 notes, and the check list that names the answer. It shares `view_of` with
 `InspectRepository` for the reason that one exists.
+
+**One for a reader that chooses its own arguments.** `ReadAttemptFile` is
+Phase 19's, and the first use case here no person invokes: an MCP client
+calls it mid-conversation with a path and a revision a model picked. It reads
+one file from an open attempt through `RepoQuery`, which is read-only by
+construction, and treats both arguments the way the sandbox treats a typed
+command line. It refuses a kata's hidden suite by name.
 
 **One that looks like display and is not.** `RevealHint` renders a fragment, and it
 writes: revealing a hint is something the solver *did* in the exercise, recorded in
@@ -95,6 +102,7 @@ from practice.application.use_cases.inspect_repository import InspectRepository
 from practice.application.use_cases.list_open_attempts import ListOpenAttempts
 from practice.application.use_cases.offer_review import OfferReview
 from practice.application.use_cases.open_workbench import OpenWorkbench
+from practice.application.use_cases.read_attempt_file import ReadAttemptFile
 from practice.application.use_cases.resume_attempt import ResumeAttempt
 from practice.application.use_cases.reveal_hint import RevealHint
 from practice.application.use_cases.reveal_solution_file import RevealSolutionFile
@@ -115,6 +123,7 @@ __all__ = [
     "ListOpenAttempts",
     "OfferReview",
     "OpenWorkbench",
+    "ReadAttemptFile",
     "ResumeAttempt",
     "RevealHint",
     "RevealSolutionFile",

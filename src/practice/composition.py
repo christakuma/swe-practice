@@ -93,6 +93,7 @@ from practice.application.use_cases import (
     ListOpenAttempts,
     OfferReview,
     OpenWorkbench,
+    ReadAttemptFile,
     ResumeAttempt,
     RevealHint,
     RevealSolutionFile,
@@ -304,6 +305,23 @@ class Services:
         asked for a fresh one, so nothing on this path can run a solver's code.
         """
         return ExportTutorContext(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            repo_query=self.repo_query,
+        )
+
+    @property
+    def read_attempt_file(self) -> ReadAttemptFile:
+        """The same four ports again, and the third use case to share them.
+
+        Worth noticing which port is *not* here: there is no way from this use
+        case to `Workspace.run`. It reads a repository through `repo_query` and
+        a kata's one file through the workspace, so a tutor that can call it
+        can look and cannot touch -- which is a property of the wiring rather
+        than of anybody's restraint.
+        """
+        return ReadAttemptFile(
             content=self.content,
             attempts=self.attempts,
             provisioner=self.provisioner,

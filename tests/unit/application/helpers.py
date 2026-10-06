@@ -31,6 +31,7 @@ from practice.application.use_cases import (
     ListOpenAttempts,
     OfferReview,
     OpenWorkbench,
+    ReadAttemptFile,
     ResumeAttempt,
     RevealHint,
     RevealSolutionFile,
@@ -78,6 +79,7 @@ __all__ = [
     "a_grade_review",
     "a_list_open_attempts",
     "a_passing_verdict",
+    "a_read_attempt_file",
     "a_resume_attempt",
     "a_reveal_hint",
     "a_reveal_solution_file",
@@ -413,6 +415,18 @@ def an_export_tutor_context(world: World) -> ExportTutorContext:
     repository a tutor is told about is the one the panel shows.
     """
     return ExportTutorContext(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        repo_query=BuilderRepoQueryFactory(world.repo),
+    )
+
+
+def a_read_attempt_file(world: World) -> ReadAttemptFile:
+    """The same four ports as `an_export_tutor_context`. No clock, and nothing
+    that can run a command.
+    """
+    return ReadAttemptFile(
         content=world.content,
         attempts=world.attempts,
         provisioner=world.provisioner,
