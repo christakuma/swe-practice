@@ -227,11 +227,17 @@ A phase ends with a `docs:` commit that:
   controlling the precision of what you return is the lesson.
 - **A counter-example you have not executed against the bug it names is a
   guess** ([ADR 0022](docs/adr/0022-counter-examples-are-run-against-the-bug-they-name.md)).
-  Phase 17 wrote nine adversarial tests that were wrong about their own point,
-  and the content suite caught none of them — it proves the reference passes and
-  the stub fails, which all nine did. Two could not fail at all: a mismatching
-  character inserted at the *exact centre* of a palindrome, and an expected
-  length hand-counted with the same arithmetic the test existed to check. So:
+  Phase 17 wrote sixteen tests and claims that were wrong about their own point,
+  and the split is the useful part. The content suite caught the **seven wrong
+  expected values** at once, because the reference disagreed. It could not see
+  the **six that could not fail or did not discriminate** — it proves only that
+  the reference passes and the stub fails, which all six satisfied — and three
+  of those six were found by a code review *after* ADR 0022 was written. Two
+  could not fail at all: a mismatching character inserted at the *exact centre*
+  of a palindrome, and an expected length hand-counted with the same arithmetic
+  the test existed to check. Three were timing claims that no longer held at the
+  size chosen, which is its own trap: **an asymptotic argument is not a
+  performance claim until the constant is measured.** So:
   write the buggy variant in a scratch script and watch it fail, and where
   expected values are computed by hand, check them against an oracle in bulk
   rather than by eye. An expected value that needs the code's own arithmetic is
