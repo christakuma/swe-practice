@@ -4,7 +4,7 @@ A second driving adapter over the same core as the web app, which is the point
 of it: if the core were secretly coupled to HTTP, this would not work. It also
 keeps `practice validate` runnable in CI without booting a server (PLAN.md §2).
 
-Eleven commands, in four groups.
+Twelve commands, in five groups.
 
 **One front door.** `up` is the command a stranger runs: it checks what a fresh
 machine is missing, migrates the database, opens a browser and then serves. It
@@ -42,6 +42,14 @@ resume-or-abandon prompt §8.1 requires, in the form a terminal can have one: a 
 and two commands rather than an interactive question, because a CLI that blocked on
 a prompt would be unusable from a script and `solve` would no longer work in CI.
 
+**One for asking somebody else.** `context` is Phase 18's: it prints an attempt
+as its solver has seen it -- the task, every command and what it printed, the
+hints revealed, the repository as it stands -- under a prompt that turns a chat
+model into a tutor rather than an answer key. It is the same text the
+workbench's copy button produces, from the same use case, and it is the one
+command here whose stdout is meant for a program rather than a person, which is
+why its refusals go to stderr when nothing else's do.
+
 **An attempt is named by its full uuid, not by the short id.** `attempts` prints
 ids in full for exactly that reason. Accepting a prefix would need a
 `find_by_prefix` on the `AttemptRepository` port, which is a method added for one
@@ -70,6 +78,9 @@ would be worse at that job. Picking an attempt up across processes is what
 
 from __future__ import annotations
 
+import json
+import sys
+from enum import StrEnum
 from importlib.metadata import version
 
 # Imported at runtime, not under TYPE_CHECKING: Typer reads these annotations
@@ -106,6 +117,7 @@ from practice.adapters.sandbox.fixture_lock import (
 )
 from practice.adapters.sandbox.fixture_runner import FixtureError
 from practice.application.errors import ApplicationError
+from practice.application.tutor import as_json, render_markdown
 from practice.composition import build_services
 from practice.config import (
     CONTENT_ROOT_ENV,
@@ -154,6 +166,7 @@ __all__ = [
     "abandon",
     "app",
     "attempts",
+    "context",
     "fixtures",
     "gc",
     "pack",
@@ -206,6 +219,20 @@ _OUTCOME_COLOURS: Final[Mapping[Outcome, str]] = {
 
 #: Binary, because the thing being measured is disk usage.
 _KB = 1024
+
+
+class ContextFormat(StrEnum):
+    """How `practice context` writes an attempt down. Values are the flag's.
+
+    An enum rather than a `--json` switch because Typer turns it into a checked
+    choice with both names in the help, and because the default is the thing
+    worth being able to read off the signature: Markdown, since the reader is a
+    chat model by way of a clipboard (`application/tutor.py`).
+    """
+
+    MARKDOWN = "markdown"
+    JSON = "json"
+
 
 #: How many lines of one command's output a scenario transcript shows. Enough
 #: for a `git status` or a short `git log`, few enough that a `--all` log
@@ -1232,6 +1259,130 @@ def abandon(
     typer.secho(f"{_OK}abandoned {abandoned.attempt.id.short}  {label}")
     typer.echo(f"{_INDENT}{_describe_attempt(abandoned.attempt).strip()}")
     typer.echo(f"{_INDENT}workspace deleted; the attempt is kept in your history.")
+
+
+@app.command()
+def context(
+    attempt: Annotated[
+        str,
+        typer.Argument(help="The attempt id, as `practice attempts` prints it."),
+    ],
+    output_format: Annotated[
+        ContextFormat,
+        typer.Option(
+            "--format",
+            "-f",
+            help="Markdown to paste into a chat, or JSON to do something else with.",
+        ),
+    ] = ContextFormat.MARKDOWN,
+    source: Annotated[
+        Path | None,
+        typer.Option(
+            "--source",
+            "-s",
+            help=(
+                "Kata or SQL drill: your solution as it stands, if it is not the "
+                "file in the workspace."
+            ),
+            exists=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Write to this file as UTF-8 instead of printing.",
+            dir_okay=False,
+            writable=True,
+        ),
+    ] = None,
+    content: Annotated[
+        Path | None,
+        typer.Option(
+            "--content-root",
+            envvar=CONTENT_ROOT_ENV,
+            help="The exercise library the attempt refers to.",
+        ),
+    ] = None,
+    workspaces: Annotated[
+        Path | None,
+        typer.Option(
+            "--workspace-root",
+            envvar=WORKSPACE_ROOT_ENV,
+            help="Where attempt workspaces live. Defaults to the user cache.",
+        ),
+    ] = None,
+    db: Annotated[
+        Path | None,
+        typer.Option(
+            "--database",
+            envvar=DATABASE_PATH_ENV,
+            help="The attempt database. Defaults to the user data directory.",
+        ),
+    ] = None,
+) -> None:
+    """Print an attempt as you have seen it, ready to paste into a chat with an AI.
+
+    The task, every command you ran and what it printed, the hints you revealed
+    and the repository as it stands, under a prompt asking the model to tutor
+    rather than answer. Hints you have not revealed, the author's notes and the
+    list of checks are left out while the attempt is open, so there is nothing
+    in the paste for a model to give away; once it is graded, the verdict and
+    the notes are added and the same command is a post-mortem.
+
+    Nothing is recorded. A revealed hint is, because the tool showed it to you;
+    it cannot know whether what this printed was ever pasted anywhere, so it
+    does not pretend to.
+
+    **Refusals go to stderr, which no other command here does.** This is the one
+    command whose stdout is piped somewhere -- a clipboard, a file -- and a
+    refusal printed to it would be pasted into a chat as though it were the
+    attempt. An interview that is still open is the refusal worth knowing
+    about: a model asked for a nudge is a hint by another route.
+
+    **Piped, it is UTF-8 bytes with LF endings, whatever the machine is set to.**
+    Python's own stdout would encode a pipe in the console code page, and 96 of
+    the library's exercises hold a character cp1252 cannot write -- so the
+    command that exists to be piped would be the one that raised when it was.
+
+    `--output` is for the half of that this cannot fix. Windows PowerShell
+    decodes a native command's output in *its* code page before `Set-Clipboard`
+    ever sees it, so an em dash can still arrive as three wrong characters; a
+    file written here is the same bytes with nothing in between.
+    """
+    services = build_services(
+        content=content.resolve() if content is not None else None,
+        workspaces=workspaces.resolve() if workspaces is not None else None,
+        database=db.resolve() if db is not None else None,
+    )
+
+    try:
+        bundle = services.export_tutor_context(
+            _attempt_id(attempt),
+            draft=source.read_text(encoding="utf-8") if source is not None else None,
+        )
+    except (ApplicationError, DomainError) as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
+
+    text = (
+        json.dumps(as_json(bundle), indent=2, ensure_ascii=False) + "\n"
+        if output_format is ContextFormat.JSON
+        else render_markdown(bundle)
+    )
+    if output is not None:
+        output.write_text(text, encoding="utf-8", newline="\n")
+        typer.secho(f"{_OK}wrote {output}", err=True)
+        return
+    if sys.stdout.isatty():
+        # A console, where `echo` writes Unicode through the platform's own
+        # API and the code page never comes into it.
+        typer.echo(text, nl=False)
+        return
+    typer.get_binary_stream("stdout").write(text.encode("utf-8"))
 
 
 @app.command()
