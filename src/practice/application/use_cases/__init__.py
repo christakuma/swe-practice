@@ -5,7 +5,7 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Seventeen of them, in five groups.
+Eighteen of them, in five groups.
 
 **Four about solving**, two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
@@ -25,7 +25,8 @@ Notice that none of the four is kind-specific. The lifecycle of an attempt is th
 same whether it is a kata or a git scenario, and the only use cases that have ever
 had to care about the difference are the ones that grade.
 
-**Two about display**, added with the web app. `OpenWorkbench` (Phase 7) loads an
+**Three about display**, two of them added with the web app. `OpenWorkbench`
+(Phase 7) loads an
 attempt for a *page* rather than for a session, which is a question the CLI never
 had to ask: `practice submit` prints a verdict and the attempt is done with, while
 `/attempt/{id}` is a tab someone left open across that submission and has to render
@@ -37,6 +38,13 @@ use cases wearing one name.
 It answers the repo state panel *through the same `RepoQuery` the grader reads
 through*, so the panel a solver decides to submit from cannot disagree with the
 verdict they then get.
+
+`ExportTutorContext` is Phase 18's, and it is display for a reader that is not
+a person. It projects an attempt into what its solver has already seen, to be
+pasted into a chat with a model or fetched by one, and the decision in it is
+entirely about what to leave out: the hints not yet revealed, the author's
+notes, and the check list that names the answer. It shares `view_of` with
+`InspectRepository` for the reason that one exists.
 
 **One that looks like display and is not.** `RevealHint` renders a fragment, and it
 writes: revealing a hint is something the solver *did* in the exercise, recorded in
@@ -81,6 +89,7 @@ decision in the composition root about which of them owns the repositories.
 
 from practice.application.use_cases.abandon_attempt import AbandonAttempt
 from practice.application.use_cases.collect_workspaces import CollectWorkspaces
+from practice.application.use_cases.export_tutor_context import ExportTutorContext
 from practice.application.use_cases.grade_review import GradeReview
 from practice.application.use_cases.inspect_repository import InspectRepository
 from practice.application.use_cases.list_open_attempts import ListOpenAttempts
@@ -100,6 +109,7 @@ from practice.application.use_cases.watch_solution_file import WatchSolutionFile
 __all__ = [
     "AbandonAttempt",
     "CollectWorkspaces",
+    "ExportTutorContext",
     "GradeReview",
     "InspectRepository",
     "ListOpenAttempts",

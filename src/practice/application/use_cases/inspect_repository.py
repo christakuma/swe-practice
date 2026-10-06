@@ -59,7 +59,7 @@ if TYPE_CHECKING:
         SandboxProvisioner,
     )
 
-__all__ = ["InspectRepository"]
+__all__ = ["InspectRepository", "view_of"]
 
 #: Where a ref of each kind lives. Full names, because that is what `refs()`
 #: answers with and what the assertions read; the panel shortens them for display
@@ -112,15 +112,22 @@ class InspectRepository:
                 f"disk, so there is nothing to inspect; abandon it and start again"
             )
 
-        return _view(self.repo_query(workspace))
+        return view_of(self.repo_query(workspace))
 
 
-def _view(repo: RepoQuery) -> RepoView:
+def view_of(repo: RepoQuery) -> RepoView:
     """Every question the panel asks, through one cached query instance.
 
     `refs()` is asked once and split three ways rather than asked three times,
     which matters because the real implementation caches per instance and a reader
     should not have to know that to see why this is cheap.
+
+    **Public as of Phase 18, for the reason this module exists.** The tutor
+    context describes the same repository to a model that the panel shows the
+    solver, and `ExportTutorContext` reads it through here rather than through a
+    second grouping of its own -- so a tutor cannot be told the worktree is clean
+    while the panel beside it says otherwise. Shared as a function rather than by
+    one use case holding the other, which is the call `load_offer` already made.
     """
     refs = repo.refs()
     head_ref = repo.head_ref()

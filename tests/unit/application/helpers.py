@@ -25,6 +25,7 @@ from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
+    ExportTutorContext,
     GradeReview,
     InspectRepository,
     ListOpenAttempts,
@@ -89,6 +90,7 @@ __all__ = [
     "a_watch_solution_file",
     "an_abandon_attempt",
     "an_environment",
+    "an_export_tutor_context",
     "an_inspect_repository",
     "an_offer_review",
     "an_open_workbench",
@@ -399,6 +401,18 @@ def an_inspect_repository(world: World) -> InspectRepository:
     the one that makes the panel and the grader read the same repository.
     """
     return InspectRepository(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        repo_query=BuilderRepoQueryFactory(world.repo),
+    )
+
+
+def an_export_tutor_context(world: World) -> ExportTutorContext:
+    """The same four ports as `an_inspect_repository`, and the same factory: the
+    repository a tutor is told about is the one the panel shows.
+    """
+    return ExportTutorContext(
         content=world.content,
         attempts=world.attempts,
         provisioner=world.provisioner,

@@ -17,15 +17,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from practice.domain.attempt import AttemptStatus
+
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from datetime import date
     from pathlib import Path
 
     from practice.application.graph import CommitGraph
-    from practice.domain.attempt import Attempt, CommandRun
-    from practice.domain.exercise import Exercise, Hint
-    from practice.domain.ids import Sha
+    from practice.domain.attempt import (
+        Attempt,
+        AttemptMode,
+        CommandRun,
+        HintRevealed,
+    )
+    from practice.domain.exercise import Difficulty, Exercise, ExerciseKind, Hint
+    from practice.domain.ids import ExerciseId, Sha
     from practice.domain.ports import Workspace, WorkspaceSummary, WorktreeStatus
     from practice.domain.review import Grade, ReviewCard
     from practice.domain.scheduling import GradeSuggestion
@@ -45,6 +52,7 @@ __all__ = [
     "Reviewed",
     "StartedAttempt",
     "Submission",
+    "TutorContext",
     "Workbench",
     "WorkspaceState",
     "short_ref",
@@ -382,6 +390,65 @@ def short_ref(name: str) -> str:
         if name.startswith(prefix):
             return name.removeprefix(prefix)
     return name
+
+
+# --- the tutor -------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class TutorContext:
+    """One attempt, as its solver has seen it — and nothing they have not.
+
+    **The only DTO here that is deliberately *not* thin, and the module
+    docstring's rule is broken on purpose.** Every other one carries the
+    `Attempt` and the `Exercise` whole and lets the adapter choose what to show.
+    This one is going to be pasted into a chat with a model and asked for help,
+    so what it carries is the spoiler boundary: an `Exercise` holds every hint,
+    the author's notes and the check list that names the answer, and a renderer
+    handed one is a renderer one careless line away from printing them.
+
+    So the fields are named one at a time, and **the boundary is what is
+    missing**. There is no `hints` tuple, only the `HintRevealed` events the
+    attempt recorded and a count of what is left. There is no check list. A
+    renderer cannot leak what it was never given, which is a stronger claim
+    than a prompt asking a model not to repeat something, and the one
+    `tests/content/test_tutor_context.py` holds every shipped exercise to.
+
+    **`verdict` and `notes` arrive together or not at all.** Both are `None`
+    until the attempt has been graded: a verdict's reports carry each check's
+    label and explanation, and the notes are the author's own write-up, so
+    either one mid-attempt is the answer. Once it is graded they are the whole
+    point — what is being asked for then is a post-mortem. An abandoned attempt
+    gets neither, because nothing graded it and it is about to be retried.
+
+    `events` excludes `SolutionSaved`. A kata's source is `source`, once, as it
+    stands now; every intermediate snapshot would be the same file six times.
+
+    `repo` is `None` for anything but an open git scenario with its workspace
+    still on disk — a kata has no repository, and submission disposes of a
+    scenario's (§8.1).
+    """
+
+    exercise_id: ExerciseId
+    title: str
+    kind: ExerciseKind
+    difficulty: Difficulty
+    prompt: str
+    status: AttemptStatus
+    mode: AttemptMode
+    allowed_commands: tuple[str, ...]
+    commands_left: int
+    hints_left: int
+    events: tuple[CommandRun | HintRevealed, ...] = ()
+    repo: RepoView | None = None
+    source: str | None = None
+    language: str | None = None
+    verdict: Verdict | None = None
+    notes: str | None = None
+
+    @property
+    def is_finished(self) -> bool:
+        return self.status is not AttemptStatus.ACTIVE
 
 
 # --- scheduling ------------------------------------------------------------

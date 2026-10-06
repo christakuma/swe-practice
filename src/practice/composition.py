@@ -87,6 +87,7 @@ from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
+    ExportTutorContext,
     GradeReview,
     InspectRepository,
     ListOpenAttempts,
@@ -286,6 +287,23 @@ class Services:
         grader and the panel have to share for the two of them to agree.
         """
         return InspectRepository(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            repo_query=self.repo_query,
+        )
+
+    @property
+    def export_tutor_context(self) -> ExportTutorContext:
+        """The same four ports as `inspect_repository`, and for the same reason:
+        the `repo_query` factory is what makes the repository a model is told
+        about the one the grader will read.
+
+        No clock, like every read here -- and no grader, which is the one worth
+        noticing. A tutor is told the verdict an attempt *already has* and never
+        asked for a fresh one, so nothing on this path can run a solver's code.
+        """
+        return ExportTutorContext(
             content=self.content,
             attempts=self.attempts,
             provisioner=self.provisioner,
