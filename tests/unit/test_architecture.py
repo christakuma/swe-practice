@@ -67,6 +67,11 @@ IO_MODULES = frozenset(
         # rule would be a paragraph in a docstring.
         "watchfiles",
         "webbrowser",
+        # Phase 19's, and the second third-party name here. The MCP SDK is a
+        # protocol server with an HTTP client in its tree, so the core may not
+        # import it for the reason it may not import `httpx` -- and a narrower
+        # rule further down says which one package outside the core may.
+        "mcp",
     }
 )
 
@@ -282,6 +287,7 @@ def test_the_detector_catches_an_outward_import(fake_tree: Path, body: str) -> N
         "import os.path",
         "from urllib.request import urlopen",
         "from watchfiles import awatch",
+        "from mcp.server import MCPServer",
     ],
 )
 def test_the_detector_catches_an_io_import(fake_tree: Path, body: str) -> None:
@@ -495,5 +501,84 @@ def test_the_drill_engine_does_not_reach_the_applications_database() -> None:
 
     assert reached == [], (
         "the drill engine must not reach the application's storage:\n"
+        + "\n".join(f"  - {line}" for line in reached)
+    )
+
+
+# --- where the MCP SDK may be used ------------------------------------------
+
+
+#: The only package allowed to import the MCP SDK, which Phase 19 added as an
+#: optional extra (`pyproject.toml` says why it is one). Two things rest on
+#: there being exactly one of these, and they are different things.
+#:
+#: The first is the claim the extra makes. `practice mcp` defers its import of
+#: this package so that every other command loads on an install that never
+#: asked for the SDK, and turns its absence into an instruction. A second
+#: importer anywhere else -- a use case that wanted one of its types, a route
+#: that reached for its error class -- would make that deferral a formality:
+#: the base install would fail at import time, in a module that has nothing to
+#: do with MCP, with a traceback instead of a sentence.
+#:
+#: The second is the same argument the core has always made about HTTP. The
+#: tutor context is a `TutorContext` and a string; the server is one of three
+#: surfaces that render it. If the SDK's vocabulary leaked inward -- a tool
+#: result type on a DTO, say -- the other two surfaces would be carrying a
+#: protocol they do not speak, and `interface/ -> application/` would be a
+#: claim with an exception in it.
+MCP_PACKAGE = "practice.interface.mcp"
+
+MCP_MODULES = frozenset({"mcp", "mcp_types"})
+
+
+def test_only_the_mcp_adapter_imports_the_sdk() -> None:
+    offenders = {
+        module: targets
+        for module, targets in importers_of(MCP_MODULES).items()
+        if not module.startswith(f"{MCP_PACKAGE}.") and module != MCP_PACKAGE
+    }
+
+    assert offenders == {}, (
+        f"the MCP SDK may only be imported under {MCP_PACKAGE}:\n"
+        + "\n".join(
+            f"  - {module} imports {targets}" for module, targets in offenders.items()
+        )
+    )
+
+
+def test_the_mcp_adapter_really_does_import_the_sdk() -> None:
+    """So the rule above cannot pass by there being no server at all."""
+    importers = importers_of(MCP_MODULES)
+
+    assert f"{MCP_PACKAGE}.server" in importers
+
+
+def test_the_mcp_adapter_cannot_reach_a_process_or_the_sandbox() -> None:
+    """The read-only claim, as an import rule.
+
+    `build_server` takes `Services` and calls three use cases, none of which
+    can run a command. The way that stops being true is not a fourth tool on
+    `Services` -- that would have to be written and reviewed -- it is this
+    module importing the sandbox directly to "just read one more thing". An
+    adapter that cannot name `adapters/` cannot do that.
+    """
+    paths = sorted((PACKAGE_ROOT / "interface" / "mcp").rglob("*.py"))
+    assert paths, "the MCP adapter has no modules; this test checks nothing"
+
+    packages = frozenset(
+        module_name(path, SOURCE_ROOT) for path in paths if path.name == "__init__.py"
+    )
+    reached = []
+    for path in paths:
+        module = module_name(path, SOURCE_ROOT)
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for lineno, target in imported_modules(tree, module, packages):
+            if target.startswith("practice.adapters") or (
+                target.split(".", 1)[0] in PROCESS_MODULES
+            ):
+                reached.append(f"{module}:{lineno} imports {target}")
+
+    assert reached == [], (
+        "the MCP adapter must reach the workspace only through use cases:\n"
         + "\n".join(f"  - {line}" for line in reached)
     )
