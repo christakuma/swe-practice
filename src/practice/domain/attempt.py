@@ -328,6 +328,31 @@ class AttemptPolicy:
         """
         return not self.is_interview
 
+    @property
+    def offers_tutor(self) -> bool:
+        """Whether the tool may hand this attempt's history to a tutor.
+
+        **The same kind of clause as `reveals_workspace`, and scoped the same
+        way.** The tutor context (Phase 18) is the attempt as its solver has
+        seen it, arranged to be pasted into a chat with a model; under interview
+        conditions that is a hint by another route, and a mode that withheld the
+        authored hints while offering an unlimited supply of generated ones
+        would be withholding nothing.
+
+        An affordance withdrawn, not a containment: nothing stops a solver
+        describing the exercise to a model themselves, and ADR 0020's argument
+        about what a policy can honestly claim applies unchanged. It is a
+        property here rather than a test in three interface modules because
+        there are three -- the workbench, the CLI and the MCP server -- and a
+        rule each of them restated is a rule one of them would get wrong.
+
+        Only while the attempt is *open*, which is the use case's half of the
+        rule rather than the policy's: a finished interview may be picked over
+        like any other attempt, and the policy does not know whether it is
+        finished.
+        """
+        return not self.is_interview
+
 
 class Attempt:
     """One run at one exercise. Mutable, and the guardian of its own lifecycle.

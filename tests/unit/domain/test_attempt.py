@@ -157,6 +157,7 @@ class TestAttemptPolicy:
         assert policy.is_interview is False
         assert policy.deadline_seconds is None
         assert policy.reveals_workspace is True
+        assert policy.offers_tutor is True
         assert policy.hint_count == 2
 
 
@@ -189,6 +190,17 @@ class TestInterviewPolicy:
         )
 
         assert policy.reveals_workspace is False
+
+    def test_withdraws_the_tutor(self) -> None:
+        """A model asked for a nudge is a hint by another route, and a mode
+        that withheld the authored hints while offering generated ones would be
+        withholding nothing.
+        """
+        policy = AttemptPolicy.for_exercise(
+            a_scenario_exercise(), mode=AttemptMode.INTERVIEW
+        )
+
+        assert policy.offers_tutor is False
 
     def test_keeps_the_command_budget_and_the_allowlist_untouched(self) -> None:
         """An interview that took the console away would not be a harder
