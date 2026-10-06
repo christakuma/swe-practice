@@ -484,6 +484,46 @@ code.path {
   white-space: nowrap;
 }
 
+/* --- the tutor ----------------------------------------------------------- */
+
+/* The third panel in the prompt column, and shaped like the two above it for
+ * the reason `.interview` gives: same slot, same kind of thing. */
+.tutor {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.tutor h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+
+/* Monospace and unwrapped, because it is a transcript with code fences in it
+ * and the reader is checking what they are about to paste, not reading prose.
+ * Resizable downwards only: the column is as wide as it is going to get. */
+.tutor-text {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  white-space: pre;
+  resize: vertical;
+}
+
+.tutor-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
 /* --- hints --------------------------------------------------------------- */
 
 .hints {

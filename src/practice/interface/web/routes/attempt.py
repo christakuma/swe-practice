@@ -25,6 +25,11 @@ and a constant living in either one of them would have to be imported by the
 other, which is the import cycle `attempt` and `console` already avoid by
 pointing one way.
 
+**The tutor panel is drawn here and driven from `routes/tutor.py`**, a fourth
+time and for no new reason: this module owns the page and formats the URL, and
+the endpoint that hands an attempt back as text to paste into a chat lives
+beside the others under it (Phase 18).
+
 **Hint reveal is here rather than in either half**, because hints belong to the
 attempt and not to the exercise kind: a kata has them and a git scenario has them,
 and the panel they appear in is in the shared prompt column. It is the one endpoint
@@ -73,6 +78,7 @@ from practice.interface.web.errors import render_problem
 from practice.interface.web.routes.console import COMMAND_URL, SCENARIO_SUBMIT_URL
 from practice.interface.web.routes.editor import EDITOR_URL, WATCH_URL
 from practice.interface.web.routes.review import REVIEW_URL
+from practice.interface.web.routes.tutor import TUTOR_URL
 from practice.interface.web.vendor import mode_file
 
 if TYPE_CHECKING:
@@ -166,6 +172,10 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 "watch_url": WATCH_URL.format(attempt_id=parsed),
                 "hint_url": HINT_URL.format(attempt_id=parsed),
                 "review_url": REVIEW_URL.format(attempt_id=parsed),
+                # Formatted unconditionally, like the rest. Whether the panel
+                # that posts to it is drawn is the template's question, and it
+                # asks the attempt's policy rather than anything decided here.
+                "tutor_url": TUTOR_URL.format(attempt_id=parsed),
                 # Only for a finished attempt, because `OfferReview` refuses one
                 # with no verdict -- there is nothing to read a grade off. The
                 # template asks the same question to decide which half of the

@@ -57,6 +57,7 @@ from practice.interface.web.routes import (
     editor,
     progress,
     review,
+    tutor,
 )
 from practice.interface.web.security import SameOriginMiddleware
 from practice.interface.web.vendor import static_root
@@ -122,4 +123,7 @@ def create_app(services: Services) -> FastAPI:
     app.include_router(editor.build_router(services, templates))
     # Last, and after both: it is the endpoint under the fragment they return.
     app.include_router(review.build_router(services, templates))
+    # The one endpoint under the workbench that belongs to neither half of it
+    # and changes nothing: the attempt, as text to paste into a chat.
+    app.include_router(tutor.build_router(services, templates))
     return app

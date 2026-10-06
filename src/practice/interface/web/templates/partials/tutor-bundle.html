@@ -1,0 +1,25 @@
+{#
+  The attempt as text, and the button that copies it.
+
+  **A textarea rather than rendered Markdown**, because nobody reads this here:
+  it is on its way to a chat window, and a textarea is the element whose content
+  a browser selects and copies exactly. Read-only so that what is copied is what
+  the server built — an edit made here would be a transcript of something that
+  did not happen.
+
+  No script in this fragment. The copy handler is delegated from the panel that
+  holds it (`partials/tutor.html`), so the swap is plain HTML, like every other
+  fragment in the app.
+
+  The note is the status line the handler rewrites, and it says the one thing
+  that is not obvious until the first stale paste: this is a snapshot, and the
+  next command does not update it.
+#}
+<textarea id="tutor-text" class="tutor-text" rows="10" readonly
+          spellcheck="false">{{ bundle }}</textarea>
+<div class="tutor-actions">
+  <button type="button" id="tutor-copy">Copy</button>
+  <span class="meta" id="tutor-note">
+    A snapshot as of now. Prepare it again after you run something else.
+  </span>
+</div>

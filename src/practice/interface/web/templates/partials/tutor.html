@@ -1,0 +1,103 @@
+{#
+  "Ask an AI", in the prompt column of every exercise kind. Phase 18.
+
+  **It prepares a paste; it does not talk to anything.** The app stays offline
+  (PLAN.md §8.2): the button asks this server for the attempt as text — the task,
+  every command and what it printed, the hints revealed, the repository as it
+  stands — under a prompt that asks a model to tutor rather than answer. Where
+  that text goes next is the solver's business and their clipboard's.
+
+  **What is in it is what has been on this page, and nothing that has not.** The
+  hints not yet revealed, the author's notes and the list of checks are left out
+  by `ExportTutorContext` while the attempt is open, so the line under the button
+  is a statement about the bundle rather than a hope about the model.
+
+  **Not recorded on the attempt**, and the control says so, because the one above
+  it says the opposite. A revealed hint is something the tool showed and can
+  vouch for; whether this was ever pasted anywhere is not something it can know.
+
+  **Wired in script rather than as `hx-post`, for the reason the Submit button
+  is.** A kata's solution lives in CodeMirror, the textarea under it stopped
+  tracking the document when the editor loaded, and a tutor sent the untouched
+  stub would be answering a question nobody asked. `window.practiceEditor` is
+  absent for a git scenario and for a finished attempt, and then no source is
+  sent at all — which the use case reads as "use what you have", not as an empty
+  answer.
+
+  The copy handler is delegated from `#tutor-bundle`, because the button it
+  listens for arrives later in a fragment with no script of its own. It selects
+  the text before asking for the clipboard, so that when the browser refuses —
+  a permission prompt dismissed, an embedded view with no clipboard at all — the
+  fallback is already in place and Ctrl+C does the job. The asynchronous
+  clipboard API rejects in a document that is not focused, which is an ordinary
+  state for an embedded pane, so `execCommand` is tried between the two.
+#}
+<section class="tutor">
+  <h3>Ask an AI</h3>
+
+  <button type="button" class="quiet" id="tutor-open">
+    Prepare a prompt to paste
+  </button>
+  <span class="meta">
+    what you have seen so far, and nothing you have not · not recorded
+  </span>
+
+  <div id="tutor-bundle"></div>
+
+  <script>
+    document.getElementById("tutor-open").addEventListener("click", function (event) {
+      var button = event.target;
+      var values = {};
+      if (window.practiceEditor) {
+        values.source = window.practiceEditor.getValue();
+      }
+      button.disabled = true;
+      htmx.ajax("POST", {{ tutor_url | tojson }}, {
+        target: "#tutor-bundle",
+        swap: "innerHTML",
+        values: values
+      }).finally(function () {
+        button.disabled = false;
+      });
+    });
+
+    document.getElementById("tutor-bundle").addEventListener("click", function (event) {
+      if (event.target.id !== "tutor-copy") {
+        return;
+      }
+      var text = document.getElementById("tutor-text");
+      var note = document.getElementById("tutor-note");
+
+      function copied() {
+        note.textContent = "Copied. Paste it into any chat.";
+      }
+
+      // The older route, for when the newer one is absent or refuses: it
+      // copies whatever is selected, which is why the text is selected first.
+      // It reports failure by returning false or by throwing, depending on the
+      // browser, and either way the selection is still there for Ctrl+C.
+      function copySelection() {
+        var done = false;
+        try {
+          done = document.execCommand("copy");
+        } catch (error) {
+          done = false;
+        }
+        if (done) {
+          copied();
+        } else {
+          note.textContent =
+            "Could not reach the clipboard. The text is selected, so Ctrl+C will copy it.";
+        }
+      }
+
+      text.focus();
+      text.select();
+      if (!navigator.clipboard) {
+        copySelection();
+        return;
+      }
+      navigator.clipboard.writeText(text.value).then(copied, copySelection);
+    });
+  </script>
+</section>

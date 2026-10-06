@@ -44,6 +44,17 @@
     {% if attempt.policy.is_interview %}
       {% include "partials/interview.html" %}
     {% endif %}
+
+    {#
+      Withdrawn for an interview that is still open, and withdrawn here rather
+      than left to fail, for the reason the own-editor button is: the endpoint
+      refuses, so the control would exist only to explain that it does not
+      work. Back again once the attempt is finished -- the mode withholds help
+      *during* the attempt, and a post-mortem is not help with it.
+    #}
+    {% if attempt.policy.offers_tutor or not workbench.is_active %}
+      {% include "partials/tutor.html" %}
+    {% endif %}
   </section>
 
   <section class="panel" id="work">
