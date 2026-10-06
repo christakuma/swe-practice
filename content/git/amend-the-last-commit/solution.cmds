@@ -1,17 +1,16 @@
-# Reference solution. Look first, then fix the file and the message together in
-# the commit that is already there.
+# Reference solution. Look first, then take the scratch file out and fix the
+# message together, in the commit that is already there.
 
 git log --oneline --decorate --all
 git status --short --branch
 git show --stat HEAD
-cat metrics.py
+cat scratch.py
 
-# The same file with the debug line gone.
-write metrics.py '"""Summary statistics for a list of numbers."""' '' '' 'def average(values):' '    """The arithmetic mean."""' '    return sum(values) / len(values)' '' '' 'def median(values):' '    """The middle value, averaging the two middle ones when even."""' '    ordered = sorted(values)' '    middle = len(ordered) // 2' '    if len(ordered) % 2 == 1:' '        return ordered[middle]' '    return (ordered[middle - 1] + ordered[middle]) / 2'
-
-git add metrics.py
+# Removes it from the working tree *and* stages the removal. The second half is
+# the one that matters: amend builds the new commit from the index.
+git rm scratch.py
 git commit --amend -m "Add median"
 
-# Verify: still three commits, origin still one behind.
+# Verify: still three commits, origin still one behind, one file in the tip.
 git log --oneline --decorate --all
-cat metrics.py
+git show --stat HEAD

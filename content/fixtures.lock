@@ -16,10 +16,10 @@ git/amend-the-last-commit:
   aliases:
     c1: 97cd7a26b2a4abe2fad14ebcf2bc121aecc73c01
     c2: 7a60ff72c7c241ece43f530071b6b9c9916c9cd5
-    c3: cda31cfb1ef02925bab7ee69f2207d969a68f46a
+    c3: 312e175723b7132372f437b213c402ab359163b5
   refs:
-    HEAD: cda31cfb1ef02925bab7ee69f2207d969a68f46a
-    refs/heads/main: cda31cfb1ef02925bab7ee69f2207d969a68f46a
+    HEAD: 312e175723b7132372f437b213c402ab359163b5
+    refs/heads/main: 312e175723b7132372f437b213c402ab359163b5
     refs/remotes/origin/main: 7a60ff72c7c241ece43f530071b6b9c9916c9cd5
 git/cherry-pick-a-fix-to-a-release-branch:
   aliases:
@@ -165,14 +165,14 @@ git/rescue-commits-from-a-detached-head:
     refs/heads/main: dcb9e5eaf3e16e92391298b232a92449e6063a89
 git/resolve-a-conflict-during-a-rebase:
   aliases:
-    c1: e83c13ea8b4d349090d2534071c08f8728e7688f
-    f1: 9d148e7497433c08223c0e2d570d053a26f76a36
-    f2: c9cdc4326f4c6aece94e93234d5b46defc9dd900
-    m1: 821847c558f521e1b337a8907e316d6a9d7c77f2
+    c1: abb29112eceaf91cf3239225536fee349aad10f4
+    f1: 838fe5f10d00d2f8be7fcb8a8d12862b23e681a2
+    f2: b47a68df875bb6bf55d4d97641b172eb3f34b8e9
+    m1: 9035bbc24067044581b1be3925e002e282e17966
   refs:
-    HEAD: 821847c558f521e1b337a8907e316d6a9d7c77f2
-    refs/heads/feature/backoff: c9cdc4326f4c6aece94e93234d5b46defc9dd900
-    refs/heads/main: 821847c558f521e1b337a8907e316d6a9d7c77f2
+    HEAD: 9035bbc24067044581b1be3925e002e282e17966
+    refs/heads/feature/backoff: b47a68df875bb6bf55d4d97641b172eb3f34b8e9
+    refs/heads/main: 9035bbc24067044581b1be3925e002e282e17966
 git/resolve-a-merge-conflict:
   aliases:
     c1: 8c8d491e88f858736052a55d0270f875f6c2801f

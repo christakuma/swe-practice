@@ -1,0 +1,12 @@
+# Counter-example: the file is deleted and the commit still has it. `rm` changes
+# the working tree and nothing else, and amend builds from the index -- so this
+# is naive-message-only with a deleted file left over.
+#
+# The one that looks most like the answer: `ls` shows no scratch.py afterwards.
+# It fails scratch-file-gone because the committed tree is unchanged, and
+# clean-worktree because the deletion is sitting there unstaged.
+
+git log --oneline
+rm scratch.py
+git commit --amend -m "Add median"
+ls

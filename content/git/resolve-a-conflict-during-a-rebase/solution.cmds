@@ -13,8 +13,8 @@ git status --short
 cat retry.py
 
 # Keep the branch's five attempts and its backoff, and main's gateway-error
-# list and the condition that uses it.
-write retry.py '"""Retry policy for delivery callbacks."""' '' '' 'MAX_ATTEMPTS = 5' 'RETRY_ON = (500, 502, 503, 504)' '' '' 'def backoff_seconds(attempt):' '    """Wait longer after each failure."""' '    return 2 ** attempt' '' '' 'def should_retry(status, attempt):' '    """Whether to try again after this response."""' '    return status in RETRY_ON and attempt in range(MAX_ATTEMPTS)'
+# list. Five lines, one argument each.
+write retry.py 'MAX_ATTEMPTS = 5' 'RETRY_ON = (500, 502, 503, 504)' '' 'def backoff_seconds(attempt):' '    return 2 ** attempt'
 
 git add retry.py
 

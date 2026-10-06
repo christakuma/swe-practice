@@ -16,24 +16,32 @@ d2261fe c1                      d2261fe c1
 ```
 
 That is why the two halves of this exercise are one command and not two: the
-message and the tree are both inputs to the new commit, so staging the fixed file
+message and the tree are both inputs to the new commit, so staging the removal
 before amending changes both at once.
 
 ## The failure mode worth internalising
 
 `git commit --amend -m "..."` with nothing staged succeeds. It rewrites the
-message and leaves the code exactly as it was. That is a legitimate thing to
-want, and it is also what happens when you forget `git add` — and the output is
-identical in both cases:
+message and leaves the tree exactly as it was. That is a legitimate thing to
+want, and it is also what happens when you delete the file with `rm` and never
+stage that — the working directory looks right and the commit is unchanged:
 
 ```
 [main a382308] Add median
- 1 file changed, 10 insertions(+)
+ 2 files changed, 13 insertions(+)
+ create mode 100644 scratch.py
 ```
 
-`1 file changed` describes the commit as a whole, not what you just staged. So
-`git show HEAD` afterwards is the three-second check, and `debug-line-gone` reads
-the committed blob rather than the working tree for the same reason.
+That summary describes the commit as a whole against its parent, not what you
+just staged, so it is the place to catch this: the file you meant to remove is
+named in it. After `git rm scratch.py` the same command prints `1 file changed,
+9 insertions(+)` and no `create mode` line. `git show --stat HEAD` afterwards is
+the three-second check, and `scratch-file-gone` reads the committed tree rather
+than the working directory for the same reason.
+
+`git rm` is `rm` plus `git add` of the deletion. `git rm --cached` is the other
+half on its own — out of the index, still on disk — which is the right tool when
+the file has to survive, and the subject of a later exercise.
 
 ## Why `origin/main` is in this exercise at all
 

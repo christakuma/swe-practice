@@ -7,14 +7,15 @@ tags: [history, amend, local-only, rewriting]
 estimated_minutes: 8
 
 prompt: |
-  You committed `median` ten minutes ago and then noticed two things: there is
-  a `print("DEBUG", ...)` line still in it, and the commit subject says
-  `WIP median`, which is what you typed when it did not work yet.
+  You committed `median` ten minutes ago and then noticed two things:
+  `scratch.py`, the throwaway file you were poking at it with, went into the
+  commit too, and the commit subject says `WIP median`, which is what you typed
+  when it did not work yet.
 
   Nothing is pushed. `origin/main` is one commit behind you.
 
-  Finish the commit that is already there: no debug line, a subject that
-  describes the change, and still exactly three commits on `main`.
+  Finish the commit that is already there: no `scratch.py` in it, a subject
+  that describes the change, and still exactly three commits on `main`.
 
   `git log`, `git status`, `git show` and `cat` are all available. Look before
   you type.
@@ -22,13 +23,14 @@ prompt: |
 hints:
   - "`git log --oneline --decorate --all` shows where `main` is and where
      `origin/main` is. The gap between them is what makes this exercise safe."
-  - "A new commit that removes the debug line would get you the right files and
-     leave `WIP median` in the history forever. There is a way to change the
-     commit that is already there instead."
+  - "A new commit that removes the scratch file would get you the right files
+     and leave `WIP median` in the history forever. There is a way to change
+     the commit that is already there instead."
   - "`git commit --amend` replaces the tip commit with a new one built from the
-     current index. So stage the fixed file *first* — amending with nothing
-     staged rewrites only the message, and succeeds either way."
-  - "`write metrics.py ...` to drop the print line, `git add metrics.py`, then
+     current index. So stage the removal *first* — amending with nothing staged
+     rewrites only the message, and succeeds either way. Deleting a file with
+     `rm` stages nothing."
+  - "`git rm scratch.py` deletes the file and stages that in one step, then
      `git commit --amend -m 'Add median'`. Do not push first: amending
      something already published is the one way to get this wrong."
 
@@ -39,24 +41,27 @@ scenario:
     - file: naive-a-second-commit.cmds
       expect_failures: [tip-was-amended]
     - file: naive-message-only.cmds
-      expect_failures: [debug-line-gone]
+      expect_failures: [scratch-file-gone]
+    - file: naive-rm-without-staging.cmds
+      expect_failures: [scratch-file-gone, clean-worktree]
     - file: naive-push-then-amend.cmds
       expect_failures: [nothing-published-was-rewritten]
   allowed_commands: [git, ls, cat, write, append, rm, mkdir, pwd]
   max_commands: 25
 
   checks:
-    - id: debug-line-gone
-      label: The committed file has no debug print left in it
+    - id: scratch-file-gone
+      label: scratch.py is not in the commit any more
       severity: required
       assert: file_at_ref_matches
       not: true
-      with: {ref: HEAD, path: metrics.py, pattern: 'print\('}
+      with: {ref: HEAD, path: scratch.py, pattern: '^'}
       explanation: |
-        This reads the *committed* copy, not your working directory. A fix you
-        made and did not stage is not in the commit, and `--amend` with nothing
-        staged rewrites only the message — which is the most common way to do
-        half of this exercise and believe you did all of it.
+        This reads the *committed* tree, not your working directory. Deleting
+        the file with `rm` changes nothing git has recorded, and `--amend` with
+        nothing staged rewrites only the message — which is the most common way
+        to do half of this exercise and believe you did all of it. `git show
+        --stat HEAD` lists what the commit really contains.
 
     - id: median-still-there
       label: The work itself survived
@@ -64,8 +69,8 @@ scenario:
       assert: file_at_ref_matches
       with: {ref: HEAD, path: metrics.py, pattern: 'def median'}
       explanation: |
-        Rewriting a commit means replacing it, and a `reset` or an amend of an
-        empty index can replace it with less than you had. The function you
+        Rewriting a commit means replacing it, and a `reset` or an amend that
+        staged too much can replace it with less than you had. The function you
         spent the morning on still has to be in the commit afterwards.
 
     - id: no-wip-subject
@@ -108,9 +113,9 @@ scenario:
       severity: required
       assert: worktree_clean
       explanation: |
-        A fix that only exists in your working directory is not a fix. Stage it
-        and amend, or discard it — but do not leave the tip commit and the files
-        disagreeing about what the code is.
+        A removal that only exists in your working directory is not in the
+        commit. Stage it and amend, or put the file back — but do not leave the
+        tip commit and the files disagreeing about what the project contains.
 
     - id: looked-before-leaping
       label: You inspected the repository before changing it

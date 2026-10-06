@@ -2,6 +2,12 @@
 # A two-commit feature branch whose first commit touches the same constants
 # main has since changed. Rebasing stops on that commit; the second one applies
 # cleanly, so the rebase stops exactly once.
+#
+# retry.py is five lines when resolved, and that is on purpose. The console's
+# only editor is `write`, which replaces a file, so the resolution is typed
+# whole -- and at fifteen lines, which is what this was, the exercise graded
+# typing. Small enough that both sides land in one conflict block, which is
+# also the more honest picture: everything to be decided is between the markers.
 source "$PRACTICE_FIXTURE_LIB"
 
 git init --quiet
@@ -15,15 +21,7 @@ write_file README.md \
   'Delivery callbacks, with retries.'
 
 write_file retry.py \
-  '"""Retry policy for delivery callbacks."""' \
-  '' \
-  '' \
-  'MAX_ATTEMPTS = 3' \
-  '' \
-  '' \
-  'def should_retry(status, attempt):' \
-  '    """Whether to try again after this response."""' \
-  '    return attempt in range(MAX_ATTEMPTS)'
+  'MAX_ATTEMPTS = 3'
 
 commit_as c1 "Add the retry policy"
 
@@ -31,20 +29,10 @@ commit_as c1 "Add the retry policy"
 git checkout --quiet -b feature/backoff
 
 write_file retry.py \
-  '"""Retry policy for delivery callbacks."""' \
-  '' \
-  '' \
   'MAX_ATTEMPTS = 5' \
   '' \
-  '' \
   'def backoff_seconds(attempt):' \
-  '    """Wait longer after each failure."""' \
-  '    return 2 ** attempt' \
-  '' \
-  '' \
-  'def should_retry(status, attempt):' \
-  '    """Whether to try again after this response."""' \
-  '    return attempt in range(MAX_ATTEMPTS)'
+  '    return 2 ** attempt'
 
 commit_as f1 "Back off exponentially, and allow five attempts"
 
@@ -62,15 +50,7 @@ commit_as f2 "Add jitter to the backoff"
 git checkout --quiet main
 
 write_file retry.py \
-  '"""Retry policy for delivery callbacks."""' \
-  '' \
-  '' \
   'MAX_ATTEMPTS = 4' \
-  'RETRY_ON = (500, 502, 503, 504)' \
-  '' \
-  '' \
-  'def should_retry(status, attempt):' \
-  '    """Whether to try again after this response."""' \
-  '    return status in RETRY_ON and attempt in range(MAX_ATTEMPTS)'
+  'RETRY_ON = (500, 502, 503, 504)'
 
 commit_as m1 "Only retry on gateway errors"

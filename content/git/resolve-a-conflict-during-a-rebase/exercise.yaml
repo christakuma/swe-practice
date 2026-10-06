@@ -17,7 +17,8 @@ prompt: |
   `backoff_seconds`, main's `RETRY_ON` list, and the jitter commit. `main`
   itself must not move.
 
-  Write the resolved file with `write retry.py <line> <line> ...`.
+  Write the resolved file with `write retry.py <line> <line> ...` — one
+  quoted argument per line, `''` for a blank one. It is five lines long.
 
 hints:
   - "`git rebase main` replays your commits one at a time and stops at the
@@ -91,8 +92,8 @@ scenario:
         pattern: 'def backoff_seconds'
       explanation: |
         Stated separately from the attempt count because a `--skip` loses both
-        and a careless hand-resolution loses only this one: it is further down
-        the file, outside the block the eye is drawn to.
+        and a careless hand-resolution loses only this one: it is at the bottom
+        of the conflict block, below the two lines that visibly disagree.
 
     - id: mains-retry-list-kept
       label: main's gateway-error list survived
