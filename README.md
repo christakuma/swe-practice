@@ -15,7 +15,7 @@ against declarative assertions. So `git revert`, `git reset --hard`, and
 `git checkout <sha> -- .` are judged on what they actually did, *including how
 they differ*.
 
-**Status: v1.0.0, plus six stretch items.** All twelve planned phases are done —
+**Status: v1.0.0, plus seven stretch items.** All twelve planned phases are done —
 **115 exercises: 24 git scenarios, 83 katas and 8 SQL drills, every one of them
 graded.** The core bet works, a session survives the terminal it was opened in,
 every exercise kind is solved in a browser *or in your own editor*, and the tool
@@ -43,6 +43,10 @@ holding what you have seen and none of what you have not. It needed no new
 tracking, because the attempt has logged every command since Phase 1 — the
 whole decision was what to leave out
 ([ADR 0023](docs/adr/0023-the-tutor-context-is-what-the-solver-has-seen.md)).
+Phase 19 is the same attempt **fetched instead of pasted**: a read-only MCP
+server an AI client starts for itself, so the model sees your repository as it
+is after your last command rather than as it was when you copied it
+([ADR 0024](docs/adr/0024-an-mcp-server-that-can-only-read.md)).
 
 A git scenario is graded on what your commands actually did, from a console or
 from the terminal:
@@ -72,7 +76,7 @@ state exactly what the grader checks, and what makes the notes the product rathe
 than a restatement of someone else's problem statement.
 
 See [docs/PLAN.md](docs/PLAN.md) for the full design and the phase plan, and
-[docs/adr/](docs/adr/) for the twenty-three decisions and the alternatives that were
+[docs/adr/](docs/adr/) for the twenty-four decisions and the alternatives that were
 rejected — the rejected half is usually the half worth reading.
 [docs/postmortem.md](docs/postmortem.md) is the honest version: what the bet
 bought, six things that would be done differently, and five that are still
@@ -345,6 +349,61 @@ refuses it: a model asked for a nudge is a hint by another route.
 [ADR 0023](docs/adr/0023-the-tutor-context-is-what-the-solver-has-seen.md) has
 the alternatives, including the better tutor that was turned down — one that is
 handed the answer and told not to say it.
+
+### Letting the AI fetch it instead
+
+A paste is a snapshot. If your AI client speaks the Model Context Protocol —
+Claude Desktop and Claude Code both do — it can read the attempt itself, and
+read it again after your next command. The server is an optional extra, so
+install it once:
+
+```bash
+uv sync --extra mcp
+```
+
+Then tell the client how to start it. For Claude Desktop that is an entry in
+`claude_desktop_config.json`, with the path to this checkout:
+
+```json
+{
+  "mcpServers": {
+    "swe-practice": {
+      "command": "uv",
+      "args": ["run", "--no-sync", "--directory", "/path/to/swe-practice", "practice", "mcp"]
+    }
+  }
+}
+```
+
+`--no-sync` matters: `practice up` will usually be running beside it, and a
+second `uv run` that tried to re-sync the environment under a live server is a
+locked file on Windows.
+
+Keep working in the browser as before. The client now has three tools:
+
+| Tool | What it returns |
+|---|---|
+| `get_context` | the same text the **Ask an AI** panel prepares, as of this moment |
+| `read_file` | one file from your repository — the working tree's copy, or the committed one at a revision such as `origin/main` |
+| `list_attempts` | the attempts you have open, when there is more than one |
+
+**All three read, and there is no fourth.** The obvious one — let the tutor run
+a command — is left out on purpose: it would land in *your* attempt's log,
+count against your budget, and be graded as something you did. A tutor that
+wants something run says so, and you run it. The server also cannot be made to
+write by accident: it reaches your repository only through the read-only port
+the grader uses, and `tests/unit/test_architecture.py` stops it importing
+anything that could start a process.
+
+Everything the paste withholds, this withholds too, because it is the same use
+case underneath: no hint you have not revealed, no notes until the attempt is
+graded, no hidden test suite, and nothing at all for an interview that is still
+open. The one thing it does differently is refuse to guess — with two attempts
+open it asks which, rather than describe the wrong repository with confidence.
+[ADR 0024](docs/adr/0024-an-mcp-server-that-can-only-read.md) has the
+alternatives, and the thing the phase found: the "read-only" port had one way
+to write that nobody had needed to close until a model was choosing its
+arguments.
 
 ## What to practise today
 
@@ -680,7 +739,8 @@ src/practice/
 │   └── persistence/ in-memory stores, and sqlite/ behind the same ports
 ├── interface/
 │   ├── web/         FastAPI + Jinja2 + HTMX; routes, templates, three SVG charts
-│   └── cli/         Typer: the second driving adapter, plus the first-run launcher
+│   ├── cli/         Typer: the second driving adapter, plus the first-run launcher
+│   └── mcp/         a read-only MCP server on stdio: the third, and an optional extra
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
 content/           115 exercises as declarative data — adding one needs no code
@@ -697,6 +757,12 @@ package: the wheel is built from `src/practice` alone, so nothing a user install
 can reach the internet even by accident. That is the offline claim expressed in
 the build rather than in prose.
 
+The one qualification is the `mcp` extra, and it is why it is an extra. The MCP
+SDK carries an HTTP client in its dependency tree, which the server here never
+uses — it speaks over stdio and opens no socket — but "nothing installed can
+reach the internet" is a claim about what is installed. So the default install
+is exactly what it was, and you opt into the other thirteen packages by name.
+
 Dependencies point inward, and `tests/unit/test_architecture.py` fails the build
 if that is ever violated — architecture that isn't tested decays. The same suite
 enforces two narrower rules: only `adapters/sandbox` may import `subprocess`, and
@@ -706,7 +772,9 @@ only a split if there is exactly one place that starts a process; and the schema
 the migrations, the transaction boundary and the mapping are only behind the
 repository ports if there is exactly one place that speaks SQL. Each rule is
 paired with a test that the package really does import the module, so neither can
-pass by there being no code at all.
+pass by there being no code at all. A third rule of the same shape arrived with
+the MCP server: only `interface/mcp` may import the SDK, and it may not import
+an adapter or start a process — which is what its "read-only" rests on.
 
 The assertion functions are in `domain/checks/` rather than under `adapters/`
 for the same kind of reason. They are pure functions over a `RepoQuery` port and

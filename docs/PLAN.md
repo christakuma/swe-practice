@@ -4,7 +4,7 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** **v1.0.0, and six stretch items taken — Phases 13 through 18.**
+> **Status:** **v1.0.0, and seven stretch items taken — Phases 13 through 19.**
 > Phases 0–10 built the engine, Phase 11 filled it with 54 exercises, and Phase
 > 12 is the front door and the portfolio artifacts: `uv sync && uv run practice
 > up` is the whole of getting started, and it refuses with an instruction rather
@@ -272,8 +272,26 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > post-mortem bundle is the first surface in the application that shows an
 > author's notes to the person who just finished the exercise.
 >
+> **Phase 19 is the same attempt, fetched instead of pasted.** `practice mcp` is
+> a Model Context Protocol server on stdio: an AI client starts it, and the
+> model reads the attempt you have open in the browser — and reads it again
+> after your next command, which is the one thing a paste cannot do. Three
+> tools, all of which read, and none that runs a command: a command the model
+> ran would land in your log and be graded as yours
+> ([ADR 0024](adr/0024-an-mcp-server-that-can-only-read.md)).
+>
+> **It is a third driving adapter and the core did not notice**, which is §2's
+> claim about the CLI holding for a protocol with no HTML in it. What the phase
+> found is narrower and more useful: **"read-only port" was true of
+> `RepoQuery`'s contract and not of its implementation.** `read_blob` runs
+> `git show <rev>:<path>`, every revision it had ever been handed came from an
+> exercise author, and `git show --output=FILE` opens a file for writing. The
+> first caller that is a model choosing its own arguments is the first one for
+> whom that matters. The SDK is an optional extra, so the base install is
+> unchanged and still carries nothing that can open a socket.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 18 (the tutor context), 2026-10-06
+> · **Last phase:** 19 (the MCP server), 2026-10-06
 
 ---
 
@@ -2573,6 +2591,60 @@ pipe on Windows would have raised on 96 of the exercises; the first version of
 the test for that could not fail; the copy button's promise depends on window
 focus; and a pasted transcript carries the path of the fixture's remote.
 
+### Phase 19 — The MCP server: the same attempt, fetched instead of pasted · **1 session**
+
+The seventh stretch item and the second half of Phase 18's request: *is there a
+more advanced way to do this?* A pasted bundle is a snapshot, stale as soon as
+another command runs. An MCP client — Claude Desktop, Claude Code — can start a
+local server and call tools on it, so the model fetches the attempt itself.
+
+**The prediction, written before the phase:** a third driving adapter over the
+use cases Phase 18 had just built, costing one interface package and one
+optional dependency, and touching nothing under `application/` or `domain/`
+except a second read. **It held, with two asterisks**, and both are in the
+exit table: the read turned out to need a guard nobody had needed before, and
+the dependency had changed its API since the plan was written.
+
+**Commits** — six, in dependency order
+1. `build: add the mcp sdk as an optional extra`
+2. `feat(application): read one file from an attempt through the read-only ports`
+3. `feat(mcp): serve the tutor context to an mcp client over stdio`
+4. `feat(cli): start the mcp server with practice mcp`
+5. `test(e2e): ask a tutor over a real protocol session, and prove it wrote nothing`
+6. `docs: close phase 19 with ADR 0024`
+
+The dependency is first and alone because it was the phase's one real risk, and
+a commit list is a dependency order: nothing after it can be type-checked
+without it.
+
+**Exit criteria.**
+
+| Criterion | Met by |
+|---|---|
+| A client over real stdio completes a handshake and reads an attempt | `tests/e2e/test_ask_a_tutor_over_mcp.py`, with `practice mcp` as a subprocess |
+| The answer is live across two processes | the same test: a command run in the test's process is in the server's next answer, with the commit it stranded |
+| Every tool reads, and says so | `test_it_advertises_three_tools_and_every_one_is_marked_read_only`, which fails a fourth tool by name |
+| No tool can run a command | `test_no_tool_takes_anything_that_could_be_a_command`, and `Services.read_attempt_file` holding no route to `Workspace.run` |
+| Tool calls change nothing | the last test in `tests/integration/test_mcp_server.py`, after the rest of the file has called tools against the same two attempts; and the e2e test's final assertions |
+| A revision chosen by a model cannot become an option to git | `test_a_revision_beginning_with_a_hyphen_is_refused`, `test_what_reaches_the_repository_is_a_hash_and_never_the_callers_string`, and `test_a_revision_that_is_really_an_option_never_reaches_git` against real git |
+| A kata's hidden suite is refused through a fourth surface | `test_a_katas_hidden_suite_is_refused_and_its_own_file_is_not`, on a provisioned workspace where the suite really is on disk |
+| The spoiler boundary and the interview refusal are inherited, not restated | `test_get_context_is_the_attempt_read_from_the_real_repository`, `test_an_open_interview_is_refused_by_every_tool_that_reads_it` |
+| The SDK is optional: every other command loads without it | `tests/integration/test_cli_mcp.py`, with the SDK removed from the import system |
+| Only one package imports the SDK, and it cannot reach an adapter or a process | three new rules in `tests/unit/test_architecture.py`, each broken on purpose to see it fail |
+
+**What changed that already existed:** `composition.py` and
+`use_cases/__init__.py` gained an entry each, `main.py` gained a command, and
+`test_architecture.py` gained a name in `IO_MODULES` and three tests. Nothing
+under `adapters/` moved, and that includes the adapter with the hazard in it —
+see the third finding.
+
+**Five findings, all in §16.** "Read-only port" was a claim about a contract
+rather than an implementation; the plan's "read-only git commands" tool was the
+wrong shape and `RepoQuery` was the right one already; the SDK's API had turned
+over a major version; the first test of the missing-extra refusal was fitted to
+its own mock; and the tutor-is-invisible-to-the-grade hole from Phase 18 has
+lost the argument that excused it.
+
 ---
 
 ## 12. Architecture decision records
@@ -2607,6 +2679,7 @@ changed"* is worth more than any code sample.
 | [0021](adr/0021-content-packs-install-rather-than-mount.md) | A content pack is installed to a directory, not mounted as a library | accepted |
 | [0022](adr/0022-counter-examples-are-run-against-the-bug-they-name.md) | Counter-examples are run against the bug they name | accepted |
 | [0023](adr/0023-the-tutor-context-is-what-the-solver-has-seen.md) | The tutor context is a projection of what the solver has already seen | accepted |
+| [0024](adr/0024-an-mcp-server-that-can-only-read.md) | An MCP server over stdio that can only read, on the SDK as an optional extra | accepted |
 
 ---
 
@@ -5223,3 +5296,87 @@ belongs. `practice validate` reports 115 exercises, all valid, and `practice
 fixtures --check` 24 fixtures matching — both unchanged, because no content was
 touched. The gate itself took 15m29s, on one run, which by Phase 17's own
 finding is not a measurement.
+
+**2026-10-06 — Phase 19: the MCP server, and a read-only port that had one way
+to write.** One session, the same day as Phase 18 and its second half.
+`practice mcp` serves an open attempt to an AI client over stdio, with three
+tools that read and none that runs a command.
+[ADR 0024](adr/0024-an-mcp-server-that-can-only-read.md) has the decision. The
+findings, in the order they turned up:
+
+**The dependency was the risk the plan named, and it did not materialise for a
+reason the plan could not have known.** The worry was `httpx`: the SDK was
+expected to bring it, Starlette's `TestClient` warns when it is used, and
+`filterwarnings = ["error"]` makes that a collection error. The SDK's 2.x line
+depends on `httpx2`, which this project already uses. Importing it under
+`-W error` is clean. Thirteen packages were added to `uv.lock` and no existing
+pin moved.
+
+**The same 2.x line had moved the API the plan was written against.** The
+server class had been renamed and the client rewritten. The plan said to read
+the installed package before writing against it, and that sentence was the only
+part of the plan's MCP section that survived contact: every call here was
+written from `site-packages`. The hand-rolled alternative ADR 0024 records was
+rejected to avoid tracking a protocol's revisions, and what replaced it is
+tracking an SDK's.
+
+**The plan's `read_file` was the wrong shape, and `RepoQuery` was already the
+right one.** The plan sketched a tool running "read-only" git commands through
+the command policy. Whether `git branch` reads or writes depends on its
+arguments, so that would have been a second, worse copy of git's option parser.
+`RepoQuery` is a list of questions that are safe to ask, designed for
+an unrelated reason — so that twenty assertions could be tested without git —
+and `ReadAttemptFile` reaches a repository only through it.
+
+**And then "read-only" turned out to be true of the port's contract and not of
+its implementation.** `GitRepoQuery.read_blob` runs `git show <rev>:<path>`.
+Every revision it had ever been handed came from an exercise
+author, which is trusted content (§8.1). `ReadAttemptFile` is the first caller
+whose revision comes from a model, and `git show --output=FILE` opens FILE for
+writing. This was run against real git before being written anywhere, per ADR
+0022: git answers *"could not open 'pwned.txt:README.md' for writing"*, failing
+on Windows only because the colon in `<rev>:<path>` is not a legal filename
+there. On Linux, where CI runs, it would have written the file. Two guards in
+the use case — a leading hyphen is refused, and what reaches `read_blob` is the
+hash `rev_parse` resolved rather than the caller's string — and three
+mutations, all killed (no hyphen guard: 3 failures; the caller's string passed
+through: 1; no allowlist for a kata's workspace: 6). **The adapter is
+unchanged.** `--end-of-options` is the right fix there and git accepts it; it
+is left for its own change because it alters the path every
+`file_at_ref_matches` check is graded through.
+
+**The first test of the missing-extra refusal was fitted to its own mock, and
+it was the test failing that showed it.** `sys.modules["mcp"] = None` is the
+usual way to stage a missing package. It raises *"No module named 'mcp.server';
+'mcp' is not a package"*, naming the submodule; a real base install raises *"No
+module named 'mcp'"*. The command compared the name to `"mcp"` exactly, so the
+test failed for a reason no user could cause — and the tempting repair was to
+loosen the command until the mock passed. The test now installs a meta path
+finder that fails the way a missing package does. Same family as Phase 18's
+`CliRunner` finding: a double that differs from the real thing in exactly the
+property under test.
+
+**ADR 0023's excuse for not recording a consult no longer holds.** It accepted
+that asking a tutor is invisible to the grade suggestion because the tool
+cannot know a copied bundle was pasted. Over MCP it can: a `get_context` call
+is something the application can vouch for. The hole is left open here because
+closing it makes the read path write, and it is the first item under ADR 0024's
+**Revisit if**. Recorded as a decision deferred rather than one made.
+
+**What was verified and what was not.** The server was driven three ways: in
+process by the SDK's client over real services and real git; as a subprocess
+over real stdio by the same client, in a test; and by hand through the exact
+`uv run --no-sync --directory ... practice mcp` line the README gives, from a
+different working directory. **It was not attached to Claude Desktop or Claude
+Code**, so the README's configuration block is correct by the SDK's client and
+by the protocol's handshake and has not been watched working in the client it
+is written for.
+
+**Final numbers.** 5,020 passing and one skipped, 53 more than Phase 18. 100%
+statement and branch coverage over a gated surface of **2,676 statements and
+578 branches**, against Phase 18's 2,618 and 554 — the delta is
+`read_attempt_file.py` and its line in the package's exports, because the
+server and the command are interface and sit outside the gate. Nothing under
+`adapters/` changed. `practice validate` and `practice fixtures --check` are
+unchanged. The gate took 11m56s against Phase 18's 15m29s, one run each, which
+says nothing about either.

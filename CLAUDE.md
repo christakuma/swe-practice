@@ -132,6 +132,11 @@ violation, including a deferred import inside a function.
   schema and builds an in-memory database per grading pass. A third entry has to
   be argued for in `test_architecture.py`, where the list and the reasons live
   together ([ADR 0019](docs/adr/0019-sql-drills-as-a-third-exercise-kind.md)).
+- Only `interface/mcp` may import the `mcp` SDK, and it may not import an
+  adapter or start a process. The SDK is an **optional extra**, so a second
+  importer would break every other command on a base install; and the server's
+  read-only claim rests on it reaching a workspace only through use cases
+  ([ADR 0024](docs/adr/0024-an-mcp-server-that-can-only-read.md)).
 - `composition.py` is the single wiring point and the only cross-layer import.
   `Services` holds **ports, not implementations**, so mypy checks adapter conformance
   at the one place it can.
