@@ -4,7 +4,7 @@ A second driving adapter over the same core as the web app, which is the point
 of it: if the core were secretly coupled to HTTP, this would not work. It also
 keeps `practice validate` runnable in CI without booting a server (PLAN.md §2).
 
-Twelve commands, in five groups.
+Thirteen commands, in five groups.
 
 **One front door.** `up` is the command a stranger runs: it checks what a fresh
 machine is missing, migrates the database, opens a browser and then serves. It
@@ -48,7 +48,10 @@ hints revealed, the repository as it stands -- under a prompt that turns a chat
 model into a tutor rather than an answer key. It is the same text the
 workbench's copy button produces, from the same use case, and it is the one
 command here whose stdout is meant for a program rather than a person, which is
-why its refusals go to stderr when nothing else's do.
+why its refusals go to stderr when nothing else's do. `mcp` is Phase 19's and
+the same attempt for a reader that fetches it instead of being handed it: a
+read-only server on stdio that an AI client starts, and the only command here
+nobody types.
 
 **An attempt is named by its full uuid, not by the short id.** `attempts` prints
 ids in full for exactly that reason. Accepting a prefix would need a
@@ -169,6 +172,7 @@ __all__ = [
     "context",
     "fixtures",
     "gc",
+    "mcp",
     "pack",
     "resume",
     "serve",
@@ -1639,6 +1643,77 @@ def serve(
     typer.echo("")
     typer.echo("Offline: every asset is served from disk, and nothing is fetched.")
     _listen(services, bind, port)
+
+
+@app.command()
+def mcp(
+    content: Annotated[
+        Path | None,
+        typer.Option(
+            "--content-root",
+            envvar=CONTENT_ROOT_ENV,
+            help="The exercise library attempts refer to. Defaults to this project's.",
+        ),
+    ] = None,
+    workspaces: Annotated[
+        Path | None,
+        typer.Option(
+            "--workspace-root",
+            envvar=WORKSPACE_ROOT_ENV,
+            help="Where attempt workspaces live. Defaults to the user cache.",
+        ),
+    ] = None,
+    db: Annotated[
+        Path | None,
+        typer.Option(
+            "--database",
+            envvar=DATABASE_PATH_ENV,
+            help="The attempt database. Defaults to the user data directory.",
+        ),
+    ] = None,
+) -> None:
+    """Serve your open attempt to an AI client over MCP, read-only, on stdio.
+
+    Not a command you type. An MCP client -- Claude Desktop, Claude Code --
+    starts it and talks to it over stdin and stdout, and can then read the
+    attempt you are working on in the browser: the task, what you ran, what the
+    repository looks like now, and any file in it. It cannot run a command or
+    change anything, and it is told nothing you have not seen (Phase 19).
+
+    It reads the same database and the same workspaces as `practice up`, which
+    is the whole trick: two processes, one attempt. Run a command in the
+    workbench and the next thing the client asks for reflects it.
+
+    **Nothing is printed, because stdout is the protocol.** A banner here would
+    be the first line of a JSON-RPC stream and the client would hang up on it.
+    The one thing this command says is the refusal below, and it says it on
+    stderr.
+
+    **The SDK is an optional extra, so its import is deferred to here.** Every
+    other command has to load on a base install, and a top-level import would
+    make `practice validate` fail in CI for want of a package it never uses.
+    Only a missing `mcp` is turned into the instruction: any other import
+    failure is a bug in this project and is left to raise as one.
+    """
+    try:
+        from practice.interface.mcp import build_server  # noqa: PLC0415
+    except ModuleNotFoundError as exc:
+        if (exc.name or "").split(".")[0] != "mcp":
+            raise
+        typer.secho(
+            "practice mcp needs the MCP SDK, which is an optional extra. Install "
+            "it with `uv sync --extra mcp`.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2) from exc
+
+    services = build_services(
+        content=content.resolve() if content is not None else None,
+        workspaces=workspaces.resolve() if workspaces is not None else None,
+        database=db.resolve() if db is not None else None,
+    )
+    build_server(services).run()
 
 
 def _bound(host: str) -> str:
