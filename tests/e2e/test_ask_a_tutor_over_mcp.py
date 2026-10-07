@@ -47,10 +47,15 @@ REVERT = ExerciseId("git/revert-a-pushed-commit")
 
 BAD_COMMIT = "Rename parse_line to parse"
 
-#: The CLI, started the way an installed `practice` script starts it, without
-#: depending on where the script was installed or what it is called on this
-#: platform.
-LAUNCH = "from practice.interface.cli.main import app; app()"
+#: Exactly the launch line the README gives a client: the interpreter and `-m
+#: practice`, not the `practice` script. That is not a convenience. A client
+#: holds the server open for hours, the script is an executable Windows will
+#: not replace while it is open, and `uv run` replaces it whenever
+#: `pyproject.toml` changes -- so a server started through the script broke
+#: `uv run practice up` for as long as any AI client was running
+#: (`practice/__main__.py`). Testing the documented line is what keeps the
+#: README from drifting back to the one that did that.
+LAUNCH = ("-m", "practice")
 
 
 def text_of(result: CallToolResult) -> str:
@@ -72,8 +77,7 @@ def test_a_client_over_stdio_sees_the_attempt_change_and_changes_nothing(
     server = StdioServerParameters(
         command=sys.executable,
         args=[
-            "-c",
-            LAUNCH,
+            *LAUNCH,
             "mcp",
             "--content-root",
             str(content_root()),

@@ -368,16 +368,28 @@ Then tell the client how to start it. For Claude Desktop that is an entry in
 {
   "mcpServers": {
     "swe-practice": {
-      "command": "uv",
-      "args": ["run", "--no-sync", "--directory", "/path/to/swe-practice", "practice", "mcp"]
+      "command": "/path/to/swe-practice/.venv/bin/python",
+      "args": ["-m", "practice", "mcp"]
     }
   }
 }
 ```
 
-`--no-sync` matters: `practice up` will usually be running beside it, and a
-second `uv run` that tried to re-sync the environment under a live server is a
-locked file on Windows.
+On Windows the interpreter is `.venv\Scripts\python.exe`. For Claude Code the
+same thing is one command:
+
+```bash
+claude mcp add --scope user swe-practice -- /path/to/swe-practice/.venv/bin/python -m practice mcp
+```
+
+**The interpreter, not `uv run practice mcp`, and the first version of this
+section got that wrong.** A client keeps the server alive for as long as the
+client is open. Started through the `practice` script, that is a long-lived
+process holding `practice.exe` open, and Windows will not replace an open
+executable — so the next `uv run practice up` after `pyproject.toml` changed
+failed with *"the process cannot access the file because it is being used by
+another process"*, for as long as any AI client was running. `python -m
+practice` never opens the script, and `uv` is free to rebuild underneath it.
 
 Keep working in the browser as before. The client now has three tools:
 
