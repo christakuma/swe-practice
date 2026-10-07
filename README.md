@@ -391,7 +391,17 @@ failed with *"the process cannot access the file because it is being used by
 another process"*, for as long as any AI client was running. `python -m
 practice` never opens the script, and `uv` is free to rebuild underneath it.
 
-Keep working in the browser as before. The client now has three tools:
+Keep working in the browser as before, and ask in plain words — or, in Claude
+Code, with the prompt the server offers as a slash command:
+
+```
+/swe-practice:tutor what did that reset just do?
+```
+
+Whatever you type after it is your question. With no attempt open it tells you
+so rather than failing, which the first version did not.
+
+The client now has three tools:
 
 | Tool | What it returns |
 |---|---|

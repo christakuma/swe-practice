@@ -187,14 +187,42 @@ def build_server(services: Services) -> MCPServer:
         return text
 
     @server.prompt()
-    def tutor(attempt_id: str | None = None) -> str:
-        """Start a tutoring conversation about the user's practice attempt."""
+    def tutor(question: str | None = None) -> str:
+        """Ask about the practice attempt you have open. Type your question after it."""
+        # **Its one argument is the question, and it cannot fail.** Both are
+        # corrections, found the first time a person used it rather than a
+        # test. A client surfaces a prompt as a slash command and passes
+        # whatever is typed after it as the first argument -- so the first
+        # version, which took an `attempt_id`, tried to parse "hows the repo
+        # looking?" as a uuid. And a prompt has no equivalent of a failed tool
+        # call: an exception here reaches the person as "Internal server
+        # error", with the sentence that explained it thrown away. So a refusal
+        # is *returned*, as a message telling the model what to say.
         try:
-            return render_markdown(services.export_tutor_context(resolve(attempt_id)))
-        except (ApplicationError, DomainError) as exc:
-            raise ToolError(str(exc)) from exc
+            text = render_markdown(services.export_tutor_context(resolve(None)))
+        except (ApplicationError, DomainError, ToolError) as exc:
+            text = _unavailable(str(exc))
+        if question is not None and question.strip():
+            text += f"\n## My question\n\n{question.strip()}\n"
+        return text
 
     return server
+
+
+def _unavailable(reason: str) -> str:
+    """What the tutor prompt says when there is no attempt it can hand over.
+
+    Addressed to the model, in the solver's voice like the context it stands in
+    for. The last sentence matters: asked about "my repo" with nothing to look
+    at, a model will otherwise describe one anyway.
+    """
+    return (
+        "I asked for help with my practice attempt, but the practice tool could "
+        f"not hand one over:\n\n{reason}\n\n"
+        "Tell me that plainly, and what I need to do about it. If it lists "
+        "several attempts, ask me which one and then call get_context with its "
+        "id. Do not guess at an attempt you have not been shown.\n"
+    )
 
 
 def _describe(found: OpenAttempt) -> str:

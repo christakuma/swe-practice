@@ -149,20 +149,99 @@ def test_no_tool_takes_anything_that_could_be_a_command(shared: Shared) -> None:
     assert anyio.run(go) == {"attempt_id", "path", "rev"}
 
 
-def test_the_tutor_prompt_is_offered_and_is_the_context(shared: Shared) -> None:
+def ask(services: Services, question: str | None = None) -> str:
+    """The `tutor` prompt, fetched the way a client's slash command fetches it:
+    whatever was typed after the command arrives as the first argument.
+    """
+
     async def go() -> str:
-        async with Client(build_server(shared.services)) as client:
-            listed = await client.list_prompts()
-            assert [prompt.name for prompt in listed.prompts] == ["tutor"]
-            got = await client.get_prompt("tutor", {"attempt_id": str(shared.scenario)})
+        async with Client(build_server(services)) as client:
+            arguments = {} if question is None else {"question": question}
+            got = await client.get_prompt("tutor", arguments)
             (message,) = got.messages
             assert isinstance(message.content, TextContent)
             return message.content.text
 
-    text = anyio.run(go)
+    return anyio.run(go)
+
+
+def test_the_tutor_prompts_one_argument_is_the_question(shared: Shared) -> None:
+    """Found by a person typing `/swe-practice:tutor hows the repo looking?`.
+
+    A client passes the text after a slash command as the prompt's first
+    argument. The first version's first argument was an attempt id, so that
+    sentence was parsed as a uuid and the command died.
+    """
+
+    async def go() -> list[tuple[str, bool | None]]:
+        async with Client(build_server(shared.services)) as client:
+            listed = await client.list_prompts()
+            (prompt,) = listed.prompts
+            assert prompt.name == "tutor"
+            return [(a.name, a.required) for a in prompt.arguments or []]
+
+    assert anyio.run(go) == [("question", False)]
+
+
+def test_the_tutor_prompt_is_the_context_with_the_question_under_it(
+    tmp_path: Path,
+) -> None:
+    services = services_in(tmp_path)
+    services.start_attempt(TWO_SUM)
+
+    text = ask(services, "hows the repo looking?")
 
     assert text.startswith(TUTOR_PROMPT)
-    assert "# Undo a commit that is already on origin" in text
+    assert "# Two Sum" in text
+    assert text.endswith("## My question\n\nhows the repo looking?\n")
+
+
+def test_the_tutor_prompt_needs_no_question(tmp_path: Path) -> None:
+    services = services_in(tmp_path)
+    services.start_attempt(TWO_SUM)
+
+    text = ask(services)
+
+    assert text.startswith(TUTOR_PROMPT)
+    assert "## My question" not in text
+
+
+def test_with_nothing_open_the_prompt_says_so_instead_of_failing(
+    tmp_path: Path,
+) -> None:
+    """The other half of the same report: no attempt was open, and the reason
+    reached the person as "Internal server error". A prompt has no failed-call
+    result to carry a sentence, so the sentence is the prompt.
+    """
+    text = ask(services_in(tmp_path), "hows the repo looking?")
+
+    assert "no attempt is open" in text
+    assert "Do not guess" in text
+    assert text.endswith("## My question\n\nhows the repo looking?\n")
+    assert TUTOR_PROMPT not in text
+
+
+def test_with_two_open_the_prompt_lists_them_instead_of_failing(
+    shared: Shared,
+) -> None:
+    text = ask(shared.services, "what did I break?")
+
+    assert "2 attempts are open" in text
+    assert str(shared.scenario) in text
+    assert str(shared.kata) in text
+    assert "call get_context with its id" in text
+
+
+def test_an_open_interviews_prompt_says_why_instead_of_failing(
+    tmp_path: Path,
+) -> None:
+    services = services_in(tmp_path)
+    services.start_attempt(TWO_SUM, mode=AttemptMode.INTERVIEW)
+
+    text = ask(services, "any hints?")
+
+    assert "interview mode withholds the tutor" in text
+    assert "# Two Sum" not in text
 
 
 # --- get_context -----------------------------------------------------------
