@@ -13,6 +13,12 @@ description = "Offline practice environment for data-structure katas and operati
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 authors = [{ name = "Chris Sweet" }]
+# Both files, named rather than globbed. The wheel carries the vendored
+# CodeMirror and htmx under `static/vendor/`, and CodeMirror's MIT licence has
+# to travel with every copy -- the default glob would pick up LICENSE and
+# leave the notices behind, which is the half that is an obligation.
+license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 
 # Nothing here may phone home; a test enforces that for templates and static
 # assets (PLAN.md §2). HTMX and CodeMirror are vendored files, not packages.
