@@ -88,12 +88,15 @@ from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
     ExportTutorContext,
+    FollowTracks,
     GradeReview,
     InspectRepository,
     ListOpenAttempts,
+    NextExercise,
     OfferReview,
     OpenWorkbench,
     ReadAttemptFile,
+    RecallExercises,
     ResumeAttempt,
     RevealHint,
     RevealSolutionFile,
@@ -424,6 +427,32 @@ class Services:
             reviews=self.reviews,
             clock=self.clock,
         )
+
+    # --- where you are in the library ---------------------------------------
+
+    @property
+    def recall_exercises(self) -> RecallExercises:
+        """The attempt store and nothing else. Which exercises have been done is
+        a question the log answers on its own; the page asking it already holds
+        the library it is listing.
+        """
+        return RecallExercises(attempts=self.attempts)
+
+    @property
+    def follow_tracks(self) -> FollowTracks:
+        """No review store, and that absence is the decision: a track's progress
+        is read off what was *graded*, never off what was *scheduled*, so a
+        solver who skips the schedule buttons still moves along it.
+        """
+        return FollowTracks(content=self.content, attempts=self.attempts)
+
+    @property
+    def next_exercise(self) -> NextExercise:
+        """The same two ports as `follow_tracks`, and no provisioner or ids:
+        this says where to go and starts nothing. The page posts to the route
+        every Start button posts to.
+        """
+        return NextExercise(content=self.content, attempts=self.attempts)
 
     @property
     def collect_workspaces(self) -> CollectWorkspaces:

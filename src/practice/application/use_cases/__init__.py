@@ -5,7 +5,7 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Nineteen of them, in six groups.
+Twenty-two of them, in seven groups.
 
 **Four about solving**, two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
@@ -70,6 +70,17 @@ common due item there is.
 attempt log: what is *due* is a question about cards and the library, and how it
 is *going* is a question about everything that has been graded.
 
+**Three about where you are in the library**, Phase 20's group and the one
+that reads the attempt log *per exercise*. `RecallExercises` answers which
+exercises have been done and when; `FollowTracks` walks every declared track
+against that; `NextExercise` is the first unfinished step beyond the one just
+attempted. All three are reads over data that was already being stored -- the
+history was complete and nothing could be asked about it by exercise, which from
+the outside looked exactly like a tool that had forgotten. None of them asks the
+card store anything, and that is the decision in them: a card says an exercise
+was *scheduled*, an attempt says it was *done*, and only the second is true the
+moment the work is graded.
+
 **Two about working somewhere else**, both Phase 10's. `RevealSolutionFile` is
 the only use case whose output is a filesystem path: own-editor mode's premise is
 that a kata's solution is a real file in the workspace, so the thing a page or a
@@ -97,12 +108,15 @@ decision in the composition root about which of them owns the repositories.
 from practice.application.use_cases.abandon_attempt import AbandonAttempt
 from practice.application.use_cases.collect_workspaces import CollectWorkspaces
 from practice.application.use_cases.export_tutor_context import ExportTutorContext
+from practice.application.use_cases.follow_tracks import FollowTracks
 from practice.application.use_cases.grade_review import GradeReview
 from practice.application.use_cases.inspect_repository import InspectRepository
 from practice.application.use_cases.list_open_attempts import ListOpenAttempts
+from practice.application.use_cases.next_exercise import NextExercise
 from practice.application.use_cases.offer_review import OfferReview
 from practice.application.use_cases.open_workbench import OpenWorkbench
 from practice.application.use_cases.read_attempt_file import ReadAttemptFile
+from practice.application.use_cases.recall_exercises import RecallExercises
 from practice.application.use_cases.resume_attempt import ResumeAttempt
 from practice.application.use_cases.reveal_hint import RevealHint
 from practice.application.use_cases.reveal_solution_file import RevealSolutionFile
@@ -118,12 +132,15 @@ __all__ = [
     "AbandonAttempt",
     "CollectWorkspaces",
     "ExportTutorContext",
+    "FollowTracks",
     "GradeReview",
     "InspectRepository",
     "ListOpenAttempts",
+    "NextExercise",
     "OfferReview",
     "OpenWorkbench",
     "ReadAttemptFile",
+    "RecallExercises",
     "ResumeAttempt",
     "RevealHint",
     "RevealSolutionFile",
