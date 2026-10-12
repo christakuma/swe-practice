@@ -4,7 +4,8 @@ An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
-> **Status:** **v1.0.0, and seven stretch items taken — Phases 13 through 19.**
+> **Status:** **v1.0.0, seven stretch items taken — Phases 13 through 19 — and
+> Phase 20, the first change that came from a user.**
 > Phases 0–10 built the engine, Phase 11 filled it with 54 exercises, and Phase
 > 12 is the front door and the portfolio artifacts: `uv sync && uv run practice
 > up` is the whole of getting started, and it refuses with an instruction rather
@@ -290,8 +291,21 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > whom that matters. The SDK is an optional extra, so the base install is
 > unchanged and still carries nothing that can open a socket.
 >
+> **Phase 20 is the first one that came from using it.** The report was "this
+> doesn't seem to have persistent memory", and the storage was fine: every
+> attempt had been in SQLite since Phase 6 and nothing on screen could be asked
+> about it *by exercise*. Browse looked the same on the fortieth visit as the
+> first, and an exercise solved without pressing a schedule grade came back
+> marked **new**. So: a done-and-when chip on every list, read off the attempt
+> log rather than the card store; **tracks** — the whole library, the Blind 75,
+> git scenarios, SQL drills — as a second manifest whose orders `practice
+> validate` holds to the curriculum's dependencies; and a **Next** button under
+> every verdict, which follows the track named in the URL
+> ([ADR 0025](adr/0025-tracks-are-a-second-manifest.md)). No migration and no
+> new port.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 19 (the MCP server), 2026-10-06
+> · **Last phase:** 20 (tracks, and done-and-when), 2026-10-12
 
 ---
 
@@ -1369,9 +1383,17 @@ small — the half was added in Phase 7, after writing the other two:
 | Route | Contents |
 |---|---|
 | `/` | Dashboard: due today, streak, recent attempts, weakest tags |
-| `/browse` | Filterable exercise list (kind, difficulty, tag, status) |
-| `/attempt/{id}` | The workbench — kata editor, or scenario console + state panel |
+| `/tracks`, `/tracks/{name}` | A route through the library and your place on it (Phase 20) |
+| `/browse` | Filterable exercise list (kind, difficulty, tag), each row saying whether and when it was passed |
+| `/attempt/{id}` | The workbench — kata editor, or scenario console + state panel; `?track=` names the track it was started on |
 | `/progress` | Mastery by tag, attempt history, time trends |
+
+**Status is on `/browse` as something shown, not something filtered on**, which
+is how the fourth dimension this table originally listed finally arrived. Phase
+9 left it out on the grounds that the questions it was for were answered on
+other pages; Phase 20 found the one that was not — *which of these have I
+done* — and answers it with a chip per row read off the attempt log
+([ADR 0025](adr/0025-tracks-are-a-second-manifest.md)).
 
 HTMX fragments return HTML, not JSON: `POST /api/attempt/{id}/command` renders
 the appended command output **and** the re-rendered repo state panel in one
@@ -2645,6 +2667,23 @@ over a major version; the first test of the missing-extra refusal was fitted to
 its own mock; and the tutor-is-invisible-to-the-grade hole from Phase 18 has
 lost the argument that excused it.
 
+### Phase 20 — Tracks, a Next button, and done-and-when · **1 session**
+
+**Goal:** a solver can pick a route through the library, see which steps they
+have passed and when, and go from one finished attempt to the next without
+visiting a list. Started from a report that the tool had no memory; it had, and
+could not be asked ([ADR 0025](adr/0025-tracks-are-a-second-manifest.md)).
+
+| Exit criterion | Met by |
+|---|---|
+| Every list says whether and when an exercise was passed, without a schedule grade | `tests/web/test_tracks.py::test_browse_says_when_an_exercise_was_passed`, `::test_the_queue_no_longer_calls_a_solved_exercise_new`; `tests/unit/application/test_tracks.py::test_an_exercise_solved_and_never_scheduled_is_still_recalled` |
+| A finished attempt offers the next step before any grade is pressed | `tests/web/test_tracks.py::test_the_next_step_is_there_before_any_schedule_grade_is_pressed` |
+| Next after a failure is the step after, not the same one | `tests/unit/application/test_tracks.py::test_after_a_failure_comes_the_following_step_and_not_the_same_one` |
+| The track is carried from start to Next with nothing stored | the *carrying the track* group in `tests/web/test_tracks.py` |
+| A track's order cannot contradict the curriculum's dependencies | `tests/integration/content/test_tracks.py::test_a_track_may_not_reverse_two_exercises_inside_one_section`, and its two passing twins |
+| The shipped tracks are what they are called | `tests/content/test_library.py::test_the_blind_75_is_the_seventy_five`, `::test_a_track_named_for_a_kind_misses_nothing_of_that_kind`, `::test_no_track_offers_a_lesson_before_its_premise` |
+| A pack carries its tracks, narrowed | `tests/integration/content/test_tracks.py::test_an_installed_pack_validates_and_offers_its_tracks` |
+
 ---
 
 ## 12. Architecture decision records
@@ -2680,6 +2719,7 @@ changed"* is worth more than any code sample.
 | [0022](adr/0022-counter-examples-are-run-against-the-bug-they-name.md) | Counter-examples are run against the bug they name | accepted |
 | [0023](adr/0023-the-tutor-context-is-what-the-solver-has-seen.md) | The tutor context is a projection of what the solver has already seen | accepted |
 | [0024](adr/0024-an-mcp-server-that-can-only-read.md) | An MCP server over stdio that can only read, on the SDK as an optional extra | accepted |
+| [0025](adr/0025-tracks-are-a-second-manifest.md) | Tracks are a second manifest, read off the attempt log and carried in the URL | accepted |
 
 ---
 
@@ -5380,3 +5420,101 @@ server and the command are interface and sit outside the gate. Nothing under
 `adapters/` changed. `practice validate` and `practice fixtures --check` are
 unchanged. The gate took 11m56s against Phase 18's 15m29s, one run each, which
 says nothing about either.
+
+**2026-10-12 — Phase 20: tracks, a Next button, and a history nobody could ask
+about.** One session, and the first phase that started from a complaint rather
+than from §11's menu: *"this doesn't seem to have persistent memory."*
+[ADR 0025](adr/0025-tracks-are-a-second-manifest.md) has the decisions. The
+findings, in the order they turned up:
+
+**The storage was fine, and that took an hour to establish for a reason that
+had nothing to do with this project.** The database at the default path held
+three applied migrations and no attempts, with workspaces on disk three days
+newer than its last write. That reads exactly like a save path that silently
+does nothing. It was not: the session doing the diagnosing was launched by an
+MSIX-packaged desktop app, and Windows redirects such a process's writes under
+`%LOCALAPPDATA%` to a private per-package copy. `os.path.realpath` on
+`config.database_path()` named the copy. The server the solver actually runs,
+started from a terminal, had ten attempts in the real file. **So the tool
+remembered everything and showed none of it by exercise** — which is the
+finding, and from the outside is indistinguishable from the bug that was
+reported.
+
+**The same redirection is a live defect in Phase 19 and is not fixed here.** An
+MCP server launched by that desktop app resolves the same path to the same
+private copy, so `list_attempts` answered "No attempt is open" while the real
+server had one. ADR 0024 recorded that the server "was not attached to Claude
+Desktop or Claude Code"; this is what attaching it found. The fix is a decision
+about where the data directory lives on Windows — out from under AppData, or an
+explicit `--database` in the client's configuration — and it moves somebody's
+attempt history, so it is recorded as open rather than made in passing.
+
+**"New" meant "has no card", and that was the tool forgetting.** A review card
+is written when a schedule grade is pressed. An exercise solved and walked away
+from therefore had no card, and the dashboard offered it as new a minute later.
+`partials/review.html` had said so in as many words since Phase 9 — *"the cost
+of skipping this is that the tool keeps no memory of the attempt"* — as a
+defence of not scheduling automatically. The defence still holds for the
+schedule. It never held for the label.
+
+**Deriving a track's order from the curriculum was the plan, and running it is
+what killed it.** A track as a set, walked in curriculum order, needs no
+validation because there is only one order. Restricted to the seventy-five, it
+reaches `contains-a-duplicate` tenth and puts four mediums at steps three to
+six; for git, three mediums and a hard at three to six. The curriculum is right
+interleaved and wrong filtered, because its on-ramps are often exercises a
+selection leaves out. So tracks carry their own order, and the claim that an
+order makes sense became a rule instead of a hope: `practice validate` refuses
+a track that reverses two exercises inside one curriculum section.
+
+**A test written for the tracks found a defect in the curriculum.**
+`test_no_track_offers_a_lesson_before_its_premise` lists `(premise, lesson)`
+pairs across sections and checks every track holding both. It was written
+against the Blind 75's order. The whole-library track holds every pair, so it
+ran against the curriculum too, and failed: `group-anagrams` — the character
+count used as a dictionary key — came two sections before `is-it-an-anagram`,
+the character count on its own. Phase 17 added the second and filed it where it
+fitted rather than where it was needed. Moved; one line in `curriculum.yaml`.
+
+**Three of the new tests were wrong about their own point, and the suite caught
+all three at once**, which is ADR 0022's good half. A table row expected the
+wrong message for an empty list; a pack fixture declared a track in an order the
+new rule forbids, so the *validator* failed the test that was meant to show a
+pack validating; and an assertion that one section was not nested in another
+was arithmetic on tag counts that came out wrong. The last was replaced by the
+one-line property it was reaching for.
+
+**The full suite caught the one thing the fast tier could not, which is the
+shape §11 predicts.** `test_an_installed_library_is_byte_identical_to_the_source`
+compares every file of an installed pack against its source and skips the
+derived indexes *by name*. A pack now writes a third one, `tracks.yaml`, so the
+test failed with exactly that file in its list — in `tests/content`, a
+directory the change had not touched, asserting on something `mypy` cannot see.
+The fix is the name in the set; the claim it protects is unchanged, which is
+that no *exercise* file may differ by a byte.
+
+**A solver's history cannot be pushed, and that is now a test rather than a
+habit.** The question was asked at the end of the session — the repository is
+public and the attempt log is personal. It was already true twice over: the
+database and the workspaces default to per-user directories outside the
+checkout, and `.gitignore` covers a database kept beside the code anyway. But
+neither was held by anything. `tests/integration/test_progress_stays_local.py`
+asserts the defaults are outside the project root and asks `git check-ignore`
+about thirteen places progress could land, with a control case so the question
+is seen to have a no. Nothing in this phase stores anything new: a track's
+progress is derived from attempts on every request.
+
+**Not done, and worth saying.** No status *filter* on `/browse`, for the reason
+the route gave in Phase 9. No local dates: `SystemClock` is UTC and so is every
+date on every page, which for an evening attempt west of Greenwich is tomorrow.
+An attempt resumed from the dashboard loses its track. And the CLI knows
+nothing about tracks — `practice start` takes an exercise id, and "next" is a
+web control.
+
+**Final numbers.** 5,188 passing and one skipped. 100% statement and
+branch coverage over a gated surface of **2,823 statements and
+604 branches**, against Phase 19's 2,676 and 578 — the delta is
+`domain/track.py`, `application/tracks.py` and the three use cases. One new
+method on one existing port, no new port, no migration. `practice validate` now
+audits `tracks.yaml` as well; `practice fixtures --check` is unchanged. The gate
+took 5m48s, one run, which CLAUDE.md is right to say is not a measurement.

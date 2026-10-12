@@ -221,6 +221,15 @@ A phase ends with a `docs:` commit that:
   After editing a fixture, regenerate with `practice fixtures --write` and review
   the diff — an unexpected line means the edit changed more history than you
   thought.
+- **A new exercise may also need a line in `content/tracks.yaml`**, and nothing
+  but a content test will say so. The git and SQL tracks are explicit lists
+  that are meant to be exhaustive; `practice validate` cannot know that, so
+  `tests/content/test_library.py` does. Reordering a curriculum *section* fails
+  `validate` for every track that kept the old order, which is the point: a
+  track may reorder sections, never the exercises inside one
+  ([ADR 0025](docs/adr/0025-tracks-are-a-second-manifest.md)). The curriculum's
+  own groups are called tracks too — `domain.track.Track` is the one people
+  follow.
 - **Three authoring constraints that are not obvious.** `|<>&;` are rejected
   anywhere in a `.cmds` line, *including inside quotes*, so file content a
   solution writes cannot contain them — this does **not** apply to a drill's

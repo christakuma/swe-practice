@@ -34,6 +34,7 @@ captured output of that command and `docs/demo/render.py` draws it
 - [Getting started](#getting-started)
 - [The web app](#the-web-app)
 - [The terminal](#the-terminal)
+- [Tracks, and what you have done](#tracks-and-what-you-have-done)
 - [What to practise today](#what-to-practise-today)
 - [Interview conditions](#interview-conditions)
 - [Asking an AI about the one you are stuck on](#asking-an-ai-about-the-one-you-are-stuck-on)
@@ -47,7 +48,10 @@ captured output of that command and `docs/demo/render.py` draws it
 ## What is in it
 
 - **115 exercises, every one of them graded**: 24 git scenarios, 83 Python
-  katas and 8 SQL drills, in twenty-one hand-ordered tracks.
+  katas and 8 SQL drills, in one hand-ordered curriculum.
+- **Tracks you can follow**: the whole library, the Blind 75, every git
+  scenario, every SQL drill. Each list says which steps you have passed and
+  when, and a finished attempt has a **Next** button for the step after it.
 - **A web workbench**: an editor for katas and drills, and for git scenarios a
   command console over the real repository with a live commit graph beside it.
 - **A terminal that is not a fallback**: the CLI is a second adapter over the
@@ -64,9 +68,9 @@ captured output of that command and `docs/demo/render.py` draws it
 - **Content packs**: the whole library as one verifiable file you can send
   somebody.
 
-This is v1.0.0 plus seven post-v1 additions.
+This is v1.0.0 plus eight post-v1 additions.
 [docs/PLAN.md](docs/PLAN.md) is the full design and the phase-by-phase record of
-how it was built; [docs/adr/](docs/adr/) holds the twenty-four decisions with
+how it was built; [docs/adr/](docs/adr/) holds the twenty-five decisions with
 the alternatives that were rejected, which is usually the half worth reading.
 
 ## Getting started
@@ -110,9 +114,11 @@ Everything it serves comes off the disk, so it works with the wifi off.
 
 ## The web app
 
-`/` is the dashboard — what is due, your streak, your weakest tags. `/browse`
-filters the library by kind, difficulty and tag, and starts an attempt;
-`/attempt/{id}` is the workbench; `/progress` is the long form.
+`/` is the dashboard — what is due, your tracks, your streak, your weakest tags.
+`/tracks` is a route through the library with your place marked on it. `/browse`
+filters the library by kind, difficulty and tag, says which exercises you have
+passed and when, and starts an attempt; `/attempt/{id}` is the workbench;
+`/progress` is the long form.
 
 For a kata the workbench is the prompt beside a CodeMirror editor seeded from
 the exercise's stub. For a git scenario it is a **command console over the real
@@ -267,6 +273,45 @@ marked, with its whole log.
 Attempts and review cards live in one SQLite file under the user *data*
 directory, not the cache — a workspace is rebuildable from a fixture and a
 history is not ([ADR 0006](docs/adr/0006-sqlite-without-an-orm.md)).
+
+## Tracks, and what you have done
+
+A **track** is a named route through the library: a first exercise, a next one
+and an end. Four ship.
+
+| Track | Steps | Order |
+|---|---|---|
+| The whole library | 115 | The curriculum's: git, katas and SQL interleaved |
+| The Blind 75 | 75 | By technique, each on-ramp pulled to where it is needed |
+| Git scenarios | 24 | Local work first, shared history last |
+| SQL drills | 8 | Read, read carefully, then write |
+
+Start one from `/tracks` and every finished attempt offers the step after it:
+
+```
+NEXT
+  [ Next: Contains a Duplicate → ]
+Step 2 of 75 on The Blind 75 · 1 done · easy · ~12 min
+```
+
+**Next does not wait for a schedule grade**, and it skips nothing you failed —
+after a failure it offers the step *after* that one, beside **Try this one
+again**, and comes back round to what you skipped once the rest is done. An
+attempt started from Browse or the due queue follows the first track, which is
+the whole library in order.
+
+**Every list says what you have done and when.** Browse, the due queue and
+each track mark an exercise `passed 2026-10-09`, or `not passed yet · tried
+2026-10-09`, read off the attempt log. That is a different question from
+whether it is *scheduled*: an exercise you solved and never graded has no review
+card, and before this it came back marked **new**. Dates are UTC, like
+everything the clock says.
+
+Tracks are data, in `content/tracks.yaml`, and an exercise can be on several.
+What stops an order being merely plausible is a rule `practice validate`
+enforces: a track may put the curriculum's *sections* in any order, and may not
+reverse two exercises *inside* one, because that order is dependency
+([ADR 0025](docs/adr/0025-tracks-are-a-second-manifest.md)).
 
 ## What to practise today
 
@@ -445,7 +490,9 @@ uv run practice validate
 Reports every problem in every exercise in one pass, located to the field, and
 exits non-zero if anything is wrong. It executes nothing, so it works on a
 machine with no git, and it prints what a passing run does **not** prove. It
-also audits the curriculum, which has to name every exercise exactly once.
+also audits the curriculum, which has to name every exercise exactly once, and
+`content/tracks.yaml`, whose lists may only name exercises that exist, in an
+order the curriculum does not contradict.
 
 ```bash
 uv run practice fixtures --check
@@ -583,7 +630,8 @@ src/practice/
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
 content/           115 exercises as declarative data
-├── curriculum.yaml twenty-one tracks in order; validate holds it to covering them all
+├── curriculum.yaml the one order, in twenty-one sections; validate holds it to covering them all
+├── tracks.yaml    the routes you can follow; validate holds their order to the curriculum's
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform
 tools/             the one module that opens a socket, deliberately outside the wheel
 docs/adr/          architecture decision records
@@ -631,7 +679,7 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 - [docs/PLAN.md](docs/PLAN.md) — the design, the phase plan, and a revision log
   of what each phase actually found.
-- [docs/adr/](docs/adr/) — twenty-four decision records, each with the
+- [docs/adr/](docs/adr/) — twenty-five decision records, each with the
   alternatives that lost.
 - [docs/postmortem.md](docs/postmortem.md) — written at v1.0.0: what the bet
   bought, six things that would be done differently, and what is still wrong.
