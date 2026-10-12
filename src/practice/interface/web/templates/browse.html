@@ -67,6 +67,7 @@
           {% endwith %}
         {% endif %}
         <span class="tags">
+          {% with record = records.get(exercise.id) %}{% include "partials/record.html" %}{% endwith %}
           <span class="chip">{{ exercise.kind.value.replace('_', ' ') }}</span>
           <span class="chip">{{ exercise.difficulty.value }}</span>
           <span class="chip">~{{ exercise.estimated_minutes }} min</span>

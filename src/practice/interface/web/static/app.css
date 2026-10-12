@@ -1075,3 +1075,140 @@ code.path {
   border-color: var(--fail);
   color: var(--fail);
 }
+
+/* --- done, and when ------------------------------------------------------ */
+
+/*
+ * The record chip: what the attempt log says about one exercise, on every list
+ * that shows one. In the queue's vocabulary -- a word in a bordered chip, colour
+ * as reinforcement only -- because it sits in the same row as those chips and a
+ * second visual language for "status" would make two of them look like two
+ * kinds of fact.
+ *
+ * `tried` is the amber of an advisory rather than the red of a failure: it marks
+ * work in progress, and a list with red on it reads as a list of errors.
+ */
+.chip.done {
+  border-color: var(--pass);
+  color: var(--pass);
+}
+
+.chip.tried {
+  border-color: var(--note);
+  color: var(--note);
+}
+
+/* --- tracks -------------------------------------------------------------- */
+
+/*
+ * A track row reuses `.library` for the reason the queue does: it is the same
+ * two-column row -- a title, and the one thing you can do about it -- and a
+ * third layout for it is how the pages come to look unrelated.
+ */
+.library .title[href] {
+  text-decoration: none;
+}
+
+.library .summary,
+.library .track-progress {
+  grid-column: 1 / -1;
+}
+
+.library .summary {
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+}
+
+.track-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+/*
+ * The native element, restyled just far enough to belong to the page. A fixed
+ * width so four tracks of different lengths line up as four comparable bars
+ * rather than as four bars whose length is the title's.
+ */
+progress {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 12rem;
+  height: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+progress::-webkit-progress-bar {
+  background: var(--bg-sunken);
+}
+
+progress::-webkit-progress-value {
+  background: var(--pass);
+}
+
+progress::-moz-progress-bar {
+  background: var(--pass);
+}
+
+/* A track's steps. The number is part of the title rather than a list marker,
+   so it survives the `list-style: none` every `.library` has and lines up with
+   the text it numbers. */
+.steps .step-number {
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-weight: 500;
+  margin-right: 0.25rem;
+}
+
+/* A passed step recedes and the next one is marked, so the eye lands on where
+   you are rather than on where you have been. The words still say it: the
+   record chip on a done row, and the Continue button above the list. */
+.steps li.done .title {
+  color: var(--ink-dim);
+  font-weight: 500;
+}
+
+.steps li.upcoming {
+  border-color: var(--accent);
+}
+
+/* --- what next ----------------------------------------------------------- */
+
+.next {
+  margin-top: 1rem;
+}
+
+.next h2 {
+  margin-top: 0;
+}
+
+.next .meta,
+.next .scheduled {
+  margin: 0;
+}
+
+.next-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.25rem 0 0.6rem;
+}
+
+/* Resume is a link, because it goes to a page that exists rather than making
+   one -- and it sits where the Next button would, so it is dressed as one. */
+a.button {
+  display: inline-block;
+  text-decoration: none;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  color: var(--bg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.35rem 0.9rem;
+}

@@ -14,5 +14,13 @@
   first is wanted — which is nowhere today, and is the point: it does not know
   about scheduling, so nothing has to be unpicked when it is.
 #}
+{#
+  And a third, since Phase 20: where to go from here. Below the schedule and
+  not inside it, so that it is on the page before a grade is pressed and still
+  there after -- `#review` is replaced whole by its own endpoint, and a Next
+  button inside it would have had to be re-rendered by a route that knows
+  nothing about tracks.
+#}
 {% include "partials/verdict.html" %}
 {% include "partials/review.html" %}
+{% include "partials/next.html" %}

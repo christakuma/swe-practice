@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% set track = progress.track %}
+{% set upcoming = progress.next_up %}
+
+{% block main %}
+<h1>{{ track.title }}</h1>
+<p class="lede">{{ track.summary }}</p>
+
+<p class="track-progress">
+  <progress value="{{ progress.done }}" max="{{ progress.total }}"></progress>
+  <span class="meta">{{ progress.done }} of {{ progress.total }} done</span>
+</p>
+
+{#
+  The one button a returning solver wants, above the list rather than somewhere
+  in it: the first unfinished step, whichever screenful it is on.
+#}
+{% if upcoming %}
+  {% set open = open_by_exercise.get(upcoming.exercise.id) %}
+  <div class="next-actions">
+    {% if open %}
+      <a class="button" href="/attempt/{{ open.attempt.id }}?track={{ track.name }}">Resume step {{ upcoming.number }}: {{ upcoming.exercise.title }}</a>
+    {% else %}
+      <form method="post" action="/attempt">
+        <input type="hidden" name="exercise_id" value="{{ upcoming.exercise.id }}">
+        <input type="hidden" name="track" value="{{ track.name }}">
+        <button type="submit">{{ 'Continue with' if progress.done else 'Start at' }} step {{ upcoming.number }}: {{ upcoming.exercise.title }} →</button>
+      </form>
+    {% endif %}
+  </div>
+{% elif progress.is_complete %}
+  <p class="scheduled">Every step passed. The due queue on the <a href="/">dashboard</a> is what brings them back when they are worth doing again.</p>
+{% endif %}
+
+{#
+  Every step, done or not, in the track's order -- an `ol`, because the order
+  is the content. A finished step keeps its Start button: a track records where
+  you are, it does not lock what is behind you, and doing step three again is a
+  thing people want.
+#}
+<ol class="library steps">
+  {% for step in progress.steps %}
+    {% set open = open_by_exercise.get(step.exercise.id) %}
+    <li class="{{ 'done' if step.is_done }}{{ ' upcoming' if upcoming and step.number == upcoming.number }}">
+      <span class="title"><span class="step-number">{{ step.number }}.</span> {{ step.exercise.title }}</span>
+      {% if open %}
+        <a href="/attempt/{{ open.attempt.id }}?track={{ track.name }}">Resume</a>
+      {% else %}
+        {% with exercise_id = step.exercise.id, track_name = track.name %}
+          {% include "partials/start-attempt.html" %}
+        {% endwith %}
+      {% endif %}
+      <span class="tags">
+        {% with record = step.record %}{% include "partials/record.html" %}{% endwith %}
+        <span class="chip">{{ step.exercise.kind.value.replace('_', ' ') }}</span>
+        <span class="chip">{{ step.exercise.difficulty.value }}</span>
+        <span class="chip">~{{ step.exercise.estimated_minutes }} min</span>
+      </span>
+      <span class="meta">{{ step.exercise.id }}</span>
+    </li>
+  {% endfor %}
+</ol>
+
+<p class="meta"><a href="/tracks">All tracks</a></p>
+{% endblock %}

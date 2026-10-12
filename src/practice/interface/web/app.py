@@ -57,6 +57,7 @@ from practice.interface.web.routes import (
     editor,
     progress,
     review,
+    tracks,
     tutor,
 )
 from practice.interface.web.security import SameOriginMiddleware
@@ -110,6 +111,9 @@ def create_app(services: Services) -> FastAPI:
     templates.env.filters["activity_chart"] = render_activity
     templates.env.filters["mastery_chart"] = render_mastery
     app.include_router(dashboard.build_router(services, templates))
+    # Between the dashboard and the library it is a route through: the page
+    # that knows where you are, before the one that lists everything.
+    app.include_router(tracks.build_router(services, templates))
     app.include_router(browse.build_router(services, templates))
     app.include_router(progress.build_router(services, templates))
     app.include_router(attempt.build_router(services, templates))

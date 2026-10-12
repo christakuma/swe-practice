@@ -70,6 +70,11 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 "queue": queue[:QUEUE_LIMIT],
                 "queue_total": len(queue),
                 "progress": services.summarise_progress(),
+                # Per exercise, from the attempt log: what makes a queue row
+                # say "passed 2026-10-09" instead of "new" for an exercise that
+                # was solved and never given a schedule grade.
+                "records": services.recall_exercises(),
+                "tracks": services.follow_tracks(),
                 # The same join `/browse` makes, for the same reason: starting a
                 # second attempt at an exercise that already has one open would
                 # provision a second workspace and split the budget across two

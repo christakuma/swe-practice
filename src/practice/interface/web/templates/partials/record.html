@@ -1,0 +1,27 @@
+{#
+  What the history says about one exercise, as a chip. Nothing at all for an
+  exercise never attempted, which is most of a library most of the time: a row
+  of a hundred "not started" chips would be a hundred marks that mean nothing,
+  and the absence already says it.
+
+  **One partial for every list**, because the browse page, the due queue and a
+  track are the same exercise listed for three different reasons, and the one
+  thing that must not differ between them is whether you have done it.
+
+  **Said in words, with the date.** "passed 2026-10-09" rather than a tick: the
+  question this answers is *which have I done and when*, a tick answers half of
+  it, and a status told only in a glyph and a colour is one a printout loses.
+  The date is the attempt's own — the same `finished_at` `/progress` prints in
+  its history — so the two pages cannot disagree about which day it was.
+
+  An exercise attempted and never passed says that instead, because it is the
+  row most worth finding: not new, and not done.
+#}
+{% if record %}
+  {% if record.is_done %}
+    <span class="chip done">passed {{ record.last_passed_at.date().isoformat() }}</span>
+  {% else %}
+    <span class="chip tried">not passed yet · tried {{ record.last_attempted_at.date().isoformat() }}</span>
+  {% endif %}
+  {% if record.attempts > 1 %}<span class="chip">{{ record.attempts }} attempts</span>{% endif %}
+{% endif %}

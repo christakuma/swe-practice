@@ -28,14 +28,26 @@
               {% include "partials/start-attempt.html" %}
             {% endwith %}
           {% endif %}
+          {#
+            **`new` used to mean "has no card", and that was the tool
+            forgetting.** A card is written when a schedule grade is pressed, so
+            an exercise solved and then walked away from had no card and came
+            back here marked new. It is not new, and the attempt log knows it:
+            the record chip says when it was passed, and the queue's own chip
+            says the true thing about why the row is still here.
+          #}
+          {% set record = records.get(row.exercise.id) %}
           <span class="tags">
-            {% if row.is_new %}
+            {% if row.is_new and record %}
+              <span class="chip overdue">never scheduled</span>
+            {% elif row.is_new %}
               <span class="chip new">new</span>
             {% elif row.days_overdue %}
               <span class="chip overdue">{{ row.days_overdue }} day{{ '' if row.days_overdue == 1 else 's' }} overdue</span>
             {% else %}
               <span class="chip due">due today</span>
             {% endif %}
+            {% include "partials/record.html" %}
             <span class="chip">{{ row.exercise.difficulty.value }}</span>
             <span class="chip">~{{ row.exercise.estimated_minutes }} min</span>
             {% for one in row.exercise.tags %}<span class="tag">{{ one }}</span>{% endfor %}
@@ -56,6 +68,44 @@
       <a href="/browse">browse them</a> if you want to practise anyway, which
       costs nothing but will move the schedule.
     </p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Tracks</h2>
+  {#
+    Second on the page, between *what is due* and *how it is going*: the queue
+    is the scheduler's answer to what to do now, and this is the solver's own.
+    One row per track and one button each, which goes straight to the first
+    unfinished step -- the detail, and every other step, is one click away.
+  #}
+  {% if tracks %}
+    <ul class="library tracks compact">
+      {% for progress in tracks %}
+        {% set step = progress.next_up %}
+        {% set open = open_by_exercise.get(step.exercise.id) if step else none %}
+        <li>
+          <a class="title" href="/tracks/{{ progress.track.name }}">{{ progress.track.title }}</a>
+          {% if step and open %}
+            <a href="/attempt/{{ open.attempt.id }}?track={{ progress.track.name }}">Resume</a>
+          {% elif step %}
+            <form method="post" action="/attempt">
+              <input type="hidden" name="exercise_id" value="{{ step.exercise.id }}">
+              <input type="hidden" name="track" value="{{ progress.track.name }}">
+              <button type="submit" class="quiet">{{ 'Continue' if progress.done else 'Start' }}</button>
+            </form>
+          {% else %}
+            <span class="chip done">finished</span>
+          {% endif %}
+          <span class="track-progress">
+            <progress value="{{ progress.done }}" max="{{ progress.total }}"></progress>
+            <span class="meta">{{ progress.done }} of {{ progress.total }} done{% if step %} · next: {{ step.exercise.title }}{% endif %}</span>
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">This library declares no tracks.</p>
   {% endif %}
 </section>
 

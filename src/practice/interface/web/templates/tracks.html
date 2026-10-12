@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block main %}
+<h1>Tracks</h1>
+
+<p class="lede">
+  A track is a route through the library with a first exercise, a next one and
+  an end. Start one and every finished attempt offers the step after it.
+</p>
+
+{#
+  The count is printed beside the bar, for the reason `/progress` prints every
+  figure beside its chart: a bar is the fastest way to see how far and the worst
+  way to learn the number.
+
+  `<progress>` rather than a drawn bar. It is the element that means this, it
+  needs no inline style to have a width, and a screen reader announces it as
+  what it is.
+#}
+{% if tracks %}
+  <ul class="library tracks">
+    {% for progress in tracks %}
+      {% set step = progress.next_up %}
+      {% set open = open_by_exercise.get(step.exercise.id) if step else none %}
+      <li>
+        <a class="title" href="/tracks/{{ progress.track.name }}">{{ progress.track.title }}</a>
+        {% if step and open %}
+          <a href="/attempt/{{ open.attempt.id }}?track={{ progress.track.name }}">Resume</a>
+        {% elif step %}
+          <form method="post" action="/attempt">
+            <input type="hidden" name="exercise_id" value="{{ step.exercise.id }}">
+            <input type="hidden" name="track" value="{{ progress.track.name }}">
+            <button type="submit">{{ 'Continue' if progress.done else 'Start' }}</button>
+          </form>
+        {% else %}
+          <span class="chip done">finished</span>
+        {% endif %}
+        <span class="summary">{{ progress.track.summary }}</span>
+        <span class="track-progress">
+          <progress value="{{ progress.done }}" max="{{ progress.total }}"></progress>
+          <span class="meta">{{ progress.done }} of {{ progress.total }} done{% if step %} · next: {{ step.exercise.title }}{% endif %}</span>
+        </span>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="empty">
+    This library declares no tracks. <a href="/browse">Browse it</a> instead —
+    the list there is in the order it is meant to be met.
+  </p>
+{% endif %}
+{% endblock %}

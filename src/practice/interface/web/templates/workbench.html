@@ -184,7 +184,11 @@
         values: {
           source: window.practiceEditor.getValue(),
           time: form.elements.time.value,
-          space: form.elements.space.value
+          space: form.elements.space.value,
+          // The track this attempt was started on, so the fragment that comes
+          // back can offer the step after it. Empty when there is none, which
+          // the route reads the same as absent.
+          track: {{ (track_name or '') | tojson }}
         }
       }).finally(function () {
         button.disabled = false;

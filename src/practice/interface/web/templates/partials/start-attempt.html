@@ -13,9 +13,17 @@
   stored with it (ADR 0020), so there is no later control to offer and nowhere
   to put one — a workbench toggle would be a promise the aggregate refuses to
   keep.
+
+  **`track_name` is the second thing a caller may hand in, and most do not.**
+  A track's own page sets it, so an attempt started there knows which track to
+  offer the next step of; Browse and the due queue leave it unset and the field
+  is not sent at all, which the route reads as "no track" -- the same
+  absent-means-default shape as the checkbox below
+  (`interface/web/navigation.py`).
 #}
 <form method="post" action="/attempt">
   <input type="hidden" name="exercise_id" value="{{ exercise_id }}">
+  {% if track_name %}<input type="hidden" name="track" value="{{ track_name }}">{% endif %}
   <button type="submit">Start</button>
   {#
     `value="1"` because an unchecked box sends nothing at all, which is what

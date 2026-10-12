@@ -75,6 +75,7 @@ from practice.domain.errors import DomainError
 from practice.domain.exercise import GitScenarioSpec, editable_source
 from practice.domain.ids import AttemptId
 from practice.interface.web.errors import render_problem
+from practice.interface.web.navigation import known_track, next_context
 from practice.interface.web.routes.console import COMMAND_URL, SCENARIO_SUBMIT_URL
 from practice.interface.web.routes.editor import EDITOR_URL, WATCH_URL
 from practice.interface.web.routes.review import REVIEW_URL
@@ -105,7 +106,9 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
     router = APIRouter()
 
     @router.get("/attempt/{attempt_id}", response_class=HTMLResponse)
-    def workbench(request: Request, attempt_id: str) -> Response:
+    def workbench(
+        request: Request, attempt_id: str, track: str | None = None
+    ) -> Response:
         try:
             parsed = AttemptId.parse(attempt_id)
             opened = services.open_workbench(parsed)
@@ -135,6 +138,10 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         # display value would make every caller that does not want it pass one.
         now = services.clock.now()
         left = opened.attempt.remaining(now)
+        # The track this attempt was started on, from the query string and
+        # checked against the library. `None` for an attempt started from
+        # Browse, and for a link kept past a track's rename.
+        track_name = known_track(services, track)
         return templates.TemplateResponse(
             request=request,
             name="workbench.html",
@@ -181,6 +188,17 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # template asks the same question to decide which half of the
                 # page to draw, so the two cannot disagree.
                 "review": (None if opened.is_active else services.offer_review(parsed)),
+                # Posted back by both submit forms, so the verdict fragment
+                # can offer the step after this one on the same track.
+                "track_name": track_name,
+                # The block under a finished attempt's verdict. Only read then,
+                # like `review`, and for the same reason both submit routes
+                # build it too: a reload has to show what the submission showed.
+                **(
+                    {}
+                    if opened.is_active
+                    else next_context(services, opened.exercise.id, track_name)
+                ),
                 # Whole minutes, because the deadline is authored in minutes and
                 # a seconds figure on a page that does not tick is a precision
                 # the number does not have. Both directions are formatted so the
@@ -192,13 +210,17 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
             },
         )
 
+    # Six parameters, each a field of one form: FastAPI reads a route's inputs
+    # off its signature, so the form *is* the parameter list and a parameter
+    # object would be a model that exists to be unpacked by the framework.
     @router.post("/api/attempt/{attempt_id}/submit", response_class=HTMLResponse)
-    def submit(
+    def submit(  # noqa: PLR0913, PLR0917
         request: Request,
         attempt_id: str,
         source: Annotated[str, Form()],
         time: Annotated[str | None, Form()] = None,
         space: Annotated[str | None, Form()] = None,
+        track: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Grade the editor's contents and return the verdict as a fragment.
 
@@ -243,6 +265,11 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # heard of one.
                 "review": services.offer_review(parsed),
                 "review_url": REVIEW_URL.format(attempt_id=parsed),
+                **next_context(
+                    services,
+                    submission.attempt.exercise_id,
+                    known_track(services, track),
+                ),
             },
         )
 

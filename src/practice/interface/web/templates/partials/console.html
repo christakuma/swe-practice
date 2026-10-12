@@ -79,6 +79,8 @@
       hx-swap="innerHTML"
       hx-disabled-elt="find button"
       hx-confirm="Grade the repository as it stands now? This finishes the attempt.">
+  {# The one thing this form does send: which track to offer the next step of. #}
+  {% if track_name %}<input type="hidden" name="track" value="{{ track_name }}">{% endif %}
   <button type="submit">Submit for grading</button>
   <span class="meta">graded on the repository, not on what you typed</span>
 </form>

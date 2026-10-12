@@ -29,6 +29,16 @@ does not do. The two questions the dimension was for are both answered better
 elsewhere: *what should I do now* is the dashboard's due queue, and *where am I
 losing it* is `/progress`. What this page says without inventing anything is
 which exercises have an attempt still open, as a **Resume** link.
+
+**Phase 20 added the half of status that is not a filter: each row now says
+whether it has been passed, and when.** The paragraph above argued that those
+two questions were answered elsewhere and missed a third -- *which of these
+have I done* -- which is a question about this list and no other page. For
+four phases the answer was in the database and not on the screen, and a
+library that looks identical on the fortieth visit and the first reads as a
+tool with no memory. It is shown and still not filtered on, for the reason the
+paragraph gives: `RecallExercises` is one read beside the listing, where a
+filter would be the route re-deciding what the repository returned.
 """
 
 from __future__ import annotations
@@ -44,6 +54,7 @@ from practice.domain.attempt import AttemptMode
 from practice.domain.exercise import Difficulty, ExerciseFilter, ExerciseKind
 from practice.domain.ids import ExerciseId, tag
 from practice.interface.web.errors import render_problem
+from practice.interface.web.navigation import known_track, workbench_url
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -94,6 +105,9 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 "title": "Browse",
                 "exercises": exercises,
                 "open_by_exercise": open_by_exercise,
+                # One read for the whole page, like the open attempts above it:
+                # which of these have been done, and when.
+                "records": services.recall_exercises(),
                 "selected": {
                     "kinds": set(criteria.kinds),
                     "difficulties": set(criteria.difficulties),
@@ -110,6 +124,7 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         request: Request,
         exercise_id: Annotated[str, Form()],
         interview: Annotated[bool, Form()] = False,
+        track: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Provision a workspace and send the browser to the workbench.
 
@@ -123,6 +138,13 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         that has never heard of the field — including the two forms this route
         served before Phase 15, and any bookmarked POST. A required field would
         have turned the addition into a breaking change.
+
+        **`track` is optional on the same terms, and is carried rather than
+        stored.** A form on a track's page sends the track's name and it goes
+        into the redirect's query string, which is the whole of the state: the
+        attempt does not know which page it was started from, and the page it
+        is shown on does (`interface/web/navigation.py`). A name the library
+        does not declare is dropped, like an unknown filter value above.
         """
         mode = AttemptMode.INTERVIEW if interview else AttemptMode.PRACTICE
         try:
@@ -131,7 +153,10 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
             return render_problem(
                 templates, request, title="Cannot start", detail=str(exc), status=404
             )
-        return RedirectResponse(f"/attempt/{started.attempt.id}", status_code=303)
+        return RedirectResponse(
+            workbench_url(started.attempt.id, known_track(services, track)),
+            status_code=303,
+        )
 
     return router
 

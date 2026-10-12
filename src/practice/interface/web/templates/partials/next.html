@@ -1,0 +1,68 @@
+{#
+  What to do after this attempt. The block that removes the trip back to a list.
+
+  **Outside the schedule block, and drawn whether or not a grade was pressed.**
+  The only way onward used to be a "Back to the queue" link that appeared
+  *inside* `#review` after scheduling, so moving on meant grade, back, find your
+  place, start. This sits under that block and does not wait for it. Pressing a
+  grade replaces `#review` and leaves this alone; skipping the grade costs the
+  schedule and nothing else, which `partials/review.html` already says is not a
+  hole.
+
+  **It posts to `/attempt`, the route every Start button posts to.** There is
+  one way an attempt begins, and it carries the track's name so the page that
+  comes next has this block on it too -- which is what makes a track something
+  you can walk rather than something you keep returning to.
+
+  **Resume rather than Next when the step already has an attempt open**, for
+  the reason the browse page gives: a second Start would provision a second
+  workspace for what the solver thinks of as one piece of work.
+
+  **Try again is offered only on a failure.** After a pass it would be noise
+  beside the one button that matters; after a fail it is as likely to be what
+  somebody wants as moving on, and without it the only way back in is to find
+  the exercise in a list.
+
+  Absent entirely for a library that declares no tracks: there is no route to
+  be on, and "Back to the queue" in the schedule block is still the way out.
+#}
+{% set verdict = verdict if verdict is defined else workbench.verdict %}
+{% if next_step %}
+  {% set progress = next_step.progress %}
+  {% set step = next_step.step %}
+  <section class="panel next" id="next">
+    <h2>Next</h2>
+    <div class="next-actions">
+      {% if step %}
+        {% set open = open_by_exercise.get(step.exercise.id) %}
+        {% if open %}
+          <a class="button" href="/attempt/{{ open.attempt.id }}?track={{ progress.track.name }}">Resume: {{ step.exercise.title }}</a>
+        {% else %}
+          <form method="post" action="/attempt">
+            <input type="hidden" name="exercise_id" value="{{ step.exercise.id }}">
+            <input type="hidden" name="track" value="{{ progress.track.name }}">
+            <button type="submit">Next: {{ step.exercise.title }} →</button>
+          </form>
+        {% endif %}
+      {% endif %}
+      {% if verdict and not verdict.passed %}
+        <form method="post" action="/attempt">
+          <input type="hidden" name="exercise_id" value="{{ finished_exercise_id }}">
+          <input type="hidden" name="track" value="{{ progress.track.name }}">
+          <button type="submit" class="quiet">Try this one again</button>
+        </form>
+      {% endif %}
+    </div>
+    {#
+      Each sentence on one line, the way `partials/verdict.html` writes its
+      summary: a Jinja block that wraps the source wraps the output too, and an
+      assertion about the sentence then has to know where the newlines fell.
+    #}
+    {% if step %}
+      <p class="meta">Step {{ step.number }} of {{ progress.total }} on <a href="/tracks/{{ progress.track.name }}">{{ progress.track.title }}</a> · {{ progress.done }} done · {{ step.exercise.difficulty.value }} · ~{{ step.exercise.estimated_minutes }} min</p>
+    {% else %}
+      <p class="scheduled">Nothing else is unfinished on <a href="/tracks/{{ progress.track.name }}">{{ progress.track.title }}</a>: {{ progress.done }} of {{ progress.total }} done.</p>
+      <p class="meta"><a href="/tracks">Pick another track</a></p>
+    {% endif %}
+  </section>
+{% endif %}
