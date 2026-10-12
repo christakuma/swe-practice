@@ -46,6 +46,7 @@ from practice.config import content_root
 from practice.domain.checks import registry
 from practice.domain.commands import parse_command_list
 from practice.domain.exercise import (
+    Difficulty,
     ExerciseKind,
     GitScenarioSpec,
     KataSpec,
@@ -407,6 +408,149 @@ def test_the_curriculum_orders_the_whole_library() -> None:
     assert [exercise.id for exercise in repository.list_exercises()] == list(
         curriculum.exercise_ids
     )
+
+
+# --- the tracks --------------------------------------------------------------
+
+#: The eight katas the library holds that are not on the Blind 75, written out
+#: rather than derived. `tracks.yaml` lists seventy-five ids and a count alone
+#: would pass with the wrong seventy-five; naming the complement is an oracle
+#: the list was not built from -- it comes from the canonical list's own
+#: categories, where none of these appears.
+BEYOND_THE_BLIND_75 = frozenset(
+    {
+        "katas/move-zeroes",
+        "katas/longest-common-prefix",
+        "katas/subarray-sum-equals-k",
+        "katas/flood-fill",
+        "katas/shortest-path-in-a-grid",
+        "katas/topological-order",
+        "katas/knapsack",
+        "katas/edit-distance",
+    }
+)
+
+#: Lessons that lean on an earlier one in a *different* curriculum section,
+#: which is the one kind of dependency `practice validate` cannot see: its rule
+#: holds a track to the order inside each section and leaves the sections free.
+#: Each pair is (premise, lesson), and each is argued in `curriculum.yaml` or
+#: `tracks.yaml`.
+PREMISES = (
+    # A mark that is undone, against one that is permanent.
+    ("katas/find-a-word-in-a-grid", "katas/clone-a-graph"),
+    # The third composes the first two.
+    ("katas/find-a-word-in-a-grid", "katas/find-words-in-a-grid"),
+    ("katas/add-and-search-a-word", "katas/find-words-in-a-grid"),
+    # The character count, and then the character count as a dictionary key.
+    ("katas/is-it-an-anagram", "katas/group-anagrams"),
+    # A heap as a step, before a heap deciding what to merge next.
+    ("katas/top-k-frequent", "katas/merge-k-sorted-lists"),
+    # You cannot be asked to undo a rebase before you have done one.
+    ("git/squash-fixups-before-pushing", "git/undo-a-rebase-with-orig-head"),
+    ("git/rebase-a-feature-branch", "git/resolve-a-conflict-during-a-rebase"),
+    ("git/resolve-a-merge-conflict", "git/resolve-a-conflict-during-a-rebase"),
+)
+
+
+def _tracks() -> dict[str, tuple[str, ...]]:
+    repository = FilesystemContentRepository(CONTENT_ROOT)
+    return {
+        track.name: tuple(str(exercise_id) for exercise_id in track.exercises)
+        for track in repository.list_tracks()
+    }
+
+
+def _ids_of_kind(kind: ExerciseKind) -> set[str]:
+    repository = FilesystemContentRepository(CONTENT_ROOT)
+    return {
+        str(exercise.id)
+        for exercise in repository.list_exercises()
+        if exercise.kind is kind
+    }
+
+
+def test_the_library_offers_the_tracks_it_says_it_does() -> None:
+    """Four, in this order -- and the order is load-bearing, because the first
+    track is the one the Next button follows when nothing has said which.
+    """
+    assert list(_tracks()) == ["everything", "blind-75", "git-scenarios", "sql-drills"]
+
+
+def test_the_default_track_is_the_whole_library_in_curriculum_order() -> None:
+    """So that Next, from an attempt started on Browse, goes where Browse's own
+    list goes. A default in any other order would send somebody working down
+    that page somewhere the page does not.
+    """
+    curriculum = load_curriculum(CONTENT_ROOT)
+
+    assert _tracks()["everything"] == tuple(
+        str(exercise_id) for exercise_id in curriculum.exercise_ids
+    )
+
+
+def test_the_blind_75_is_the_seventy_five() -> None:
+    """Seventy-five katas, and the *right* seventy-five: every kata in the
+    library except the eight that were never on the list.
+    """
+    blind = _tracks()["blind-75"]
+
+    assert len(blind) == 75
+    assert set(blind) == _ids_of_kind(ExerciseKind.KATA) - BEYOND_THE_BLIND_75
+    assert _ids_of_kind(ExerciseKind.KATA) >= BEYOND_THE_BLIND_75
+
+
+@pytest.mark.parametrize(
+    ("track", "kind"),
+    [
+        ("git-scenarios", ExerciseKind.GIT_SCENARIO),
+        ("sql-drills", ExerciseKind.SQL_DRILL),
+    ],
+)
+def test_a_track_named_for_a_kind_misses_nothing_of_that_kind(
+    track: str, kind: ExerciseKind
+) -> None:
+    """These two are explicit lists, so an exercise added to the curriculum and
+    forgotten here would validate -- the track would simply never offer it.
+    `practice validate` cannot know a list was meant to be exhaustive; this
+    can, because it knows what the track is called.
+    """
+    assert set(_tracks()[track]) == _ids_of_kind(kind)
+
+
+@pytest.mark.parametrize(("premise", "lesson"), PREMISES)
+def test_no_track_offers_a_lesson_before_its_premise(premise: str, lesson: str) -> None:
+    """The cross-section half of *the order makes sense*, which the validator's
+    within-section rule does not reach. Every track holding both must have them
+    this way round -- including `everything`, which holds all of them and so
+    checks the curriculum itself.
+    """
+    holding_both = {
+        name: steps
+        for name, steps in _tracks().items()
+        if premise in steps and lesson in steps
+    }
+
+    assert holding_both, f"no track holds both {premise} and {lesson}"
+    for name, steps in holding_both.items():
+        assert steps.index(premise) < steps.index(lesson), name
+
+
+def test_every_track_opens_gently() -> None:
+    """The first three steps of every track are intro or easy. A route whose
+    second step is a medium is one most people stop following at the second
+    step, and it is why the git track does not open in the curriculum's order:
+    there, steps three to six are three mediums and a hard.
+    """
+    repository = FilesystemContentRepository(CONTENT_ROOT)
+    difficulty = {
+        str(exercise.id): exercise.difficulty
+        for exercise in repository.list_exercises()
+    }
+    gentle = {Difficulty.INTRO, Difficulty.EASY}
+
+    for name, steps in _tracks().items():
+        opening = [difficulty[step] for step in steps[:3]]
+        assert set(opening) <= gentle, (name, steps[:3])
 
 
 # --- the tripwire ----------------------------------------------------------

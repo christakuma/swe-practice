@@ -34,6 +34,7 @@ not — a green build on an unsolvable exercise.
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
@@ -48,6 +49,7 @@ from practice.adapters.content.loader import (
     load_exercise,
     load_exercise_file,
 )
+from practice.adapters.content.tracks import TRACKS_FILENAME, load_tracks
 from practice.domain.checks import registry as checks
 from practice.domain.commands import parse_command_list
 from practice.domain.drills import registry as drills
@@ -183,6 +185,7 @@ def validate_library(root: Path) -> LibraryReport:
         problems.append("holds no exercises")
 
     problems.extend(_audit_curriculum(root, directories))
+    problems.extend(_audit_tracks(root, directories))
 
     return LibraryReport(
         root=root,
@@ -230,6 +233,72 @@ def _audit_curriculum(root: Path, directories: Sequence[Path]) -> Iterator[str]:
             f"{CURRICULUM_FILENAME}: lists exercise(s) that are not on disk: "
             f"{', '.join(unknown)}"
         )
+
+
+def _audit_tracks(root: Path, directories: Sequence[Path]) -> Iterator[str]:
+    """A track may only name exercises that exist, in an order the curriculum
+    does not contradict.
+
+    **The second rule is what the word *sensible* is resting on.** A track is
+    free to select and free to put the curriculum's sections in an order of its
+    own -- the Blind 75 meets the two-pointer katas before the string ones, and
+    the git track meets recovery before collaboration. What it may not do is
+    reverse two exercises *inside one section*, because that is the order ADR
+    0014 says is dependency: `is-it-a-subtree` reuses the comparison
+    `are-two-trees-the-same` establishes, and a track that offered them the
+    other way round would be offering a lesson before its premise.
+
+    So the dependency argument is made once, in `curriculum.yaml`, and every
+    track is held to it. Somebody who reorders a section for a reason gets a
+    failure naming each track that still has the old order, instead of a track
+    that silently kept teaching it backwards.
+
+    Nothing is said when the file is absent: a library may decline to offer
+    tracks. A track that follows the curriculum cannot break either rule, so it
+    is not examined.
+    """
+    if not directories:
+        return
+    try:
+        declarations = load_tracks(root)
+    except ContentError as exc:
+        yield from (f"{TRACKS_FILENAME}: {problem}" for problem in exc.problems)
+        return
+
+    on_disk = {directory.relative_to(root).as_posix() for directory in directories}
+    try:
+        sections = load_curriculum(root).tracks
+    except ContentError:
+        # Already reported by `_audit_curriculum`, and without an order there is
+        # nothing to hold a track's order against.
+        sections = ()
+
+    for declaration in declarations:
+        if declaration.exercises is None:
+            continue
+        unknown = sorted(
+            exercise_id.value
+            for exercise_id in declaration.exercises
+            if exercise_id.value not in on_disk
+        )
+        if unknown:
+            yield (
+                f"{TRACKS_FILENAME}: {declaration.name}: lists exercise(s) that "
+                f"are not on disk: {', '.join(unknown)}"
+            )
+        placed = {
+            exercise_id: index
+            for index, exercise_id in enumerate(declaration.exercises)
+        }
+        for section in sections:
+            shared = [found for found in section.exercises if found in placed]
+            for earlier, later in itertools.pairwise(shared):
+                if placed[earlier] > placed[later]:
+                    yield (
+                        f"{TRACKS_FILENAME}: {declaration.name}: puts {later} "
+                        f"before {earlier}, and {CURRICULUM_FILENAME} orders "
+                        f"them the other way inside '{section.name}'"
+                    )
 
 
 def validate_exercise(directory: Path) -> ExerciseReport:

@@ -33,6 +33,7 @@ from practice.adapters.content import (
     write_pack,
 )
 from practice.adapters.content.pack import FIXTURE_LIB_DIRNAME
+from practice.adapters.content.tracks import TRACKS_FILENAME
 from practice.adapters.content.validation import validate_library
 from practice.adapters.sandbox import LOCK_FILENAME
 from practice.config import content_root
@@ -212,6 +213,14 @@ def test_an_installed_library_is_byte_identical_to_the_source(
     looks like a broken environment. Comparing the bytes says it here instead,
     in a test that needs no git and takes no time — `tests/e2e` runs the
     fixtures themselves.
+
+    **The three derived indexes are left out by name**, because they are the
+    files a pack regenerates rather than copies and so are *meant* to differ:
+    each carries a header saying it is derived. `tracks.yaml` became the third
+    in Phase 20, and this test is what found that — it failed in the full suite
+    with the new file in `differing`, which is the right reading of a pack that
+    now writes one more index. What it protects is everything else: no
+    *exercise* file may change by a byte.
     """
     destination = tmp_path / "library.practicepack"
     write_pack(destination, content_root=library, exercises=shipped)
@@ -221,7 +230,7 @@ def test_an_installed_library_is_byte_identical_to_the_source(
     differing = [
         name
         for name in manifest.digests
-        if name not in {"curriculum.yaml", LOCK_FILENAME}
+        if name not in {"curriculum.yaml", LOCK_FILENAME, TRACKS_FILENAME}
         and (library / name).read_bytes() != (into / name).read_bytes()
     ]
 

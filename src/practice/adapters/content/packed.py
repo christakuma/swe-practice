@@ -61,6 +61,11 @@ from practice.adapters.content.loader import (
     parse_exercise_file,
 )
 from practice.adapters.content.pack import pack_location, read_manifest
+from practice.adapters.content.tracks import (
+    TRACKS_FILENAME,
+    parse_tracks,
+    resolve_tracks,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -70,6 +75,7 @@ if TYPE_CHECKING:
     from practice.adapters.content.pack import PackManifest
     from practice.domain.exercise import Exercise, ExerciseFilter
     from practice.domain.ids import ExerciseId
+    from practice.domain.track import Track
 
 __all__ = ["PackContentRepository"]
 
@@ -91,6 +97,7 @@ class PackContentRepository:
     def __init__(self, archive: Path) -> None:
         self._archive = archive
         self._exercises: dict[ExerciseId, Exercise] | None = None
+        self._tracks: tuple[Track, ...] | None = None
 
     @property
     def archive(self) -> Path:
@@ -120,6 +127,29 @@ class PackContentRepository:
     def get(self, exercise_id: ExerciseId) -> Exercise | None:
         """The exercise, or `None` if this pack does not hold it."""
         return self._loaded().get(exercise_id)
+
+    def list_tracks(self) -> Sequence[Track]:
+        """Every track the pack carries, resolved against the pack's own order.
+
+        Through `parse_tracks` and `resolve_tracks`, the same two functions the
+        filesystem repository uses, so a track cannot mean one thing in a
+        directory and another in the archive made from it. **A pack with no
+        `tracks.yaml` has no tracks**, which is every pack written before the
+        file existed and is not an error for the reason a directory without one
+        is not.
+        """
+        if self._tracks is None:
+            with zipfile.ZipFile(self._archive) as archive:
+                declared = (
+                    parse_tracks(
+                        self._read(archive, TRACKS_FILENAME),
+                        located_at=pack_location(self._archive, TRACKS_FILENAME),
+                    )
+                    if TRACKS_FILENAME in archive.namelist()
+                    else ()
+                )
+            self._tracks = resolve_tracks(declared, list(self._loaded()))
+        return self._tracks
 
     def _loaded(self) -> dict[ExerciseId, Exercise]:
         """Read the whole pack in one pass, in curriculum order.

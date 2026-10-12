@@ -1,0 +1,233 @@
+# The routes through the library somebody can follow.
+#
+# `curriculum.yaml` is one order over everything, each exercise named exactly
+# once. A track is a selection with an order of its own, and an exercise may sit
+# on several -- Two Sum is step 1 of the Blind 75 and step 2 of the whole
+# library -- which is the thing a file that names every exercise once cannot
+# say (docs/adr/0025-tracks-are-a-second-manifest.md).
+#
+# Two spellings. `follows: curriculum` is every exercise in the curriculum's
+# order, so the whole-library track is not a copy of the file next door.
+# `exercises:` is an explicit list, for a track that selects or reorders.
+#
+# **The first track is the default.** After an attempt started from Browse or
+# from the due queue, the Next button follows the first track declared here,
+# because nothing has said which one the solver is on. So `everything` is first
+# on purpose: it is the order Browse and the queue are already in.
+#
+# **What a track may reorder, and what it may not.** `practice validate` holds
+# every explicit list to one rule: two exercises from the same curriculum
+# section keep the order that section gives them. That order is dependency
+# (ADR 0014) -- `is-it-a-subtree` reuses what `are-two-trees-the-same`
+# establishes -- and it is argued once, in `curriculum.yaml`, rather than again
+# here. *Between* sections a track is free, and both hand-ordered tracks below
+# use that freedom, for the same reason: the curriculum interleaves kinds for a
+# solver doing all three, and a solver doing one kind is better served by a
+# difficulty curve.
+#
+# `tests/content/test_library.py` holds the three explicit tracks to their
+# names: the Blind 75 is seventy-five katas, and the git and SQL tracks miss
+# nothing of their kind -- so an exercise added to the curriculum and forgotten
+# here fails rather than quietly never being offered.
+
+tracks:
+
+  - name: everything
+    title: The whole library
+    summary: >-
+      Every exercise in curriculum order: git, katas and SQL interleaved, so a
+      fortnight never goes by on one of them without meeting the others.
+    follows: curriculum
+
+  # The seventy-five, by technique rather than in the list's own alphabetical
+  # category order, and with each technique's on-ramp pulled to where it is
+  # needed rather than left where the curriculum's history put it.
+  #
+  # Three cross-section moves carry the argument:
+  #
+  # * `contains-a-duplicate` comes second and `is-it-an-anagram` third. They
+  #   are the one-idea versions of the hash set and the character count, and
+  #   the curriculum meets the first of them only after `top-k-frequent` -- it
+  #   has easier on-ramps of its own there (`move-zeroes`,
+  #   `longest-common-prefix`) that are not among the seventy-five, so this
+  #   track needs its warm-ups pulled forward and that one does not.
+  # * `is-it-a-palindrome` sits among the two-pointer katas, because that is
+  #   what it is; the two palindrome-*expansion* exercises that follow it in
+  #   the strings section want a different idea and stay together.
+  # * Bit manipulation moves up, between trees and grids. Five short exercises
+  #   that depend on nothing are worth more as a breather between the two
+  #   heaviest runs than as a coda after dynamic programming.
+  #
+  # The curriculum's two load-bearing cross-section orders are kept:
+  # `find-a-word-in-a-grid` precedes `clone-a-graph` (a mark that is undone
+  # against one that is permanent), and `find-words-in-a-grid` comes after both
+  # the grid search and the trie it composes.
+  #
+  # One seam shows. `alien-alphabet-order`'s notes lean on `topological-order`,
+  # which is Course Schedule II and not one of the seventy-five. It follows
+  # `detect-a-dependency-cycle` here -- the same graph and the same question of
+  # what a cycle means -- and the kata it cites is one step away on
+  # `everything`. Adding it would make this the Blind 76.
+  - name: blind-75
+    title: The Blind 75
+    summary: >-
+      The seventy-five interview problems, ordered by technique and by what
+      each one needs from the one before, rather than by the list's categories.
+    exercises:
+      # Hash maps and sets: one lookup you would otherwise have to search for.
+      - katas/two-sum
+      - katas/contains-a-duplicate
+      - katas/is-it-an-anagram
+      - katas/valid-parentheses
+      - katas/group-anagrams
+      - katas/longest-substring-without-repeats
+      - katas/top-k-frequent
+      - katas/product-except-self
+      # Two pointers and running state.
+      - katas/best-time-to-buy-and-sell
+      - katas/is-it-a-palindrome
+      - katas/three-sum-to-zero
+      - katas/the-largest-container
+      - katas/longest-consecutive-run
+      # Strings and sliding windows.
+      - katas/longest-palindromic-substring
+      - katas/count-palindromic-substrings
+      - katas/longest-run-after-k-replacements
+      - katas/smallest-window-covering
+      - katas/encode-and-decode-strings
+      # Binary search past the textbook case.
+      - katas/find-the-minimum-in-a-rotated-array
+      - katas/search-a-rotated-array
+      # Linked lists.
+      - katas/reverse-a-linked-list
+      - katas/merge-two-sorted-lists
+      - katas/detect-a-cycle-in-a-linked-list
+      - katas/remove-the-nth-node-from-the-end
+      - katas/reorder-a-linked-list
+      - katas/merge-k-sorted-lists
+      # Binary trees.
+      - katas/max-depth-of-a-binary-tree
+      - katas/invert-a-binary-tree
+      - katas/level-order-traversal
+      - katas/are-two-trees-the-same
+      - katas/is-it-a-subtree
+      - katas/validate-a-binary-search-tree
+      - katas/lowest-common-ancestor
+      - katas/kth-smallest-in-a-bst
+      - katas/rebuild-a-tree-from-traversals
+      - katas/serialize-and-deserialize-a-tree
+      - katas/best-path-sum-in-a-tree
+      # Bits: short, self-contained, and a breather before the graphs.
+      - katas/count-the-set-bits
+      - katas/count-bits-for-every-number-up-to-n
+      - katas/find-the-missing-number
+      - katas/reverse-the-bits-of-a-word
+      - katas/add-without-a-plus-sign
+      # Grids, then graphs.
+      - katas/rotate-a-matrix-in-place
+      - katas/read-a-matrix-in-spiral-order
+      - katas/zero-out-rows-and-columns
+      - katas/find-a-word-in-a-grid
+      - katas/count-islands
+      - katas/clone-a-graph
+      - katas/water-flowing-to-both-oceans
+      - katas/count-connected-components
+      - katas/is-this-graph-a-tree
+      - katas/detect-a-dependency-cycle
+      - katas/alien-alphabet-order
+      # Intervals.
+      - katas/merge-intervals
+      - katas/insert-an-interval
+      - katas/meeting-rooms
+      - katas/how-many-meeting-rooms
+      - katas/fewest-intervals-to-remove
+      # Dynamic programming: one dimension, then two.
+      - katas/climbing-stairs
+      - katas/count-the-decodings
+      - katas/maximum-subarray
+      - katas/maximum-product-subarray
+      - katas/jump-game
+      - katas/house-robber
+      - katas/house-robber-in-a-circle
+      - katas/coin-change
+      - katas/word-break
+      - katas/longest-increasing-subsequence
+      - katas/combination-sum
+      - katas/count-paths-through-a-grid
+      - katas/longest-common-subsequence
+      # Structures you build yourself, last: the third one composes the trie
+      # with the grid search from forty steps back.
+      - katas/implement-a-trie
+      - katas/add-and-search-a-word
+      - katas/find-words-in-a-grid
+      - katas/median-of-a-stream
+
+  # Every git scenario, on a difficulty curve rather than in the curriculum's
+  # order. The curriculum opens with the four history-rewriting exercises --
+  # three mediums and a hard -- because, interleaved with katas, that is the
+  # fortnight they belong in. Taken alone that is a steep second step, so the
+  # two easy recoveries come first: neither needs anything but `log`, `restore`
+  # and `stash`, and both leave a solver less afraid of the rewrites that
+  # follow.
+  #
+  # The rest of recovery stays *after* the rewrites, as the curriculum has it,
+  # because that order is dependency rather than difficulty: undoing a rebase
+  # with ORIG_HEAD is a strange thing to be asked before you have rebased.
+  #
+  # The two search exercises move up from the end. They depend on nothing and
+  # are medium, and a track should finish on its hardest material -- which is
+  # the last three here, all about history other people can see.
+  - name: git-scenarios
+    title: Git scenarios
+    summary: >-
+      Every git exercise, from publishing a branch to recovering after
+      somebody force-pushed under you: local work first, shared history last.
+    exercises:
+      - git/publish-a-branch-for-review
+      - git/amend-the-last-commit
+      # Getting something back, the easy way.
+      - git/restore-a-file-deleted-long-ago
+      - git/rescue-a-forgotten-stash
+      # Rewriting history you have not pushed.
+      - git/move-commits-off-main
+      - git/squash-fixups-before-pushing
+      - git/drop-a-secret-from-a-commit
+      - git/split-a-commit-into-two
+      # Getting something back after a rewrite went wrong.
+      - git/recover-a-lost-commit
+      - git/restore-a-deleted-branch
+      - git/rescue-commits-from-a-detached-head
+      - git/undo-a-merge-you-have-not-pushed
+      - git/undo-a-rebase-with-orig-head
+      # Finding out what happened.
+      - git/find-the-commit-that-removed-a-line
+      - git/find-the-first-bad-commit-with-bisect
+      # Working with other people.
+      - git/pull-without-a-merge-bubble
+      - git/revert-a-pushed-commit
+      - git/revert-a-pushed-merge
+      - git/rebase-a-feature-branch
+      - git/cherry-pick-a-fix-to-a-release-branch
+      # Conflicts, and rewrites other people can see.
+      - git/resolve-a-merge-conflict
+      - git/resolve-a-conflict-during-a-rebase
+      - git/force-push-your-own-branch-safely
+      - git/recover-after-a-colleague-force-pushed
+
+  # In the curriculum's own order, which for eight drills in three sections that
+  # were always consecutive by kind is already the right one: read, then read
+  # carefully, then write.
+  - name: sql-drills
+    title: SQL drills
+    summary: >-
+      Every SQL exercise: asking the right question of a table first, then
+      changing data and living with what you changed.
+    exercises:
+      - sql/newest-customers-first
+      - sql/one-row-per-customer
+      - sql/the-two-biggest-spenders
+      - sql/the-null-that-broke-the-report
+      - sql/use-the-index-you-were-given
+      - sql/cancel-an-order-without-deleting-it
+      - sql/delete-only-the-empty-carts
+      - sql/a-view-the-report-can-reuse

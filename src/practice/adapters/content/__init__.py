@@ -1,6 +1,6 @@
 """Reading the exercise library off disk.
 
-Seven modules, split by what each one knows about:
+Eight modules, split by what each one knows about:
 
 * `schema` — what a valid `exercise.yaml` looks like, as Pydantic models. Knows
   nothing about files.
@@ -11,6 +11,9 @@ Seven modules, split by what each one knows about:
 * `curriculum` — `curriculum.yaml`, the manifest that decides what order the
   library is offered in (Phase 11, ADR 0014). Knows about one small YAML file
   and nothing about exercises beyond their ids.
+* `tracks` — `tracks.yaml`, the second manifest: the named routes through the
+  library somebody can follow, where an exercise may sit on several (ADR 0025).
+  Knows about one small YAML file and how to resolve it against an order.
 * `filesystem` — the `ContentRepository` port over a content root.
 * `pack` — a library as one deterministic archive with its own digests, which
   is what makes a content root something you can send somebody (Phase 16).
@@ -47,6 +50,11 @@ from practice.adapters.content.pack import (
     write_pack,
 )
 from practice.adapters.content.packed import PackContentRepository
+from practice.adapters.content.tracks import (
+    TRACKS_FILENAME,
+    TrackDeclaration,
+    load_tracks,
+)
 from practice.adapters.content.validation import (
     ExerciseReport,
     LibraryReport,
@@ -58,6 +66,7 @@ __all__ = [
     "CURRICULUM_FILENAME",
     "MANIFEST_FILENAME",
     "PACK_SUFFIX",
+    "TRACKS_FILENAME",
     "ContentError",
     "Curriculum",
     "ExerciseReport",
@@ -66,10 +75,12 @@ __all__ = [
     "PackContentRepository",
     "PackManifest",
     "Track",
+    "TrackDeclaration",
     "install_pack",
     "load_curriculum",
     "load_exercise",
     "load_exercise_file",
+    "load_tracks",
     "read_manifest",
     "validate_exercise",
     "validate_library",

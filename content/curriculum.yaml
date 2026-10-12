@@ -62,11 +62,19 @@ tracks:
       - katas/valid-parentheses
       - sql/one-row-per-customer
 
+  # `is-it-an-anagram` arrived with the Blind 75 fill-in and was first filed
+  # under `strings-and-windows`, two sections later -- which put the
+  # character count *as a dictionary key* (`group-anagrams`) ahead of the
+  # character count on its own. Nothing noticed until tracks existed and
+  # `test_no_track_offers_a_lesson_before_its_premise` was written against the
+  # Blind 75's order and then run against this one. It is the one-idea version
+  # of the kata below it, so it sits directly above.
   - name: arrays-strings-hashing
     title: "Katas: arrays, strings and hashing"
     exercises:
       - katas/move-zeroes
       - katas/longest-common-prefix
+      - katas/is-it-an-anagram
       - katas/group-anagrams
       - katas/longest-substring-without-repeats
       - katas/top-k-frequent
@@ -124,7 +132,6 @@ tracks:
   - name: strings-and-windows
     title: "Katas: strings, windows and formats"
     exercises:
-      - katas/is-it-an-anagram
       - katas/is-it-a-palindrome
       - katas/longest-palindromic-substring
       - katas/count-palindromic-substrings

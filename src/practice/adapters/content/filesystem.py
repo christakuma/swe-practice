@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 from practice.adapters.content.curriculum import load_curriculum
 from practice.adapters.content.loader import load_exercise
+from practice.adapters.content.tracks import load_tracks, resolve_tracks
 from practice.adapters.content.validation import discover
 
 if TYPE_CHECKING:
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from practice.adapters.content.curriculum import Curriculum
     from practice.domain.exercise import Exercise, ExerciseFilter
     from practice.domain.ids import ExerciseId
+    from practice.domain.track import Track
 
 __all__ = ["FilesystemContentRepository"]
 
@@ -43,6 +45,7 @@ class FilesystemContentRepository:
         self._root = root
         self._exercises: dict[ExerciseId, Exercise] | None = None
         self._order: Curriculum | None = None
+        self._tracks: tuple[Track, ...] | None = None
 
     @property
     def root(self) -> Path:
@@ -82,6 +85,22 @@ class FilesystemContentRepository:
         URL someone bookmarked, not a fault.
         """
         return self._loaded().get(exercise_id)
+
+    def list_tracks(self) -> Sequence[Track]:
+        """Every track `tracks.yaml` declares, resolved against this library.
+
+        Read once and cached, like everything else here. Resolved against
+        `list_exercises()` rather than against the curriculum file, so that
+        *follows the curriculum* means the order this repository actually
+        serves -- including a drafted exercise the manifest does not name yet,
+        which sorts last there and so comes last here too.
+        """
+        if self._tracks is None:
+            self._tracks = resolve_tracks(
+                load_tracks(self._root),
+                [exercise.id for exercise in self.list_exercises()],
+            )
+        return self._tracks
 
     def _curriculum(self) -> Curriculum:
         """The manifest, read once. Cached for the same reason the exercises are.

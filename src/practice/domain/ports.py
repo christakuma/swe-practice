@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from practice.domain.exercise import Exercise, ExerciseFilter
     from practice.domain.ids import AttemptId, ExerciseId, Sha
     from practice.domain.review import Grade, ReviewCard
+    from practice.domain.track import Track
     from practice.domain.verdict import Verdict
 
 __all__ = [
@@ -314,6 +315,28 @@ class ContentRepository(Protocol):
     ) -> Sequence[Exercise]: ...
 
     def get(self, exercise_id: ExerciseId) -> Exercise | None: ...
+
+    def list_tracks(self) -> Sequence[Track]:
+        """Every track the library declares, in the order it declares them.
+
+        On this port rather than one of its own because a track is content: it
+        is authored beside the exercises, travels in a pack with them, and names
+        nothing but their ids. A second port would be a second thing for every
+        composition root and every fake to wire, to read one more file out of
+        the same directory.
+
+        **The order is part of the answer.** The first track is the one *what
+        next* follows when nothing has said which track a solver is on, so a
+        library chooses its default by what it lists first rather than by a
+        flag.
+
+        Empty for a library that declares none, which is every library written
+        before there were any and every pack narrowed until nothing was left on
+        one. That is not the missing-curriculum case: without an order the
+        library has no honest way to be listed, while without tracks it has
+        simply not offered any.
+        """
+        ...
 
 
 class AttemptRepository(Protocol):

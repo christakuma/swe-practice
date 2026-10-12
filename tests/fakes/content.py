@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
     from practice.domain.exercise import ExerciseFilter
+    from practice.domain.track import Track
 
 __all__ = ["FakeContentRepository", "a_drill", "a_kata", "a_scenario"]
 
@@ -155,8 +156,11 @@ def a_drill(
 class FakeContentRepository:
     """Satisfies `practice.domain.ports.ContentRepository` from a dict."""
 
-    def __init__(self, exercises: Iterable[Exercise] = ()) -> None:
+    def __init__(
+        self, exercises: Iterable[Exercise] = (), tracks: Iterable[Track] = ()
+    ) -> None:
         self._exercises = {exercise.id: exercise for exercise in exercises}
+        self._tracks = tuple(tracks)
 
     def list_exercises(
         self, criteria: ExerciseFilter | None = None
@@ -171,6 +175,22 @@ class FakeContentRepository:
 
     def get(self, exercise_id: ExerciseId) -> Exercise | None:
         return self._exercises.get(exercise_id)
+
+    def list_tracks(self) -> Sequence[Track]:
+        """The tracks this fake was given, in the order it was given them.
+
+        Handed over already built rather than resolved from a declaration,
+        which is the one place this differs from the real repositories on
+        purpose: resolution is `adapters/content/tracks.py`'s job and has its
+        own tests, and a fake that re-did it would be a second implementation
+        of the thing under test. What is held to the real behaviour is the part
+        a use case can observe -- declaration order, and empty by default.
+        """
+        return self._tracks
+
+    def offer(self, *tracks: Track) -> None:
+        """Declare more tracks, after the ones already here."""
+        self._tracks = (*self._tracks, *tracks)
 
     def add(self, *exercises: Exercise) -> None:
         """Put more exercises in the library.
