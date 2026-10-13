@@ -1,78 +1,55 @@
-# Only the room that frees up soonest is worth checking
+# After sorting, only neighbours can clash
 
-Sort by start, and keep the end times of the meetings currently in progress in a
-min-heap. For each new meeting:
+Revealed after grading. This is the classic "Meeting Rooms" (LeetCode 252); the
+wording above is ours.
 
-- if the earliest end time is at or before this start, that room is free → reuse
-  it
-- otherwise every room is busy → open a new one
-
-The heap's size at the end is the answer, because it only ever grows: it is a
-high-water mark of simultaneous meetings.
-
-**Why one room is enough to check**: the heap's minimum is the *earliest* any
-room becomes free. If that one is still occupied, none of the others can be. So
-there is no search and no choice — which is what makes the greedy correct rather
-than merely plausible.
-
-```
-[(0, 30), (5, 10), (15, 20)]   sorted by start
-
-(0, 30)   heap [30]            open a room
-(5, 10)   heap [10, 30]        30 > 5, so open another
-(15, 20)  heap [20, 30]        10 <= 15, reuse that room
-answer 2
-```
-
-## The heap is answering one question
-
-A list, scanned for its minimum, is the same algorithm at O(n²). The heap makes
-each step O(log n), so the whole thing is O(n log n) — the same cost as the sort
-it already pays, which is the sign that the data structure is the right size for
-the job rather than overkill.
-
-## The sweep, which needs no heap
+Two half-open meetings overlap when each starts before the other ends:
 
 ```python
-starts = sorted(s for s, _ in meetings)
-ends   = sorted(e for _, e in meetings)
+a_start < b_end and b_start < a_end
 ```
 
-Walk the two sorted lists together: a start increments a counter, an end
-decrements it, and the answer is the maximum the counter reaches. Same
-complexity, less machinery, and genuinely elegant.
+Checking that for every pair is the definition, and it is `O(n^2)`. The whole
+exercise is noticing that most of those pairs never need looking at.
 
-What it loses is **which room each meeting is in**. The heap version can be
-extended to assign room numbers, because each heap entry *is* a room; the sweep
-only ever knows how many are busy. Which one to reach for depends on whether
-"how many" or "which" is the real question — and in a calendar application it is
-always "which".
+## The move
 
-## `<=` versus `<`, again
+Sort by start time. Now suppose some meeting overlaps one that is *not* next to
+it in that order. Everything between them starts no later than the far one does
+— so it starts before the near one ends as well. The near meeting already
+clashes with its own neighbour.
 
-These intervals are half-open — `[start, end)` — so a meeting ending at 3 does
-not overlap one starting at 3, and the comparison is `ends[0] <= start`. With
-`<`, three back-to-back meetings need three rooms.
+That is the claim: **if any two meetings clash, two adjacent ones do.** So one
+pass over neighbours answers the question.
 
-[merge-intervals](../merge-intervals/notes.md) takes the opposite convention:
-its intervals are closed, so touching counts as overlapping. Same one-character
-decision, opposite answers, and both exercises state it in the prompt because
-there is no way to infer it.
+```python
+ordered = sorted(meetings)
+return all(nxt[0] >= prev[1] for prev, nxt in pairwise(ordered))
+```
 
-The real-world reading is the useful one: a 10:00–11:00 meeting and an
-11:00–12:00 meeting do not conflict. Time ranges are nearly always half-open,
-and so are array slices, for the same reason — adjacent ranges tile without
-overlap and without gaps.
+`O(n log n)` for the sort and `O(n)` for the pass.
 
-## The neighbouring problems, with different sort keys
+## The two details
 
-| question | sort by | greedy rule |
-|---|---|---|
-| fewest rooms | start | reuse the soonest-free room |
-| most meetings one room can host | **end** | take the meeting that finishes first |
-| do any two overlap at all? | start | compare each start to the previous end |
+**`>=`, not `>`.** The intervals are half-open, so a meeting that starts at 3
+when the previous one ends at 3 is fine. Writing the comparison the strict way
+round is the characteristic bug here, and it is invisible on any test that does
+not contain two meetings that touch.
 
-The middle one is the interesting contrast: for "attend as many as possible",
-sorting by start gives the wrong answer, and the correct greedy choice is always
-the meeting that *ends* earliest. Same inputs, same technique, different key,
-and a completely different proof of correctness.
+**`sorted`, not `.sort()`.** The function is asked a yes-or-no question about
+someone else's list. Reordering it in place answers the question and leaves the
+caller holding a different list than they passed in — the kind of side effect
+that costs an afternoon somewhere far from here.
+
+## Why this one comes before the room count
+
+`how-many-meeting-rooms` asks the harder question — not *is there* a clash, but
+*how many* meetings run at once at the worst moment — and this kata is the
+special case where that answer is at most one. The sort is the same. What
+changes is that a yes-or-no only needs the previous meeting's end, where a
+count needs the ends of everything still in progress, which is where the heap
+comes from.
+
+The pattern to keep: **when a question is about overlapping intervals, sort
+them first and ask what the order now guarantees.** Merging, inserting,
+counting rooms and removing the fewest all start there.

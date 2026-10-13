@@ -1,38 +1,34 @@
 schema_version: 1
 id: katas/meeting-rooms
 kind: kata
-title: How Many Meeting Rooms
-difficulty: medium
-tags: [intervals, sorting, heap, greedy]
-estimated_minutes: 25
+title: Can You Attend Every Meeting
+difficulty: easy
+tags: [intervals, sorting]
+estimated_minutes: 15
 
 prompt: |
-  Given `(start, end)` meetings, return the fewest rooms that can hold them
-  all — which is the largest number that overlap at any one moment.
+  Given `(start, end)` meetings, return `True` if one person could attend all
+  of them — that is, if no two meetings overlap.
 
-  ```
-  rooms_needed([(0, 30), (5, 10), (15, 20)])    ->  2
-  rooms_needed([(7, 10), (2, 4)])               ->  1
-  rooms_needed([(1, 2), (2, 3), (3, 4)])        ->  1
-  rooms_needed([])                              ->  0
-  ```
+  Intervals are **half-open**: a meeting ending at 3 and one starting at 3 do
+  not overlap, so both can be attended. Every meeting has positive duration.
 
-  Intervals are **half-open**: a meeting ending at 3 and one starting at 3 can
-  share a room.
-
-  Meetings arrive in no particular order, and there may be tens of thousands.
+  Meetings arrive in no particular order. Comparing every pair is `O(n^2)` and
+  there may be a hundred thousand of them. Leave the list as you found it.
 
 hints:
-  - "Sort by start time. Then process the meetings in order and ask, for each
-     one, whether any room has freed up."
-  - "You only ever need to check **one** room: the one that frees up soonest. If
-     that one is still busy, every other one is too."
-  - "So keep the end times of the meetings in progress in a min-heap. Reuse the
-     earliest if it has finished by this meeting's start; otherwise push a new
-     one."
-  - "`ends[0] <= start`, not `<`: the intervals are half-open, so touching
-     meetings share a room. The heap's final size is the answer — it is a
-     high-water mark and never shrinks."
+  - "Two meetings clash when each starts before the other ends. Checking that
+     for every pair is correct, and far too slow at this size — so which pairs
+     could you skip?"
+  - "Put the meetings in order of start time. Can a meeting clash with one
+     that is not its neighbour in that order, without also clashing with its
+     neighbour?"
+  - "No: if a meeting overlaps one further along, the ones in between start
+     before it ends too. So after sorting, only **adjacent** pairs need
+     checking — one pass."
+  - "The comparison is `next_start < previous_end`, strictly. With `<=` two
+     meetings that merely touch are reported as a clash, and half-open
+     intervals say they are not."
 
 kata:
   language: python
@@ -42,4 +38,36 @@ kata:
   time_limit_seconds: 10
   complexity:
     expected_time: "O(n log n)"
-    expected_space: "O(n)"
+    expected_space: "O(n) for the sorted copy"
+  constraints:
+    - "0 <= len(meetings) <= 10**5"
+    - "Each meeting is (start, end) with -10**9 <= start < end <= 10**9."
+    - "Meetings arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        can_attend_all([(0, 30), (5, 10), (15, 20)])
+      output: |
+        False
+      explanation: |
+        The half-hour meeting is still going when each of the others starts.
+    - input: |
+        can_attend_all([(7, 10), (2, 4)])
+      output: |
+        True
+    - input: |
+        can_attend_all([(1, 2), (2, 3), (3, 4)])
+      output: |
+        True
+      explanation: |
+        Each meeting ends exactly as the next begins, and touching is not
+        overlapping.
+    - input: |
+        can_attend_all([(1, 5), (1, 5)])
+      output: |
+        False
+      explanation: |
+        The same slot booked twice is two meetings at once.
+    - input: |
+        can_attend_all([])
+      output: |
+        True

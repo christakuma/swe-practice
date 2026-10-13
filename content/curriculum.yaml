@@ -361,13 +361,20 @@ tracks:
   # and `meeting-rooms` was in `dynamic-programming`, which it has nothing to
   # do with.
   #
-  # Ordered so the endpoint convention is met three times with three different
+  # Ordered so the endpoint convention is met four times with different
   # consequences, which is the thing this track is really for. Touching
-  # intervals *merge* in the first two, *coexist* in
-  # `fewest-intervals-to-remove`, and *share a room* in
-  # `how-many-meeting-rooms`. Same closed-interval convention every time; what
-  # changes is the operation. Carrying the comparison over from the previous
-  # exercise is the characteristic bug, and meeting it repeatedly is the cure.
+  # intervals *merge* in the first two, *do not clash* in `meeting-rooms`,
+  # *share a room* in `how-many-meeting-rooms`, and *coexist* in
+  # `fewest-intervals-to-remove`. What changes is the operation. Carrying the
+  # comparison over from the previous exercise is the characteristic bug, and
+  # meeting it repeatedly is the cure.
+  #
+  # `meeting-rooms` before `how-many-meeting-rooms`, and they are now two
+  # problems. Until the constraints-and-examples pass both asked for the room
+  # count -- same title, same function name -- because the first was written
+  # before the Blind 75 fill-in added the second. The first is now the question
+  # the list actually has in that slot (can one person attend them all), which
+  # is the special case of the second where the answer is at most one.
   #
   # `merge-intervals` before `insert-an-interval` on purpose: the first has to
   # sort because its input is unordered, and the second must not, because it
