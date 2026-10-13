@@ -1,0 +1,71 @@
+schema_version: 1
+id: variants/how-long-the-build-takes
+kind: kata
+title: "How Long the Build Takes"
+difficulty: medium
+tags: [graphs, topological-sort, dynamic-programming]
+estimated_minutes: 35
+
+variant:
+  of: katas/topological-order
+  twist: "Every task takes a known time and independent tasks run side by side; return how long the whole build takes."
+
+prompt: |
+  Each task has a **duration**, and may depend on other tasks. A task can
+  start the moment **all** of its dependencies have finished, and any number
+  of tasks can run **at the same time**. Return how long it takes until every
+  task has finished.
+
+  `durations` maps every task's name to how long it takes. `dependencies`
+  maps a name to the names it depends on; a task with no entry there depends
+  on nothing.
+
+  Return `None` if the dependencies contain a cycle, since then some task can
+  never start. No tasks at all take no time: `0`.
+
+  Running things in parallel means the answer is not the sum of the
+  durations. It is the time at which the last task finishes.
+
+hints:
+  - "When does one task finish? Its own duration after it starts. When does it start? When the last of its dependencies finishes."
+  - "So finish(task) = duration(task) + the largest finish among its dependencies, or just its duration if it has none. The build takes as long as the largest finish of all."
+  - "That needs each dependency's finish time before the task's own -- which is exactly the order a topological sort produces."
+  - "Run Kahn's algorithm. When a task is taken off the queue its finish time is final; push it forward into each task that depends on it. If some tasks never come off the queue, there is a cycle."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(V + E)"
+    expected_space: "O(V + E)"
+  constraints:
+    - "At most 2 * 10**4 tasks, and at most 4 * 10**4 dependencies between them."
+    - "1 <= durations[name] <= 10**6"
+    - "Every name that appears in dependencies, as a key or as a dependency, is a key of durations."
+    - "A chain may be 10**4 tasks deep, far deeper than Python will recurse."
+  examples:
+    - input: |
+        build_time({"compile": 5, "test": 3, "lint": 2}, {"test": ["compile"]})
+      output: |
+        8
+      explanation: |
+        Lint runs alongside compile and is done after 2. Test starts when
+        compile finishes at 5 and ends at 8.
+    - input: |
+        build_time({"a": 3, "b": 4, "c": 5, "d": 1}, {"d": ["a", "b", "c"]})
+      output: |
+        6
+      explanation: |
+        a, b and c run together. d waits for the slowest of them, at 5, and
+        takes one more.
+    - input: |
+        build_time({"a": 1, "b": 1}, {"a": ["b"], "b": ["a"]})
+      output: |
+        None
+    - input: |
+        build_time({}, {})
+      output: |
+        0

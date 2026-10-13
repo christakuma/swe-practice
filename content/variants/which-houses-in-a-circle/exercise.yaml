@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/which-houses-in-a-circle
+kind: kata
+title: "Which Houses in a Circle"
+difficulty: medium
+tags: [dynamic-programming, arrays, recurrence, reconstruction]
+estimated_minutes: 30
+
+variant:
+  of: katas/house-robber-in-a-circle
+  twist: "Return which houses to take, not how much they hold."
+
+prompt: |
+  Houses stand in a **circle**, so the first and last are neighbours. Each
+  holds some amount, and you may not take from two adjacent houses.
+
+  Return **which houses to take** for the largest total: their positions,
+  counted from zero, in ascending order.
+
+  Several selections may tie for the largest total. Return any one of them.
+  With no houses the answer is `[]`. A single house has no neighbour and can
+  be taken.
+
+  The total is the easy half and you have it already. A recurrence that keeps
+  only its last two values has thrown away what this asks for.
+
+hints:
+  - "Keep the reduction: the best selection either leaves out the first house or leaves out the last, and each of those is a straight line of houses."
+  - "For a line, the two-variable recurrence gives the total but cannot say how it got there. Keep the whole table instead: best[i] is the most you can take from the first i houses."
+  - "Then walk the table backwards. At position i, if best[i] equals best[i - 1], house i - 1 was not needed -- step back one. Otherwise it was taken -- record it and step back two."
+  - "Mind the positions. The line that leaves out the first house starts at position 1, so its picks need shifting back to positions in the circle."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(houses) <= 10**5"
+    - "0 <= houses[i] <= 10**4"
+    - "Any selection with the largest total is accepted."
+  examples:
+    - input: |
+        best_haul([2, 3, 2])
+      output: |
+        [1]
+      explanation: |
+        The two 2s are neighbours across the join, so they cannot both be
+        taken, and the 3 alone beats either.
+    - input: |
+        best_haul([1, 2, 3, 1])
+      output: |
+        [0, 2]
+      explanation: |
+        1 + 3 = 4. Houses 1 and 3 would give 3.
+    - input: |
+        best_haul([5])
+      output: |
+        [0]
+    - input: |
+        best_haul([])
+      output: |
+        []

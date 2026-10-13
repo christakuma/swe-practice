@@ -1,0 +1,85 @@
+schema_version: 1
+id: variants/colour-the-border-of-a-region
+kind: kata
+title: "Colour the Border of a Region"
+difficulty: medium
+tags: [graphs, grids, dfs, in-place]
+estimated_minutes: 30
+
+variant:
+  of: katas/flood-fill
+  twist: "Only the pixels on the edge of the region are recoloured, and its inside is left alone."
+
+prompt: |
+  Find the connected region of an image that contains a given pixel, and
+  recolour **only its border**.
+
+  The region is defined as before: pixels that touch up, down, left or right
+  and **started** with the same colour as the given pixel. Diagonals do not
+  connect.
+
+  A pixel of the region is on its border if it is on the edge of the image, or
+  if at least one of its four neighbours is not part of the region. Everything
+  else in the region is interior and keeps its colour.
+
+  Modify the image in place and return it. An empty image is returned as it
+  is.
+
+hints:
+  - "You cannot tell whether a pixel is on the border without knowing which pixels are in the region. And if you recolour as you go, the pixels you have already painted no longer look like part of it."
+  - "Separate the two jobs. First walk the region and remember its pixels, changing nothing. Then decide which of them are border pixels. Then paint."
+  - "A region pixel is on the border if any of its four neighbours is off the image or not in the set you collected."
+  - "The new colour may be the same as the old one. A walk that recognises the region by colour and marks progress by repainting never finishes in that case."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns)"
+    expected_space: "O(rows * columns) worst case for the region"
+  constraints:
+    - "0 <= rows <= 300 and 1 <= columns <= 300"
+    - "0 <= colour <= 10**6, for the new colour and for every pixel."
+    - "(row, column) is a pixel of the image whenever the image has any."
+    - "A region may cover the whole image: 90,000 pixels, far deeper than Python will recurse."
+  examples:
+    - input: |
+        image = [
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+        ]
+        flood_fill(image, 1, 1, 7)
+      output: |
+        [[7, 7, 7, 7], [7, 1, 1, 7], [7, 1, 1, 7], [7, 7, 7, 7]]
+      explanation: |
+        The region is the whole image. The four pixels in the middle have all
+        four neighbours inside the region and are not on the image's edge.
+    - input: |
+        image = [
+            [1, 1, 2],
+            [1, 2, 2],
+        ]
+        flood_fill(image, 0, 0, 9)
+      output: |
+        [[9, 9, 2], [9, 2, 2]]
+      explanation: |
+        All three 1s touch either the edge of the image or a 2.
+    - input: |
+        image = [
+            [0, 0, 0, 0, 0],
+            [0, 5, 5, 5, 0],
+            [0, 5, 5, 5, 0],
+            [0, 5, 5, 5, 0],
+            [0, 0, 0, 0, 0],
+        ]
+        flood_fill(image, 2, 2, 8)[2]
+      output: |
+        [0, 8, 5, 8, 0]
+      explanation: |
+        The starting pixel is the one in the middle, and it is the only pixel of
+        the region that keeps its colour.

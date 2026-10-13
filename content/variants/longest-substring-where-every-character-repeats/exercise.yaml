@@ -1,0 +1,70 @@
+schema_version: 1
+id: variants/longest-substring-where-every-character-repeats
+kind: kata
+title: "Longest Substring Where Every Character Repeats"
+difficulty: medium
+tags: [strings, hash-map, divide-and-conquer, counting]
+estimated_minutes: 35
+
+variant:
+  of: katas/longest-substring-without-repeats
+  twist: "Every character in the substring must appear at least k times in it, where before none could appear twice."
+
+prompt: |
+  Given a string and a number `k`, return the length of the longest substring
+  in which **every character that appears, appears at least `k` times**.
+
+  This is the opposite demand to the original. There a repeat was forbidden;
+  here a character that does *not* repeat enough spoils the substring.
+
+  A substring is contiguous. The count that matters is the count **inside
+  the substring**, not in the whole string. If no substring qualifies, return
+  zero. With `k = 1` every substring qualifies.
+
+  The sliding window you used before does not carry over: growing the window
+  can fix it and can break it, so there is no moment at which shrinking is
+  known to be right. Look for something else.
+
+hints:
+  - "Count the characters of the whole string. If every one of them reaches k, the whole string is the answer. If not, look at one that falls short."
+  - "A character with fewer than k copies in the whole string has fewer than k in any piece of it. So no qualifying substring can contain it at all."
+  - "That character is a wall. Split the string at every copy of it, and the answer lies entirely inside one of the pieces. Each piece is the same problem again, with its own counts."
+  - "Pieces can nest thousands deep when the string has thousands of different characters -- a character rare in a piece need not be rare in the whole. Keep the pieces still to be examined on a list of your own."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n * d) for d distinct characters"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(text) <= 10**4"
+    - "1 <= k <= 10**4"
+    - "Any character can appear, so there may be thousands of different ones."
+  examples:
+    - input: |
+        longest_repeating_substring("aaabb", 3)
+      output: |
+        3
+      explanation: |
+        "aaa". The b's appear only twice, so nothing containing one counts.
+    - input: |
+        longest_repeating_substring("ababbc", 2)
+      output: |
+        5
+      explanation: |
+        "ababb" has two a's and three b's.
+    - input: |
+        longest_repeating_substring("abcde", 2)
+      output: |
+        0
+    - input: |
+        longest_repeating_substring("aabcbaa", 2)
+      output: |
+        2
+      explanation: |
+        The c splits it into "aab" and "baa". There are two b's in the whole
+        string but only one in each piece, so each piece is cut again.

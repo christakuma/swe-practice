@@ -1,0 +1,69 @@
+schema_version: 1
+id: variants/combination-sum-with-exactly-k-numbers
+kind: kata
+title: "Combination Sum with Exactly k Numbers"
+difficulty: medium
+tags: [backtracking, recursion]
+estimated_minutes: 25
+
+variant:
+  of: katas/combination-sum
+  twist: "Every combination must use exactly `count` numbers, no more and no fewer."
+
+prompt: |
+  Given distinct positive candidates, a target and a `count`, return every
+  distinct combination of **exactly `count`** candidates that sums to the
+  target. A candidate may be used as many times as you like, and each use
+  counts towards `count`.
+
+  Each combination is a tuple in **ascending** order, and the returned list is
+  sorted ascending. Two combinations using the same multiset of candidates are
+  the same combination.
+
+  A `count` of zero has one combination, the empty one, when the target is zero
+  and none otherwise.
+
+  The search has two ways to fail now — the sum and the length — and two things
+  to prune on.
+
+hints:
+  - "Start from the standard search and add one argument: how many numbers are still to be chosen. What is the new condition for a finished combination?"
+  - "Reaching the target with numbers still to choose is a dead end, not an answer. So is running out of numbers short of the target."
+  - "For pruning: with `left` numbers still to choose, each at least as big as the current candidate, the smallest total you can still add is `left * candidate`. If that already overshoots, stop -- and every later candidate overshoots too."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(C^count) worst case for C candidates"
+    expected_space: "O(count) beyond the output"
+  constraints:
+    - "1 <= len(candidates) <= 20, and the candidates are distinct."
+    - "1 <= candidates[i] <= 50"
+    - "0 <= target <= 200"
+    - "0 <= count <= 8"
+  examples:
+    - input: |
+        combination_sum([2, 3, 5], 8, 3)
+      output: |
+        [(2, 3, 3)]
+      explanation: |
+        Without the limit there are three combinations: (2, 2, 2, 2), (2, 3, 3)
+        and (3, 5). Only one of them has three numbers.
+    - input: |
+        combination_sum([2, 3, 5], 8, 2)
+      output: |
+        [(3, 5)]
+    - input: |
+        combination_sum([1, 2, 3], 6, 3)
+      output: |
+        [(1, 2, 3), (2, 2, 2)]
+    - input: |
+        combination_sum([4], 4, 2)
+      output: |
+        []
+      explanation: |
+        One 4 makes the target, and one is not two.

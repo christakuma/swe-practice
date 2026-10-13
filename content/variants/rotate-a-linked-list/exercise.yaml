@@ -1,0 +1,69 @@
+schema_version: 1
+id: variants/rotate-a-linked-list
+kind: kata
+title: "Rotate a Linked List"
+difficulty: medium
+tags: [linked-lists, two-pointers, pointers]
+estimated_minutes: 25
+
+variant:
+  of: katas/remove-the-nth-node-from-the-end
+  twist: "The last k nodes are moved to the front instead of one node being removed, and k may be larger than the list."
+
+prompt: |
+  Rotate a singly linked list to the right by `k` places and return the new
+  head: the **last `k` nodes move to the front**, keeping their order, and the
+  rest follow.
+
+  `k` may be zero, and it may be **larger than the list is long** — rotating a
+  list of five by seven is the same as rotating it by two. An empty list
+  stays empty.
+
+  Relink the nodes you were given rather than building new ones. The tests
+  build lists with the `ListNode` class in the stub, and they check the nodes
+  you return are the nodes they handed you.
+
+hints:
+  - "Rotating by k cuts the list in one place: just before the kth node from the end. Everything after the cut moves to the front."
+  - "You know how to find the kth node from the end -- but here k can exceed the length, so the length has to be known first. Walk to the tail and count."
+  - "While you are at the tail, join it to the head. Now the list is a ring, and a rotation is only a question of where to cut it."
+  - "Cut after the node that is length - (k mod length) steps from the old tail. The node after the cut is the new head."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "The list has between 0 and 2 * 10**4 nodes; an empty list is None."
+    - "0 <= k <= 10**9"
+    - "Values may repeat."
+  examples:
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3, ListNode(4, ListNode(5)))))
+        rotate(head, 2)
+      output: |
+        ListNode(4, ListNode(5, ListNode(1, ListNode(2, ListNode(3)))))
+    - input: |
+        head = ListNode(0, ListNode(1, ListNode(2)))
+        rotate(head, 4)
+      output: |
+        ListNode(2, ListNode(0, ListNode(1)))
+      explanation: |
+        Four places round a list of three is once all the way round and one
+        more.
+    - input: |
+        head = ListNode(1, ListNode(2))
+        rotate(head, 2) is head
+      output: |
+        True
+      explanation: |
+        A full turn puts every node back where it was.
+    - input: |
+        rotate(None, 3)
+      output: |
+        None

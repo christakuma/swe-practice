@@ -1,0 +1,69 @@
+schema_version: 1
+id: variants/largest-slice-sum-after-dropping-one
+kind: kata
+title: "Largest Slice Sum After Dropping One"
+difficulty: medium
+tags: [arrays, dynamic-programming, kadane]
+estimated_minutes: 30
+
+variant:
+  of: katas/maximum-subarray
+  twist: "You may leave out one element from the middle of the slice you choose."
+
+prompt: |
+  Choose a contiguous slice of the list and, if you wish, **drop one element
+  from it**. Return the largest sum you can be left with.
+
+  Dropping is optional, and at most one element may go. What remains must be
+  **non-empty** — a slice of one element cannot have that element dropped —
+  which is why an all-negative list still answers with its least negative
+  value rather than 0.
+
+  The dropped element may be anywhere in the slice, so the effect is to join
+  two neighbouring stretches across one unwanted value.
+
+  The list may be long enough that trying every slice is far too slow.
+
+hints:
+  - "Finding the best ordinary slice and removing its smallest element does not work. The best answer may bridge two slices that the ordinary algorithm would never join."
+  - "Kadane keeps one number: the best sum of a slice ending here. Keep a second: the best sum of a slice ending here that has already had one element dropped."
+  - "The second number comes from one of two places. Either the drop happened earlier and this element simply extends that slice, or the drop is this element -- in which case the sum is the best *undropped* slice ending at the previous position."
+  - "Update the second number before the first, or keep the old value of the first in a variable. The 'drop this one' case needs the first number as it was before this element."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "1 <= len(numbers) <= 10**5"
+    - "-10**4 <= numbers[i] <= 10**4"
+  examples:
+    - input: |
+        max_slice_sum([1, -2, 0, 3])
+      output: |
+        4
+      explanation: |
+        Take the whole list and drop the -2.
+    - input: |
+        max_slice_sum([1, -2, -2, 3])
+      output: |
+        3
+      explanation: |
+        Only one element can go, and two stand between the 1 and the 3.
+    - input: |
+        max_slice_sum([-1, -1, -1])
+      output: |
+        -1
+      explanation: |
+        Something must remain. A single -1 is the best that can be kept.
+    - input: |
+        max_slice_sum([2, 3, 4])
+      output: |
+        9
+      explanation: |
+        Dropping is optional.

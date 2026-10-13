@@ -1,0 +1,74 @@
+schema_version: 1
+id: variants/lowest-common-ancestor-with-parent-pointers
+kind: kata
+title: "Lowest Common Ancestor with Parent Pointers"
+difficulty: medium
+tags: [trees, two-pointers, pointers]
+estimated_minutes: 30
+
+variant:
+  of: katas/lowest-common-ancestor
+  twist: "You are handed the two nodes and not the root, and every node knows its parent."
+
+prompt: |
+  Two nodes of the same binary tree are given. **The root is not.** Each node
+  has a `parent` attribute as well as `left` and `right`; the root's parent is
+  `None`. Return the **deepest node** that has both of the given nodes at or
+  below it.
+
+  A node counts as its own ancestor: if one of the two sits above the other,
+  the answer is the upper one, and if they are the same node, the answer is
+  that node.
+
+  Return the node itself, not its value. Values may repeat.
+
+  Use **O(1) extra space**. Collecting one node's ancestors in a set and
+  walking up from the other until you hit it is correct and is not what this
+  kata is for. The tests measure the memory you allocate.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "With only parent pointers, each node is the head of a chain that leads up to the root. Two chains that end at the same place..."
+  - "...are two linked lists that merge. The lowest common ancestor is the node where they join. You never need `left` or `right`."
+  - "If both nodes were at the same depth you could walk both up in step until they met. They may not be, but you can find each one's depth, climb the deeper one by the difference, and then walk in step."
+  - "Or let the two pointers swap starting points: when one runs off the top, restart it from the *other* node. After each has walked both chains they have covered the same distance, and they meet at the join."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(h)"
+    expected_space: "O(1)"
+  constraints:
+    - "The tree has between 1 and 10**5 nodes, and may be a single chain that deep."
+    - "Both nodes are in the same tree."
+    - "Values may repeat. Two nodes are the same node only if they are the same object."
+  examples:
+    - input: |
+        root = TreeNode(3)
+        five, one = TreeNode(5, root), TreeNode(1, root)
+        six, two = TreeNode(6, five), TreeNode(2, five)
+        lowest_common_ancestor(six, two).value
+      output: |
+        5
+      explanation: |
+        The 6 and the 2 are both children of the 5.
+    - input: |
+        root = TreeNode(3)
+        five, one = TreeNode(5, root), TreeNode(1, root)
+        six = TreeNode(6, five)
+        (lowest_common_ancestor(six, one) is root, lowest_common_ancestor(five, six) is five)
+      output: |
+        (True, True)
+      explanation: |
+        The 6 and the 1 are on different sides of the root. The 5 is the 6's
+        parent, and a node counts as its own ancestor.
+    - input: |
+        alone = TreeNode(9)
+        lowest_common_ancestor(alone, alone) is alone
+      output: |
+        True

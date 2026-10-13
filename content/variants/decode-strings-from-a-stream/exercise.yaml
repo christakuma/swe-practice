@@ -1,0 +1,79 @@
+schema_version: 1
+id: variants/decode-strings-from-a-stream
+kind: kata
+title: "Decode Strings from a Stream"
+difficulty: medium
+tags: [strings, invariants, scanning]
+estimated_minutes: 35
+
+variant:
+  of: katas/encode-and-decode-strings
+  twist: "The encoded text arrives in pieces cut at arbitrary places, and each string must be handed over as soon as it is complete."
+
+prompt: |
+  `encode` still turns a list of strings into one string. But the encoded text
+  is now sent over a connection, and it arrives **in chunks cut wherever the
+  network felt like** — in the middle of a string, in the middle of whatever
+  marks a string's length, one character at a time.
+
+  Write `encode` and a `Decoder` class:
+
+  - `encode(strings)` — pack a list of strings into one string.
+  - `Decoder().feed(chunk)` — take the next piece of encoded text and return a
+    list of the strings that **this piece completed**, in order. Often that is
+    an empty list.
+
+  Feeding the pieces of `encode(x)` in order, cut anywhere, must hand back
+  exactly the strings of `x`, each once. A string is returned by the very call
+  that delivers its last character — not later, when more text shows up.
+
+  The strings are arbitrary, as before: empty, or holding any character at all.
+  You may not use `json`, `pickle`, `repr`, `ast`, or any other serialiser.
+
+hints:
+  - "A length prefix is still the right format: it tells the decoder how many characters to take without looking at them. What it needs now is memory between calls."
+  - "The decoder is always in one of two states: reading a length, or reading that many characters of a string. A chunk can end in either state, at any point."
+  - "Keep whatever text has arrived but not yet been used, and add each chunk to it. Then take as many whole strings off the front as you can, and keep the rest for next time."
+  - "An empty string has no last character to wait for. It is complete the moment its length has been read."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(total characters) across all calls"
+    expected_space: "O(longest string still incomplete)"
+  constraints:
+    - "0 <= len(strings) <= 2000"
+    - "0 <= len(strings[i]) <= 2000"
+    - "A string may hold any Unicode character, including \"\\0\", line breaks and digits."
+    - "The chunks given to one Decoder, joined together, are always exactly what encode returned."
+    - "A chunk may be empty."
+  examples:
+    - input: |
+        decoder = Decoder()
+        decoder.feed(encode(["hello", "world"]))
+      output: |
+        ['hello', 'world']
+      explanation: |
+        The whole text in one piece completes both strings.
+    - input: |
+        text = encode(["hello", "world"])
+        decoder = Decoder()
+        [len(decoder.feed(character)) for character in text][-1]
+      output: |
+        1
+      explanation: |
+        Fed one character at a time, the last character completes "world".
+    - input: |
+        text = encode(["ab", "", "c"])
+        decoder = Decoder()
+        middle = len(text) // 2
+        decoder.feed(text[:middle]) + decoder.feed(text[middle:])
+      output: |
+        ['ab', '', 'c']
+      explanation: |
+        Wherever the cut falls, the two calls between them return every string
+        once.

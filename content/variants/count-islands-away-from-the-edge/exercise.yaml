@@ -1,0 +1,77 @@
+schema_version: 1
+id: variants/count-islands-away-from-the-edge
+kind: kata
+title: "Count Islands Away from the Edge"
+difficulty: medium
+tags: [graphs, grids, dfs, bfs, connected-components]
+estimated_minutes: 25
+
+variant:
+  of: katas/count-islands
+  twist: "An island that touches the edge of the grid does not count."
+
+prompt: |
+  Count the islands in a rectangular grid of `0`s and `1`s that are **entirely
+  surrounded by water** — the ones with no cell in the first or last row or the
+  first or last column.
+
+  An island is a connected group of `1`s, and cells connect **only** up, down,
+  left and right.
+
+  One cell on the edge disqualifies the whole island it belongs to, however far
+  inland the rest of it reaches.
+
+  An empty grid has no islands. You may modify the grid.
+
+hints:
+  - "You cannot tell whether an island counts from the cell where you first find it. An island that starts in the middle of the grid may reach the edge thirty cells later."
+  - "One way: explore each island completely, noting whether any cell was on the edge, and decide once the whole island has been seen. Do not stop exploring early when you find an edge cell -- the rest of the island still has to be marked as visited."
+  - "Another way turns it around: first sink every island that touches the edge, starting a fill from each land cell on the border. Whatever land is left is all enclosed, and the standard count finishes the job."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns)"
+    expected_space: "O(rows * columns) worst case for the search"
+  constraints:
+    - "0 <= rows <= 300 and 0 <= columns <= 300"
+    - "Every row is the same length, and every cell is 0 or 1."
+    - "One island may cover the whole grid: 90,000 cells, far deeper than Python will recurse."
+  examples:
+    - input: |
+        count_islands([
+            [0, 0, 0, 0],
+            [0, 1, 1, 0],
+            [0, 0, 0, 0],
+        ])
+      output: |
+        1
+    - input: |
+        count_islands([
+            [0, 0, 0, 0, 0],
+            [0, 1, 0, 1, 1],
+            [0, 0, 0, 0, 0],
+        ])
+      output: |
+        1
+      explanation: |
+        Two islands. The one on the right reaches the last column, so only the
+        other counts.
+    - input: |
+        count_islands([
+            [1, 1, 1],
+            [1, 0, 1],
+            [1, 1, 1],
+        ])
+      output: |
+        0
+      explanation: |
+        A ring of land around a lake is still an island on the edge.
+    - input: |
+        count_islands([[1]])
+      output: |
+        0

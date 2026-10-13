@@ -1,0 +1,75 @@
+schema_version: 1
+id: variants/are-two-trees-the-same-after-swaps
+kind: kata
+title: "Are Two Trees the Same After Swaps?"
+difficulty: medium
+tags: [trees, recursion, dfs]
+estimated_minutes: 25
+
+variant:
+  of: katas/are-two-trees-the-same
+  twist: "Any node may have its two children swapped, as many nodes as you like, before the trees are compared."
+
+prompt: |
+  A **swap** exchanges the left and right subtrees of one node. Return `True` if
+  the second tree can be turned into the first by swapping at any number of
+  nodes — none, some, or all of them.
+
+  Two empty trees are the same. An empty tree is never the same as a non-empty
+  one.
+
+  Swaps are chosen node by node. Swapping at the root and nowhere else is
+  allowed; so is swapping everywhere, which is a mirror image; so is swapping
+  nowhere, which is the standard problem.
+
+  Values may repeat. The tests build trees with the `TreeNode` class in the
+  stub.
+
+hints:
+  - "Start from the standard recursion: roots match, lefts match, rights match. A swap at the root gives one more way for the children to pair up."
+  - "At each node there are two pairings: left with left and right with right, or left with right and right with left. Either will do -- but it has to be one whole pairing."
+  - "The mistake to avoid is letting each child find its own partner. If both of the first tree's children match the second tree's left child, that is not a match: one child of the second tree has been used twice and the other not at all."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n) when values are distinct"
+    expected_space: "O(h) for the recursion"
+  constraints:
+    - "Each tree has between 0 and 1000 nodes and is at most 200 levels deep."
+    - "-1000 <= node.value <= 1000, and values may repeat."
+  examples:
+    - input: |
+        first = TreeNode(1, TreeNode(2), TreeNode(3))
+        second = TreeNode(1, TreeNode(3), TreeNode(2))
+        is_same_tree(first, second)
+      output: |
+        True
+      explanation: |
+        One swap, at the root.
+    - input: |
+        first = TreeNode(1, TreeNode(2, TreeNode(4), TreeNode(5)), TreeNode(3))
+        second = TreeNode(1, TreeNode(3), TreeNode(2, TreeNode(4), TreeNode(5)))
+        is_same_tree(first, second)
+      output: |
+        True
+      explanation: |
+        Swapped at the root and not at the 2 below it. A mirror image would have
+        swapped the 4 and the 5 as well.
+    - input: |
+        first = TreeNode(1, TreeNode(2), TreeNode(2))
+        second = TreeNode(1, TreeNode(2), TreeNode(3))
+        is_same_tree(first, second)
+      output: |
+        False
+      explanation: |
+        Both of the first tree's children look like the second tree's left child,
+        but nothing in the first tree can be the 3.
+    - input: |
+        is_same_tree(TreeNode(1, TreeNode(2)), TreeNode(1, None, TreeNode(2)))
+      output: |
+        True

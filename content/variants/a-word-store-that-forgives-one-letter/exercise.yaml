@@ -1,0 +1,72 @@
+schema_version: 1
+id: variants/a-word-store-that-forgives-one-letter
+kind: kata
+title: "A Word Store That Forgives One Letter"
+difficulty: medium
+tags: [tries, strings, dfs, recursion]
+estimated_minutes: 30
+
+variant:
+  of: katas/add-and-search-a-word
+  twist: "There are no wildcards: a search matches a stored word that differs from it in exactly one position."
+
+prompt: |
+  Build a word store supporting two operations:
+
+  - `add(word)` — store a word. Adding the same word twice changes nothing.
+  - `search(word)` — is there a stored word of the **same length** that differs
+    from `word` in **exactly one** position?
+
+  There are no wildcards here, and a `.` is a character like any other.
+
+  *Exactly one* is the whole rule. A stored word does not match itself: with
+  only `"hello"` stored, `search("hello")` is `False`. It becomes `True` once
+  `"hallo"` is stored as well, because that word is one letter away.
+
+hints:
+  - "The standard search follows one path and branches only at a wildcard. Here every position is a possible wildcard, but only one of them may be used."
+  - "Walk the trie with a second argument: has the one difference been spent yet? While it has not, every child is worth following -- the matching one for free, the others at the cost of the difference."
+  - "Once the difference is spent the walk is an ordinary lookup again, a single path. That is what keeps the search small."
+  - "At the end of the word, being at a stored word is not enough. The difference has to have been spent."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(L) per add; O(L * A * L) per search for word length L and alphabet A"
+    expected_space: "O(total characters stored)"
+  constraints:
+    - "0 <= len(word) <= 20"
+    - "Words hold any characters at all, a dot included."
+    - "At most 2000 words are stored, and at most 2000 searches are made."
+  examples:
+    - input: |
+        store = WordStore()
+        store.add("hello")
+        (store.search("hallo"), store.search("hello"), store.search("hxllx"))
+      output: |
+        (True, False, False)
+      explanation: |
+        "hallo" is one letter from "hello". "hello" is no letters from it, and
+        "hxllx" is two.
+    - input: |
+        store = WordStore()
+        store.add("hello")
+        store.add("hallo")
+        store.search("hello")
+      output: |
+        True
+      explanation: |
+        Not because "hello" is stored, but because "hallo" is, and that is one
+        letter away.
+    - input: |
+        store = WordStore()
+        store.add("cat")
+        (store.search("cart"), store.search("ca"), store.search("bat"))
+      output: |
+        (False, False, True)
+      explanation: |
+        Only a word of the same length can differ in exactly one position.

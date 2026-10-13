@@ -1,0 +1,71 @@
+schema_version: 1
+id: variants/merge-intervals-that-are-close-enough
+kind: kata
+title: "Merge Intervals That Are Close Enough"
+difficulty: medium
+tags: [arrays, sorting, intervals, greedy]
+estimated_minutes: 20
+
+variant:
+  of: katas/merge-intervals
+  twist: "Intervals merge when the space between them is at most a given gap, not only when they overlap."
+
+prompt: |
+  Given a list of `(start, end)` intervals and a `gap`, merge every pair of
+  intervals whose distance apart is **at most `gap`**, and return the fewest
+  intervals that result, sorted by start.
+
+  The distance between two intervals is from the end of the earlier one to
+  the start of the later one, and zero if they overlap or touch. With a gap
+  of zero this is the original problem.
+
+  Merging is **catching**: if A is close enough to B and B is close enough to
+  C, all three become one interval, however far A is from C. This is how
+  activity is grouped into sessions — events less than half an hour apart
+  belong together, and a session lasts as long as the events keep coming.
+
+  A merged interval runs from the earliest start to the latest end of the
+  intervals in it. It is **not** widened by the gap.
+
+hints:
+  - "Sort by start, keep the interval being built, and compare each new interval's start with the *end of what has been built so far*."
+  - "The comparison used to be `start <= end`. Now it is `start <= end + gap`. That is the whole change to the condition."
+  - "Do not be tempted to pad every interval by the gap, merge as usual, and call it done. The output would be padded too -- and padding both ends merges intervals that are twice the gap apart."
+  - "Compare with the furthest end reached so far, not with the previous interval's own end. A short interval sitting inside a long one says nothing about where the long one stops."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(intervals) <= 10**5"
+    - "Each interval is (start, end) with -10**9 <= start <= end <= 10**9."
+    - "0 <= gap <= 10**9"
+    - "Intervals arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        merge_intervals([(1, 3), (5, 8), (20, 25)], 2)
+      output: |
+        [(1, 8), (20, 25)]
+      explanation: |
+        From 3 to 5 is two, which is close enough. From 8 to 20 is not.
+    - input: |
+        merge_intervals([(1, 2), (4, 5), (7, 8)], 2)
+      output: |
+        [(1, 8)]
+      explanation: |
+        The first and last are five apart, but each is within two of the
+        middle one.
+    - input: |
+        merge_intervals([(1, 3), (4, 6)], 0)
+      output: |
+        [(1, 3), (4, 6)]
+    - input: |
+        merge_intervals([], 5)
+      output: |
+        []

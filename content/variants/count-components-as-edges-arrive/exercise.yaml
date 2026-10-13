@@ -1,0 +1,65 @@
+schema_version: 1
+id: variants/count-components-as-edges-arrive
+kind: kata
+title: "Count Components as Edges Arrive"
+difficulty: medium
+tags: [graphs, union-find, connected-components]
+estimated_minutes: 30
+
+variant:
+  of: katas/count-connected-components
+  twist: "Report the number of components after every single edge, not once at the end."
+
+prompt: |
+  `n` nodes are labelled `0` to `n - 1` and start with no edges. The edges in
+  the list are added **one at a time, in order**. Return a list with one entry
+  per edge: the number of connected components once that edge is in place.
+
+  An edge that joins two nodes which are already connected changes nothing —
+  and that includes a repeated edge and an edge from a node to itself. The
+  count for such an edge is the same as the count before it.
+
+  There may be two hundred thousand edges. Recounting the whole graph after
+  each of them is not an option.
+
+hints:
+  - "A search from every node answers the question once. Here it is asked after every edge, and a search cannot reuse the work of the one before."
+  - "The count starts at n. What does a single new edge do to it? Either nothing, or exactly one thing."
+  - "It drops by one when the edge's two ends were in different components, and stays the same otherwise. So you need one operation: are these two nodes already connected? That is what union-find is for."
+  - "Always join the two *roots*. Pointing a node itself at the other side tears it away from the group it was already in."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O((n + e) * alpha(n)), effectively linear"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= n <= 2 * 10**5"
+    - "0 <= len(edges) <= 2 * 10**5"
+    - "Each edge is a pair (a, b) with 0 <= a < n and 0 <= b < n."
+    - "Edges may repeat, and a may equal b."
+  examples:
+    - input: |
+        count_components(4, [(0, 1), (2, 3), (1, 2)])
+      output: |
+        [3, 2, 1]
+      explanation: |
+        Four separate nodes to begin with. Each of these edges joins two
+        components, so the count drops by one every time.
+    - input: |
+        count_components(3, [(0, 1), (1, 0), (2, 2), (1, 2)])
+      output: |
+        [2, 2, 2, 1]
+      explanation: |
+        The second edge repeats the first and the third joins a node to itself.
+        Neither changes anything.
+    - input: |
+        count_components(5, [])
+      output: |
+        []
+      explanation: |
+        One entry per edge, and there are no edges.

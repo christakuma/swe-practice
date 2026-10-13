@@ -1,0 +1,65 @@
+schema_version: 1
+id: variants/words-that-make-up-more-than-a-third
+kind: kata
+title: "Words That Make Up More Than a Third"
+difficulty: medium
+tags: [counting, invariants, scanning]
+estimated_minutes: 35
+
+variant:
+  of: katas/top-k-frequent
+  twist: "Instead of the k most frequent, return every word that makes up more than a third of the list, without counting them all."
+
+prompt: |
+  Return every word that appears **more than a third of the time** — strictly
+  more than `len(words) / 3` times — in alphabetical order.
+
+  There can be at most two such words, and there may be one or none.
+
+  Use **O(1) extra space**. A dict of counts answers this at once, and with a
+  hundred thousand different words it holds a hundred thousand entries to
+  find at most two answers. The tests measure the memory you allocate.
+
+hints:
+  - "Why at most two? Three words each making up more than a third would together make up more than the whole list."
+  - "For a single word that makes up more than *half*, there is a classic trick: keep one candidate and a counter, add one for a match, take one away for a mismatch, and replace the candidate when the counter hits zero. Each mismatch cancels one copy against one other word, and a majority cannot be cancelled out."
+  - "For thirds, keep two candidates with a counter each. A word matching neither, when both counters are above zero, takes one off both. Think of it as throwing away three different words at a time; a word with more than a third of the list cannot be thrown away entirely."
+  - "What survives is only a pair of *candidates*. If no word is that frequent, something still survives. Go through the list a second time and count the two for real."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(words) <= 2 * 10**5"
+    - "Words are strings of any characters, compared exactly."
+    - "The list may hold as many different words as it has entries."
+  examples:
+    - input: |
+        heavy_hitters(["a", "b", "a", "c", "a"])
+      output: |
+        ['a']
+      explanation: |
+        Three of five. Nothing else appears more than once.
+    - input: |
+        heavy_hitters(["x", "y", "y", "x", "z", "x", "y"])
+      output: |
+        ['x', 'y']
+      explanation: |
+        Three each out of seven, and a third of seven is two and a bit.
+    - input: |
+        heavy_hitters(["a", "b", "c"])
+      output: |
+        []
+      explanation: |
+        One each is exactly a third, and exactly a third is not more than a
+        third.
+    - input: |
+        heavy_hitters([])
+      output: |
+        []

@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/longest-palindrome-from-the-letters
+kind: kata
+title: "Longest Palindrome From the Letters"
+difficulty: easy
+tags: [strings, counting, hash-map, greedy]
+estimated_minutes: 18
+
+variant:
+  of: katas/longest-palindromic-substring
+  twist: "The characters may be used in any order, so the palindrome is built and not found."
+
+prompt: |
+  Return the longest palindrome that can be **built from the characters** of
+  the string. You may use them in any order and need not use them all, but
+  each character can be used only as many times as it appears.
+
+  Usually many palindromes tie for longest. Return the one that comes
+  **first in sorted order**, as Python compares strings.
+
+  Every character counts and case matters: `"A"` and `"a"` are different
+  characters and do not pair with each other. An empty string gives `""`.
+
+hints:
+  - "A palindrome reads the same both ways, so every character in its left half has a partner in its right half. What does that say about how many of each character it uses?"
+  - "Characters go in in pairs, except possibly one in the very middle. So each character contributes count // 2 pairs, and one character with an odd count can sit alone at the centre."
+  - "That settles the length. For the order: the left half decides the comparison before the centre is ever reached, and the right half is the left half mirrored. Which arrangement of the left half is smallest?"
+  - "Sorted. Then the smallest character that has one left over goes in the middle -- if any has."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n + a log a) for a distinct characters"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(text) <= 10**5"
+    - "The string may hold any characters, and they are compared exactly."
+  examples:
+    - input: |
+        longest_palindrome("abccccdd")
+      output: |
+        "ccdadcc"
+      explanation: |
+        Two pairs of c and one of d go round the outside. Either a or b could
+        be the centre, and a sorts first.
+    - input: |
+        longest_palindrome("racecar")
+      output: |
+        "acrerca"
+      explanation: |
+        The string is already a palindrome of length seven, but it is not the
+        first of that length in sorted order.
+    - input: |
+        longest_palindrome("abc")
+      output: |
+        "a"
+    - input: |
+        longest_palindrome("Aa")
+      output: |
+        "A"
+      explanation: |
+        Different characters, so no pair. "A" sorts before "a".

@@ -1,0 +1,65 @@
+schema_version: 1
+id: variants/spell-out-the-longest-common-subsequence
+kind: kata
+title: "Spell Out the Longest Common Subsequence"
+difficulty: medium
+tags: [dynamic-programming, strings, tables]
+estimated_minutes: 35
+
+variant:
+  of: katas/longest-common-subsequence
+  twist: "Return the subsequence itself, not just how long it is."
+
+prompt: |
+  Return a longest subsequence common to two strings — **the characters
+  themselves, as a string**. A subsequence keeps the original order but need
+  not be contiguous.
+
+  There are often several of the same greatest length. Any one of them is
+  accepted. If the strings share nothing, return `""`.
+
+  Characters may repeat, and case matters.
+
+  Knowing the length is not enough to know the string, and the space-saving
+  trick from the standard version throws away exactly what you need here.
+
+hints:
+  - "The standard table tells you the length for every pair of prefixes. The answer for the whole strings is in the last cell. How did that cell get its value?"
+  - "Either its two characters matched and it took 1 + the diagonal, or they did not and it copied the larger of the cell above and the cell to the left. Each cell remembers, implicitly, which neighbour it came from."
+  - "So start at the last cell and walk back to the first. On a match, that character is part of the answer: record it and step diagonally. Otherwise step to whichever neighbour holds the same value as this cell."
+  - "You collect the characters last to first, so reverse them at the end. And you need the whole table to walk back through -- two rows are not enough."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(m * n)"
+    expected_space: "O(m * n)"
+  constraints:
+    - "0 <= len(first) <= 500"
+    - "0 <= len(second) <= 500"
+    - "Characters are compared exactly."
+    - "Any longest common subsequence is accepted."
+  examples:
+    - input: |
+        longest_common_subsequence("abcde", "ace")
+      output: |
+        'ace'
+    - input: |
+        longest_common_subsequence("abc", "def")
+      output: |
+        ''
+    - input: |
+        longest_common_subsequence("AGGTAB", "GXTXAYB")
+      output: |
+        'GTAB'
+    - input: |
+        longest_common_subsequence("ab", "ba") in ("a", "b")
+      output: |
+        True
+      explanation: |
+        Two answers of length one. Either is right, and "ab" is not: its
+        characters are in the wrong order for the second string.

@@ -1,0 +1,72 @@
+schema_version: 1
+id: variants/merge-into-the-space-at-the-end
+kind: kata
+title: "Merge into the Space at the End"
+difficulty: easy
+tags: [arrays, two-pointers, merging, in-place]
+estimated_minutes: 20
+
+variant:
+  of: katas/merge-two-sorted-lists
+  twist: "The two sorted sequences are Python lists, and the first has exactly enough spare room at its end to hold the second."
+
+prompt: |
+  Two sorted sequences come in as ordinary lists. The first list is **longer
+  than its contents**: its first `count` entries are sorted values, and after
+  them come exactly `len(second)` spare slots holding junk. Merge the second
+  list into the first so that the first holds all the values in ascending
+  order.
+
+  Do it **in place**: the function returns `None`, and the caller reads the
+  result from `first`. Leave `second` alone.
+
+  Use **O(1) extra space**. Copying the values out and sorting, or building
+  the merged list somewhere else and copying it back, both need a second
+  array. The tests measure the memory you allocate.
+
+  The spare slots may hold anything at all. Do not assume they are zeros.
+
+hints:
+  - "The usual merge writes from the front. Try it here: the first value written lands on a slot of `first` that may still hold a value you have not read."
+  - "Where in `first` is it certainly safe to write? The spare slots at the end hold nothing you need."
+  - "Merge from the back. Compare the largest unmerged value of each list, write the bigger one into the last free slot, and move left."
+  - "When the values of `second` run out, stop: what is left of `first` is already in place. When the values of `first` run out, keep going until `second` is finished."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(count + len(second))"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= count and 0 <= len(second), and len(first) == count + len(second)"
+    - "len(first) <= 2 * 10**5"
+    - "first[:count] and second are each in ascending order, and values may repeat."
+    - "-10**9 <= value <= 10**9, for every value and for the junk in the spare slots."
+  examples:
+    - input: |
+        first = [1, 2, 3, 0, 0, 0]
+        merge_into(first, 3, [2, 5, 6])
+        first
+      output: |
+        [1, 2, 2, 3, 5, 6]
+    - input: |
+        first = [4, 5, 6, 99, 99, 99]
+        merge_into(first, 3, [1, 2, 3])
+        first
+      output: |
+        [1, 2, 3, 4, 5, 6]
+      explanation: |
+        Every value of the second list goes in front of every value of the
+        first. The 99s were junk and are gone.
+    - input: |
+        first = [7]
+        merge_into(first, 0, [3])
+        first
+      output: |
+        [3]
+      explanation: |
+        The first list held no values at all, only one spare slot.

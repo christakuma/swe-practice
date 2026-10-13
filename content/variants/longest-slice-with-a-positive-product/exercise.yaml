@@ -1,0 +1,64 @@
+schema_version: 1
+id: variants/longest-slice-with-a-positive-product
+kind: kata
+title: "Longest Slice With a Positive Product"
+difficulty: medium
+tags: [arrays, dynamic-programming, kadane, invariants]
+estimated_minutes: 25
+
+variant:
+  of: katas/maximum-product-subarray
+  twist: "Return the length of the longest slice whose product is positive, not the largest product."
+
+prompt: |
+  Return the **length** of the longest contiguous slice of the list whose
+  product is **greater than zero**. If no slice has a positive product,
+  return zero.
+
+  The values are large and there are a hundred thousand of them, so the
+  product of a long slice is a number with hundreds of thousands of digits.
+  You do not need it. Whether a product is positive depends on very little of
+  what is being multiplied.
+
+  Comparing every slice is `O(n^2)`. Do it in one pass.
+
+hints:
+  - "A product is positive when it contains no zero and an even number of negatives. The sizes of the values do not come into it."
+  - "The original kept two running products, the largest and the smallest ending here, because a negative value swaps them. Keep two running lengths: the longest slice ending here with a positive product, and the longest with a negative one."
+  - "A positive value lengthens both. A negative value swaps them and lengthens both. A zero resets both to nothing."
+  - "'Lengthens' has a catch: a slice that does not exist cannot be lengthened. If there is no negative-product slice ending at the previous position, there is still none after a positive value -- zero stays zero, it does not become one."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "1 <= len(numbers) <= 10**5"
+    - "-10**9 <= numbers[i] <= 10**9"
+  examples:
+    - input: |
+        longest_positive_slice([1, -2, -3, 4])
+      output: |
+        4
+      explanation: |
+        Two negatives cancel, so the whole list has a positive product.
+    - input: |
+        longest_positive_slice([0, 1, -2, -3, -4])
+      output: |
+        3
+      explanation: |
+        1, -2, -3 has two negatives. The only slice of four that avoids the
+        zero has three.
+    - input: |
+        longest_positive_slice([-1, 2])
+      output: |
+        1
+    - input: |
+        longest_positive_slice([-5])
+      output: |
+        0

@@ -1,0 +1,68 @@
+schema_version: 1
+id: variants/sort-a-linked-list
+kind: kata
+title: "Sort a Linked List"
+difficulty: medium
+tags: [linked-lists, two-pointers, sorting, divide-and-conquer, merging]
+estimated_minutes: 35
+
+variant:
+  of: katas/reorder-a-linked-list
+  twist: "The order wanted is ascending by value, which needs the same halving but a merge where the weave was."
+
+prompt: |
+  Put a linked list into **ascending order by value** and return its new
+  head.
+
+  Nodes with equal values must stay in the order they were in: the sort is
+  **stable**.
+
+  Relink the nodes you were given. As before, you may not collect them into a
+  Python list — which rules out sorting that list and threading the nodes
+  back together — and you may not copy values between nodes. The tests check
+  that every node still holds its own value, and that sorting fifty thousand
+  nodes allocates next to nothing.
+
+  The list may be long, and may already be in order, or in reverse order.
+  Aim for `O(n log n)`.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "Reordering had three steps: find the middle, do something to a half, combine the halves. Sorting has the same outline, and the first step is identical."
+  - "Find the middle with a slow and a fast pointer, and cut the list there -- really cut it, by setting the node before the middle to point at nothing. Two separate lists, each about half as long."
+  - "Sort each half the same way. A list of one node, or none, is already sorted, and that is where it stops. The halving only goes about sixteen levels deep for fifty thousand nodes."
+  - "Combine by merging: repeatedly take the smaller front node. When the two fronts are equal, take the one from the *first* half -- that is all stability asks."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(log n)"
+  constraints:
+    - "The list has between 0 and 5 * 10**4 nodes; an empty list is None."
+    - "-10**9 <= node.value <= 10**9"
+    - "Values may repeat."
+  examples:
+    - input: |
+        sort_list(ListNode(4, ListNode(2, ListNode(1, ListNode(3)))))
+      output: |
+        ListNode(1, ListNode(2, ListNode(3, ListNode(4))))
+    - input: |
+        sort_list(ListNode(-1, ListNode(5, ListNode(3, ListNode(4, ListNode(0))))))
+      output: |
+        ListNode(-1, ListNode(0, ListNode(3, ListNode(4, ListNode(5)))))
+    - input: |
+        sort_list(ListNode(2, ListNode(1, ListNode(2, ListNode(1)))))
+      output: |
+        ListNode(1, ListNode(1, ListNode(2, ListNode(2))))
+      explanation: |
+        The two 1s come out in the order they went in, and so do the two 2s.
+    - input: |
+        sort_list(None)
+      output: |
+        None

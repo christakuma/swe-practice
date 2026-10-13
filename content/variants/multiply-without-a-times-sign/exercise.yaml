@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/multiply-without-a-times-sign
+kind: kata
+title: "Multiply Without a Times Sign"
+difficulty: medium
+tags: [bit-manipulation, invariants]
+estimated_minutes: 25
+
+variant:
+  of: katas/add-without-a-plus-sign
+  twist: "Multiply instead of add, with `*` banned as well as `+` and `-`."
+
+prompt: |
+  Multiply two **signed 32-bit** integers without using `*`, `+` or `-`
+  anywhere.
+
+  The arithmetic is 32-bit two's complement, so **overflow wraps**: the result
+  is the low 32 bits of the true product, read as a signed number.
+
+  Allowed: `&`, `|`, `^`, `~`, `<<`, `>>`, comparisons, and assignment. Banned:
+  `*`, `/`, `+`, `-` (as operators and as unary negation), `sum`, `abs`,
+  `math.*`, and any numeric type that would do the arithmetic for you.
+
+  Adding `a` to itself `b` times is not an answer: `b` may be two thousand
+  million.
+
+hints:
+  - "Long multiplication, in binary. Each digit of b is 0 or 1, so each row is either nothing or a copy of a shifted left."
+  - "You still need to add the rows together, and `+` is banned. You have built that adder before: XOR is the sum without carries, AND shifted left is the carries."
+  - "Negative numbers need no special case. Mask both operands to 32 bits and multiply the patterns; the low 32 bits of the product are the same whichever way the patterns are read."
+  - "The result is a 32-bit pattern. If its top bit is set, turn it back into the negative number it stands for."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(1): at most 32 additions of at most 32 rounds each"
+    expected_space: "O(1)"
+  constraints:
+    - "-2**31 <= a <= 2**31 - 1"
+    - "-2**31 <= b <= 2**31 - 1"
+    - "The result is in the same range: a product outside it wraps round."
+  examples:
+    - input: |
+        multiply(6, 7)
+      output: |
+        42
+    - input: |
+        multiply(-4, 5)
+      output: |
+        -20
+    - input: |
+        multiply(65536, 65536)
+      output: |
+        0
+      explanation: |
+        2**16 times 2**16 is 2**32, whose low 32 bits are all zero.
+    - input: |
+        multiply(2147483647, 2)
+      output: |
+        -2
+      explanation: |
+        The true product is 2**32 - 2. Its low 32 bits are 0xFFFFFFFE, which as a
+        signed word is -2.

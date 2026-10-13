@@ -1,0 +1,74 @@
+schema_version: 1
+id: variants/is-this-a-rooted-tree
+kind: kata
+title: "Is This a Rooted Tree?"
+difficulty: medium
+tags: [graphs, trees, invariants]
+estimated_minutes: 30
+
+variant:
+  of: katas/is-this-graph-a-tree
+  twist: "The edges have a direction, parent to child, and you return the root if they form a tree and None if they do not."
+
+prompt: |
+  `n` nodes are labelled `0` to `n - 1`. Each edge `(parent, child)` now has a
+  **direction**. Decide whether the edges form a rooted tree, and return the
+  label of its **root** — or `None` if they do not.
+
+  A rooted tree has exactly one node with no parent, the root. Every other
+  node has exactly one parent. And every node can be reached from the root by
+  following edges from parent to child.
+
+  All three conditions matter. Nodes can each have one parent and still not be
+  a tree, if some of them form a loop that hangs off nothing.
+
+  A repeated edge gives a child the same parent twice, which is two parents.
+  An edge from a node to itself makes it its own parent.
+
+hints:
+  - "Count each node's parents first. Exactly one node should have none, and every other node exactly one. That settles a lot of cases cheaply."
+  - "It does not settle all of them. Three nodes with edges 1 -> 2 and 2 -> 1: node 0 has no parent, and nodes 1 and 2 have one each. What is wrong?"
+  - "The parent counts cannot see a cycle that the root is not part of. Walk down from the root and count the nodes you reach: in a tree, that is all of them."
+  - "Once the parent counts are right there are exactly n - 1 edges, so the walk cannot visit a node twice -- no visited set is needed, only a count."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n + e)"
+    expected_space: "O(n + e)"
+  constraints:
+    - "1 <= n <= 2 * 10**5"
+    - "0 <= len(edges) <= 2 * 10**5"
+    - "Each edge is a pair (parent, child) with 0 <= parent < n and 0 <= child < n."
+    - "Edges may repeat, and parent may equal child."
+    - "A tree may be a chain 10**5 nodes long, far deeper than Python will recurse."
+  examples:
+    - input: |
+        find_root(4, [(2, 0), (2, 3), (3, 1)])
+      output: |
+        2
+      explanation: |
+        2 is the parent of 0 and 3, and 3 is the parent of 1. Only 2 has no
+        parent.
+    - input: |
+        find_root(3, [(0, 1), (2, 1)])
+      output: |
+        None
+      explanation: |
+        Node 1 has two parents, and two nodes have none. With the directions
+        ignored this is a perfectly good tree.
+    - input: |
+        find_root(3, [(1, 2), (2, 1)])
+      output: |
+        None
+      explanation: |
+        Node 0 has no parent and the other two have one each, but they are each
+        other's parents and cannot be reached from 0.
+    - input: |
+        find_root(1, [])
+      output: |
+        0

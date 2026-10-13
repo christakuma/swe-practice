@@ -1,0 +1,61 @@
+schema_version: 1
+id: variants/invert-a-very-deep-tree
+kind: kata
+title: "Invert a Very Deep Tree"
+difficulty: medium
+tags: [trees, bfs, in-place, queues]
+estimated_minutes: 20
+
+variant:
+  of: katas/invert-a-binary-tree
+  twist: "The tree may be a hundred thousand levels deep, far beyond what a recursive solution can descend."
+
+prompt: |
+  Mirror a binary tree left-to-right, **in place**, and return its root.
+
+  Every node keeps its value and its identity; what changes is which child is
+  on which side, at every level. An empty tree is returned as `None`.
+
+  The tree may be **a hundred thousand levels deep** — a long chain with
+  hardly any branching. Python gives up after about a thousand nested calls,
+  so the three-line recursive answer does not get to the bottom.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "The recursive solution uses the call stack to remember which nodes still need visiting. You can keep that list yourself."
+  - "Put the root in a list. Take a node out, swap its two children, and put the children that exist into the list. Repeat until the list is empty."
+  - "Order does not matter here. Swapping a node's children is independent of every other node, so any order that reaches them all gives the same tree -- which is what makes this the easy case for removing recursion."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(w) for the widest level, and O(1) call depth"
+  constraints:
+    - "The tree has between 0 and 2 * 10**5 nodes; an empty tree is None."
+    - "It may be as deep as it has nodes: 10**5 levels or more."
+    - "-10**9 <= node.value <= 10**9"
+  examples:
+    - input: |
+        root = TreeNode(4, TreeNode(2, TreeNode(1), TreeNode(3)), TreeNode(7))
+        invert(root)
+        (root.left.value, root.right.value, root.right.left.value, root.right.right.value)
+      output: |
+        (7, 2, 3, 1)
+    - input: |
+        root = TreeNode(1, TreeNode(2))
+        invert(root) is root, root.left, root.right.value
+      output: |
+        (True, None, 2)
+      explanation: |
+        The same root object comes back, with its only child moved to the other
+        side.
+    - input: |
+        invert(None)
+      output: |
+        None

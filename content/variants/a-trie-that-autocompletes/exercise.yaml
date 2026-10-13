@@ -1,0 +1,75 @@
+schema_version: 1
+id: variants/a-trie-that-autocompletes
+kind: kata
+title: "A Trie That Autocompletes"
+difficulty: medium
+tags: [tries, strings, dfs, design]
+estimated_minutes: 35
+
+variant:
+  of: katas/implement-a-trie
+  twist: "Instead of saying whether a prefix exists, list the first few words that start with it, in alphabetical order."
+
+prompt: |
+  Build a prefix tree supporting two operations:
+
+  - `insert(word)` — add a word. Inserting the same word twice changes nothing.
+  - `complete(prefix, limit)` — return up to `limit` stored words that begin
+    with `prefix`, **in ascending order**, as a list.
+
+  Ascending means ordinary Python string order, so a word comes before every
+  longer word it is a prefix of: `"car"` before `"card"` before `"care"`.
+
+  If fewer than `limit` words match, return all of them. A stored word is a
+  prefix of itself, so `complete("car", 5)` includes `"car"` when it is stored.
+  The empty prefix matches every word.
+
+  This is the search box: `limit` is small, and the walk should stop once it
+  has enough. The tests ask for a few suggestions out of many thousands of
+  matches.
+
+hints:
+  - "`starts_with` walks down to the node for the prefix and says whether it got there. Everything stored below that node is a completion. The new work is listing it."
+  - "A depth-first walk from that node visits the words below it. To visit them in ascending order, take each node's children in sorted order -- and report a node's own word before going into its children, because a word sorts before anything longer that starts with it."
+  - "Stop the moment you have `limit` words. Collecting every match and slicing afterwards gives the same list and does all the work the limit was meant to save."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(L) per insert; O(len(prefix) + the nodes visited) per complete"
+    expected_space: "O(total characters stored)"
+  constraints:
+    - "0 <= len(word) <= 20 and 0 <= len(prefix) <= 20"
+    - "0 <= limit <= 10"
+    - "Words hold any characters at all, not only lowercase letters."
+    - "At most 5 * 10**4 words are stored, and at most 10**4 calls are made to complete."
+  examples:
+    - input: |
+        trie = Trie()
+        for word in ["card", "car", "care", "cat", "dog"]:
+            trie.insert(word)
+        trie.complete("car", 5)
+      output: |
+        ['car', 'card', 'care']
+      explanation: |
+        "car" is itself a match and comes first. "cat" and "dog" do not start
+        with the prefix.
+    - input: |
+        trie = Trie()
+        for word in ["card", "car", "care", "cat", "dog"]:
+            trie.insert(word)
+        trie.complete("ca", 2)
+      output: |
+        ['car', 'card']
+      explanation: |
+        Four words match. The limit keeps the first two.
+    - input: |
+        trie = Trie()
+        trie.insert("apple")
+        (trie.complete("b", 3), trie.complete("apple", 0), trie.complete("", 3))
+      output: |
+        ([], [], ['apple'])

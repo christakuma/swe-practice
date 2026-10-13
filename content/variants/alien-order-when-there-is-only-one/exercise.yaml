@@ -1,0 +1,73 @@
+schema_version: 1
+id: variants/alien-order-when-there-is-only-one
+kind: kata
+title: "Alien Order, When There Is Only One"
+difficulty: hard
+tags: [graphs, topological-sort, invariants]
+estimated_minutes: 40
+
+variant:
+  of: katas/alien-alphabet-order
+  twist: "Return the alphabet only if the words pin it down completely; several possible orders is now a failure too."
+
+prompt: |
+  A list of words is sorted according to an unknown alphabet. Work out the
+  alphabet — **if the words determine it**.
+
+  Return the characters in order as a string when **exactly one** ordering of
+  the characters is consistent with the input. Return `""` otherwise: when no
+  ordering is consistent, and also when **more than one** is.
+
+  Every character appearing in any word is part of the alphabet. A character
+  that nothing constrains can go anywhere, so on its own it is enough to make
+  the answer `""` — unless it is the only character there is.
+
+  The input is inconsistent in the same two ways as before: the constraints
+  form a **cycle**, or a word is followed by a **proper prefix of itself**.
+
+hints:
+  - "Build the same graph: one edge per adjacent pair of words, from the first position where they differ."
+  - "A topological order exists when the graph has no cycle. When is there only *one*? Think about what Kahn's algorithm has in its queue at each step."
+  - "If two characters are ever available at the same moment, either could come next, and that is two different alphabets. The order is unique exactly when there is one choice at every step."
+  - "Checking only the first step is not enough: the choice can open up later, after the forced characters are placed."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(total input length + C^2) for C distinct characters"
+    expected_space: "O(C^2) worst case for the edges"
+  constraints:
+    - "0 <= len(words) <= 100"
+    - "1 <= len(words[i]) <= 20"
+    - "Words hold any characters, and a word may be repeated."
+  examples:
+    - input: |
+        alien_order(["wrt", "wrf", "er", "ett", "rftt"])
+      output: |
+        'wertf'
+      explanation: |
+        t < f, w < e, r < t and e < r: a single chain w, e, r, t, f, so there is
+        nothing left to choose.
+    - input: |
+        alien_order(["ab", "ac"])
+      output: |
+        ''
+      explanation: |
+        The only fact is b < c. Nothing says where a goes, so "abc", "bac" and
+        "bca" all fit, and three answers is not one.
+    - input: |
+        alien_order(["b", "a", "b"])
+      output: |
+        ''
+      explanation: |
+        b < a and a < b: no alphabet at all.
+    - input: |
+        alien_order(["zz", "zzz"])
+      output: |
+        'z'
+      explanation: |
+        One character has one ordering.

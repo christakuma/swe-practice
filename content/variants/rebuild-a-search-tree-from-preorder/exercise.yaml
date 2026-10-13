@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/rebuild-a-search-tree-from-preorder
+kind: kata
+title: "Rebuild a Search Tree from Pre-order"
+difficulty: medium
+tags: [trees, binary-search-tree, stack, invariants]
+estimated_minutes: 35
+
+variant:
+  of: katas/rebuild-a-tree-from-traversals
+  twist: "The tree is a binary search tree, so the pre-order traversal alone is enough and there is no second list."
+
+prompt: |
+  Rebuild a binary **search** tree from its pre-order traversal alone.
+
+  Pre-order visits a node, then its left subtree, then its right. In a search
+  tree everything in a node's left subtree is smaller than it and everything
+  in its right subtree is larger, and the values are all **distinct**. An empty
+  list gives an empty tree.
+
+  For an arbitrary binary tree one traversal is not enough: you needed the
+  in-order list to know where the left subtree ended. Here the ordering tells
+  you.
+
+  Aim for `O(n)`. Leave the list as you found it. Build the tree out of the
+  `TreeNode` class in the stub, which is what the tests inspect.
+
+hints:
+  - "The in-order traversal of a search tree is its values sorted. So you could sort the list and call the standard solution -- which works, and throws away the reason the second list is unnecessary."
+  - "The first value is the root. After it come all the smaller values, which are the left subtree, and then all the larger ones. The split is at the first value larger than the root."
+  - "Finding that split by scanning is quadratic on a lopsided tree. Instead, hand each recursive call an upper bound: it consumes values from the front of the list for as long as they are below its bound, and stops."
+  - "Or use a stack of the nodes whose right child is still open. A smaller value is the left child of the top. A larger value pops every node it is larger than, and becomes the right child of the last one popped."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(h) beyond the tree"
+  constraints:
+    - "0 <= len(preorder) <= 10**5"
+    - "-10**9 <= value <= 10**9, and no value appears twice."
+    - "The list is the pre-order traversal of some binary search tree."
+    - "That tree may be a single chain, 10**5 levels deep."
+  examples:
+    - input: |
+        root = rebuild([8, 5, 1, 7, 10, 12])
+        (root.value, root.left.value, root.right.value, root.left.left.value, root.left.right.value, root.right.right.value)
+      output: |
+        (8, 5, 10, 1, 7, 12)
+      explanation: |
+        8 is the root. 5, 1 and 7 are smaller and form its left subtree; 10 and
+        12 form its right. The 12 is larger than the 10, so it is the 10's right
+        child and its left is empty.
+    - input: |
+        root = rebuild([1, 2, 3])
+        (root.left, root.right.value, root.right.right.value)
+      output: |
+        (None, 2, 3)
+    - input: |
+        rebuild([])
+      output: |
+        None

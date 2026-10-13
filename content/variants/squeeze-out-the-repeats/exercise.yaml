@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/squeeze-out-the-repeats
+kind: kata
+title: "Squeeze Out the Repeats"
+difficulty: easy
+tags: [arrays, two-pointers, in-place]
+estimated_minutes: 15
+
+variant:
+  of: katas/move-zeroes
+  twist: "The list is sorted, the values to squeeze out are repeats rather than zeros, and you return how many values are left."
+
+prompt: |
+  A list is sorted in ascending order and may hold repeated values. Rearrange
+  it **in place** so that each distinct value appears once, in order, at the
+  front — and **return how many distinct values there are**.
+
+  If the function returns `k`, the first `k` entries of the list must be the
+  distinct values in ascending order. **What the list holds after those `k`
+  entries does not matter**, and the caller will not look.
+
+  Use **O(1) extra space**. Building a set, or a new list, and copying it back
+  both need a second container. The tests measure the memory you allocate.
+
+hints:
+  - "Moving zeroes used a write position that trails behind a read position. Every value worth keeping is copied back to the write position, which then advances. The same two indices work here."
+  - "What makes a value worth keeping? In a sorted list, all the copies of a value are next to each other -- so a value is new exactly when it differs from the one before it."
+  - "Compare each value with the last one *written*, numbers[write - 1]. Then you never need to look backwards in the part of the list you have already overwritten."
+  - "The write position at the end is the count. Check the empty list: there is no first value to keep."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(numbers) <= 2 * 10**5"
+    - "-10**9 <= numbers[i] <= 10**9"
+    - "The list is in ascending order, and a value may repeat any number of times."
+  examples:
+    - input: |
+        numbers = [1, 1, 2]
+        count = remove_duplicates(numbers)
+        (count, numbers[:count])
+      output: |
+        (2, [1, 2])
+    - input: |
+        numbers = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]
+        count = remove_duplicates(numbers)
+        (count, numbers[:count])
+      output: |
+        (5, [0, 1, 2, 3, 4])
+      explanation: |
+        Five distinct values, moved to the front. The other five entries of the
+        list hold whatever was left behind.
+    - input: |
+        remove_duplicates([])
+      output: |
+        0

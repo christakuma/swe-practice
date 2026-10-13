@@ -1,0 +1,80 @@
+schema_version: 1
+id: variants/clone-the-neighbourhood-of-a-node
+kind: kata
+title: "Clone the Neighbourhood of a Node"
+difficulty: medium
+tags: [graphs, bfs, hash-map]
+estimated_minutes: 30
+
+variant:
+  of: katas/clone-a-graph
+  twist: "Only the nodes within a given number of edges are copied, so how far away each node is now matters."
+
+prompt: |
+  Deep-copy **part** of a connected undirected graph: the nodes that can be
+  reached from the given node by following at most `radius` edges, and every
+  edge that joins two of those nodes. Return the copy of the node you were
+  given.
+
+  A node's distance is the length of the **shortest** route to it. A node that
+  is three edges away by one route and two by another is two away.
+
+  Each copy's neighbour list holds the copies of the original's neighbours that
+  are within the radius, **in the original order**, and nothing else. An edge to
+  a node outside the radius is dropped. An edge between two nodes that are both
+  exactly `radius` away is kept.
+
+  The copy shares no nodes with the original, and the original is left as you
+  found it. `None` copies to `None`.
+
+  The tests build graphs with the `Node` class in the stub.
+
+hints:
+  - "A depth-first copy with a counter that runs down looks right and is not. Think about a triangle with a tail hanging off it: which route does a depth-first walk reach the far corner by?"
+  - "Distance means shortest distance, and the search that reaches every node by its shortest route first is breadth-first."
+  - "Two passes keep it simple. First find which nodes are within the radius and make a copy of each. Then fill in every copy's neighbour list from the original's, keeping only neighbours that have a copy."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(V + E) over the part of the graph within the radius"
+    expected_space: "O(V)"
+  constraints:
+    - "The graph has between 0 and 300 nodes; the empty graph is None."
+    - "0 <= radius <= 300"
+    - "Edges are undirected: if b is in a.neighbours then a is in b.neighbours."
+    - "Values may repeat. Two nodes are the same node only if they are the same object."
+  examples:
+    - input: |
+        a, b, c = Node(1), Node(2), Node(3)
+        a.neighbours, b.neighbours, c.neighbours = [b], [a, c], [b]
+        copy = clone_graph(a, 1)
+        (copy.value, [n.value for n in copy.neighbours], [n.value for n in copy.neighbours[0].neighbours])
+      output: |
+        (1, [2], [1])
+      explanation: |
+        A chain 1 - 2 - 3 copied from the 1 with radius 1. The 3 is two edges
+        away, so the copied 2 keeps its edge back to the 1 and loses the other.
+    - input: |
+        a, b, c, d = Node(1), Node(2), Node(3), Node(4)
+        a.neighbours, b.neighbours = [b, c], [a, c]
+        c.neighbours, d.neighbours = [a, b, d], [c]
+        copy = clone_graph(a, 2)
+        sorted(n.value for n in copy.neighbours[1].neighbours)
+      output: |
+        [1, 2, 4]
+      explanation: |
+        A triangle 1, 2, 3 with a 4 hanging off the 3. The 3 is one edge from the
+        1, so the 4 is two away and is copied. Reaching the 3 by way of the 2
+        makes it look two away, and the 4 out of range.
+    - input: |
+        a = Node(7)
+        b = Node(8, [a])
+        a.neighbours.append(b)
+        clone_graph(a, 0).neighbours
+      output: |
+        []

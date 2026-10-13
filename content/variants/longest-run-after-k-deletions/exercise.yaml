@@ -1,0 +1,68 @@
+schema_version: 1
+id: variants/longest-run-after-k-deletions
+kind: kata
+title: "Longest Run After K Deletions"
+difficulty: medium
+tags: [strings, sliding-window, counting]
+estimated_minutes: 30
+
+variant:
+  of: katas/longest-run-after-k-replacements
+  twist: "Characters are deleted instead of replaced, so the ones you spend on do not join the run."
+
+prompt: |
+  You may **delete** at most `k` characters of the string. Return the length
+  of the longest run of a single repeated character that can then be found in
+  what is left.
+
+  Deleting closes the gap: `"aabaa"` with the b deleted is `"aaaa"`, a run of
+  four. A replaced character would have joined the run and made five; a
+  deleted one is simply gone.
+
+  `k` may exceed the length of the string. Every character is significant,
+  and case matters.
+
+  Aim for `O(n)` time, whatever the number of distinct characters.
+
+hints:
+  - "Pick a stretch of the string and a character. To turn that stretch into a run you delete everything in it that is not that character. What is the cost, and what is the run you get?"
+  - "The cost is the same as it was for replacing: the width of the stretch minus the count of its commonest character. The stretches you can afford are exactly the stretches you could afford before."
+  - "What differs is the prize. Replacing gave you the whole width. Deleting gives you only the count."
+  - "It is tempting to return the old answer minus k. Try 'aaa' with k = 1: the old answer is 3, nothing needs deleting, and the run is still 3. The window does not always spend all of k."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(distinct characters)"
+  constraints:
+    - "0 <= len(text) <= 5 * 10**5"
+    - "0 <= k <= 10**6"
+    - "The string may hold any characters, and thousands of different ones."
+  examples:
+    - input: |
+        longest_run("aabaa", 1)
+      output: |
+        4
+      explanation: |
+        Delete the b. Replacing it would have given five.
+    - input: |
+        longest_run("abcabc", 2)
+      output: |
+        2
+      explanation: |
+        Delete the b and c between the two a's.
+    - input: |
+        longest_run("aaa", 5)
+      output: |
+        3
+      explanation: |
+        Nothing needs deleting, and unused deletions are not owed.
+    - input: |
+        longest_run("abab", 0)
+      output: |
+        1

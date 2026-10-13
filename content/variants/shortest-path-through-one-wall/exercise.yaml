@@ -1,0 +1,80 @@
+schema_version: 1
+id: variants/shortest-path-through-one-wall
+kind: kata
+title: "Shortest Path Through One Wall"
+difficulty: hard
+tags: [graphs, grids, bfs, shortest-path]
+estimated_minutes: 40
+
+variant:
+  of: katas/shortest-path-in-a-grid
+  twist: "The route may pass through one wall, so where you are is no longer the whole of your position."
+
+prompt: |
+  Return the fewest cells on a route from the top-left of a grid to the
+  bottom-right, moving only up, down, left or right — where the route may
+  **pass through at most one cell holding `1`**.
+
+  Count both ends: the answer for a `1 x 1` grid is `1`. Return `-1` when
+  there is no such route, and for a grid with no cells at all.
+
+  The start and the destination are cells like any other. If one of them is a
+  wall, standing on it is the one wall the route is allowed; if both are, there
+  is no route.
+
+  Breaking through a wall is optional, and the best route is not always the
+  one that does it at the first opportunity.
+
+hints:
+  - "The standard search marks a cell as visited the first time it is reached, because the first arrival is the shortest and nothing about a later arrival could be better. Is that still true?"
+  - "No. Arriving at a cell having already broken a wall is worse than arriving a few steps later with the break still in hand. The second arrival can go places the first cannot."
+  - "So the thing being searched is not a cell. It is a cell together with whether the break has been used: (row, column, used). Each such state is visited once."
+  - "Stepping onto an open cell keeps `used` as it is. Stepping onto a wall is allowed only if `used` is false, and makes it true."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns)"
+    expected_space: "O(rows * columns)"
+  constraints:
+    - "The grid has at most 200 rows and 200 columns, and may be empty."
+    - "Every row is the same length, and every cell is 0 (open) or 1 (wall)."
+  examples:
+    - input: |
+        shortest_path([
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+        ])
+      output: |
+        5
+      explanation: |
+        A solid wall down the middle. Without breaking it there is no route at
+        all; through it, the route is down the left, across, and down the right.
+    - input: |
+        shortest_path([
+            [0, 0, 0],
+            [1, 1, 0],
+            [0, 0, 0],
+        ])
+      output: |
+        5
+      explanation: |
+        The open route is already as short as a route can be, so no wall is
+        worth breaking.
+    - input: |
+        shortest_path([
+            [0, 1, 1, 0],
+        ])
+      output: |
+        -1
+      explanation: |
+        Two walls stand in the way and only one may be passed.
+    - input: |
+        shortest_path([[1]])
+      output: |
+        1

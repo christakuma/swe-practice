@@ -1,0 +1,61 @@
+schema_version: 1
+id: variants/first-and-last-position
+kind: kata
+title: "First and Last Position"
+difficulty: medium
+tags: [binary-search, arrays, invariants]
+estimated_minutes: 25
+
+variant:
+  of: katas/search-a-rotated-array
+  twist: "The list is not rotated, but the target may appear many times, and you return where its run starts and ends."
+
+prompt: |
+  A list of integers is sorted in ascending order — not rotated — and values
+  **may repeat**. Return the positions of the **first and last occurrence** of
+  `target` as a tuple, or `(-1, -1)` if it is not there.
+
+  A target that appears once has the same first and last position.
+
+  Aim for `O(log n)` however long the run of equal values is. Finding one
+  occurrence by binary search and then walking outwards is linear when half
+  the list is the target. The tests count how many values you read.
+
+hints:
+  - "Ordinary binary search stops when it finds the target. Here finding it is not the end: there may be more copies on both sides."
+  - "Ask a different question, one that has a single answer: where is the first position whose value is at least the target? That boundary is unique even when the target repeats."
+  - "When the middle value equals the target, do not stop. For the first occurrence keep searching to the left, including the middle; the invariant is 'the answer is at or before here'."
+  - "The last occurrence is one before the first position whose value is greater than the target -- the same search with the comparison changed from >= to >."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(log n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(numbers) <= 2 * 10**6"
+    - "-10**9 <= numbers[i] <= 10**9, and so is target."
+    - "The list is in ascending order, and a value may repeat any number of times."
+  examples:
+    - input: |
+        search([5, 7, 7, 8, 8, 10], 8)
+      output: |
+        (3, 4)
+    - input: |
+        search([5, 7, 7, 8, 8, 10], 6)
+      output: |
+        (-1, -1)
+    - input: |
+        search([5, 7, 7, 8, 8, 10], 5)
+      output: |
+        (0, 0)
+      explanation: |
+        A single occurrence starts and ends at the same position.
+    - input: |
+        search([2, 2, 2, 2], 2)
+      output: |
+        (0, 3)

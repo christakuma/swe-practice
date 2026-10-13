@@ -1,0 +1,81 @@
+schema_version: 1
+id: variants/median-of-the-last-k-values
+kind: kata
+title: "Median of the Last k Values"
+difficulty: hard
+tags: [heap, sliding-window, binary-search, design]
+estimated_minutes: 40
+
+variant:
+  of: katas/median-of-a-stream
+  twist: "Only the most recent `size` values count, so every new arrival may push an old one out."
+
+prompt: |
+  Numbers arrive one at a time, and you may be asked for the median **of the
+  most recent `size` of them**.
+
+  - `WindowMedian(size)` — a stream whose window holds at most `size` values.
+  - `add(value)` — take the next number. Once more than `size` have arrived,
+    the oldest one still counted stops counting.
+  - `median()` — the median of the values currently in the window, always as a
+    float. With an even count it is the average of the two middle values.
+
+  Until `size` values have arrived the window holds everything so far. Calling
+  `median()` before anything is added raises `ValueError`.
+
+  Values may repeat. When a value leaves, **one copy** of it leaves — the
+  oldest — and any other copies still in the window stay.
+
+  Two heaps solved the standard problem. A heap cannot remove an arbitrary
+  element, which is what this version asks for on every `add`.
+
+hints:
+  - "You need two things at once: the order the values arrived in, to know which one leaves, and their sorted order, to find the middle. No single structure gives both."
+  - "Keep two. A queue of the window in arrival order tells you what to evict. Beside it, the same values in sorted order give the median by index."
+  - "A sorted list can be kept sorted with binary search: `bisect.insort` to add, and `bisect.bisect_left` to find the copy to delete. Each is a search plus a shift of the elements after it."
+  - "The heap answer still exists: keep the two heaps, and instead of removing a departed value straight away, note that it is owed a removal and discard it when it surfaces at the top of its heap."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(log k) to find the place, O(k) to shift, per add; O(1) per median"
+    expected_space: "O(k)"
+  constraints:
+    - "1 <= size <= 10**4"
+    - "-10**6 <= value <= 10**6, and every value is an integer."
+    - "At most 10**5 values are added to one stream."
+    - "median() may be called after every single add."
+  examples:
+    - input: |
+        stream = WindowMedian(3)
+        seen = []
+        for value in [1, 3, -1, -3, 5]:
+            stream.add(value)
+            seen.append(stream.median())
+        seen
+      output: |
+        [1.0, 2.0, 1.0, -1.0, -1.0]
+      explanation: |
+        The windows are [1], [1, 3], [1, 3, -1], [3, -1, -3] and [-1, -3, 5].
+        The fourth add pushes the 1 out.
+    - input: |
+        stream = WindowMedian(2)
+        for value in [5, 5, 9]:
+            stream.add(value)
+        stream.median()
+      output: |
+        7.0
+      explanation: |
+        The window is [5, 9]. One of the two 5s has left and the other is still
+        there.
+    - input: |
+        stream = WindowMedian(1)
+        stream.add(4)
+        stream.add(10)
+        stream.median()
+      output: |
+        10.0

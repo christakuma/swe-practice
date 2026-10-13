@@ -1,0 +1,70 @@
+schema_version: 1
+id: variants/is-the-linked-list-a-palindrome
+kind: kata
+title: "Is the Linked List a Palindrome?"
+difficulty: medium
+tags: [linked-lists, two-pointers, in-place]
+estimated_minutes: 35
+
+variant:
+  of: katas/is-it-a-palindrome
+  twist: "The sequence is a singly linked list, which can only be read forwards."
+
+prompt: |
+  Return `True` if the values of a singly linked list read the same forwards
+  and backwards.
+
+  Values are compared exactly — they are integers, and nothing is skipped or
+  folded. An empty list and a list of one node are palindromes.
+
+  The two-pointer solution for a string walks inwards from both ends. A singly
+  linked list has no way to walk backwards from its end.
+
+  Use **O(1) extra space**: copying the values into a Python list is correct
+  and is not what this kata is for. And **leave the list as you found it** —
+  every node must point where it pointed before, whatever the answer. The
+  tests measure the memory you allocate and walk the list afterwards.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "You cannot walk backwards, but you can make the second half run the other way. Which earlier problems give you the two tools for that?"
+  - "Find the middle with a slow and a fast pointer. Reverse the list from the middle onwards. Now there are two lists -- the first half, and the second half backwards -- and both can be read from their heads."
+  - "Compare them node by node until the reversed half runs out. With an odd length the middle node is in one half only; it does not need comparing with anything."
+  - "Reverse the second half again before returning, on every path. It is easiest to compute the answer into a variable, repair the list, and then return."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "The list has between 0 and 10**5 nodes; an empty list is None."
+    - "-10**9 <= node.value <= 10**9"
+    - "The list ends: it has no cycle."
+  examples:
+    - input: |
+        is_palindrome(ListNode(1, ListNode(2, ListNode(2, ListNode(1)))))
+      output: |
+        True
+    - input: |
+        is_palindrome(ListNode(1, ListNode(2, ListNode(3))))
+      output: |
+        False
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(1)))
+        answer = is_palindrome(head)
+        (answer, head.value, head.next_node.value, head.next_node.next_node.value)
+      output: |
+        (True, 1, 2, 1)
+      explanation: |
+        The answer, and then the list read from its head afterwards: all three
+        nodes are still there in their original order.
+    - input: |
+        is_palindrome(None)
+      output: |
+        True

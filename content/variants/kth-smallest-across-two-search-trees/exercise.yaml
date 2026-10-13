@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/kth-smallest-across-two-search-trees
+kind: kata
+title: "Kth Smallest Across Two Search Trees"
+difficulty: medium
+tags: [trees, binary-search-tree, merging, heap]
+estimated_minutes: 30
+
+variant:
+  of: katas/kth-smallest-in-a-bst
+  twist: "There are two search trees, and you want the kth smallest of all their values together."
+
+prompt: |
+  Two binary **search** trees are given. Return the kth smallest value among
+  all the values of both, counting from `k = 1` at the smallest.
+
+  Each tree is a valid BST with distinct values. The **same value may appear in
+  both trees**, and then it counts twice: if both hold a 5, the 5 occupies two
+  consecutive places in the combined order.
+
+  Either tree may be empty, though not both.
+
+  **Stop as soon as you have the answer.** Flattening both trees and sorting is
+  correct and reads everything; the tests hang a very deep branch where a
+  small `k` never needs to go.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "One search tree gives its values in ascending order by an in-order walk. Two trees give two ascending sequences."
+  - "Merging two sorted sequences is taking the smaller front value each time. The kth value taken is the answer -- you do not need to build the merged list."
+  - "The walk has to be pausable: advance one tree by one value, then perhaps the other. A generator with an explicit stack does that, and so does an iterator class."
+  - "Do not deduplicate. A value in both trees is two values."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(h1 + h2 + k)"
+    expected_space: "O(h1 + h2)"
+  constraints:
+    - "Each tree has between 0 and 10**5 nodes; together they have at least one."
+    - "1 <= k <= the total number of nodes"
+    - "Within one tree no two nodes share a value; a value may appear in both trees."
+    - "A tree may be 10**5 levels deep along a branch the answer does not need."
+  examples:
+    - input: |
+        first = TreeNode(2, TreeNode(1), TreeNode(4))
+        second = TreeNode(3, None, TreeNode(6))
+        [kth_smallest(first, second, k) for k in (1, 2, 3, 4, 5)]
+      output: |
+        [1, 2, 3, 4, 6]
+    - input: |
+        first = TreeNode(5, TreeNode(3))
+        second = TreeNode(5, None, TreeNode(8))
+        [kth_smallest(first, second, k) for k in (1, 2, 3, 4)]
+      output: |
+        [3, 5, 5, 8]
+      explanation: |
+        Both trees hold a 5, so it is both the second smallest and the third.
+    - input: |
+        kth_smallest(None, TreeNode(7, TreeNode(2)), 2)
+      output: |
+        7

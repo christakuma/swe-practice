@@ -1,0 +1,73 @@
+schema_version: 1
+id: variants/rotate-the-bits-of-a-word
+kind: kata
+title: "Rotate the Bits of a Word"
+difficulty: easy
+tags: [bit-manipulation, invariants]
+estimated_minutes: 15
+
+variant:
+  of: katas/reverse-the-bits-of-a-word
+  twist: "The bits are rotated left by k places, wrapping round the top of the word, instead of being reversed."
+
+prompt: |
+  Rotate the bits of a **32-bit unsigned** integer to the left by `k` places
+  and return the result as an integer.
+
+  A rotation is a shift that loses nothing: each bit moves `k` places towards
+  the top, and the bits that fall off the top of the word come back in at the
+  bottom, in the same order.
+
+  `k` is not limited to the width of the word. Rotating by 32 puts every bit
+  back where it started, so rotating by 33 is rotating by 1 — and `k` may be
+  as large as a thousand million.
+
+  As before, the width is yours to enforce: Python will happily keep the bits
+  you shift past position 31. `bin()`, string slicing and `int(..., 2)` are
+  banned. Build the answer with shifts and masks.
+
+hints:
+  - "A left shift by k sends the low bits up and pushes the top k bits out past position 31. A right shift by 32 - k brings exactly those top k bits down to the bottom. OR the two together."
+  - "The left shift leaves the pushed-out bits sitting above position 31, where Python keeps them. Mask the result back to 32 bits."
+  - "Reduce k modulo 32 first. Then k is between 0 and 31, both shift amounts make sense, and a k of a thousand million costs the same as a k of 0."
+  - "Check k = 0. The right shift is then by 32, which empties the word and contributes nothing -- so no special case is needed. In C that shift is undefined, which is why the same code needs one there."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(1)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= n <= 2**32 - 1"
+    - "0 <= k <= 10**9"
+    - "The result is in the same range as n."
+  examples:
+    - input: |
+        rotate_left(0b1011, 2)
+      output: |
+        0b101100
+      explanation: |
+        Nothing reaches the top of the word, so this is the same as a shift.
+    - input: |
+        rotate_left(0x80000001, 1)
+      output: |
+        3
+      explanation: |
+        The top bit comes round to the bottom, beside the bit that was
+        already there and has moved up one.
+    - input: |
+        rotate_left(0x12345678, 8)
+      output: |
+        0x34567812
+      explanation: |
+        Eight bits is two hexadecimal digits: the leading 12 goes to the end.
+    - input: |
+        rotate_left(0x12345678, 40)
+      output: |
+        0x34567812
+      explanation: |
+        40 is once all the way round and 8 more.

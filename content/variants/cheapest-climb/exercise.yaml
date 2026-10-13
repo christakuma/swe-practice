@@ -1,0 +1,65 @@
+schema_version: 1
+id: variants/cheapest-climb
+kind: kata
+title: "Cheapest Climb"
+difficulty: easy
+tags: [dynamic-programming, recurrence]
+estimated_minutes: 15
+
+variant:
+  of: katas/climbing-stairs
+  twist: "Every step has a price, and you return the cheapest climb instead of counting the climbs."
+
+prompt: |
+  Each step of a staircase has a cost, paid when you stand on it. You begin on
+  the floor in front of the first step and must reach the landing **beyond the
+  last step**, moving up one or two steps at a time.
+
+  Return the lowest total cost of getting there.
+
+  The floor and the landing cost nothing. Because a move may cover two steps,
+  you can start on either of the first two steps, and you can reach the landing
+  from either of the last two — so no single step is compulsory.
+
+hints:
+  - "The standard recurrence asked how many ways reach step n: ways(n-1) + ways(n-2). Ask the same question about cost. What replaces the plus?"
+  - "The cheapest way to be standing on a step is that step's cost plus the cheaper of the two places you could have come from."
+  - "The landing is one place beyond the last step. It is reached from the last step or the one before it, and it costs nothing itself."
+  - "Check a staircase of one step. You can step over it."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(costs) <= 10**5"
+    - "0 <= costs[i] <= 1000"
+  examples:
+    - input: |
+        cheapest_climb([10, 15, 20])
+      output: |
+        15
+      explanation: |
+        Start on the second step, pay 15, and take two steps to the landing.
+    - input: |
+        cheapest_climb([1, 100, 1, 1, 1, 100, 1, 1, 100, 1])
+      output: |
+        6
+      explanation: |
+        Stand on every 1 except the fourth one and step over each 100.
+    - input: |
+        cheapest_climb([7])
+      output: |
+        0
+      explanation: |
+        One move of two steps goes from the floor over the only step to the
+        landing.
+    - input: |
+        cheapest_climb([])
+      output: |
+        0

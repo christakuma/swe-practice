@@ -1,0 +1,65 @@
+schema_version: 1
+id: variants/buy-and-sell-at-most-twice
+kind: kata
+title: "Buy and Sell at Most Twice"
+difficulty: hard
+tags: [arrays, dynamic-programming, invariants]
+estimated_minutes: 35
+
+variant:
+  of: katas/best-time-to-buy-and-sell
+  twist: "You may make up to two trades, and the second cannot begin until the first has ended."
+
+prompt: |
+  A list holds a price per day. You may complete **at most two** trades, each a
+  buy followed by a sell on a later day, holding at most one share at a time —
+  so the second buy comes on or after the day of the first sell. Return the
+  largest total profit. If nothing turns a profit, return `0`.
+
+  One trade is allowed and so is none. Two is a limit, not a requirement.
+
+  Trying every way of splitting the days in two and solving each half is
+  `O(n^2)`. The list may hold a hundred thousand prices.
+
+hints:
+  - "Taking the best single trade and then the best trade in what is left does not work. The best single trade can straddle two good ones: in 1, 5, 2, 8 it is buy at 1, sell at 8."
+  - "Think of the money in your pocket at four moments: after the first buy, after the first sell, after the second buy, after the second sell. Each depends only on the one before it and today's price."
+  - "The second buy is paid for out of the first trade's profit: best after second buy = max(itself, best after first sell - price). That one line is what links the trades."
+  - "Four running values, one pass. Start the two 'holding' values at minus infinity -- you cannot hold a share before you have bought one."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(prices) <= 10**5"
+    - "0 <= prices[i] <= 10**4"
+  examples:
+    - input: |
+        max_profit([3, 3, 5, 0, 0, 3, 1, 4])
+      output: |
+        6
+      explanation: |
+        Buy at 0 and sell at 3, then buy at 1 and sell at 4.
+    - input: |
+        max_profit([1, 5, 2, 8])
+      output: |
+        10
+      explanation: |
+        1 -> 5 and 2 -> 8. The best single trade is 1 -> 8 for 7, and taking it
+        leaves room for nothing else.
+    - input: |
+        max_profit([1, 2, 3, 4, 5])
+      output: |
+        4
+      explanation: |
+        One trade, 1 -> 5. Splitting it in two gains nothing.
+    - input: |
+        max_profit([7, 6, 4, 3, 1])
+      output: |
+        0

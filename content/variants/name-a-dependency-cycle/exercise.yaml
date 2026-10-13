@@ -1,0 +1,70 @@
+schema_version: 1
+id: variants/name-a-dependency-cycle
+kind: kata
+title: "Name a Dependency Cycle"
+difficulty: medium
+tags: [graphs, dfs, cycles]
+estimated_minutes: 30
+
+variant:
+  of: katas/detect-a-dependency-cycle
+  twist: "Return the names that make up a cycle, in order, rather than only saying one exists."
+
+prompt: |
+  Given a dependency graph as a dict from a name to the names it depends on,
+  **return a cycle**: a list of names in which each one depends on the next and
+  the last depends on the first. Return `None` if there is no cycle.
+
+  Return the cycle and nothing but the cycle. Names that lead *into* a cycle
+  without being on it are not part of the answer, and no name appears twice. A
+  name that depends on itself is a cycle of one.
+
+  If the graph has several cycles, any one of them will do, and it may start
+  at any of its names.
+
+  A name may appear as a dependency without having an entry of its own.
+
+hints:
+  - "The standard search already knows when it has found a cycle: it meets a name that is still on the current path. At that moment, what is on the path?"
+  - "The path runs from wherever the search started to the name you are standing on. The cycle is only the last part of it -- from the name you have just met again, onwards."
+  - "Keep the path as a list, and a dict from each name on it to its position. When a dependency is already on the path, slice the list from that position."
+  - "A name that has been fully explored is not on the path. Meeting one of those again is two routes to the same place, not a cycle."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(V + E)"
+    expected_space: "O(V)"
+  constraints:
+    - "At most 2 * 10**4 names, and at most 4 * 10**4 dependencies between them."
+    - "Names are non-empty strings. A name may depend on itself."
+    - "A chain may be 10**4 links long, far deeper than Python will recurse."
+  examples:
+    - input: |
+        cycle = find_cycle({"a": ["b"], "b": ["c"], "c": ["a"]})
+        sorted(cycle)
+      output: |
+        ['a', 'b', 'c']
+      explanation: |
+        ["a", "b", "c"], ["b", "c", "a"] and ["c", "a", "b"] are all correct:
+        the same cycle, started in three places.
+    - input: |
+        find_cycle({"start": ["x"], "x": ["y"], "y": ["x"]}) in (["x", "y"], ["y", "x"])
+      output: |
+        True
+      explanation: |
+        "start" leads to the cycle and is not on it.
+    - input: |
+        find_cycle({"a": ["b", "c"], "b": ["d"], "c": ["d"]})
+      output: |
+        None
+      explanation: |
+        Two routes from a to d. Nothing leads back.
+    - input: |
+        find_cycle({"a": ["a"]})
+      output: |
+        ['a']

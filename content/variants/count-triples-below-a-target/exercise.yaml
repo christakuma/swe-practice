@@ -1,0 +1,72 @@
+schema_version: 1
+id: variants/count-triples-below-a-target
+kind: kata
+title: "Count Triples Below a Target"
+difficulty: medium
+tags: [arrays, two-pointers, sorting, counting]
+estimated_minutes: 28
+
+variant:
+  of: katas/three-sum-to-zero
+  twist: "Count the triples whose sum is below a target, instead of listing the ones that hit it exactly."
+
+prompt: |
+  Return **how many** ways there are to choose three values from the list, at
+  three **different positions**, so that they add up to **less than**
+  `target`.
+
+  This counts choices of positions, not distinct triples of values: in
+  `[1, 1, 1, 1]` there are four ways to choose three positions, and all four
+  count. The order of the three does not matter, so each set of positions is
+  counted once.
+
+  Three nested loops is `O(n^3)`. Aim for `O(n^2)` — and notice that the
+  answer itself can be over a thousand million, so nothing that counts
+  triples one at a time will do. Leave the list you were given in the order
+  you found it.
+
+hints:
+  - "Sort a copy. The count does not depend on which positions the values came from, only on how many ways there are to pick three, and sorting does not change that."
+  - "Fix the smallest of the three, then put one pointer just after it and one at the end -- the same setup as before. Look at the sum of the three."
+  - "If the sum is too big, the high pointer has to come down. If it is small enough, here is the difference: every position between the low and high pointers would also work in place of the high one, because those values are no larger."
+  - "So add `high - low` to the count in one go, and move the low pointer up. You never look at those triples individually, which is the only reason this is quadratic and not cubic."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(numbers) <= 2000"
+    - "-10**5 <= numbers[i] <= 10**5"
+    - "-10**6 <= target <= 10**6"
+    - "Values arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        count_triples([-2, 0, 1, 3], 2)
+      output: |
+        2
+      explanation: |
+        -2 + 0 + 1 = -1 and -2 + 0 + 3 = 1. The other two triples sum to 2
+        and 4, and 2 is not less than 2.
+    - input: |
+        count_triples([1, 1, 1, 1], 4)
+      output: |
+        4
+      explanation: |
+        Every triple sums to 3, and there are four ways to leave one
+        position out.
+    - input: |
+        count_triples([5, 1, 3], 9)
+      output: |
+        0
+    - input: |
+        count_triples([1, 2], 100)
+      output: |
+        0
+      explanation: |
+        There are not three positions to choose.

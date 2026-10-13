@@ -1,0 +1,70 @@
+schema_version: 1
+id: variants/group-words-by-their-letter-pattern
+kind: kata
+title: "Group Words by Their Letter Pattern"
+difficulty: medium
+tags: [strings, hash-map, grouping]
+estimated_minutes: 25
+
+variant:
+  of: katas/group-anagrams
+  twist: "Words belong together when one becomes the other by consistently renaming its letters, so order matters and the letters themselves do not."
+
+prompt: |
+  Two words have the same **letter pattern** when one can be turned into the
+  other by replacing each letter with another, consistently: every occurrence
+  of a letter is replaced by the same letter, and two different letters are
+  never replaced by the same one.
+
+  `"egg"`, `"add"` and `"too"` share a pattern — one letter, then another one
+  twice. `"gge"` does not share it, although it is an anagram of `"egg"`.
+
+  Group a list of words so that words with the same pattern end up together.
+
+  Order matters at both levels, as before: within a group the words appear in
+  the order they appeared in the input, and the groups appear in the order
+  their first word appeared. Duplicates are words too, and so are empty
+  strings.
+
+hints:
+  - "Grouping still means computing a key for each word so that words belong together exactly when their keys are equal. Sorting the letters was the key for anagrams. It throws away the one thing that matters here."
+  - "The key has to forget *which* letters a word uses and remember *where* each letter repeats."
+  - "Rename the letters in order of first appearance: the first new letter becomes 0, the next new letter 1, and so on. 'egg' and 'add' both become (0, 1, 1)."
+  - "A tuple of numbers, not a string of digits: a word with more than ten different letters would make '1', '0' and '10' ambiguous."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(total characters)"
+    expected_space: "O(total characters)"
+  constraints:
+    - "0 <= len(words) <= 10**4"
+    - "0 <= len(words[i]) <= 100"
+    - "Characters are compared exactly; case matters."
+  examples:
+    - input: |
+        group_by_pattern(["egg", "add", "abc", "too", "xyz"])
+      output: |
+        [['egg', 'add', 'too'], ['abc', 'xyz']]
+    - input: |
+        group_by_pattern(["egg", "gge", "geg"])
+      output: |
+        [['egg'], ['gge'], ['geg']]
+      explanation: |
+        Three anagrams and three different patterns: the repeated letter is in a
+        different place each time.
+    - input: |
+        group_by_pattern(["ab", "aa", "cd", "zz"])
+      output: |
+        [['ab', 'cd'], ['aa', 'zz']]
+      explanation: |
+        "ab" cannot become "aa": two different letters would be replaced by the
+        same one.
+    - input: |
+        group_by_pattern([])
+      output: |
+        []

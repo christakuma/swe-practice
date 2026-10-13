@@ -1,0 +1,71 @@
+schema_version: 1
+id: variants/coin-change-from-a-purse
+kind: kata
+title: "Coin Change from a Purse"
+difficulty: medium
+tags: [dynamic-programming, counting]
+estimated_minutes: 25
+
+variant:
+  of: katas/coin-change
+  twist: "The list is the coins actually in your purse, so each one can be spent only once."
+
+prompt: |
+  The list is the contents of a purse: every entry is **one physical coin**.
+  Return the fewest of those coins that add up to an amount exactly, using each
+  coin at most once.
+
+  A value that appears twice in the list is two coins, and both may be used.
+  A value that appears once cannot be used twice.
+
+  Return `-1` when no selection of the coins reaches the amount. An amount of
+  zero needs no coins at all.
+
+  The purse may hold a hundred coins, so trying every selection is not an
+  option.
+
+hints:
+  - "The standard table still works: best[a] is the fewest coins that make a. What goes wrong if you fill it the standard way, amount by amount, trying every coin at each?"
+  - "Nothing in that loop remembers which coins best[a - coin] already used, so the same coin gets spent again. Put the coins in the outer loop, so each coin is considered exactly once."
+  - "Then the direction of the inner loop matters. Going upwards, best[a - coin] may already include this coin. Going downwards, it never does."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(len(coins) * amount)"
+    expected_space: "O(amount)"
+  constraints:
+    - "0 <= len(coins) <= 100"
+    - "1 <= coins[i] <= 10**4, and values may repeat."
+    - "0 <= amount <= 5000"
+  examples:
+    - input: |
+        fewest_coins([1, 5, 10], 11)
+      output: |
+        2
+      explanation: |
+        The 10 and the 1.
+    - input: |
+        fewest_coins([1, 5, 10], 3)
+      output: |
+        -1
+      explanation: |
+        The standard version answers 3, by spending the 1 three times. The purse
+        holds one of them.
+    - input: |
+        fewest_coins([2, 2, 3], 4)
+      output: |
+        2
+      explanation: |
+        Two different coins that happen to be worth the same.
+    - input: |
+        fewest_coins([4, 3, 3], 6)
+      output: |
+        2
+      explanation: |
+        The two 3s. Starting with the largest coin leaves 2 to find and nothing
+        to find it with.

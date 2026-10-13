@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/house-robber-in-a-tree
+kind: kata
+title: "House Robber in a Tree"
+difficulty: medium
+tags: [dynamic-programming, trees, dfs, recursion]
+estimated_minutes: 30
+
+variant:
+  of: katas/house-robber
+  twist: "The values are the nodes of a binary tree, and you may not pick a node together with its parent."
+
+prompt: |
+  The values sit in a **binary tree** instead of a row. Pick a set of nodes
+  with the largest total, subject to one rule: you may not pick two nodes that
+  are joined by an edge — a node and its parent, or a node and its child.
+
+  Picking nothing is allowed, so an empty tree has a total of `0`. Two
+  children of the same node are not joined to each other and may both be
+  picked.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "Taking every other level looks like the row version and is wrong. In a chain 4 - 1 - 1 - 4 the best is the two ends, which are an odd number of levels apart."
+  - "In the row, the answer for a prefix depended on whether its last house was taken. Here the answer for a subtree depends on whether its root was."
+  - "So have the recursion return two numbers for every node: the best total for its subtree if the node is taken, and the best if it is not."
+  - "Taken: its value plus each child's 'not taken'. Not taken: for each child, the better of its two numbers -- skipping a node does not oblige you to take its children."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(h) for the recursion"
+  constraints:
+    - "The tree has between 0 and 10**4 nodes and is at most 500 levels deep."
+    - "0 <= node.value <= 10**4"
+  examples:
+    - input: |
+        root = TreeNode(3, TreeNode(2, None, TreeNode(3)), TreeNode(3, None, TreeNode(1)))
+        best_haul(root)
+      output: |
+        7
+      explanation: |
+        The root and its two grandchildren: 3 + 3 + 1.
+    - input: |
+        root = TreeNode(3, TreeNode(4, TreeNode(1), TreeNode(3)), TreeNode(5, None, TreeNode(1)))
+        best_haul(root)
+      output: |
+        9
+      explanation: |
+        The root's two children, 4 + 5. They are not joined to each other.
+    - input: |
+        chain = TreeNode(4, TreeNode(1, TreeNode(1, TreeNode(4))))
+        best_haul(chain)
+      output: |
+        8
+      explanation: |
+        The top and the bottom of a chain of four. Alternate levels give 5.
+    - input: |
+        best_haul(None)
+      output: |
+        0

@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/first-missing-positive
+kind: kata
+title: "First Missing Positive"
+difficulty: hard
+tags: [arrays, in-place, invariants]
+estimated_minutes: 35
+
+variant:
+  of: katas/find-the-missing-number
+  twist: "The list holds any integers at all, repeats and negatives included, and you return the smallest positive one it lacks."
+
+prompt: |
+  A list holds integers — any integers. They may be negative, zero, enormous,
+  or repeated, and nothing says they come from a particular range. Return the
+  **smallest positive integer that is not in the list**.
+
+  Use `O(n)` time and `O(1)` extra space. You **may rearrange the list** — it
+  is the only storage you have.
+
+  The standard version's arithmetic does not survive this: there is no known
+  range to add up or XOR against, and a value may appear twice. The tests
+  measure the memory you allocate.
+
+hints:
+  - "The answer is at most len(numbers) + 1. To push it higher the list would need to contain every one of 1..n, and then it has no room for anything else."
+  - "So only the values 1..n matter, and there are exactly n positions. A set of size n would do it -- and the list itself can be that set."
+  - "Give each useful value a home: the value v belongs at position v - 1. Walk the list, and whenever a position holds a value in 1..n that is not at home, swap it to where it belongs. Keep swapping until the position holds something useless or something already at home."
+  - "If the value's home already holds that same value, stop: it is a duplicate, and swapping would loop forever. Afterwards the first position i that does not hold i + 1 gives the answer."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(numbers) <= 10**6"
+    - "-10**9 <= numbers[i] <= 10**9"
+    - "Values may repeat and are in no particular order."
+    - "The list may be rearranged or overwritten."
+  examples:
+    - input: |
+        first_missing_positive([3, 4, -1, 1])
+      output: |
+        2
+    - input: |
+        first_missing_positive([1, 2, 0])
+      output: |
+        3
+    - input: |
+        first_missing_positive([7, 8, 9, 11, 12])
+      output: |
+        1
+      explanation: |
+        Nothing in the list is small enough to matter.
+    - input: |
+        first_missing_positive([1, 1, 2, 2])
+      output: |
+        3

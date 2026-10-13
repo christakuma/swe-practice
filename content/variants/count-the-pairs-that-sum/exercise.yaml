@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/count-the-pairs-that-sum
+kind: kata
+title: "Count the Pairs That Sum"
+difficulty: easy
+tags: [arrays, hash-map, counting]
+estimated_minutes: 20
+
+variant:
+  of: katas/two-sum
+  twist: "Any number of pairs may add up to the target, and you return how many there are."
+
+prompt: |
+  You are given a list of integers and a target value. Return **how many pairs
+  of distinct positions** hold two numbers that add up to the target.
+
+  There may be no such pair, or thousands. A pair is two *positions*, so equal
+  values at different positions make different pairs: in `[1, 1, 1]` with a
+  target of 2 there are three. The order within a pair does not matter —
+  positions 0 and 2 are one pair, not two — and a position is never paired
+  with itself.
+
+  The list is not sorted and may be long enough that comparing every pair is
+  too slow.
+
+hints:
+  - "The standard solution asks, at each number, 'have I already seen the value I need?' and returns the moment the answer is yes. Here the answer can be yes many times."
+  - "It can also be yes several times at once: if the value you need has been seen three times, this number completes three pairs."
+  - "So remember how many times each value has been seen, not just whether. At each number, add the count of its complement to the total, and then record the number."
+  - "Look up the complement *before* recording the current number. Otherwise a number that is half the target finds itself."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(numbers) <= 10**5"
+    - "-10**9 <= numbers[i] <= 10**9"
+    - "-10**9 <= target <= 10**9"
+  examples:
+    - input: |
+        count_pairs([1, 5, 7, -1], 6)
+      output: |
+        2
+      explanation: |
+        1 + 5, and 7 + -1.
+    - input: |
+        count_pairs([1, 1, 1], 2)
+      output: |
+        3
+      explanation: |
+        Three positions, and every two of them make a pair.
+    - input: |
+        count_pairs([3, 4], 6)
+      output: |
+        0
+      explanation: |
+        The 3 is half the target, and there is only one of it.
+    - input: |
+        count_pairs([2, 4, 2, 4], 6)
+      output: |
+        4

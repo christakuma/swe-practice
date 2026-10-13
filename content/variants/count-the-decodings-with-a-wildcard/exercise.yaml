@@ -1,0 +1,77 @@
+schema_version: 1
+id: variants/count-the-decodings-with-a-wildcard
+kind: kata
+title: "Count the Decodings, with a Wildcard"
+difficulty: hard
+tags: [dynamic-programming, strings, counting, recurrence]
+estimated_minutes: 40
+
+variant:
+  of: katas/count-the-decodings
+  twist: "The string may contain `*`, which stands for any one digit from 1 to 9."
+
+prompt: |
+  Letters are encoded as numbers: `A` is `1`, `B` is `2`, … `Z` is `26`. Count
+  the ways to decode a string back into letters — where the string may now
+  contain **`*`, standing for any single digit from `1` to `9`**.
+
+  A `*` is never `0`. Two decodings are different if they differ in what a `*`
+  was or in where the letters divide, so `"*"` alone has nine.
+
+  The rules are otherwise unchanged: no leading zeros, a `0` never stands
+  alone, and the empty string has zero ways.
+
+  Aim for `O(n)` time and `O(1)` extra space. Trying each `*` as nine separate
+  strings is `9^k` strings.
+
+hints:
+  - "The recurrence has the same shape: ways(i) = (ways the last character stands alone) * ways(i-1) + (ways the last two form a letter) * ways(i-2). Those two multipliers used to be 0 or 1."
+  - "One character alone: a digit 1-9 is one way, 0 is none, and a star is nine."
+  - "Two characters together need a small table. Digit-digit is the old rule. Star then digit: the star can be 1 always, and 2 only if the digit is at most 6. Digit then star: after a 1 the star can be anything, after a 2 it can be 1 to 6, after anything else nothing works."
+  - "Star-star is not 9 * 9 and it is not 26. Count the two-digit numbers from 11 to 26 that contain no zero."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(digits) <= 10**4"
+    - "Every character is one of the digits 0 to 9, or *."
+    - "The answer is exact however large it is."
+  examples:
+    - input: |
+        count_decodings("*")
+      output: |
+        9
+    - input: |
+        count_decodings("1*")
+      output: |
+        18
+      explanation: |
+        Nine ways to read it as two letters, and nine more as one: 11 to 19 are
+        all letters.
+    - input: |
+        count_decodings("2*")
+      output: |
+        15
+      explanation: |
+        Nine ways as two letters. As one letter the star can only be 1 to 6,
+        because 27, 28 and 29 are not letters.
+    - input: |
+        count_decodings("**")
+      output: |
+        96
+      explanation: |
+        81 ways as two letters, and 15 as one: 11 to 19 and 21 to 26. Neither 10
+        nor 20 is among them, because a star is never 0.
+    - input: |
+        count_decodings("*0")
+      output: |
+        2
+      explanation: |
+        The 0 cannot stand alone, so the star must be 1 or 2.

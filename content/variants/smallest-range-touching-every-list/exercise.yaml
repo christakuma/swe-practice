@@ -1,0 +1,81 @@
+schema_version: 1
+id: variants/smallest-range-touching-every-list
+kind: kata
+title: "Smallest Range Touching Every List"
+difficulty: hard
+tags: [linked-lists, heap, merging, sliding-window]
+estimated_minutes: 35
+
+variant:
+  of: katas/merge-k-sorted-lists
+  twist: "Find the narrowest range of values that includes at least one node from every list, without merging them."
+
+prompt: |
+  A list of sorted linked lists comes in. Return the **narrowest range**
+  `(low, high)` such that every list has at least one value `v` with
+  `low <= v <= high`.
+
+  The range is closed at both ends, and `low` and `high` may be equal when
+  some value is in every list. If several ranges are equally narrow, return
+  the one with the **smallest `low`**.
+
+  If the outer list is empty, or any entry in it is `None` — an empty linked
+  list, which no range can touch — return `None`.
+
+  You do not need to build the merged list, and should not relink anything:
+  leave the lists as you found them. But the way you merged them is most of
+  the answer.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "Merging k lists kept one node from each list in a heap -- the front of each. Look at that heap as a set of k values, one from every list. It is a candidate range: from its smallest to its largest."
+  - "The heap gives you the smallest for free. Keep the largest in a variable, and update it whenever you push."
+  - "To try a different candidate, the only useful move is to advance the list that holds the smallest value: anything else leaves the low end where it is and can only push the high end up."
+  - "Stop the moment the list holding the smallest value has nothing after it. Every later candidate would have to leave that list out."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log k) for n nodes in total"
+    expected_space: "O(k)"
+  constraints:
+    - "0 <= len(lists) <= 1000"
+    - "Each list has between 0 and 100 nodes, in ascending order; equal values may repeat."
+    - "-10**9 <= node.value <= 10**9"
+  examples:
+    - input: |
+        lists = [
+            ListNode(4, ListNode(10, ListNode(15, ListNode(24, ListNode(26))))),
+            ListNode(0, ListNode(9, ListNode(12, ListNode(20)))),
+            ListNode(5, ListNode(18, ListNode(22, ListNode(30)))),
+        ]
+        smallest_range(lists)
+      output: |
+        (20, 24)
+      explanation: |
+        24 from the first list, 20 from the second and 22 from the third.
+    - input: |
+        lists = [
+            ListNode(1, ListNode(5, ListNode(9))),
+            ListNode(5, ListNode(7)),
+        ]
+        smallest_range(lists)
+      output: |
+        (5, 5)
+      explanation: |
+        5 is in both lists.
+    - input: |
+        smallest_range([ListNode(1), None])
+      output: |
+        None
+      explanation: |
+        The second list is empty, so no range includes a value from it.
+    - input: |
+        smallest_range([])
+      output: |
+        None

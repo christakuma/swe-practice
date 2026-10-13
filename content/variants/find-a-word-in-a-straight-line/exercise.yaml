@@ -1,0 +1,74 @@
+schema_version: 1
+id: variants/find-a-word-in-a-straight-line
+kind: kata
+title: "Find a Word in a Straight Line"
+difficulty: easy
+tags: [grids, scanning, strings]
+estimated_minutes: 20
+
+variant:
+  of: katas/find-a-word-in-a-grid
+  twist: "The word must lie in a straight line, in any of the eight directions, as in a printed word search."
+
+prompt: |
+  A grid of single characters and a word come in. Return `True` if the word
+  appears in the grid **in a straight line** — reading across, down or along a
+  diagonal, forwards or backwards. That is eight directions.
+
+  The path may not bend. Once it has taken its first step it keeps going the
+  same way, and it does not wrap around from one edge of the grid to the
+  other.
+
+  The empty word is present in any grid, including an empty one. A word of one
+  letter is present wherever that letter is.
+
+  Leave the board as you found it.
+
+hints:
+  - "The standard search chooses a direction afresh at every step, which is why it needs backtracking and a record of the cells it has used. How many choices does a straight line make?"
+  - "One: a starting cell and a direction fix the whole path. So try every start and every one of the eight directions, and just read along."
+  - "A direction is a pair (row step, column step), each of -1, 0 or 1, not both 0. Letter number i of the word is at (row + i * row step, column + i * column step)."
+  - "Check the bounds on every letter. A negative index in Python does not fail, it reads from the other end of the list."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns * len(word))"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= rows <= 50 and 0 <= columns <= 50"
+    - "0 <= len(word) <= 50"
+    - "Every cell is a single character. Matching is exact, so case matters."
+  examples:
+    - input: |
+        board = [
+            ["c", "a", "t"],
+            ["x", "o", "x"],
+            ["x", "x", "g"],
+        ]
+        (exists(board, "cat"), exists(board, "tac"), exists(board, "cog"))
+      output: |
+        (True, True, True)
+      explanation: |
+        Across, across backwards, and down the diagonal.
+    - input: |
+        board = [
+            ["c", "a", "x"],
+            ["x", "t", "x"],
+        ]
+        exists(board, "cat")
+      output: |
+        False
+      explanation: |
+        The letters are next to one another, but the path turns a corner. The
+        standard version accepts this one.
+    - input: |
+        exists([["a", "b"]], "aba")
+      output: |
+        False
+      explanation: |
+        A straight line cannot turn back on itself, so it cannot use the a twice.

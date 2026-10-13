@@ -1,0 +1,71 @@
+schema_version: 1
+id: variants/shortest-prefix-that-names-each-word
+kind: kata
+title: "Shortest Prefix That Names Each Word"
+difficulty: medium
+tags: [strings, sorting, tries, scanning]
+estimated_minutes: 25
+
+variant:
+  of: katas/longest-common-prefix
+  twist: "Each word gets the shortest prefix that no other word shares, instead of all of them getting the longest one they do."
+
+prompt: |
+  For each word in the list, return the shortest prefix that **no other word
+  in the list starts with** — the fewest leading characters you would have to
+  type before only that word is left.
+
+  Return one prefix per word, in the order the words were given. A prefix has
+  at least one character.
+
+  Some words cannot be told apart by any prefix: a word that another word
+  starts with (`"car"` beside `"cart"`), and a word that is in the list twice.
+  For those, return the **whole word**. An empty word is one of them.
+
+  Comparison is case sensitive. Comparing every word with every other is
+  `O(n^2)`, and there may be twenty thousand of them.
+
+hints:
+  - "A word's answer is decided by the one other word it shares the most leading characters with: one character more than that shared stretch, or the whole word if there is no more."
+  - "So the question is which other word is closest. Comparing against all of them is the slow way. In what order would the closest word be easy to find?"
+  - "Sort the words. A word's longest shared prefix with anything in the list is with one of its two neighbours in sorted order -- everything further away shares no more than they do."
+  - "Sorting loses the original order, and the answers are wanted in it. Sort positions, not words, so each answer can be written back where it belongs."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n * L)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(words) <= 2 * 10**4"
+    - "0 <= len(words[i]) <= 100"
+    - "Characters are compared exactly. Words may repeat."
+  examples:
+    - input: |
+        shortest_unique_prefixes(["zebra", "dog", "duck", "dove"])
+      output: |
+        ["z", "dog", "du", "dov"]
+      explanation: |
+        Nothing else starts with z. The three d-words need two letters, and
+        "dog" and "dove" share their second, so they need three.
+    - input: |
+        shortest_unique_prefixes(["car", "cart", "cat"])
+      output: |
+        ["car", "cart", "cat"]
+      explanation: |
+        Every prefix of "car" also begins "cart", so it is returned whole.
+        "cart" needs all four letters to get past "car".
+    - input: |
+        shortest_unique_prefixes(["apple"])
+      output: |
+        ["a"]
+      explanation: |
+        With nothing to be confused with, one character is enough.
+    - input: |
+        shortest_unique_prefixes(["go", "go", "gone"])
+      output: |
+        ["go", "go", "gon"]

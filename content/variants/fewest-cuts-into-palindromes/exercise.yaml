@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/fewest-cuts-into-palindromes
+kind: kata
+title: "Fewest Cuts into Palindromes"
+difficulty: hard
+tags: [strings, dynamic-programming, two-pointers]
+estimated_minutes: 40
+
+variant:
+  of: katas/count-palindromic-substrings
+  twist: "Cut the string into pieces that are all palindromes, and return the fewest cuts that will do it."
+
+prompt: |
+  Cut a string into pieces so that **every piece is a palindrome**, and return
+  the smallest number of cuts that achieves it.
+
+  A string that is already a palindrome needs no cuts. Cutting between every
+  pair of characters always works, since single characters are palindromes, so
+  the answer is never more than `len(text) - 1`. The empty string needs no
+  cuts.
+
+  Every character is significant: no case folding, no skipping punctuation.
+
+  Aim for `O(n^2)` time. Checking each candidate piece character by character
+  is `O(n^3)`.
+
+hints:
+  - "Let cuts[i] be the fewest cuts for the first i characters. If the piece from j to i is a palindrome, then cuts[i] could be cuts[j] + 1. The last piece is the only thing you have to choose."
+  - "That needs to know, for every j and i, whether the piece between them is a palindrome -- and you already have a way to visit every palindrome in the string exactly once, in O(n^2) total."
+  - "Expand around each centre as before. Instead of counting each palindrome you find, use it: it ends at some position, and it gives a candidate value for cuts there."
+  - "Taking the longest palindrome at the front and repeating is not optimal. Try 'aaba'... then try 'abaab'."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(text) <= 1000"
+    - "The string may hold any characters, and they are compared exactly."
+  examples:
+    - input: |
+        fewest_cuts("aab")
+      output: |
+        1
+      explanation: |
+        "aa" and "b".
+    - input: |
+        fewest_cuts("racecar")
+      output: |
+        0
+    - input: |
+        fewest_cuts("abaab")
+      output: |
+        1
+      explanation: |
+        "a" and "baab". Starting with the longest palindrome at the front, "aba",
+        leaves "ab" and costs two cuts.
+    - input: |
+        fewest_cuts("abc")
+      output: |
+        2

@@ -1,0 +1,70 @@
+schema_version: 1
+id: variants/serialize-a-search-tree-without-markers
+kind: kata
+title: "Serialize a Search Tree Without Markers"
+difficulty: medium
+tags: [trees, binary-search-tree, invariants, stack]
+estimated_minutes: 40
+
+variant:
+  of: katas/serialize-and-deserialize-a-tree
+  twist: "The tree is a binary search tree, and the string may hold its values and nothing else: no markers for missing children."
+
+prompt: |
+  Write `serialize` and `deserialize` for a binary **search** tree, so that
+  the round trip returns exactly the same tree — same values, same shape.
+
+  The string must be **as compact as the values allow**: the tree's values as
+  decimal integers separated by single commas, **exactly one number per node**,
+  and nothing else. No brackets, no markers for an absent child, no counts. An
+  empty tree serialises to the empty string.
+
+  For an arbitrary tree that is impossible — the shape has to be written down
+  somehow. A search tree's shape is implied by its values and the order you
+  list them in, if you choose the order well.
+
+  Values are distinct. You may not use `json`, `pickle`, `repr`, `ast`, or any
+  other serialiser. The tests build trees with the `TreeNode` class in the
+  stub.
+
+hints:
+  - "Different orders of the same values carry different amounts of information. The values in ascending order are the same list for every search tree holding them, so in-order says nothing about shape."
+  - "Pre-order puts the root first. Everything after it that is smaller belongs to the left subtree and everything larger to the right, and the same is true inside each of those. That pins the shape down completely."
+  - "So serialise in pre-order, and deserialise by rebuilding a search tree from its pre-order traversal -- with upper bounds passed down, or with a stack of the nodes whose right child is still open."
+  - "Inserting the values one at a time in pre-order also rebuilds the right tree, since every node is inserted after its ancestors. It is quadratic on a lopsided tree."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n) for each function"
+    expected_space: "O(n)"
+  constraints:
+    - "The tree has between 0 and 10**5 nodes and is at most 500 levels deep; an empty tree is None."
+    - "-10**9 <= node.value <= 10**9, and no two nodes share a value."
+    - "The tree is a valid binary search tree."
+    - "deserialize is only ever given a string that serialize returned."
+  examples:
+    - input: |
+        root = TreeNode(2, TreeNode(1), TreeNode(3))
+        sorted(int(part) for part in serialize(root).split(","))
+      output: |
+        [1, 2, 3]
+      explanation: |
+        Three nodes, three numbers. What order they are in is up to you.
+    - input: |
+        root = TreeNode(5, TreeNode(3, None, TreeNode(4)), TreeNode(8))
+        copy = deserialize(serialize(root))
+        (copy.value, copy.left.value, copy.left.left, copy.left.right.value, copy.right.value)
+      output: |
+        (5, 3, None, 4, 8)
+      explanation: |
+        The 4 comes back as the right child of the 3, with nothing on the 3's
+        left -- although the string had no way to say "nothing here".
+    - input: |
+        (serialize(None), deserialize(""))
+      output: |
+        ('', None)

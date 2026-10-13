@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/fill-the-bag-exactly
+kind: kata
+title: "Fill the Bag Exactly"
+difficulty: hard
+tags: [dynamic-programming, tables]
+estimated_minutes: 30
+
+variant:
+  of: katas/knapsack
+  twist: "The bag must be filled to its capacity exactly; a lighter load, however valuable, does not count."
+
+prompt: |
+  Given `(weight, value)` items and a weight capacity, return the most value
+  you can carry in a bag that is **filled exactly** — the chosen weights must
+  add up to the capacity, not merely stay under it.
+
+  Each item may be taken at most once and cannot be split.
+
+  Return `-1` when no selection of items weighs exactly the capacity. A
+  capacity of zero is filled exactly by taking nothing, for a value of `0`.
+
+  With a couple of hundred items, enumerating subsets is out.
+
+hints:
+  - "The table and the loops are the standard ones. The only thing that changes is what the table means, and therefore what it starts as."
+  - "In the standard version best[w] is the most value in a bag of capacity w, and an empty bag is a legitimate answer for every w -- so everything starts at 0. Here best[w] is the most value at weight exactly w. Which weights can you hit with no items at all?"
+  - "Only weight 0. Every other entry starts as 'impossible', and an impossible entry must stay impossible when you add an item's value to it. Minus infinity does that by itself."
+  - "At the end, translate 'impossible' to -1. Do not test for it with `<= 0`: zero is a real answer when the capacity is zero."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(len(items) * capacity)"
+    expected_space: "O(capacity)"
+  constraints:
+    - "0 <= len(items) <= 200"
+    - "Each item is (weight, value) with 1 <= weight <= 1000 and 1 <= value <= 1000."
+    - "0 <= capacity <= 5000"
+  examples:
+    - input: |
+        best_value([(3, 10), (4, 1)], 4)
+      output: |
+        1
+      explanation: |
+        The item worth 10 weighs 3, which does not fill a bag of 4. The only
+        exact fill is the item worth 1.
+    - input: |
+        best_value([(1, 1), (3, 4), (4, 5), (5, 7)], 7)
+      output: |
+        9
+      explanation: |
+        Weights 3 and 4. Weights 1 and 5 are worth 8 and leave the bag one short.
+    - input: |
+        best_value([(2, 5), (4, 9)], 5)
+      output: |
+        -1
+      explanation: |
+        The weights reachable are 0, 2, 4 and 6.
+    - input: |
+        best_value([(2, 5)], 0)
+      output: |
+        0

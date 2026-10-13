@@ -1,0 +1,69 @@
+schema_version: 1
+id: variants/merge-two-interval-lists
+kind: kata
+title: "Merge Two Interval Lists"
+difficulty: medium
+tags: [intervals, two-pointers, merging, scanning]
+estimated_minutes: 30
+
+variant:
+  of: katas/insert-an-interval
+  twist: "A whole second sorted list is merged in, not a single interval."
+
+prompt: |
+  Two lists of intervals are given. **Each** is in ascending order, and within
+  each list no two intervals overlap. Return one list covering exactly what
+  the two cover between them — sorted and non-overlapping.
+
+  Intervals are closed, so two that merely meet at a point count as
+  overlapping: `(1, 3)` and `(3, 5)` merge into `(1, 5)`.
+
+  An interval from one list may swallow several from the other, and a chain of
+  intervals alternating between the lists may all join into one.
+
+  Return a new list and leave the ones you were given alone.
+
+  Aim for `O(n + m)` — both inputs are already sorted, so there is no reason to
+  sort anything.
+
+hints:
+  - "Inserting the second list's intervals one at a time works and is quadratic: each insertion rebuilds the list."
+  - "Both lists are sorted by start. Reading whichever list has the earlier next interval gives every interval in order of start, without sorting -- the merge step of merge sort."
+  - "With intervals arriving in order of start, building the result needs no look-ahead: each one either overlaps the last interval in the result and extends it, or starts a new one."
+  - "Extend with max(end, new end). The arriving interval may lie entirely inside the last one, and must not shorten it."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n + m)"
+    expected_space: "O(n + m) for the output"
+  constraints:
+    - "0 <= len(first) <= 10**5 and 0 <= len(second) <= 10**5"
+    - "Every interval is (start, end) with -10**9 <= start <= end <= 10**9."
+    - "Each list is sorted by start, and within a list no two intervals overlap or touch."
+  examples:
+    - input: |
+        merge_lists([(1, 3), (8, 10)], [(2, 5), (12, 14)])
+      output: |
+        [(1, 5), (8, 10), (12, 14)]
+    - input: |
+        merge_lists([(1, 2), (5, 6), (9, 10)], [(0, 20)])
+      output: |
+        [(0, 20)]
+      explanation: |
+        One interval from the second list swallows all three from the first.
+    - input: |
+        merge_lists([(1, 3), (5, 7)], [(3, 5), (7, 9)])
+      output: |
+        [(1, 9)]
+      explanation: |
+        Each interval touches the next one from the other list, so all four
+        join.
+    - input: |
+        merge_lists([], [(4, 4)])
+      output: |
+        [(4, 4)]

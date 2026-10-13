@@ -1,0 +1,68 @@
+schema_version: 1
+id: variants/length-of-the-loop
+kind: kata
+title: "Length of the Loop"
+difficulty: medium
+tags: [linked-lists, two-pointers]
+estimated_minutes: 20
+
+variant:
+  of: katas/detect-a-cycle-in-a-linked-list
+  twist: "Return how many nodes are in the cycle, not just whether there is one."
+
+prompt: |
+  A singly linked list may loop back on itself. Return the **number of nodes in
+  the cycle**, or `0` if the list ends.
+
+  Only the nodes that go round count. A list of ten nodes whose last node
+  points back at the eighth has a cycle of three, and the seven nodes leading
+  up to it are not part of it.
+
+  Solve it in **O(1) extra space**, and leave the list as you found it. The
+  tests measure the memory you allocate.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "The slow and fast pointers meet only if there is a cycle, and when they meet they are both standing on a node inside it."
+  - "Once you are standing inside a cycle, measuring it needs no cleverness: remember where you are, walk, and count the steps until you are back."
+  - "The number of steps the two pointers took before meeting is a multiple of the cycle's length, but not always the length itself. A long lead-in makes them go round more than once."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "The list has between 0 and 10**5 nodes; an empty list is None."
+    - "An acyclic list may be 10**5 nodes long, far deeper than Python will recurse."
+    - "Values tell you nothing: two nodes are the same node only if they are the same object."
+  examples:
+    - input: |
+        third = ListNode(3)
+        second = ListNode(2, third)
+        head = ListNode(1, second)
+        third.next_node = second
+        cycle_length(head)
+      output: |
+        2
+      explanation: |
+        1 -> 2 -> 3 -> 2 -> ... The 2 and the 3 go round. The 1 is on the way in.
+    - input: |
+        node = ListNode(1)
+        node.next_node = node
+        cycle_length(node)
+      output: |
+        1
+    - input: |
+        cycle_length(ListNode(1, ListNode(2, ListNode(3))))
+      output: |
+        0
+    - input: |
+        cycle_length(None)
+      output: |
+        0

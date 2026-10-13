@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/find-the-one-repeated-value
+kind: kata
+title: "Find the One Repeated Value"
+difficulty: medium
+tags: [arrays, two-pointers, invariants]
+estimated_minutes: 30
+
+variant:
+  of: katas/contains-a-duplicate
+  twist: "A duplicate is guaranteed; return which value it is, without a set and without changing the list."
+
+prompt: |
+  A list holds `n + 1` integers, each between `1` and `n`. With more entries
+  than possible values, some value must repeat — and here **exactly one value
+  does**, though it may appear more than twice. Return that value.
+
+  Two restrictions make this a different problem from spotting a duplicate:
+
+  - use **O(1) extra space** — no set, no dict, no sorted copy;
+  - **leave the list exactly as you found it**.
+
+  The tests measure the memory you allocate and compare the list afterwards.
+
+hints:
+  - "Every value is between 1 and n, and the list has positions 0 to n. So every value is also a valid position. What do you get if you treat each entry as a pointer to another entry?"
+  - "Follow position -> numbers[position] starting from position 0. Nothing points back at 0, so it is the head of a chain. Two positions holding the same value are two pointers into the same place: the chain runs into a loop."
+  - "The value that repeats is the position where the chain joins the loop. Finding where a linked list's cycle begins needs two pointers and no memory."
+  - "Adding everything up and subtracting 1 + 2 + ... + n only works when the value appears exactly twice and every other value appears once. Neither is promised."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "2 <= len(numbers) <= 10**6"
+    - "1 <= numbers[i] <= len(numbers) - 1"
+    - "Exactly one value appears more than once. It may appear any number of times, so other values may be missing."
+  examples:
+    - input: |
+        find_duplicate([1, 3, 4, 2, 2])
+      output: |
+        2
+    - input: |
+        find_duplicate([3, 1, 3, 4, 2])
+      output: |
+        3
+    - input: |
+        find_duplicate([2, 2, 2, 2, 2])
+      output: |
+        2
+      explanation: |
+        The repeated value fills the list. Summing and subtracting 1 + 2 + 3 + 4
+        gives 0 here.
+    - input: |
+        find_duplicate([1, 1])
+      output: |
+        1

@@ -1,0 +1,69 @@
+schema_version: 1
+id: variants/is-the-tree-balanced
+kind: kata
+title: "Is the Tree Balanced?"
+difficulty: easy
+tags: [trees, recursion, dfs]
+estimated_minutes: 20
+
+variant:
+  of: katas/max-depth-of-a-binary-tree
+  twist: "Decide whether the tree is height-balanced: at every node, the two subtrees' depths differ by at most one."
+
+prompt: |
+  A binary tree is **height-balanced** when, at **every** node, the depth of
+  its left subtree and the depth of its right subtree differ by at most one.
+
+  Return `True` if the tree is balanced.
+
+  Depth is measured as before: the number of nodes on the longest path down
+  to a leaf, with an empty subtree having depth 0. An empty tree is balanced.
+
+  The condition is about every node, not just the root. A root whose two
+  sides are equally deep can still have an unbalanced tree hanging on each
+  side.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "You already know how to compute a depth. A tree is balanced if its two subtrees' depths are within one of each other *and* both subtrees are themselves balanced."
+  - "Written directly, that calls the depth function at every node, and each call walks a whole subtree. It works, and on a lopsided tree it does the same work again and again."
+  - "One walk can do both jobs. Let the recursion return the subtree's depth, or a special value meaning 'already found to be unbalanced' that every caller passes straight up."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(h) for the recursion"
+  constraints:
+    - "The tree has between 0 and 5000 nodes and is at most 500 levels deep."
+    - "-10**4 <= node.value <= 10**4"
+  examples:
+    - input: |
+        root = TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))
+        is_balanced(root)
+      output: |
+        True
+    - input: |
+        is_balanced(TreeNode(1, TreeNode(2, TreeNode(3))))
+      output: |
+        False
+      explanation: |
+        The root's left subtree has depth 2 and its right has depth 0.
+    - input: |
+        left = TreeNode(2, TreeNode(3, TreeNode(4)))
+        right = TreeNode(2, None, TreeNode(3, None, TreeNode(4)))
+        is_balanced(TreeNode(1, left, right))
+      output: |
+        False
+      explanation: |
+        Both sides of the root have depth 3, so the root is fine. The node below
+        it on each side has one subtree of depth 2 and one of depth 0.
+    - input: |
+        is_balanced(None)
+      output: |
+        True

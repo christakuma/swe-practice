@@ -1,0 +1,70 @@
+schema_version: 1
+id: variants/give-every-meeting-a-room
+kind: kata
+title: "Give Every Meeting a Room"
+difficulty: medium
+tags: [intervals, heap, sorting]
+estimated_minutes: 35
+
+variant:
+  of: katas/how-many-meeting-rooms
+  twist: "Say which room each meeting goes in, always the lowest-numbered room that is free."
+
+prompt: |
+  Rooms are numbered `0, 1, 2, …`. Meetings are booked **in order of start
+  time**, and each one is given the **lowest-numbered room that is free** when
+  it starts. Return the room number of every meeting, in the order the
+  meetings were given.
+
+  A room is free again the moment its meeting ends: a meeting ending exactly
+  when another starts hands its room over. Every meeting has positive duration.
+
+  When two meetings start at the same time, the one that comes first in the
+  input is booked first.
+
+  Aim for `O(n log n)`.
+
+hints:
+  - "The standard solution keeps a heap of end times and only ever asks how big it gets. Which room each end time belongs to never mattered. Now it is the whole answer."
+  - "Keep the room number beside each end time: a heap of (end, room) for the rooms in use."
+  - "The room that frees up first is not necessarily the lowest-numbered free room. Several rooms may have emptied by the time the next meeting starts, and it must get the lowest of *all* of them."
+  - "Two heaps: rooms in use, ordered by when they free up, and free rooms, ordered by number. Before booking a meeting, move every room that has emptied from the first to the second. Then take the smallest free room -- or open a new one if there is none."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(meetings) <= 10**5"
+    - "Each meeting is (start, end) with -10**9 <= start < end <= 10**9."
+    - "Meetings arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        assign_rooms([(0, 30), (5, 10), (15, 20)])
+      output: |
+        [0, 1, 1]
+      explanation: |
+        The second meeting overlaps the first and opens room 1. That room is
+        empty again by 15.
+    - input: |
+        assign_rooms([(0, 10), (1, 3), (2, 4), (5, 6)])
+      output: |
+        [0, 1, 2, 1]
+      explanation: |
+        By 5 both room 1 and room 2 are empty. Room 1 has the lower number.
+    - input: |
+        assign_rooms([(4, 6), (1, 2), (2, 4)])
+      output: |
+        [0, 0, 0]
+      explanation: |
+        Given out of order, booked in order of start. Each ends as the next
+        begins, so one room serves all three.
+    - input: |
+        assign_rooms([])
+      output: |
+        []

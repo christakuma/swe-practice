@@ -1,0 +1,71 @@
+schema_version: 1
+id: variants/earliest-slot-for-a-meeting
+kind: kata
+title: "Earliest Slot for a Meeting"
+difficulty: medium
+tags: [intervals, sorting, greedy, scanning]
+estimated_minutes: 25
+
+variant:
+  of: katas/meeting-rooms
+  twist: "Find the earliest time a new meeting fits, in a diary whose meetings may already overlap."
+
+prompt: |
+  A diary holds `(start, end)` meetings. Find the **earliest time a new
+  meeting of `duration` can start** so that it lies wholly inside the working
+  day — from `opens` to `closes` — and overlaps nothing already in the diary.
+  Return that start time, or `None` if there is no room.
+
+  Intervals are **half-open**, as before: the new meeting may start at the
+  moment another ends, and may end at the moment another starts or at
+  `closes` exactly.
+
+  The diary is several people's calendars laid on top of one another, so its
+  meetings **may overlap each other**, and one may sit entirely inside
+  another. Some may begin before `opens` or run past `closes`.
+
+  Meetings arrive in no particular order. Leave the list as you found it.
+
+hints:
+  - "Sort by start, then walk forward keeping one number: the earliest moment at which everything seen so far is over. It begins at `opens`."
+  - "Before each meeting, ask whether the gap from that moment to this meeting's start is long enough. If it is, you are done -- you are walking in order, so it is the earliest."
+  - "Otherwise move the moment forward to this meeting's end -- but only if that is later. A short meeting inside a long one ends earlier than the long one does, and the diary is not free then."
+  - "Running out of meetings is not failure. The gap after the last one, up to `closes`, is a gap like any other and still has to be checked."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(meetings) <= 10**5"
+    - "Each meeting is (start, end) with -10**9 <= start < end <= 10**9."
+    - "-10**9 <= opens < closes <= 10**9"
+    - "1 <= duration <= 10**9"
+    - "Meetings arrive in no particular order, may repeat and may overlap."
+  examples:
+    - input: |
+        earliest_slot([(9, 10), (12, 13)], 2, 8, 17)
+      output: |
+        10
+      explanation: |
+        The hour from 8 to 9 is too short for two. 10 to 12 fits exactly.
+    - input: |
+        earliest_slot([(9, 12), (10, 11)], 1, 9, 17)
+      output: |
+        12
+      explanation: |
+        The meeting from 10 to 11 is inside the one from 9 to 12. The diary is
+        not free at 11.
+    - input: |
+        earliest_slot([(8, 12), (12, 17)], 1, 8, 17)
+      output: |
+        None
+    - input: |
+        earliest_slot([], 3, 5, 8)
+      output: |
+        5

@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/fewest-words-that-spell-it
+kind: kata
+title: "Fewest Words That Spell It"
+difficulty: medium
+tags: [dynamic-programming, strings, greedy]
+estimated_minutes: 25
+
+variant:
+  of: katas/word-break
+  twist: "Return the fewest dictionary words the string can be split into, or -1 if it cannot be split at all."
+
+prompt: |
+  Split a string into a sequence of words from a dictionary, using **as few
+  words as possible**, and return how many that is. Words may be reused.
+
+  Return `-1` if the string cannot be split into dictionary words at all. An
+  empty string needs no words, so its answer is `0`.
+
+  Taking the longest word that fits at each step does not always give the
+  fewest words — and sometimes does not give a split at all when one exists.
+
+hints:
+  - "The yes-or-no version kept, for each prefix, whether it could be split. Keep a number instead: the fewest words that spell that prefix."
+  - "A prefix can be finished by any dictionary word that it ends with. If the part before that word takes k words, this way takes k + 1. Take the smallest over all such words."
+  - "Prefixes that cannot be split need a value that stays 'impossible' when 1 is added to it and never wins a minimum. Infinity does both; -1 does neither."
+  - "The empty prefix takes 0 words. Translate infinity to -1 only at the very end."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n * L) for text length n and longest word L"
+    expected_space: "O(n + total length of the words)"
+  constraints:
+    - "0 <= len(text) <= 1000"
+    - "0 <= len(words) <= 1000"
+    - "1 <= len(words[i]) <= 20"
+    - "Characters are compared exactly."
+  examples:
+    - input: |
+        fewest_words("applepenapple", ["apple", "pen"])
+      output: |
+        3
+    - input: |
+        fewest_words("aaaa", ["a", "aa", "aaa"])
+      output: |
+        2
+      explanation: |
+        "aa" twice, or "aaa" and "a". Never four.
+    - input: |
+        fewest_words("abcd", ["abc", "ab", "cd", "d"])
+      output: |
+        2
+      explanation: |
+        "ab" + "cd" and "abc" + "d" both take two.
+    - input: |
+        fewest_words("catsandog", ["cats", "dog", "sand", "and", "cat"])
+      output: |
+        -1

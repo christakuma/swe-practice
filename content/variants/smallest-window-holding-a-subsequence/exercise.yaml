@@ -1,0 +1,73 @@
+schema_version: 1
+id: variants/smallest-window-holding-a-subsequence
+kind: kata
+title: "Smallest Window Holding a Subsequence"
+difficulty: hard
+tags: [strings, sliding-window, two-pointers, subsequence]
+estimated_minutes: 40
+
+variant:
+  of: katas/smallest-window-covering
+  twist: "The window must contain the pattern's characters in order, not just in the right numbers."
+
+prompt: |
+  Return the shortest substring of `text` that contains `pattern` as a
+  **subsequence**: the pattern's characters, all of them, **in order**,
+  though not necessarily next to each other. If there is no such substring,
+  return `""`. If several shortest windows tie, return the one that starts
+  earliest.
+
+  Order is what is new. `"cab"` holds every character of `"abc"` and is a
+  covering window for it; it is not a window for the subsequence `"abc"`,
+  because no a comes before a b that comes before a c.
+
+  Every character is significant and case matters. When `pattern` is empty
+  the answer is `""`.
+
+  The counting window you used before cannot do this — a tally of characters
+  has no idea what order they came in. Look for another way to slide.
+
+hints:
+  - "Walk forward through the text matching the pattern one character at a time. When the last pattern character matches, you have a window that ends here -- but it probably starts too early."
+  - "To tighten it, walk *backward* from that end, matching the pattern from its last character to its first. Where the backward walk finishes is the latest possible start for a window ending here."
+  - "That window is a candidate. Record it if it is shorter than the best so far -- strictly shorter, so the earliest wins a tie."
+  - "Then carry on forward, starting one character after the *start* of the window you just found, not after its end. The next window may begin inside this one."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n * m)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(text) <= 2 * 10**4"
+    - "0 <= len(pattern) <= 100"
+    - "Characters are compared exactly."
+  examples:
+    - input: |
+        smallest_window("abcdebdde", "bde")
+      output: |
+        "bcde"
+      explanation: |
+        "bcde" and "bdde" are both four long and both hold b, d, e in order.
+        The first starts earlier.
+    - input: |
+        smallest_window("cab", "abc")
+      output: |
+        ""
+      explanation: |
+        All three characters are there. They are not in that order.
+    - input: |
+        smallest_window("axxbab", "ab")
+      output: |
+        "ab"
+      explanation: |
+        The first a and the first b make "axxb". The last two characters do
+        better.
+    - input: |
+        smallest_window("abc", "")
+      output: |
+        ""

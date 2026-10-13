@@ -1,0 +1,62 @@
+schema_version: 1
+id: variants/longest-slice-that-sums-to-k
+kind: kata
+title: "Longest Slice That Sums to k"
+difficulty: medium
+tags: [arrays, hash-map, prefix-sums]
+estimated_minutes: 25
+
+variant:
+  of: katas/subarray-sum-equals-k
+  twist: "Return the length of the longest slice that adds up to the target, instead of how many slices do."
+
+prompt: |
+  Return the **length of the longest** contiguous, non-empty slice of a list
+  that adds up to a target. Return `0` if no slice does.
+
+  Values may be **negative or zero**, so a slice can grow longer without its
+  sum moving, and a sliding window that shrinks when the sum is too big does
+  not work.
+
+  The list may be long enough that trying every slice is too slow.
+
+hints:
+  - "The counting version kept a dict from each prefix sum to how many times it had been seen. A slice ending here sums to the target whenever some earlier prefix equals (current prefix - target)."
+  - "For the longest slice you do not need to know how many earlier prefixes had that value. You need to know where the *earliest* one was."
+  - "So the dict maps each prefix sum to the first position it appeared at -- and once a sum is in the dict, never overwrite it."
+  - "Put the empty prefix in before you start: sum 0 at position 0, before any element. Without it, a slice that begins at the very start of the list is never found."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(numbers) <= 10**5"
+    - "-1000 <= numbers[i] <= 1000"
+    - "-10**8 <= target <= 10**8"
+  examples:
+    - input: |
+        longest_slice([1, -1, 5, -2, 3], 3)
+      output: |
+        4
+      explanation: |
+        1, -1, 5, -2 adds up to 3. So does the 3 alone, which is shorter.
+    - input: |
+        longest_slice([-2, -1, 2, 1], 1)
+      output: |
+        2
+      explanation: |
+        -1 and 2.
+    - input: |
+        longest_slice([0, 0, 0], 0)
+      output: |
+        3
+    - input: |
+        longest_slice([1, 2, 3], 7)
+      output: |
+        0

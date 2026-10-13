@@ -1,0 +1,74 @@
+schema_version: 1
+id: variants/read-a-matrix-along-its-diagonals
+kind: kata
+title: "Read a Matrix Along Its Diagonals"
+difficulty: medium
+tags: [grids, invariants, scanning]
+estimated_minutes: 30
+
+variant:
+  of: katas/read-a-matrix-in-spiral-order
+  twist: "The path zigzags along the diagonals instead of spiralling inwards."
+
+prompt: |
+  Return the elements of a matrix in **diagonal zigzag order**: start at the
+  top-left corner, and sweep the diagonals one after another, alternating
+  direction.
+
+  The first diagonal is the corner alone. The second is read going
+  **down and to the left**, the third going **up and to the right**, and so
+  on, turning round at every edge.
+
+  ```
+  1 2 3
+  4 5 6      ->  1, 2, 4, 7, 5, 3, 6, 8, 9
+  7 8 9
+  ```
+
+  The matrix need not be square. An empty matrix gives `[]`.
+
+hints:
+  - "Simulating the walk -- move diagonally, and when you hit an edge decide which way to turn -- works, and has four edge cases at the corners that are easy to get wrong."
+  - "Look at the row and column of the cells on one diagonal. What do they have in common?"
+  - "Their sum. Every cell with row + column = d is on diagonal d, and there are rows + columns - 1 diagonals. Collect each diagonal top to bottom, then reverse every other one."
+  - "For a diagonal d in a matrix that is not square, the rows run from max(0, d - columns + 1) to min(d, rows - 1)."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns)"
+    expected_space: "O(1) beyond the output"
+  constraints:
+    - "0 <= rows <= 300 and 0 <= columns <= 300"
+    - "Every row is the same length."
+    - "-10**9 <= matrix[r][c] <= 10**9"
+  examples:
+    - input: |
+        diagonal_order([
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+        ])
+      output: |
+        [1, 2, 4, 7, 5, 3, 6, 8, 9]
+    - input: |
+        diagonal_order([
+            [1, 2, 3, 4],
+            [5, 6, 7, 8],
+        ])
+      output: |
+        [1, 2, 5, 6, 3, 4, 7, 8]
+      explanation: |
+        With two rows no diagonal holds more than two cells.
+    - input: |
+        diagonal_order([[1, 2, 3]])
+      output: |
+        [1, 2, 3]
+    - input: |
+        diagonal_order([])
+      output: |
+        []

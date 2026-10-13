@@ -1,0 +1,70 @@
+schema_version: 1
+id: variants/jump-exactly-left-or-right
+kind: kata
+title: "Jump Exactly, Left or Right"
+difficulty: medium
+tags: [graphs, bfs, arrays]
+estimated_minutes: 25
+
+variant:
+  of: katas/jump-game
+  twist: "A jump covers exactly the distance written, in either direction, and the goal is any position holding a zero."
+
+prompt: |
+  Each position holds a jump length. From position `i` you may jump to
+  `i + jumps[i]` or to `i - jumps[i]` — **exactly** that far, **either way** —
+  provided you stay inside the list.
+
+  Starting at position `start`, decide whether you can reach **any position
+  whose value is 0**.
+
+  If the starting position holds a 0, you are already there. A jump that would
+  leave the list cannot be made.
+
+  The list may have a hundred thousand positions, and the jumps may lead round
+  in circles.
+
+hints:
+  - "The standard solution tracks one number, the furthest position reachable, because the reachable positions were always a solid block from the start. Is that still true when a jump must be exact, or may go backwards?"
+  - "No: you might reach positions 0, 3 and 7 and nothing between them. The reachable set has holes, so it has to be discovered one position at a time."
+  - "Each position has at most two places to go. That is a graph, and 'can I get from here to somewhere with a zero' is a search of it."
+  - "Remember which positions you have already been to. Two positions can send you to each other for ever."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
+  constraints:
+    - "1 <= len(jumps) <= 10**5"
+    - "0 <= jumps[i] <= 10**5"
+    - "0 <= start < len(jumps)"
+  examples:
+    - input: |
+        can_reach_a_zero([4, 2, 3, 0, 3, 1, 2], 5)
+      output: |
+        True
+      explanation: |
+        5 -> 4 (one to the left), 4 -> 1 (three to the left), 1 -> 3 (two to the
+        right), and position 3 holds a 0.
+    - input: |
+        can_reach_a_zero([3, 0, 2, 1, 2], 2)
+      output: |
+        False
+      explanation: |
+        From 2 the only jumps are to 0 and 4. Position 0 leads to 3, which leads
+        back to 2 and 4. Position 4 leads back to 2. Nothing lands on 1.
+    - input: |
+        can_reach_a_zero([0, 5], 0)
+      output: |
+        True
+    - input: |
+        can_reach_a_zero([2, 0, 2], 0)
+      output: |
+        False
+      explanation: |
+        The zero is one step away, and the only jump available is two.

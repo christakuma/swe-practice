@@ -1,0 +1,70 @@
+schema_version: 1
+id: variants/longest-consecutive-run-with-one-value-added
+kind: kata
+title: "Longest Consecutive Run With One Value Added"
+difficulty: medium
+tags: [arrays, hash-map, counting, invariants]
+estimated_minutes: 30
+
+variant:
+  of: katas/longest-consecutive-run
+  twist: "You may add one integer of your choosing before the run is measured."
+
+prompt: |
+  You may **add one integer of your choosing** to the list. Return the length
+  of the longest run of consecutive integers that can then be present.
+
+  As before, the values need not be adjacent in the list, order does not
+  matter, and duplicates do not lengthen a run.
+
+  The added value can extend a run at either end, or sit in a gap of exactly
+  one between two runs and join them. It can only be one value: two gaps
+  cannot both be filled. With an empty list, the value you add is a run of
+  one.
+
+  Aim for **`O(n)`**, as in the original.
+
+hints:
+  - "The added value always touches some run, so the answer is never less than the longest run plus one. When is it more?"
+  - "When the value fills a gap. If a run ends at e and e + 2 is present, adding e + 1 joins this run to the one that starts at e + 2."
+  - "You already walk each run once, from its lowest value. When that walk stops at e, start a second walk from e + 2. The answer for this run is its own length, plus one, plus however far the second walk gets."
+  - "That is still O(n): each run is walked once as itself and at most once more as the run after a gap. The thing to avoid is the same as before -- starting a walk from every value and not just from the bottom of each run."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(numbers) <= 2 * 10**5"
+    - "-10**9 <= numbers[i] <= 10**9"
+    - "Values arrive in no particular order and may repeat."
+    - "The value you add may be any integer, inside that range or not."
+  examples:
+    - input: |
+        longest_run([1, 2, 4, 5])
+      output: |
+        5
+      explanation: |
+        Adding 3 joins 1, 2 to 4, 5.
+    - input: |
+        longest_run([10, 4, 20, 1, 3, 2])
+      output: |
+        5
+      explanation: |
+        1, 2, 3, 4 is the longest run, and adding 0 or 5 extends it. No gap
+        of one is there to be filled.
+    - input: |
+        longest_run([1, 3, 5])
+      output: |
+        3
+      explanation: |
+        One of the two gaps can be filled, not both.
+    - input: |
+        longest_run([])
+      output: |
+        1

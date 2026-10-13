@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/fewest-changes-to-make-an-anagram
+kind: kata
+title: "Fewest Changes to Make an Anagram"
+difficulty: easy
+tags: [strings, counting, hash-map]
+estimated_minutes: 15
+
+variant:
+  of: katas/is-it-an-anagram
+  twist: "Instead of yes or no, return how many characters must be replaced to make it one."
+
+prompt: |
+  Return the fewest characters of the second string that must be **replaced**
+  to make it a rearrangement of the first.
+
+  A replacement changes one character into any other. It never adds or removes
+  one, so two strings of different lengths can never be made into anagrams:
+  return `-1` for those.
+
+  If the second string is already an anagram of the first, the answer is `0`.
+
+  Comparison is exact: case matters, and so does every character, including
+  spaces and punctuation.
+
+hints:
+  - "Where the characters are does not matter, only how many of each there are. Count both strings."
+  - "For each character, the first string either has more of it than the second, fewer, or the same. Each surplus in one string has to be matched by a shortfall in the other."
+  - "One replacement fixes two things at once: it removes a character the second string has too many of and supplies one it has too few of. So count the surplus on one side only."
+  - "Adding up the differences in both directions counts every replacement twice."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(k) for k distinct characters"
+  constraints:
+    - "0 <= len(first) <= 10**6"
+    - "0 <= len(second) <= 10**6"
+    - "Any Unicode characters may appear, not only ASCII."
+  examples:
+    - input: |
+        changes_needed("bab", "aba")
+      output: |
+        1
+      explanation: |
+        The second string has one a too many and one b too few. Replacing an a
+        with a b fixes both.
+    - input: |
+        changes_needed("listen", "silent")
+      output: |
+        0
+    - input: |
+        changes_needed("abc", "xyz")
+      output: |
+        3
+    - input: |
+        changes_needed("ab", "abc")
+      output: |
+        -1
+      explanation: |
+        Replacing characters cannot change a length.

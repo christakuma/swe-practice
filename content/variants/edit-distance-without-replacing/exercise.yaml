@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/edit-distance-without-replacing
+kind: kata
+title: "Edit Distance Without Replacing"
+difficulty: medium
+tags: [dynamic-programming, strings, tables]
+estimated_minutes: 30
+
+variant:
+  of: katas/edit-distance
+  twist: "Only insertions and deletions are allowed, so changing one character into another costs two."
+
+prompt: |
+  Return the fewest single-character edits that turn one string into another,
+  where an edit **inserts** a character or **deletes** one. There is no
+  replace.
+
+  Changing an `a` into a `b` is therefore two edits: delete the `a`, insert the
+  `b`.
+
+  The strings may be a few hundred characters long, which rules out trying
+  every sequence of edits.
+
+hints:
+  - "Keep the standard table: cell (i, j) is the distance between the first i characters of one string and the first j of the other. The borders are unchanged. Which of the three moves into a cell has gone?"
+  - "When the two characters match, the diagonal move is still free. When they differ there is no diagonal move at all: you must delete from one side or insert from the other."
+  - "Do not drop the diagonal entirely, and do not keep it at cost 1. It is free on a match and unavailable otherwise."
+  - "Every character that survives appears in both strings in the same order. So the characters you keep are a common subsequence, and you want the longest one."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(len(source) * len(target))"
+    expected_space: "O(len(target))"
+  constraints:
+    - "0 <= len(source) <= 500"
+    - "0 <= len(target) <= 500"
+    - "Characters are compared exactly; case matters."
+  examples:
+    - input: |
+        edit_distance("cat", "cut")
+      output: |
+        2
+      explanation: |
+        Delete the a and insert a u. With a replace this would be 1.
+    - input: |
+        edit_distance("sea", "eat")
+      output: |
+        2
+      explanation: |
+        Delete the s, then add a t at the end.
+    - input: |
+        edit_distance("ab", "ba")
+      output: |
+        2
+    - input: |
+        edit_distance("", "abc")
+      output: |
+        3

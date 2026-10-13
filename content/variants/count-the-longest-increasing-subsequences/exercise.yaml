@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/count-the-longest-increasing-subsequences
+kind: kata
+title: "Count the Longest Increasing Subsequences"
+difficulty: medium
+tags: [dynamic-programming, arrays, counting]
+estimated_minutes: 35
+
+variant:
+  of: katas/longest-increasing-subsequence
+  twist: "Return how many different subsequences reach the longest length, not the length itself."
+
+prompt: |
+  A list usually has more than one strictly increasing subsequence of the
+  greatest possible length. Return **how many** there are.
+
+  Two subsequences are different if they use different **positions**, even
+  when the values they pick out are the same. In `[1, 3, 3]` the longest
+  length is 2 and there are two ways to reach it: the 1 with the first 3, and
+  the 1 with the second.
+
+  Strictly increasing, as before: a repeated value does not extend a run. An
+  empty list has one longest subsequence, the empty one.
+
+  An `O(n^2)` solution is what is wanted here.
+
+hints:
+  - "Keep what the quadratic solution keeps -- for each position, the length of the longest increasing subsequence ending there -- and keep one more number beside it."
+  - "The second number is how many subsequences of that length end there. A position that nothing can extend has length 1 and count 1."
+  - "When an earlier position j can be extended by i: if that gives a strictly longer run than i has so far, i takes j's count. If it gives the same length, i *adds* j's count. If shorter, nothing."
+  - "The answer is the sum of the counts over every position whose length is the overall maximum -- not the count at one of them."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(numbers) <= 1000"
+    - "-10**9 <= numbers[i] <= 10**9"
+    - "The answer is exact however large it is."
+  examples:
+    - input: |
+        count_longest_increasing([1, 3, 5, 4, 7])
+      output: |
+        2
+      explanation: |
+        The longest length is 4, reached by 1, 3, 5, 7 and by 1, 3, 4, 7.
+    - input: |
+        count_longest_increasing([2, 2, 2, 2])
+      output: |
+        4
+      explanation: |
+        Nothing increases, so the longest length is 1 and each of the four
+        positions is a subsequence of that length.
+    - input: |
+        count_longest_increasing([1, 2, 3])
+      output: |
+        1
+    - input: |
+        count_longest_increasing([])
+      output: |
+        1

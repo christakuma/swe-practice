@@ -1,0 +1,77 @@
+schema_version: 1
+id: variants/zero-out-like-a-queen
+kind: kata
+title: "Zero Out Like a Queen"
+difficulty: medium
+tags: [grids, in-place, invariants, diagonals]
+estimated_minutes: 28
+
+variant:
+  of: katas/zero-out-rows-and-columns
+  twist: "A zero clears both of its diagonals as well as its row and column."
+
+prompt: |
+  An `m x n` matrix comes in. Wherever it holds a zero, set to zero every
+  cell a chess queen standing there could reach: the whole **row**, the whole
+  **column**, and **both diagonals**, all the way to the edges. Mutate the
+  matrix in place and return nothing.
+
+  As before, only the zeros in the original matrix count. The zeros you write
+  must not clear anything themselves.
+
+  The `O(1)` trick of using the first row and column as markers does not
+  stretch to this — there are more diagonals than there are cells in a row
+  and a column to mark them in. Use `O(m + n)` extra space: enough to
+  remember which lines are hit, and far less than a copy of the matrix,
+  which the tests will notice.
+
+hints:
+  - "Rows and columns were easy to name: a row is a row index, a column is a column index. What names a diagonal? What do all the cells on one diagonal have in common?"
+  - "Going down and to the right, row and column both increase by one, so `row - column` never changes. Going down and to the left, row increases and column decreases, so `row + column` never changes."
+  - "So there are four families of lines, each with a number for a name: row, column, row - column, row + column. One pass to record which numbers are hit; a second to clear every cell that lies on a hit line."
+  - "`row + column` runs from 0 to m + n - 2, which indexes a list directly. `row - column` runs from -(n - 1) to m - 1. Add n - 1 before using it as an index -- a negative index in Python does not fail, it quietly reads from the other end."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(m * n)"
+    expected_space: "O(m + n)"
+  constraints:
+    - "0 <= m <= 200 and 0 <= n <= 200, for m rows of n values each."
+    - "-10**9 <= matrix[i][j] <= 10**9"
+  examples:
+    - input: |
+        matrix = [
+            [1, 2, 3],
+            [4, 0, 6],
+            [7, 8, 9],
+        ]
+        set_zeroes(matrix)
+        matrix
+      output: |
+        [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+      explanation: |
+        A queen in the centre of a three by three board reaches every square.
+    - input: |
+        matrix = [
+            [0, 2, 3, 4],
+            [5, 6, 7, 8],
+            [9, 1, 2, 3],
+        ]
+        set_zeroes(matrix)
+        matrix
+      output: |
+        [[0, 0, 0, 0], [0, 0, 7, 8], [0, 1, 0, 3]]
+      explanation: |
+        The top row, the left column, and the diagonal running down from the
+        corner through the 6 and the 2.
+    - input: |
+        matrix = [[1, 2], [3, 4]]
+        set_zeroes(matrix)
+        matrix
+      output: |
+        [[1, 2], [3, 4]]

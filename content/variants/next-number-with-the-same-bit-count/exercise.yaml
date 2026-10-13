@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/next-number-with-the-same-bit-count
+kind: kata
+title: "Next Number with the Same Bit Count"
+difficulty: medium
+tags: [bit-manipulation, invariants]
+estimated_minutes: 30
+
+variant:
+  of: katas/count-the-set-bits
+  twist: "Instead of counting the 1 bits, find the next larger number that has the same count."
+
+prompt: |
+  Given a positive integer, return the **smallest integer greater than it**
+  whose binary representation has the same number of 1 bits.
+
+  Python integers have no top bit to run out of, so there always is one.
+
+  The input may be hundreds of bits long. Counting upwards and checking each
+  number is correct, and for `2**200` it would have to check `2**200` numbers.
+
+hints:
+  - "To get a larger number with the same count, some 1 has to move left into a 0. To get the *smallest* larger number, it should be the lowest 1 that can -- the 1 just below the lowest '01'."
+  - "Look at the lowest block of 1s. Adding the lowest set bit to the number makes that whole block carry: the block turns to 0s and the 0 above it becomes a 1. That is the move."
+  - "The carry swallowed a block of k ones and produced a single one, so k - 1 ones are missing. Put them back as far right as possible, at the very bottom."
+  - "n & -n is the lowest set bit. n ^ (n + lowest) marks the bits that changed: the block and the bit above it."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(1) arithmetic operations on the number"
+    expected_space: "O(1)"
+  constraints:
+    - "1 <= n < 2**2000"
+  examples:
+    - input: |
+        next_with_same_bits(0b0110)
+      output: |
+        9
+      explanation: |
+        0110 becomes 1001. The upper 1 moves left, and the other 1 drops to the
+        bottom.
+    - input: |
+        next_with_same_bits(1)
+      output: |
+        2
+    - input: |
+        next_with_same_bits(0b1011)
+      output: |
+        13
+      explanation: |
+        1011 becomes 1101: only the lowest "01" pair swaps.
+    - input: |
+        next_with_same_bits(0b111000)
+      output: |
+        67
+      explanation: |
+        111000 becomes 1000011. The block of three carries into one 1 at the top,
+        and the other two go to the bottom.

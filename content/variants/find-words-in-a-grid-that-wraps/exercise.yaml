@@ -1,0 +1,77 @@
+schema_version: 1
+id: variants/find-words-in-a-grid-that-wraps
+kind: kata
+title: "Find Words in a Grid That Wraps"
+difficulty: hard
+tags: [tries, grids, backtracking, dfs, strings]
+estimated_minutes: 40
+
+variant:
+  of: katas/find-words-in-a-grid
+  twist: "The grid wraps round: stepping off one edge arrives at the opposite edge."
+
+prompt: |
+  A grid of characters and a list of words come in. Return every word from the
+  list that can be spelled by a path through the grid, stepping only up, down,
+  left or right and using **no cell twice**.
+
+  This grid **wraps**. Stepping right from the last column arrives at the
+  first column of the same row, stepping up from the top row arrives at the
+  bottom of the same column, and likewise the other two ways. Every cell has
+  four neighbours, and there is no edge to stop at.
+
+  A cell is still a cell however you arrive at it. In a grid one column wide,
+  the cell to your left is the one you are standing on, and it is used. In a
+  grid two columns wide, left and right lead to the same cell.
+
+  Return the found words sorted ascending, each one once however many times it
+  appears in the list and however many paths spell it. An empty string in the
+  list is never returned. An empty word list gives `[]`, and so does an empty
+  grid. Leave the grid as you found it.
+
+hints:
+  - "Everything you built for the flat grid still stands: one search of the grid, carrying a trie node, marking a cell while the path is on it. Only the question 'which cell is next?' has changed."
+  - "A step that leaves the grid is no longer refused. Take the coordinate modulo the size instead: (column + 1) % columns, (row - 1) % rows. Python's % already gives a non-negative result for -1."
+  - "Then delete the bounds check, and ask what was guarding against reuse. If it was a mark on the cell itself, it still works. If it was a set of coordinates, make sure they are the wrapped ones."
+  - "The narrow grids are the test of that: on a single column, moving sideways lands on the cell you are on, which is marked. Nothing special is needed if the mark is on the cell."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns * 3^L)"
+    expected_space: "O(total length of the words)"
+  constraints:
+    - "0 <= rows <= 6 and 0 <= columns <= 6"
+    - "0 <= len(words) <= 100"
+    - "0 <= len(words[i]) <= 10"
+    - "Every cell is a single character. Matching is exact, so case matters."
+  examples:
+    - input: |
+        board = [
+            ["c", "a", "t"],
+            ["x", "y", "z"],
+        ]
+        find_words(board, ["tc", "ta", "cx", "az", "tx"])
+      output: |
+        ["cx", "ta", "tc"]
+      explanation: |
+        "tc" steps right off the end of the top row and arrives at its start.
+        "cx" could go down, or up and round. "az" and "tx" would need a
+        diagonal step, and wrapping does not provide one.
+    - input: |
+        find_words([["a", "b"]], ["ab", "ba", "aba"])
+      output: |
+        ["ab", "ba"]
+      explanation: |
+        Two columns: left and right of the b are the same a, and "aba" would
+        need it twice.
+    - input: |
+        find_words([["a"]], ["a", "aa"])
+      output: |
+        ["a"]
+      explanation: |
+        All four neighbours of the only cell are the cell itself.

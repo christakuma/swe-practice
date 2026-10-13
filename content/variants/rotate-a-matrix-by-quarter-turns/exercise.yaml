@@ -1,0 +1,87 @@
+schema_version: 1
+id: variants/rotate-a-matrix-by-quarter-turns
+kind: kata
+title: "Rotate a Matrix by Quarter Turns"
+difficulty: medium
+tags: [grids, in-place, invariants]
+estimated_minutes: 25
+
+variant:
+  of: katas/rotate-a-matrix-in-place
+  twist: "The number of quarter turns is given, and may be large, zero or negative."
+
+prompt: |
+  Rotate an `n x n` matrix by `turns` quarter turns, **in place**. Return
+  nothing.
+
+  A positive `turns` is clockwise and a negative one is anticlockwise. Zero
+  leaves the matrix alone. `turns` may be far larger than four in either
+  direction — up to a thousand million.
+
+  In place means what it meant before, and a little more precisely: the list
+  you were given must still hold **the same row lists in the same places**,
+  with their contents changed. Building a rotated grid and copying it back
+  is not what this asks, and neither is reversing the outer list, which
+  moves the row objects about.
+
+hints:
+  - "Four quarter turns is no turn at all, so only turns modulo 4 matters. In Python, -1 % 4 is 3, which is exactly right: one turn anticlockwise is three clockwise."
+  - "That leaves four cases: nothing, one turn clockwise, a half turn, one turn anticlockwise. You could do the clockwise turn up to three times. There is something neater."
+  - "A clockwise turn is two reflections: transpose, then reverse each row. Every rotation of a square is two reflections, and you have three reflections to choose from -- the transpose, left-to-right, and top-to-bottom."
+  - "Transpose then flip left-to-right is clockwise. Transpose then flip top-to-bottom is anticlockwise. The two flips, without the transpose, are a half turn. Flip top-to-bottom by swapping values between rows, so the row lists stay where they are."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= n <= 300"
+    - "The matrix is square: n rows of n values each."
+    - "-10**9 <= turns <= 10**9"
+    - "-10**9 <= matrix[i][j] <= 10**9"
+  examples:
+    - input: |
+        matrix = [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+        ]
+        rotate(matrix, 1)
+        matrix
+      output: |
+        [[7, 4, 1], [8, 5, 2], [9, 6, 3]]
+      explanation: |
+        One turn clockwise: the left column becomes the top row.
+    - input: |
+        matrix = [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+        ]
+        rotate(matrix, 2)
+        matrix
+      output: |
+        [[9, 8, 7], [6, 5, 4], [3, 2, 1]]
+      explanation: |
+        A half turn reads the whole matrix backwards.
+    - input: |
+        matrix = [[1, 2], [3, 4]]
+        rotate(matrix, -1)
+        matrix
+      output: |
+        [[2, 4], [1, 3]]
+      explanation: |
+        One turn anticlockwise: the right column becomes the top row.
+    - input: |
+        matrix = [[1, 2], [3, 4]]
+        rotate(matrix, 5)
+        matrix
+      output: |
+        [[3, 1], [4, 2]]
+      explanation: |
+        Five turns is one full circle and one more.

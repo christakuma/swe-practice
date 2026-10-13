@@ -1,0 +1,69 @@
+schema_version: 1
+id: variants/longest-balanced-stretch
+kind: kata
+title: "Longest Balanced Stretch"
+difficulty: hard
+tags: [strings, stack, invariants]
+estimated_minutes: 40
+
+variant:
+  of: katas/valid-parentheses
+  twist: "The string need not be balanced; return the length of the longest stretch of it that is."
+
+prompt: |
+  Given a string containing only the characters `(`, `)`, `[`, `]`, `{` and
+  `}`, return the **length of the longest contiguous stretch** that is
+  balanced and correctly nested.
+
+  The whole string usually is not. `"(()"` is not balanced, and its longest
+  balanced stretch is the `"()"` at the end, of length 2. Two balanced
+  stretches that sit side by side count as one longer stretch: `"()[]"` is 4.
+
+  A stretch must be balanced by the usual rule — every opener closed by a
+  closer of the same kind, most recent first. An empty string, and a string
+  with no balanced stretch at all, give `0`.
+
+hints:
+  - "Counting how many brackets get matched is not enough. In '()(()' four brackets are matched, but the two pairs are separated by an opener that never closes, so the longest stretch is 2."
+  - "A stretch ends where something goes wrong, and the next stretch starts just after. So what matters is *where* the unmatched characters are: every balanced stretch lies strictly between two neighbouring unmatched positions."
+  - "Push positions, not characters. An opener pushes its position. A closer that matches the opener on top pops it -- and then the top of the stack is the last unmatched position before the current stretch, so the stretch's length is the current position minus that."
+  - "A closer that does not match can never be part of a balanced stretch, and neither can anything that would have to reach across it. Its position becomes the new floor that later stretches are measured from. Start with a floor of -1."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(text) <= 10**5"
+    - "Every character is one of ( ) [ ] { }."
+    - "Brackets may be nested tens of thousands deep."
+  examples:
+    - input: |
+        longest_balanced("(()")
+      output: |
+        2
+    - input: |
+        longest_balanced(")()[]}")
+      output: |
+        4
+      explanation: |
+        "()[]" in the middle. The closers at each end match nothing.
+    - input: |
+        longest_balanced("()(()")
+      output: |
+        2
+      explanation: |
+        Two separate pairs with an unclosed opener between them. They do not
+        join up.
+    - input: |
+        longest_balanced("([)]")
+      output: |
+        0
+      explanation: |
+        Every bracket has a partner of the right kind, and no stretch is
+        correctly nested.

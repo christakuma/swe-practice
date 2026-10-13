@@ -1,0 +1,64 @@
+schema_version: 1
+id: variants/largest-rectangle-under-the-bars
+kind: kata
+title: "Largest Rectangle Under the Bars"
+difficulty: hard
+tags: [arrays, stack, invariants]
+estimated_minutes: 45
+
+variant:
+  of: katas/the-largest-container
+  twist: "The bars are solid and one unit wide, and the rectangle must fit entirely inside them."
+
+prompt: |
+  A list gives the height of a **solid bar** at each position, every bar one
+  unit wide and standing side by side. Return the area of the largest
+  rectangle that fits entirely inside the bars.
+
+  A rectangle spanning several bars can be only as tall as the **shortest bar
+  it covers** — every bar in between matters, not just the two at the ends.
+
+  No bars hold nothing, so an empty list gives `0`.
+
+  Trying every pair of ends is `O(n^2)` even with the running minimum kept.
+  Do it in one pass.
+
+hints:
+  - "The container's two-pointer walk relied on only the two end lines mattering. Here a short bar in the middle caps the height of anything that spans it, so moving inwards from the ends throws away information."
+  - "Turn it round. For each bar, ask: what is the widest rectangle whose height is exactly this bar? It stretches left and right until it meets a bar that is shorter."
+  - "So for every bar you need the nearest shorter bar on each side. A stack of positions whose heights are increasing gives both: when a bar arrives that is shorter than the top of the stack, it is the right-hand limit for that top, and the new top underneath is its left-hand limit."
+  - "Pop until the stack is increasing again, computing an area for each bar popped. At the end, pop everything that is left -- a zero-height bar appended to the list does that for you."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(heights) <= 10**5"
+    - "0 <= heights[i] <= 10**4"
+  examples:
+    - input: |
+        largest_rectangle([2, 1, 5, 6, 2, 3])
+      output: |
+        10
+      explanation: |
+        The bars of height 5 and 6 hold a rectangle two wide and five tall.
+    - input: |
+        largest_rectangle([1, 8, 1])
+      output: |
+        8
+      explanation: |
+        The tall bar alone. As a container, the two outer lines would give 2.
+    - input: |
+        largest_rectangle([3, 3, 3])
+      output: |
+        9
+    - input: |
+        largest_rectangle([])
+      output: |
+        0
