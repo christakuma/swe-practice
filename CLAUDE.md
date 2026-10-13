@@ -221,6 +221,28 @@ A phase ends with a `docs:` commit that:
   After editing a fixture, regenerate with `practice fixtures --write` and review
   the diff — an unexpected line means the edit changed more history than you
   thought.
+- **A kata's `examples:` are source, and the suite runs them**
+  ([ADR 0027](docs/adr/0027-examples-are-source-run-against-the-reference.md)).
+  `input` is a snippet whose last line is an expression and `output` is an
+  expression for its value; `-m content -k <slug>` executes both against the
+  reference. Always write them as block scalars (`output: |`): `output: [0, 1]`
+  is a YAML list and `output: 3` a YAML integer, and the schema rejects both.
+  `constraints:` are *not* enforced by anything. They were derived once, from a
+  probe of what each hidden suite passes, so a new test that steps outside a
+  stated bound fails nothing — check the bound when you add the test.
+- **A variant is an exercise that is never listed**
+  ([ADR 0028](docs/adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md)).
+  It lives in `content/variants/<slug>/` with a `variant: {of, twist}` block,
+  takes **no** line in `curriculum.yaml` or `tracks.yaml` — naming one there
+  fails `validate` — and is reached only through
+  `ContentRepository.variants_of` and `get`. `tests/content/test_variants.py`
+  grades them, importing `test_katas.py`'s tests, and adds one of its own: the
+  *base's* reference solution must fail the variant's suite. Keep the function
+  name the same as the base's when the signature is, so that check is about
+  behaviour rather than an `ImportError`. **Every kata has one**, and
+  `tests/content/test_library.py::test_every_kata_offers_a_variant` fails a
+  kata added without it. With eighty-three of them `test_variants.py` is as
+  long as `test_katas.py`, so the suite has two critical paths side by side.
 - **A new exercise may also need a line in `content/tracks.yaml`**, and nothing
   but a content test will say so. The git and SQL tracks are explicit lists
   that are meant to be exhaustive; `practice validate` cannot know that, so

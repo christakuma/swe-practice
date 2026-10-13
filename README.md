@@ -49,6 +49,12 @@ captured output of that command and `docs/demo/render.py` draws it
 
 - **115 exercises, every one of them graded**: 24 git scenarios, 83 Python
   katas and 8 SQL drills, in one hand-ordered curriculum.
+- **Problem statements you can check**: every kata lists its constraints and
+  has an Examples tab of inputs and outputs, each one run against the
+  reference solution.
+- **A variant of every kata, like an interviewer's follow-up**: the list is
+  sorted now, count the ways instead of finding the fewest, the houses are in a
+  circle. Pick one, or ask to be surprised.
 - **Tracks you can follow**: the whole library, the Blind 75, every git
   scenario, every SQL drill. Each list says which steps you have passed and
   when, and a finished attempt has a **Next** button for the step after it.
@@ -121,7 +127,24 @@ passed and when, and starts an attempt; `/attempt/{id}` is the workbench;
 `/progress` is the long form.
 
 For a kata the workbench is the prompt beside a CodeMirror editor seeded from
-the exercise's stub. For a git scenario it is a **command console over the real
+the exercise's stub. The prompt column has two tabs. **Prompt** is the task and,
+under it, the constraints: how long the input can be, how large the values, and
+what is guaranteed. **Examples** is a list of inputs and the outputs they give.
+Each input is Python you could run against your own solution and the output is
+the value of its last line, so an in-place function's example ends by naming
+the list it changed. Every pair is executed against the reference solution by
+the content suite, which is why the page can call them checked
+([ADR 0027](docs/adr/0027-examples-are-source-run-against-the-reference.md)).
+
+Every kata has a **variant**, and its Start control has a version select:
+*Standard*, each variant by name, and *Surprise me*, which draws from all of
+them including the standard one. A variant is the same problem with a twist —
+sorted input and 1-based positions, a circular list, count the ways rather than
+find the fewest — and it has its own prompt, constraints, examples and hidden
+suite. Its workbench says what the twist is above the prompt, which after a
+draw is how you find out what came up. Variants are never rows in Browse or
+steps on a track; they live under the problem they vary
+([ADR 0028](docs/adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md)). For a git scenario it is a **command console over the real
 repository**, with a repo state panel and a commit graph beside it. An attempt
 already open shows **Resume** instead of **Start**, because a second one would
 split one piece of work across two budgets.
@@ -216,6 +239,19 @@ halves of that.
 
 It exits 0 on a pass (advisories included), 1 when a required check fails, and 2
 when the attempt could not be run at all.
+
+`--prompt` prints the whole statement — the task, its constraints and its
+examples — which is what the web page splits across two tabs.
+
+```bash
+uv run practice start katas/two-sum --variant two-sum-in-a-sorted-list
+uv run practice start katas/two-sum --variant random
+```
+
+`--variant` starts a variant of the exercise instead of the standard version.
+`random` draws from every version, the standard one included, and the first
+lines of output say which came up and what its twist is. A name that is not one
+of the exercise's variants is refused with the names that are.
 
 ### Solving a git scenario
 
@@ -498,6 +534,14 @@ Content is declarative data under `content/` — adding an exercise needs no cod
 only its files and a line in `content/curriculum.yaml`
 ([ADR 0004](docs/adr/0004-content-as-declarative-data.md),
 [ADR 0014](docs/adr/0014-a-hand-ordered-curriculum-manifest.md)).
+
+A **variant** is the one kind of exercise that takes no line in the curriculum.
+It is a directory under `content/variants/` whose `exercise.yaml` carries a
+`variant:` block naming the exercise it is a twist on, and it is offered under
+that exercise rather than listed. All eighty-three katas have one; the content
+suite holds each to everything a kata is held to, requires that the standard
+problem's reference solution *fails* it — a twist the standard answer already
+passes is the same exercise twice — and fails if a kata is added without one.
 
 ```bash
 uv run practice validate

@@ -5,7 +5,14 @@ actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
 > **Status:** **v1.0.0, seven stretch items taken — Phases 13 through 19 — and
-> Phase 20, the first change that came from a user.**
+> Phases 20 and 21, the changes that came from a user.**
+> Phase 21 is the newest: every kata now states its constraints and shows
+> examples that are *run against its reference*
+> ([ADR 0027](adr/0027-examples-are-source-run-against-the-reference.md)), on a
+> tab of their own; and a problem can carry **variants** — the interviewer's
+> follow-up — that a solver picks or draws at random
+> ([ADR 0028](adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md)).
+> Every one of the eighty-three katas has one.
 > Phases 0–10 built the engine, Phase 11 filled it with 54 exercises, and Phase
 > 12 is the front door and the portfolio artifacts: `uv sync && uv run practice
 > up` is the whole of getting started, and it refuses with an instruction rather
@@ -695,7 +702,41 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
+  constraints:
+    - "2 <= len(numbers) <= 10**5"
+    - "Exactly one pair of positions adds up to the target."
+  examples:
+    - input: |
+        two_sum([2, 7, 11, 15], 9)
+      output: |
+        (0, 1)
+      explanation: |
+        2 + 7 is 9, and they sit at positions 0 and 1.
 ```
+
+**`constraints:` and `examples:` arrived in Phase 21**, and the sample above is
+the shape they settled into rather than the one first drafted here. An example
+is two pieces of *source*: `input` is a snippet whose last line is an
+expression, and `output` is an expression for its value. The content suite runs
+every pair against the reference, so an example on the page is a checked claim
+([ADR 0027](adr/0027-examples-are-source-run-against-the-reference.md)). Both
+fields are optional in the schema and required of every shipped kata by
+`tests/content/test_katas.py`. Always a block scalar: `output: [0, 1]` is a
+YAML list, and the schema refuses it.
+
+**A kata can also be a variant of another**, with a top-level block:
+
+```yaml
+id: variants/two-sum-in-a-sorted-list
+variant:
+  of: katas/two-sum
+  twist: "The list is sorted, you get O(1) extra space, and positions count from 1."
+```
+
+A variant is a whole exercise in its own directory under `content/variants/`.
+It is loaded, validated and graded like any other and **never listed**: the
+curriculum does not place it, no track names it, and it is offered only under
+its base ([ADR 0028](adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md)).
 
 There is deliberately **no `references:` field**. The first draft had
 `references: {leetcode: 1}` as a pointer to the problem's origin, and nothing
@@ -2694,6 +2735,30 @@ could not be asked ([ADR 0025](adr/0025-tracks-are-a-second-manifest.md)).
 | The shipped tracks are what they are called | `tests/content/test_library.py::test_the_blind_75_is_the_seventy_five`, `::test_a_track_named_for_a_kind_misses_nothing_of_that_kind`, `::test_no_track_offers_a_lesson_before_its_premise` |
 | A pack carries its tracks, narrowed | `tests/integration/content/test_tracks.py::test_an_installed_pack_validates_and_offers_its_tracks` |
 
+### Phase 21 — Statements you can check, and the interviewer's follow-up · **2 sessions**
+
+**Goal:** every kata states its bounds and shows examples a solver can trust,
+on a tab of their own; and a problem can carry variants that are picked or
+drawn at random. Two requests from using the library, taken together because
+the second is written in the first one's format
+([ADR 0027](adr/0027-examples-are-source-run-against-the-reference.md),
+[ADR 0028](adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md)).
+
+| Exit criterion | Met by |
+|---|---|
+| Every kata states its constraints and shows more than one example | `tests/content/test_katas.py::test_it_states_its_constraints`, `::test_it_shows_more_than_one_example` |
+| Every example on the page gives the output it shows | `tests/content/test_katas.py::test_its_examples_give_the_output_they_show` |
+| The workbench draws a Prompt tab and an Examples tab for a kata, and neither for the other kinds | `tests/web/test_statement.py` |
+| The terminal and the tutor are shown the whole statement | `tests/unit/domain/test_exercise.py::test_the_statement_of_a_kata_carries_its_constraints_and_examples`, `tests/unit/application/test_export_tutor_context.py::test_a_katas_task_includes_its_constraints_and_its_examples` |
+| A variant is loaded, reachable by id and under its base, and never listed | `tests/integration/content/test_variants.py` (the repository group) |
+| A variant must vary a real, standard exercise of its own kind | `tests/integration/content/test_variants.py` (the validation group) |
+| A choice resolves to the standard version, a named variant, or a draw over all of them | `tests/unit/application/test_choose_version.py` |
+| The Start control offers the versions; the workbench says which came up | `tests/web/test_variants.py` |
+| `practice start --variant` does the same from a terminal | `tests/integration/test_cli_lifecycle.py` (the variants group) |
+| A variant is held to everything a kata is | `tests/content/test_variants.py`, which imports `test_katas.py`'s tests |
+| A variant is not its base listed twice | `tests/content/test_variants.py::test_its_base_solution_does_not_pass_it` |
+| A variant comes due for review once attempted and is never offered unprompted | `tests/unit/application/test_review.py::TestReviewQueueAndVariants` |
+
 ---
 
 ## 12. Architecture decision records
@@ -2731,6 +2796,8 @@ changed"* is worth more than any code sample.
 | [0024](adr/0024-an-mcp-server-that-can-only-read.md) | An MCP server over stdio that can only read, on the SDK as an optional extra | accepted |
 | [0025](adr/0025-tracks-are-a-second-manifest.md) | Tracks are a second manifest, read off the attempt log and carried in the URL | accepted |
 | [0026](adr/0026-the-current-attempt-is-a-mark-the-solver-leaves.md) | The current attempt is a mark the solver leaves, not something a tutor infers | accepted |
+| [0027](adr/0027-examples-are-source-run-against-the-reference.md) | A kata's examples are source, and every one is run against the reference | accepted |
+| [0028](adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md) | A variant is a whole exercise, offered under the one it varies | accepted |
 
 ---
 
@@ -5625,3 +5692,155 @@ Phase 20's 2,823 and 604 — the delta is the two use cases and their wiring. Tw
 new methods on one existing port, no new port, one migration. Twenty-four use
 cases where there were twenty-two. `practice validate` and `practice fixtures
 --check` are unchanged. The gate took 6m11s, one run.
+
+**2026-10-12 — Phase 21: statements you can check, and the interviewer's
+follow-up.** Two requests from using the library — *proper constraints, a good
+lookover, an examples tab*, and then *variants like they do in interviews* —
+taken as one phase because the second is authored in the first one's format.
+[ADR 0027](adr/0027-examples-are-source-run-against-the-reference.md) and
+[ADR 0028](adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md)
+have the decisions. What follows is what the work found.
+
+**The examples had never been run, and every one was right.** Eighty-three
+prompts carried their examples as aligned text in a fence. Moving them into
+`examples:` as executable source and running each against its reference found
+no wrong value among the ones that already existed — which is a result, since
+nothing before this could have said so. The check itself was then run against
+four deliberate corruptions (a wrong value, `1` for `True`, a list for a tuple,
+a tree of the wrong shape) and failed on each, by name. ADR 0022's rule,
+applied to the page.
+
+**Constraints were derived from the suites, and that is what found the prose
+problems.** A scratch probe wrapped each reference, ran its hidden suite and
+recorded the shape of every argument: lengths, value ranges, emptiness,
+repeats. Every stated bound is at or above what was observed. Held against
+that, three kinds of prompt turned out to be wrong in ways reading had not
+shown:
+
+- one promised an input the suite never passes
+  (`serialize-and-deserialize-a-tree`, "a chain a thousand deep"; the deepest is
+  four nodes);
+- three were tested on behaviour they never mentioned — an empty string in
+  `find-words-in-a-grid`'s word list, an edge from a node to itself in the two
+  union-find katas;
+- and `meeting-rooms` and `how-many-meeting-rooms` were **the same problem**,
+  same title, same function name. The first predates the Blind 75 fill-in that
+  added the second. It is now the question the list has in that slot — can one
+  person attend them all — with a suite that kills six wrong solutions,
+  including the neighbour-comparison that forgets to sort.
+
+**The deviation: constraints are stated, not enforced.** The examples are
+checked on every run; the constraints were checked once, by a script that is
+not in the repository. The enforced form was designed and not built (ADR 0027
+has why), and CLAUDE.md now says to check the bound when adding a test.
+
+**Variants were first designed as a mode of the attempt, and that design was
+thrown away before any of it was written.** It needed a column, a migration, a
+second path through the provisioner and the grader, and a relaxation of
+`validate_filename`'s bare-name rule. A variant as a whole exercise that is
+*never listed* needed one port method, one use case and a select. The measure
+of the difference: a dozen callers enumerate the library, and none of them
+changed. `ReviewQueue` changed by one lookup, so that a variant a solver chose
+to attempt comes due like anything else and one nobody has tried is never
+offered.
+
+**"The base's solution must fail it" shaped the content before it existed.**
+The first variant drafted was Two Sum on a sorted list with `O(1)` extra space
+— and the standard dict solution passes that, because nothing observes memory.
+The check would have rejected the variant as its base listed twice. So the
+variant returns 1-based positions, as the well-known version of it does, and
+its suite measures allocation with `tracemalloc`: the dict solution now fails
+on exactly the claim the twist makes.
+
+**Forty-five wrong solutions, no survivors.** Each variant's suite was run
+against between two and five mutants written for it — the standard answer
+carried over, the tempting generalisation, the off-by-one at the boundary, the
+quadratic version — and every one failed, six of them on the time limit alone.
+One expected value in a draft suite was wrong (`"abcdba"` *is* one deletion
+from a palindrome) and was caught on re-reading before it ran; the reference
+would have disagreed.
+
+**The suite's floor did not move.** Variants are graded by
+`tests/content/test_variants.py`, which imports `test_katas.py`'s tests and
+overrides the directories they walk, so under `--dist loadfile` the fourteen
+run beside the eighty-three rather than after them.
+
+**Not done, and worth saying.** Sixty-nine katas have no variant; the select
+simply does not appear for them. Packs do not carry variants. An attempt at a
+variant counts in the activity chart and not in tag mastery. There are no
+variants of scenarios or drills, though nothing in the domain forbids them. And
+`practice solve` has no `--variant`: only `start` does.
+
+**Final numbers.** 5,850 passing and one skipped. 100% statement and branch
+coverage over a gated surface of **2,933 statements and 644 branches**, against
+2,862 and 616 before — the delta is `Example`, `Variant`, `Exercise.statement`
+and `ChooseVersion`. One new method on one existing port, one new port
+(`Chooser`, with a real adapter and a fake), no migration. Twenty-five use cases
+where there were twenty-four. `practice validate` reports 129 exercises — the
+115 the library lists and 14 variants — and now audits a variant's base;
+`practice fixtures --check` is unchanged. The gate took 10m31s and then 9m55s:
+two runs, the first with the one failure this phase's own change caused
+(`test_the_repository_loads_the_whole_library` compared the listing with the
+walk, and a variant is in the second and not the first). That is slower than
+Phase 20's 6m11s and, on CLAUDE.md's own evidence about this machine, not yet
+a measurement of anything: `test_variants.py` runs beside `test_katas.py`, but
+it is a fifth long file on four workers.
+
+**2026-10-12 — Phase 21, continued: a variant for every kata.** The first
+tranche left sixty-nine katas without one. They have one now — eighty-three
+variants, one per kata — and
+`tests/content/test_library.py::test_every_kata_offers_a_variant` holds the
+claim. Nothing in `src/` changed for it, which is ADR 0028's bet paying out:
+sixty-nine exercises were added as data.
+
+**The twists fall into a few kinds, and it is worth knowing which.** A changed
+*question* over the same structure (count the ways, return the bounds, list
+them all, the kth largest rather than the kth smallest). A changed
+*convention* (half-open intervals, eight neighbours, repeats allowed on one
+side, ties by arrival). *More structure* in the input that the standard answer
+ignores (sorted, a search tree, all positive). And a *generalisation* that
+breaks an optimisation the special case allowed (any step sizes, a reach of
+k, a wider alarm on the circle). The last kind produced the best material:
+several of the standard katas' reference solutions rely on something their
+variant takes away.
+
+**Two hundred and nineteen wrong solutions were run against the suites, and
+the four that survived were the useful part.**
+
+- *Two were right, and my notes were wrong.* The spiral builder's reference
+  had two guards "for the centre of an odd square"; the longest-word search
+  had a letter count "for speed". A solution without either passed. A square's
+  rings close on all four sides at once, so the guards never fire; and the
+  search was never slow at the stated size, which is ADR 0022's "an asymptotic
+  argument is not a performance claim until the constant is measured" again,
+  word for word. The code, the hints and the notes all said otherwise and all
+  three were corrected.
+- *One was a hole.* A plain set of words passed the removable trie's suite,
+  because nothing asked `starts_with` for a prefix nobody has, twenty thousand
+  times, against fifty thousand words. That test exists now.
+- *One was a bad mutant*, correct by accident, and was deleted.
+
+**Four expected values were wrong as first written**, all caught on re-reading
+before the suite ran: a decoding that does not exist, a valley described as a
+peak, an interval off by one, a garbled example. The content suite catches
+that class reliably. It could not have caught the three above.
+
+**The cost is in the gate.** `test_variants.py` is now as long as
+`test_katas.py`. Under `--dist loadfile` they run side by side, so the suite
+has two critical paths rather than one of twice the length, but the fourth
+worker is no longer spare.
+
+**Not done.** One variant per kata, where several would be natural. No
+variants of scenarios or drills. Packs still do not carry them, and
+`practice solve` still has no `--variant`.
+
+**Final numbers.** 7,162 passing and one skipped, where the first
+tranche ended on 5,850: the 1,312 between them are nineteen tests for each of
+sixty-nine variants, and the one that requires a variant of every kata. 100%
+statement and branch coverage over 2,933
+statements and 644 branches, both unchanged, because no line under `src/` was
+touched. `practice validate` reports 198 exercises — the 115 the library lists
+and 83 variants; `practice fixtures --check` is unchanged. The gate took
+10m05s, one run, clean. The first tranche's two runs were 10m31s and 9m55s
+with a sixth as many variants, which says that this machine's noise is wider
+than the cost of sixty-nine more, and nothing more precise than that.
