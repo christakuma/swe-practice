@@ -34,7 +34,6 @@ not — a green build on an unsolvable exercise.
 
 from __future__ import annotations
 
-import contextlib
 import itertools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
@@ -185,7 +184,8 @@ def validate_library(root: Path) -> LibraryReport:
     if not directories and not problems:
         problems.append("holds no exercises")
 
-    loaded = _loaded(directories)
+    outcomes = {directory: _read(directory) for directory in directories}
+    loaded = _loaded(outcomes)
     variants = {
         directory: exercise
         for directory, exercise in loaded.items()
@@ -199,20 +199,40 @@ def validate_library(root: Path) -> LibraryReport:
 
     return LibraryReport(
         root=root,
-        exercises=tuple(validate_exercise(directory) for directory in directories),
+        exercises=tuple(
+            _report(directory, outcomes[directory]) for directory in directories
+        ),
         problems=tuple(problems),
     )
 
 
-def _loaded(directories: Sequence[Path]) -> dict[Path, Exercise]:
+def _read(directory: Path) -> Exercise | ContentError:
+    """Load one directory, handing a failure back instead of raising it.
+
+    **The one place `validate` loads an exercise.** The library-level audits
+    and the per-exercise report both need the loaded exercise, and for a while
+    each loaded its own: every `exercise.yaml` was parsed and schema-checked
+    twice per run, which nobody noticed at a hundred exercises and which the
+    162 variants made the larger half of what `validate` does. So the outcome
+    is read once, kept, and passed to both.
+    """
+    try:
+        return load_exercise(directory)
+    except ContentError as exc:
+        return exc
+
+
+def _loaded(
+    outcomes: Mapping[Path, Exercise | ContentError],
+) -> dict[Path, Exercise]:
     """Every directory that loads, with the exercise it loads as.
 
     The library-level audits ask two things of an exercise that only loading it
-    answers -- is it a variant, and what kind is it -- so it is read once here
-    and handed to each of them.
+    answers -- is it a variant, and what kind is it -- so they are handed the
+    ones that loaded.
 
     **A directory that will not load is absent, and that absence is carried
-    rather than guessed at.** It is reported once, by `validate_exercise`.
+    rather than guessed at.** It is reported once, by `_report`.
     Whether it *meant* to be a variant cannot be known until it loads, so it
     still counts as on disk -- a manifest that names it is not naming nothing
     -- and `_audit_curriculum` is told not to call it unplaced. The first
@@ -221,11 +241,11 @@ def _loaded(directories: Sequence[Path]) -> dict[Path, Exercise]:
     curriculum did not list it: advice that, followed, fails the moment the
     typo is fixed.
     """
-    found = {}
-    for directory in directories:
-        with contextlib.suppress(ContentError):
-            found[directory] = load_exercise(directory)
-    return found
+    return {
+        directory: outcome
+        for directory, outcome in outcomes.items()
+        if not isinstance(outcome, ContentError)
+    }
 
 
 def _audit_variants(
@@ -262,7 +282,7 @@ def _audit_variants(
             continue
         base = loaded.get(base_directory)
         if base is None:
-            # On disk and unreadable, which `validate_exercise` reports.
+            # On disk and unreadable, which `_report` says of it.
             continue
         if base.is_variant:
             yield (
@@ -402,21 +422,28 @@ def validate_exercise(directory: Path) -> ExerciseReport:
     is a bad way to spend an afternoon, and with seventy exercises it stops
     being merely annoying.
     """
-    try:
-        exercise = load_exercise(directory)
-    except ContentError as exc:
+    return _report(directory, _read(directory))
+
+
+def _report(directory: Path, outcome: Exercise | ContentError) -> ExerciseReport:
+    """One directory's report, from what loading it gave.
+
+    Apart from `validate_exercise` so that `validate_library` can build every
+    report from the outcomes it already holds (`_read`).
+    """
+    if isinstance(outcome, ContentError):
         return ExerciseReport(
             directory=directory,
             exercise_id=_best_effort_id(directory),
             problems=tuple(
-                f"{EXERCISE_FILENAME}: {problem}" for problem in exc.problems
+                f"{EXERCISE_FILENAME}: {problem}" for problem in outcome.problems
             ),
         )
 
     return ExerciseReport(
         directory=directory,
-        exercise_id=str(exercise.id),
-        problems=tuple(_audit(directory, exercise)),
+        exercise_id=str(outcome.id),
+        problems=tuple(_audit(directory, outcome)),
     )
 
 
