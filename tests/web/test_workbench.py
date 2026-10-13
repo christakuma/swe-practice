@@ -169,6 +169,101 @@ def test_opening_the_workbench_records_nothing(
     assert len(reloaded.events) == before
 
 
+# --- which attempt is in front (ADR 0026) ----------------------------------
+
+
+def test_loading_a_workbench_does_not_make_it_the_current_attempt(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """A page loaded is not a page looked at -- a link opened in a background
+    tab must not take the mark from the attempt on screen -- and a GET here
+    "cannot change anything", which is what the cross-origin guard rests on.
+    """
+    older = wiring.services.start_attempt(KATA)
+    newer = wiring.services.start_attempt(SCENARIO)
+    wiring.services.mark_current_attempt(newer.attempt.id)
+
+    client.get(f"/attempt/{older.attempt.id}")
+
+    assert wiring.attempts.current() == newer.attempt.id
+
+
+def test_starting_from_the_browser_leaves_marking_to_the_page(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """The Start button redirects to the workbench, and the workbench says it
+    is in front if it is. A start that marked would do so for a form submitted
+    into a background tab too -- and is the write `practice solve` shares.
+    """
+    working_on = wiring.services.start_attempt(SCENARIO)
+    wiring.services.mark_current_attempt(working_on.attempt.id)
+
+    client.post("/attempt", data={"exercise_id": str(KATA)}, follow_redirects=False)
+
+    assert len(wiring.services.list_open_attempts()) == 2
+    assert wiring.attempts.current() == working_on.attempt.id
+
+
+def test_a_tab_coming_to_the_front_makes_its_attempt_the_current_one(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """The two-tab case. Switching tabs loads nothing, so the page says so."""
+    older = wiring.services.start_attempt(KATA)
+    newer = wiring.services.start_attempt(SCENARIO)
+    wiring.services.mark_current_attempt(newer.attempt.id)
+
+    response = client.post(f"/api/attempt/{older.attempt.id}/current")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert wiring.attempts.current() == older.attempt.id
+
+
+def test_an_open_workbench_carries_the_script_and_its_own_attempts_endpoint(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """The page's half: the tag is there and the URL on it is the one the
+    route is declared with. What the script *does* with it is
+    `test_in_front_script.py`'s, which runs the file this serves.
+    """
+    started = wiring.services.start_attempt(KATA)
+
+    body = client.get(f"/attempt/{started.attempt.id}").text
+
+    assert (
+        '<script src="/static/in-front.js" '
+        f'data-current-url="/api/attempt/{started.attempt.id}/current"></script>'
+    ) in body
+    assert client.get("/static/in-front.js").status_code == 200
+
+
+def test_a_finished_attempt_cannot_take_the_mark(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """A tab left open across a submission goes on reporting that it came to
+    the front. It is refused -- which is what tells the script to stop -- and
+    its page is no longer drawn with the script at all.
+    """
+    finished = wiring.services.start_attempt(KATA)
+    wiring.services.submit_solution(finished.attempt.id, source="def two_sum(): ...")
+    working_on = wiring.services.start_attempt(SCENARIO)
+    wiring.services.mark_current_attempt(working_on.attempt.id)
+
+    response = client.post(f"/api/attempt/{finished.attempt.id}/current")
+
+    assert response.status_code == 409
+    assert wiring.attempts.current() == working_on.attempt.id
+    assert "in-front.js" not in client.get(f"/attempt/{finished.attempt.id}").text
+
+
+def test_reporting_an_attempt_that_does_not_exist_is_a_404(client: TestClient) -> None:
+    unknown = client.post("/api/attempt/00000000-0000-4000-8000-000000000000/current")
+    malformed = client.post("/api/attempt/oops/current")
+
+    assert unknown.status_code == 404
+    assert malformed.status_code == 404
+
+
 # --- the third kind's workbench -------------------------------------------
 
 

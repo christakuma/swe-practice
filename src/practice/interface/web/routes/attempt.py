@@ -71,7 +71,7 @@ from starlette.responses import HTMLResponse, Response
 
 from practice.application.errors import ApplicationError
 from practice.domain.attempt import ComplexityClaim
-from practice.domain.errors import DomainError
+from practice.domain.errors import AttemptStateError, DomainError
 from practice.domain.exercise import GitScenarioSpec, editable_source
 from practice.domain.ids import AttemptId
 from practice.interface.web.errors import render_problem
@@ -89,7 +89,7 @@ if TYPE_CHECKING:
 
     from practice.composition import Services
 
-__all__ = ["HINT_URL", "SUBMIT_URL", "build_router"]
+__all__ = ["CURRENT_URL", "HINT_URL", "SUBMIT_URL", "build_router"]
 
 #: Where the editor posts a solution. A template builds the attempt's own URL from
 #: this, so the route and the page cannot disagree about the path.
@@ -99,6 +99,12 @@ SUBMIT_URL = "/api/attempt/{attempt_id}/submit"
 #: endpoint taking one is an endpoint a solver skips to the last hint with, and the
 #: progression is the thing being recorded.
 HINT_URL = "/api/attempt/{attempt_id}/hint"
+
+#: Where an open workbench reports that its tab has come to the front. A POST,
+#: because it changes which attempt is current and a GET here "cannot change
+#: anything" (`security.py`) -- which is also why loading the page does not do
+#: it (ADR 0026).
+CURRENT_URL = "/api/attempt/{attempt_id}/current"
 
 
 def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
@@ -178,6 +184,7 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 "editor_url": EDITOR_URL.format(attempt_id=parsed),
                 "watch_url": WATCH_URL.format(attempt_id=parsed),
                 "hint_url": HINT_URL.format(attempt_id=parsed),
+                "current_url": CURRENT_URL.format(attempt_id=parsed),
                 "review_url": REVIEW_URL.format(attempt_id=parsed),
                 # Formatted unconditionally, like the rest. Whether the panel
                 # that posts to it is drawn is the template's question, and it
@@ -272,6 +279,24 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 ),
             },
         )
+
+    @router.post(CURRENT_URL)
+    def current(attempt_id: str) -> Response:
+        """Make this the attempt a tutor is shown, because its tab is in front.
+
+        No body either way: the page that sends this does not read the answer,
+        and there is nothing on it to redraw. The status is still the honest
+        one, for whoever is reading the server's log -- a tab left open across
+        a submission goes on calling this about a finished attempt, and that
+        is a 409 rather than a quiet success.
+        """
+        try:
+            services.mark_current_attempt(AttemptId.parse(attempt_id))
+        except AttemptStateError:
+            return Response(status_code=409)
+        except (ApplicationError, DomainError, ValueError):
+            return Response(status_code=404)
+        return Response(status_code=204)
 
     @router.post(HINT_URL, response_class=HTMLResponse)
     def hint(request: Request, attempt_id: str) -> Response:

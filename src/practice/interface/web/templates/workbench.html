@@ -255,4 +255,18 @@
     }
   </script>
 {% endif %}
+
+{#
+  Which attempt is in front of you, said by the page because nothing else can
+  (ADR 0026): `in-front.js` reports to this attempt's own endpoint whenever the
+  tab is the one being looked at, and has the argument for each event it
+  listens to. The URL rides on the tag so the file stays free of templating and
+  a test can run it as it is served.
+
+  Only for an attempt that is still open -- a finished one cannot take the
+  mark, and the endpoint refuses it.
+#}
+{% if workbench.is_active %}
+  <script src="{{ static }}/in-front.js" data-current-url="{{ current_url }}"></script>
+{% endif %}
 {% endblock %}
