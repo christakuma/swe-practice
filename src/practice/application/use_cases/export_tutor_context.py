@@ -126,7 +126,10 @@ class ExportTutorContext:
             title=exercise.title,
             kind=exercise.kind,
             difficulty=exercise.difficulty,
-            prompt=exercise.prompt,
+            # The statement rather than the bare prompt: a kata's examples and
+            # constraints are fields, not paragraphs, and a tutor that cannot see
+            # what a right answer looks like has to guess at it.
+            prompt=exercise.statement,
             status=attempt.status,
             mode=attempt.policy.mode,
             allowed_commands=tuple(sorted(attempt.policy.allowed_commands)),

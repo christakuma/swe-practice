@@ -17,6 +17,7 @@ adapters' behaviour wherever it is observable — `attach` returning `None`,
 makes its tests prove nothing.
 """
 
+from tests.fakes.chance import FixedChooser
 from tests.fakes.clock import FakeClock
 from tests.fakes.content import (
     FakeContentRepository,
@@ -51,6 +52,7 @@ __all__ = [
     "FakeProvisioner",
     "FakeRepoQuery",
     "FakeWorkspace",
+    "FixedChooser",
     "FixedScheduler",
     "RepoBuilder",
     "RepoState",

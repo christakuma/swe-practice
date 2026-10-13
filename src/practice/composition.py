@@ -63,10 +63,11 @@ only symptom would be intervals the user cannot explain.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
+from practice.adapters.chance import RandomChooser
 from practice.adapters.clock import SystemClock
 from practice.adapters.content import FilesystemContentRepository
 from practice.adapters.git import GitRepoQuery, ScenarioGrader
@@ -86,6 +87,7 @@ from practice.adapters.sql import SqlDrillGrader
 from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
+    ChooseVersion,
     CollectWorkspaces,
     ExportTutorContext,
     FindCurrentAttempt,
@@ -128,6 +130,7 @@ if TYPE_CHECKING:
 
     from practice.domain.ports import (
         AttemptRepository,
+        Chooser,
         Clock,
         ContentRepository,
         EditorLauncher,
@@ -204,6 +207,18 @@ class Services:
     scheduler: Scheduler
     editor: EditorLauncher
     watcher: FileWatcher
+    #: The one port with a default, and the reason is who builds this object:
+    #: a dozen test wirings construct `Services` by hand, and only the tests
+    #: about a random start care which way chance falls. The default is the
+    #: real adapter, which this module is the one place allowed to name.
+    chooser: Chooser = field(default_factory=RandomChooser)
+
+    @property
+    def choose_version(self) -> ChooseVersion:
+        """Content and chance, and nothing that writes: choosing a version
+        makes no attempt, which is `start_attempt`'s job with the id this
+        returns."""
+        return ChooseVersion(content=self.content, chooser=self.chooser)
 
     @property
     def start_attempt(self) -> StartAttempt:

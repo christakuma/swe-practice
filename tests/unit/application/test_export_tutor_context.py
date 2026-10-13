@@ -27,9 +27,9 @@ from practice.domain.attempt import (
     HintRevealed,
 )
 from practice.domain.errors import PolicyViolationError
-from practice.domain.exercise import ExerciseKind, Hint
+from practice.domain.exercise import Example, ExerciseKind, Hint
 from practice.domain.ids import AttemptId, ExerciseId
-from tests.fakes import a_scenario
+from tests.fakes import a_kata, a_scenario
 from tests.unit.application.helpers import (
     World,
     a_reveal_hint,
@@ -87,6 +87,30 @@ def test_it_carries_the_exercise_as_the_solver_was_shown_it() -> None:
     assert context.status is AttemptStatus.ACTIVE
     assert context.mode is AttemptMode.PRACTICE
     assert not context.is_finished
+
+
+def test_a_katas_task_includes_its_constraints_and_its_examples() -> None:
+    """The statement, not the bare prompt.
+
+    A kata's examples and constraints are fields rather than paragraphs (ADR
+    0027), so a tutor handed `exercise.prompt` would be the one reader of the
+    task who could not see what a right answer looks like -- and would have to
+    work it out from the solver's code, which is the thing in question.
+    """
+    world = an_environment()
+    world.content.replace_with(
+        a_kata(
+            constraints=("2 <= len(numbers) <= 10**5",),
+            examples=(Example(input="two_sum([2, 7], 9)", output="(0, 1)"),),
+        )
+    )
+    attempt_id = a_start_attempt(world)(KATA).attempt.id
+
+    context = an_export_tutor_context(world)(attempt_id)
+
+    assert context.prompt.startswith("Return the two positions")
+    assert "Constraints:\n- 2 <= len(numbers) <= 10**5" in context.prompt
+    assert "Example 1\n  Input:\n      two_sum([2, 7], 9)" in context.prompt
 
 
 def test_the_allowlist_comes_back_sorted_and_the_budget_as_what_is_left() -> None:

@@ -71,10 +71,14 @@ class ReviewQueue:
         }
         scheduled = {card.exercise_id for card in self.reviews.cards()}
 
+        # Looked up one at a time rather than in `library`, because a due card
+        # may be for a variant: variants are never listed, so never in the
+        # unseen half below, but one a solver chose to attempt has a card like
+        # any other exercise and comes due like any other (ADR 0028).
         due = tuple(
-            DueExercise(exercise=library[card.exercise_id], card=card, today=today)
+            DueExercise(exercise=exercise, card=card, today=today)
             for card in self.reviews.due_on(today)
-            if card.exercise_id in library
+            if (exercise := self.content.get(card.exercise_id)) is not None
         )
         unseen = tuple(
             DueExercise(exercise=exercise, card=None, today=today)

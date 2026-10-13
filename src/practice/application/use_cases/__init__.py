@@ -5,9 +5,12 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Twenty-four of them, in seven groups.
+Twenty-five of them, in seven groups.
 
-**Four about solving**, two per exercise kind. `StartAttempt` is shared:
+**Five about solving.** `ChooseVersion` comes before any of the others and
+makes nothing: it turns "this exercise, the standard version or a named variant
+or whichever comes up" into the one id `StartAttempt` is then given (ADR 0028).
+The other four are two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
 is, which is what the kind registry exists to keep true. Submission is not shared,
 because a kata carries source to be saved into the event log and a scenario carries
@@ -114,6 +117,7 @@ decision in the composition root about which of them owns the repositories.
 """
 
 from practice.application.use_cases.abandon_attempt import AbandonAttempt
+from practice.application.use_cases.choose_version import RANDOM, ChooseVersion
 from practice.application.use_cases.collect_workspaces import CollectWorkspaces
 from practice.application.use_cases.export_tutor_context import ExportTutorContext
 from practice.application.use_cases.find_current_attempt import FindCurrentAttempt
@@ -139,7 +143,9 @@ from practice.application.use_cases.summarise_progress import SummariseProgress
 from practice.application.use_cases.watch_solution_file import WatchSolutionFile
 
 __all__ = [
+    "RANDOM",
     "AbandonAttempt",
+    "ChooseVersion",
     "CollectWorkspaces",
     "ExportTutorContext",
     "FindCurrentAttempt",

@@ -21,6 +21,7 @@ import pytest
 from practice.application.dto import DueExercise, ReviewOffer
 from practice.application.errors import AttemptNotFoundError, ExerciseNotFoundError
 from practice.domain.errors import AttemptStateError
+from practice.domain.exercise import Variant
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.review import CardState, Grade, ReviewCard
 from practice.domain.scheduling import GradeSuggestion, suggest_grade
@@ -402,3 +403,48 @@ class TestTheRowsThemselves:
         stale = replace(offer, card=_a_card(KATA, date(2026, 10, 2)))
 
         assert stale.already_reviewed is False
+
+
+class TestReviewQueueAndVariants:
+    """A variant is never offered unprompted and is reviewed once it is chosen.
+
+    The two halves of `ReviewQueue` treat one differently, and ADR 0028 is why:
+    the unseen half is "what in the library have you not tried", and a variant
+    is not in the library's listing; the due half is "what are you forgetting",
+    and a variant a solver chose to attempt is forgotten like anything else.
+    """
+
+    VARIANT = ExerciseId("variants/two-sum-sorted")
+
+    def _a_world_with_a_variant(self) -> World:
+        world = an_environment()
+        world.content.add(
+            a_kata(
+                exercise_id=self.VARIANT.value,
+                variant=Variant(of=KATA, twist="The list is sorted."),
+            )
+        )
+        return world
+
+    def test_a_variant_nobody_has_tried_is_not_in_the_queue(self) -> None:
+        world = self._a_world_with_a_variant()
+
+        queue = a_review_queue(world)()
+
+        assert [str(row.exercise.id) for row in queue] == [str(SCENARIO), str(KATA)]
+
+    def test_a_variant_that_was_reviewed_comes_due_like_anything_else(self) -> None:
+        world = self._a_world_with_a_variant()
+        started = a_start_attempt(world)(self.VARIANT)
+        a_submit_solution(world)(started.attempt.id, "def two_sum(): ...")
+        reviewed = a_grade_review(world)(started.attempt.id)
+        world.clock.advance(timedelta(days=3))
+
+        queue = a_review_queue(world)()
+
+        assert world.clock.today() == reviewed.card.due_on
+        assert [str(row.exercise.id) for row in queue] == [
+            str(self.VARIANT),
+            str(SCENARIO),
+            str(KATA),
+        ]
