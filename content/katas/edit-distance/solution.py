@@ -2,7 +2,7 @@
 
 
 def edit_distance(source: str, target: str) -> int:
-    """Return the fewest single-character edits that turn one string into other.
+    """Return the fewest single-character edits turning one string into another.
 
     Levenshtein distance. `distance[i][j]` is the answer for the first i
     characters of `source` and the first j of `target`, and the recurrence comes

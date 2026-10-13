@@ -9,10 +9,6 @@ estimated_minutes: 15
 prompt: |
   Reverse a singly linked list and return the new head.
 
-  ```
-  1 -> 2 -> 3 -> 4 -> None    becomes    4 -> 3 -> 2 -> 1 -> None
-  ```
-
   An empty list reverses to an empty list. A one-node list is its own reverse.
 
   Reverse the list by relinking the nodes you were given. Building a new list
@@ -45,3 +41,27 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "The list has between 0 and 3 * 10**4 nodes; an empty list is None."
+    - "That is far longer than Python will recurse."
+    - "Values may repeat."
+  examples:
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3, ListNode(4))))
+        reverse_list(head)
+      output: |
+        ListNode(4, ListNode(3, ListNode(2, ListNode(1))))
+      explanation: |
+        1 -> 2 -> 3 -> 4 becomes 4 -> 3 -> 2 -> 1.
+    - input: |
+        tail = ListNode(2)
+        head = ListNode(1, tail)
+        reverse_list(head) is tail
+      output: |
+        True
+      explanation: |
+        The new head is the old tail: the same node, relinked, and not a copy of it.
+    - input: |
+        reverse_list(None)
+      output: |
+        None

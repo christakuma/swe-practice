@@ -9,15 +9,8 @@ estimated_minutes: 15
 prompt: |
   Count the 1 bits in the binary representation of a non-negative integer.
 
-  ```
-  count_bits(0)     ->  0
-  count_bits(11)    ->  3      # 1011
-  count_bits(128)   ->  1      # 10000000
-  count_bits(255)   ->  8      # 11111111
-  ```
-
-  The input is non-negative and may be large — well past 64 bits, because
-  Python integers do not stop there.
+  The input may be large — well past 64 bits, because Python integers do not
+  stop there.
 
   `bin(n).count("1")` and `int.bit_count()` both answer this in one line. Both
   are banned here: the point is the bit arithmetic, and a one-liner that defers
@@ -45,3 +38,26 @@ kata:
   complexity:
     expected_time: "O(s) for s set bits"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= n < 2**2000"
+  examples:
+    - input: |
+        count_bits(11)
+      output: |
+        3
+      explanation: |
+        11 is 1011 in binary.
+    - input: |
+        count_bits(128)
+      output: |
+        1
+      explanation: |
+        128 is 10000000: a power of two has exactly one bit set.
+    - input: |
+        count_bits(255)
+      output: |
+        8
+    - input: |
+        count_bits(0)
+      output: |
+        0

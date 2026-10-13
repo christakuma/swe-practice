@@ -10,18 +10,14 @@ prompt: |
   Decide whether following `next_node` from the head of a singly linked list
   ever revisits a node.
 
-  ```
-  1 -> 2 -> 3 -> None        False
-  1 -> 2 -> 3 -> 2 ...       True    (the tail points back at the second node)
-  1 -> 1 (itself)            True
-  None                       True?   no -- an empty list has no cycle
-  ```
-
-  The list may be a hundred thousand nodes long. The tests build lists with the
-  `ListNode` class in the stub.
+  A list that ends in `None` has no cycle, however long it is, and neither does
+  an empty list. A cycle can close anywhere: the last node may point back at
+  the head, at a node part-way along, or at itself.
 
   Solve it in **O(1) extra space** — a set of visited nodes is correct and is
   not what this kata is for.
+
+  The tests build lists with the `ListNode` class in the stub.
 
 hints:
   - "A set of seen nodes answers it immediately and costs O(n) space. Keep that
@@ -44,3 +40,39 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "The list has between 0 and 10**5 nodes; an empty list is None."
+    - "An acyclic list may be 10**5 nodes long, far deeper than Python will recurse."
+    - "Values tell you nothing: two nodes are the same node only if they are the same object."
+  examples:
+    - input: |
+        third = ListNode(3)
+        second = ListNode(2, third)
+        head = ListNode(1, second)
+        has_cycle(head)
+      output: |
+        False
+      explanation: |
+        1 -> 2 -> 3 -> None. The list ends.
+    - input: |
+        third = ListNode(3)
+        second = ListNode(2, third)
+        head = ListNode(1, second)
+        third.next_node = second
+        has_cycle(head)
+      output: |
+        True
+      explanation: |
+        1 -> 2 -> 3 -> 2 -> 3 -> ... The last node points back at the second.
+    - input: |
+        node = ListNode(1)
+        node.next_node = node
+        has_cycle(node)
+      output: |
+        True
+      explanation: |
+        The smallest possible cycle: one node pointing at itself.
+    - input: |
+        has_cycle(None)
+      output: |
+        False

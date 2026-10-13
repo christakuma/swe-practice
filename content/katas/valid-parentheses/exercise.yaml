@@ -10,14 +10,8 @@ prompt: |
   Given a string containing only the characters `(`, `)`, `[`, `]`, `{` and
   `}`, decide whether the brackets are balanced and correctly nested.
 
-  ```
-  is_balanced("()")        ->  True
-  is_balanced("{[()]}")    ->  True
-  is_balanced("([)]")      ->  False
-  is_balanced("((")        ->  False
-  ```
-
-  An empty string is balanced. The string may be long and deeply nested.
+  Every opener must be closed by a closer of the same kind, and whatever opened
+  most recently must close first. An empty string is balanced.
 
 hints:
   - "Count the brackets of each kind first and see how far it gets you. Then try
@@ -40,3 +34,33 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
+  constraints:
+    - "0 <= len(text) <= 10**5"
+    - "Every character is one of ( ) [ ] { }."
+    - "Brackets may be nested tens of thousands deep."
+  examples:
+    - input: |
+        is_balanced("{[()]}")
+      output: |
+        True
+    - input: |
+        is_balanced("()[]{}")
+      output: |
+        True
+    - input: |
+        is_balanced("([)]")
+      output: |
+        False
+      explanation: |
+        Every bracket has a partner, but they overlap instead of nesting: the ) arrives
+        while the [ is still open.
+    - input: |
+        is_balanced("((")
+      output: |
+        False
+    - input: |
+        is_balanced(")(")
+      output: |
+        False
+      explanation: |
+        The counts match, but the closer comes before anything is open.

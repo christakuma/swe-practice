@@ -10,19 +10,14 @@ prompt: |
   Remove the nth node counting from the end of a singly linked list and return
   the head.
 
-  ```
-  1 -> 2 -> 3 -> 4 -> 5,  n = 2   ->   1 -> 2 -> 3 -> 5
-  1 -> 2,                 n = 2   ->   2
-  1,                      n = 1   ->   None
-  ```
-
-  `n` is always at least 1 and never more than the length of the list, so the
-  node always exists. Removing the last remaining node leaves an empty list.
+  `n = 1` is the last node. The node always exists, and removing the last
+  remaining node leaves an empty list, which is `None`.
 
   Do it in **one pass**. You cannot walk the list to measure it and then walk
   it again, and you cannot store the nodes in a list and index backwards.
 
-  The tests build lists with the `ListNode` class in the stub.
+  Unlink the node from the chain you were given rather than building a new
+  one. The tests build lists with the `ListNode` class in the stub.
 
 hints:
   - "You cannot count from the end of a singly linked list, because there is no
@@ -47,3 +42,27 @@ kata:
   complexity:
     expected_time: "O(n), one pass"
     expected_space: "O(1)"
+  constraints:
+    - "The list has between 1 and 2 * 10**4 nodes."
+    - "1 <= n <= the number of nodes"
+    - "Values may repeat; the node to remove is chosen by position, not by value."
+  examples:
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3, ListNode(4, ListNode(5)))))
+        remove_nth_from_end(head, 2)
+      output: |
+        ListNode(1, ListNode(2, ListNode(3, ListNode(5))))
+      explanation: |
+        Second from the end of 1 -> 2 -> 3 -> 4 -> 5 is the 4.
+    - input: |
+        head = ListNode(1, ListNode(2))
+        remove_nth_from_end(head, 2)
+      output: |
+        ListNode(2)
+      explanation: |
+        Second from the end of a two-node list is the head itself, so the list that
+        comes back starts at what was the second node.
+    - input: |
+        remove_nth_from_end(ListNode(1), 1)
+      output: |
+        None

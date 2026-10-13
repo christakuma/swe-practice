@@ -9,14 +9,6 @@ estimated_minutes: 10
 prompt: |
   Return the number of nodes on the longest path from the root down to a leaf.
 
-  ```
-        3
-       / \
-      9  20          ->  3
-        /  \
-       15   7
-  ```
-
   An empty tree has depth 0; a single node has depth 1.
 
   The tests build trees with the `TreeNode` class in the stub — leave it as it
@@ -42,3 +34,35 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h) for a tree of height h"
+  constraints:
+    - "The tree has between 0 and 500 nodes, and may be a single chain that deep."
+    - "-10**4 <= node.value <= 10**4"
+  examples:
+    - input: |
+        root = TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))
+        max_depth(root)
+      output: |
+        3
+      explanation: |
+        The longest path down is 3, 20, 15 (or 3, 20, 7): three nodes.
+
+                3
+               / \
+              9  20
+                /  \
+               15   7
+    - input: |
+        root = TreeNode(1, TreeNode(2, TreeNode(3)))
+        max_depth(root)
+      output: |
+        3
+      explanation: |
+        A chain that only goes left is as deep as it is long.
+    - input: |
+        max_depth(TreeNode(1))
+      output: |
+        1
+    - input: |
+        max_depth(None)
+      output: |
+        0

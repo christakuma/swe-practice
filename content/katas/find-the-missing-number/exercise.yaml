@@ -10,13 +10,6 @@ prompt: |
   A list holds `n` distinct integers drawn from the range `0..n` inclusive.
   Exactly one value from that range is missing. Return it.
 
-  ```
-  find_missing([3, 0, 1])           ->  2
-  find_missing([0, 1])              ->  2      # the missing one can be n
-  find_missing([1])                 ->  0      # or 0
-  find_missing([])                  ->  0
-  ```
-
   Use `O(1)` extra space and one pass. Sorting the list, or building a set or a
   seen-array of size n, all give the right answer and all spend more than the
   problem needs.
@@ -43,3 +36,31 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= n <= 10**6, where n is len(numbers)"
+    - "0 <= numbers[i] <= n"
+    - "All values are distinct, so exactly one value in 0..n is absent."
+    - "The list is in no particular order."
+  examples:
+    - input: |
+        find_missing([3, 0, 1])
+      output: |
+        2
+      explanation: |
+        Three values, so the range is 0..3, and 2 is the one not there.
+    - input: |
+        find_missing([0, 1])
+      output: |
+        2
+      explanation: |
+        The missing value can be n itself.
+    - input: |
+        find_missing([1])
+      output: |
+        0
+    - input: |
+        find_missing([])
+      output: |
+        0
+      explanation: |
+        With no values the range is just 0, and it is missing.

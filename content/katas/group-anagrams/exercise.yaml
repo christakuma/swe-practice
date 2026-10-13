@@ -10,16 +10,12 @@ prompt: |
   Group a list of words so that words which are anagrams of one another end up
   in the same group.
 
-  ```
-  group_anagrams(["eat", "tea", "tan", "ate", "nat", "bat"])
-    ->  [["eat", "tea", "ate"], ["tan", "nat"], ["bat"]]
-  ```
-
-  Order matters, in both directions: within a group, the words appear in the
-  order they appeared in the input; the groups appear in the order their first
+  Order matters at both levels: within a group, the words appear in the order
+  they appeared in the input, and the groups appear in the order their first
   word appeared.
 
-  Duplicates are words too — `["ab", "ab"]` is one group of two.
+  Duplicates are words too — `["ab", "ab"]` is one group of two. So are empty
+  strings, which are anagrams of one another.
 
 hints:
   - "Comparing every pair of words is the version to write first. It tells you
@@ -43,3 +39,30 @@ kata:
   complexity:
     expected_time: "O(n k log k) for n words of length k"
     expected_space: "O(n k)"
+  constraints:
+    - "0 <= len(words) <= 10**4"
+    - "0 <= len(words[i]) <= 100"
+    - "Characters are compared exactly; case matters."
+  examples:
+    - input: |
+        group_anagrams(["eat", "tea", "tan", "ate", "nat", "bat"])
+      output: |
+        [["eat", "tea", "ate"], ["tan", "nat"], ["bat"]]
+      explanation: |
+        "eat" comes first in the input, so its group comes first, and inside it the
+        words keep the order they arrived in.
+    - input: |
+        group_anagrams(["aab", "abb", "baa"])
+      output: |
+        [["aab", "baa"], ["abb"]]
+      explanation: |
+        "aab" and "abb" use the same two letters in different quantities, so they
+        are not anagrams.
+    - input: |
+        group_anagrams(["ab", "ab"])
+      output: |
+        [["ab", "ab"]]
+    - input: |
+        group_anagrams([])
+      output: |
+        []

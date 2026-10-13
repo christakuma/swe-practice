@@ -10,19 +10,12 @@ prompt: |
   Return the length of the longest subsequence common to two strings. A
   subsequence keeps the original order but need not be contiguous.
 
-  ```
-  lcs_length("abcde", "ace")   ->  3     # "ace"
-  lcs_length("abc", "abc")     ->  3
-  lcs_length("abc", "def")     ->  0
-  lcs_length("", "abc")        ->  0
-  ```
-
-  Characters may repeat. Case matters.
-
   Note the difference from a common *substring*: `"ace"` is a subsequence of
   `"abcde"` but not a substring of it, because the characters are not adjacent.
 
-  `O(m * n)` time. `O(min(m, n))` space is achievable.
+  Characters may repeat, and case matters.
+
+  Aim for `O(m * n)` time. `O(min(m, n))` space is achievable.
 
 hints:
   - "Compare the last characters of the two strings. If they match, that
@@ -47,3 +40,29 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(min(m, n))"
+  constraints:
+    - "0 <= len(first) <= 1000"
+    - "0 <= len(second) <= 1000"
+    - "Characters are compared exactly."
+  examples:
+    - input: |
+        lcs_length("abcde", "ace")
+      output: |
+        3
+      explanation: |
+        "ace": its letters appear in both strings, in that order.
+    - input: |
+        lcs_length("abc", "cba")
+      output: |
+        1
+      explanation: |
+        All three letters are shared, but no two of them come in the same order in
+        both strings.
+    - input: |
+        lcs_length("abc", "def")
+      output: |
+        0
+    - input: |
+        lcs_length("", "abc")
+      output: |
+        0

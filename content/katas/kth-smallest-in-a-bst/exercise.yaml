@@ -10,18 +10,8 @@ prompt: |
   Return the kth smallest value in a binary **search** tree. `k` is 1-based, so
   `k = 1` is the smallest value.
 
-  ```
-       5
-      / \
-     3   7        kth_smallest(root, 1)  ->  2
-    / \   \       kth_smallest(root, 3)  ->  4
-   2   4   9      kth_smallest(root, 6)  ->  9
-
-  ```
-
   The tree is a valid BST: every value in a node's left subtree is smaller than
   the node, every value in its right subtree is larger, and values are distinct.
-  `k` is always between 1 and the number of nodes.
 
   **Stop as soon as you have the answer.** Collecting every value and indexing
   is correct and reads the whole tree; the tests check you did not.
@@ -48,3 +38,33 @@ kata:
   complexity:
     expected_time: "O(h + k)"
     expected_space: "O(h)"
+  constraints:
+    - "The tree has between 1 and 10**5 nodes and is at most 500 levels deep."
+    - "1 <= k <= the number of nodes"
+    - "-10**9 <= node.value <= 10**9, and no two nodes share a value."
+  examples:
+    - input: |
+        root = TreeNode(5, TreeNode(3, TreeNode(2), TreeNode(4)), TreeNode(7, None, TreeNode(9)))
+        kth_smallest(root, 1)
+      output: |
+        2
+      explanation: |
+        The smallest value is the leftmost node.
+
+                5
+               / \
+              3   7
+             / \   \
+            2   4   9
+    - input: |
+        root = TreeNode(5, TreeNode(3, TreeNode(2), TreeNode(4)), TreeNode(7, None, TreeNode(9)))
+        kth_smallest(root, 3)
+      output: |
+        4
+      explanation: |
+        In order the values are 2, 3, 4, 5, 7, 9.
+    - input: |
+        root = TreeNode(5, TreeNode(3, TreeNode(2), TreeNode(4)), TreeNode(7, None, TreeNode(9)))
+        kth_smallest(root, 6)
+      output: |
+        9

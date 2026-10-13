@@ -9,19 +9,15 @@ estimated_minutes: 32
 prompt: |
   Rebuild a binary tree from its pre-order and in-order traversals.
 
-  ```
-  preorder = [3, 9, 20, 15, 7]           3
-  inorder  = [9, 3, 15, 20, 7]          / \
-                              ->       9   20
-                                          /  \
-                                        15    7
-  ```
+  Pre-order visits a node, then its left subtree, then its right. In-order
+  visits the left subtree, then the node, then the right. Both lists hold the
+  same values, all **distinct**. Empty lists give an empty tree.
 
-  Both lists hold the same values, all **distinct**. Empty lists give an empty
-  tree.
+  Aim for `O(n)`. The obvious recursion is `O(n^2)` because of one repeated
+  lookup — find it and remove it. Leave both lists as you found them.
 
-  `O(n)`. The obvious recursion is `O(n^2)` because of one repeated lookup —
-  find it and remove it.
+  Build the tree out of the `TreeNode` class in the stub, which is what the
+  tests inspect.
 
 hints:
   - "Pre-order visits the root first, so `preorder[0]` is the root. In-order
@@ -45,3 +41,38 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
+  constraints:
+    - "0 <= len(preorder) <= 10**5, and len(inorder) == len(preorder)"
+    - "-10**9 <= value <= 10**9, and no value appears twice."
+    - "The two lists are traversals of one tree, which is at most 500 levels deep."
+  examples:
+    - input: |
+        rebuild([3, 9, 20, 15, 7], [9, 3, 15, 20, 7])
+      output: |
+        TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))
+      explanation: |
+        The first pre-order value, 3, is the root. In-order, everything before the 3
+        is its left subtree and everything after it is its right.
+
+                3
+               / \
+              9  20
+                /  \
+               15   7
+    - input: |
+        rebuild([1, 2], [2, 1])
+      output: |
+        TreeNode(1, TreeNode(2))
+      explanation: |
+        In-order, 2 comes before the root, so it is the left child.
+    - input: |
+        rebuild([1, 2], [1, 2])
+      output: |
+        TreeNode(1, None, TreeNode(2))
+      explanation: |
+        The same pre-order as the example above. In-order, 2 now comes after the
+        root, so it is the right child — which is why one traversal is not enough.
+    - input: |
+        rebuild([], [])
+      output: |
+        None

@@ -11,25 +11,9 @@ prompt: |
   subtree** — some node of `tree` whose whole structure below it matches
   `candidate` exactly.
 
-  ```
-       3                 4
-      / \               / \        ->  True
-     4   5             1   2
-    / \
-   1   2
-
-       3                 4
-      / \               / \        ->  False
-     4   5             1   2
-    / \
-   1   2
-      /
-     0
-  ```
-
-  Complete is the operative word. In the second example the node `4` has the
-  right children but one of them has an extra child of its own, so the subtree
-  rooted at `4` is not `candidate`.
+  Complete is the operative word. A node of `tree` with the right value and the
+  right children still does not match if one of those children has a child that
+  `candidate` lacks.
 
   An empty candidate is a subtree of anything, including an empty tree. A
   non-empty candidate is never a subtree of an empty tree.
@@ -59,3 +43,47 @@ kata:
   complexity:
     expected_time: "O(n * m) in the worst case"
     expected_space: "O(h)"
+  constraints:
+    - "The tree has between 0 and 500 nodes and the candidate between 0 and 100; an empty one is None."
+    - "-10**4 <= node.value <= 10**4"
+    - "Values may repeat within a tree."
+  examples:
+    - input: |
+        tree = TreeNode(3, TreeNode(4, TreeNode(1), TreeNode(2)), TreeNode(5))
+        candidate = TreeNode(4, TreeNode(1), TreeNode(2))
+        is_subtree(tree, candidate)
+      output: |
+        True
+      explanation: |
+        The node 4 in the tree, with everything below it, is the candidate.
+
+                3                 4
+               / \               / \
+              4   5             1   2
+             / \
+            1   2
+    - input: |
+        tree = TreeNode(
+            3,
+            TreeNode(4, TreeNode(1), TreeNode(2, TreeNode(0))),
+            TreeNode(5),
+        )
+        candidate = TreeNode(4, TreeNode(1), TreeNode(2))
+        is_subtree(tree, candidate)
+      output: |
+        False
+      explanation: |
+        The node 4 has the right children, but its 2 has a child of its own that the
+        candidate's 2 does not.
+
+                3                 4
+               / \               / \
+              4   5             1   2
+             / \
+            1   2
+               /
+              0
+    - input: |
+        is_subtree(TreeNode(1), None)
+      output: |
+        True

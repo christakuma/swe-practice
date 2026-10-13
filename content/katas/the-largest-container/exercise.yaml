@@ -11,14 +11,7 @@ prompt: |
   lines forms a container whose area is the shorter line's height times the
   distance between them. Return the largest area available.
 
-  ```
-  largest_container([1, 8, 6, 2, 5, 4, 8, 3, 7])  ->  49    # the 8 and the 7, 7 apart
-  largest_container([1, 1])                        ->  1
-  largest_container([4, 4, 4])                     ->  8
-  largest_container([])                            ->  0
-  ```
-
-  Fewer than two lines holds nothing, so the answer is `0`. The lines are
+  Fewer than two lines hold nothing, so the answer is `0`. The lines are
   vertical and the container cannot slope — only the shorter of the two matters.
 
   Comparing every pair is `O(n^2)`. Do it in one pass.
@@ -44,3 +37,31 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= len(heights) <= 10**6"
+    - "0 <= heights[i] <= 10**4"
+  examples:
+    - input: |
+        largest_container([1, 8, 6, 2, 5, 4, 8, 3, 7])
+      output: |
+        49
+      explanation: |
+        The 8 at position 1 and the 7 at position 8. The shorter is 7 and they are 7
+        apart.
+    - input: |
+        largest_container([4, 4, 4])
+      output: |
+        8
+      explanation: |
+        The two outer lines: height 4, two apart.
+    - input: |
+        largest_container([1, 8, 8, 1])
+      output: |
+        8
+      explanation: |
+        The two tall lines are only one apart, and still beat the outer pair, which
+        is three apart and one high.
+    - input: |
+        largest_container([])
+      output: |
+        0

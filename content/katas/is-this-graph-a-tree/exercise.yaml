@@ -10,19 +10,12 @@ prompt: |
   `n` nodes are labelled `0` to `n - 1`. Given a list of undirected edges,
   return `True` if the graph is a tree: **connected** and **acyclic**.
 
-  ```
-  is_tree(5, [(0, 1), (0, 2), (0, 3), (1, 4)])  ->  True
-  is_tree(5, [(0, 1), (1, 2), (2, 3), (1, 3)])  ->  False   # has a cycle
-  is_tree(4, [(0, 1), (2, 3)])                  ->  False   # not connected
-  is_tree(1, [])                                ->  True
-  is_tree(0, [])                                ->  True    # vacuously
-  ```
-
   Both conditions matter and they are independent — a graph can be acyclic and
   disconnected (a forest), or connected and cyclic.
 
-  Edges may repeat, and a repeated edge is a cycle: `(0, 1)` twice means two
-  distinct paths between the same pair.
+  A repeated edge is a cycle: `(0, 1)` twice means two distinct routes between
+  the same pair. So is an edge from a node to itself. A graph with no nodes at
+  all counts as a tree.
 
 hints:
   - "Two properties to establish: connected, and acyclic. Check each one
@@ -45,3 +38,35 @@ kata:
   complexity:
     expected_time: "O((V + E) * almost-constant)"
     expected_space: "O(V)"
+  constraints:
+    - "0 <= n <= 2 * 10**5"
+    - "0 <= len(edges) <= 2 * 10**5"
+    - "Each edge is a pair (a, b) with 0 <= a < n and 0 <= b < n."
+    - "Edges may repeat, and a may equal b."
+  examples:
+    - input: |
+        is_tree(5, [(0, 1), (0, 2), (0, 3), (1, 4)])
+      output: |
+        True
+    - input: |
+        is_tree(5, [(0, 1), (1, 2), (2, 3), (1, 3)])
+      output: |
+        False
+      explanation: |
+        Nodes 1, 2 and 3 form a cycle — and node 4 is not joined to anything.
+    - input: |
+        is_tree(4, [(0, 1), (2, 3)])
+      output: |
+        False
+      explanation: |
+        No cycle, but two separate pieces: a forest rather than a tree.
+    - input: |
+        is_tree(2, [(0, 1), (0, 1)])
+      output: |
+        False
+      explanation: |
+        The same edge twice is two routes between 0 and 1, which is a cycle.
+    - input: |
+        is_tree(1, [])
+      output: |
+        True

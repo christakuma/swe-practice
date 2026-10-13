@@ -10,14 +10,6 @@ prompt: |
   Return a tree's values grouped by level: one list per level, top to bottom,
   each read left to right.
 
-  ```
-        3
-       / \
-      9  20          ->  [[3], [9, 20], [15, 7]]
-        /  \
-       15   7
-  ```
-
   An empty tree gives `[]`. Missing children leave no gap — a level holds only
   the nodes that exist.
 
@@ -44,3 +36,33 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(w) for a tree of maximum width w"
+  constraints:
+    - "The tree has between 0 and 2 * 10**4 nodes; an empty tree is None."
+    - "A single level may hold thousands of nodes."
+    - "-10**4 <= node.value <= 10**4"
+  examples:
+    - input: |
+        root = TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))
+        level_order(root)
+      output: |
+        [[3], [9, 20], [15, 7]]
+      explanation: |
+        One list per level, each from left to right.
+
+                3
+               / \
+              9  20
+                /  \
+               15   7
+    - input: |
+        root = TreeNode(1, TreeNode(2, None, TreeNode(4)), TreeNode(3))
+        level_order(root)
+      output: |
+        [[1], [2, 3], [4]]
+      explanation: |
+        The bottom level has one node where there is room for four. The three that
+        are missing leave nothing behind — no None, no gap.
+    - input: |
+        level_order(None)
+      output: |
+        []

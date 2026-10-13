@@ -11,20 +11,12 @@ prompt: |
   holds some amount. You may not take from two adjacent houses. Return the
   largest total you can take.
 
-  ```
-  best_haul([2, 3, 2])        ->  3     # not 2 + 2: those two are neighbours
-  best_haul([1, 2, 3, 1])     ->  4     # 1 + 3
-  best_haul([5])              ->  5
-  best_haul([])               ->  0
-  best_haul([1, 2])           ->  2
-  ```
+  A single house has no neighbour, so it can be taken. With two houses each is
+  the other's neighbour on both sides, so only one can.
 
-  Values are non-negative. A single house has no neighbour but itself, so it can
-  be taken.
-
-  You have already solved the straight-line version — this is that problem with
-  one extra constraint, and the useful move is to **reduce it to the one you
-  have** rather than to write a new recurrence.
+  You have already solved the straight-line version (`house-robber`) — this is
+  that problem with one extra constraint, and the useful move is to **reduce it
+  to the one you have** rather than to write a new recurrence.
 
 hints:
   - "The circle adds exactly one rule: the first and last houses cannot both be
@@ -45,3 +37,27 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= len(houses) <= 10**5"
+    - "0 <= houses[i] <= 10**4"
+  examples:
+    - input: |
+        best_haul([2, 3, 2])
+      output: |
+        3
+      explanation: |
+        Not 2 + 2: in a circle the first and last houses are neighbours.
+    - input: |
+        best_haul([1, 2, 3, 1])
+      output: |
+        4
+      explanation: |
+        The first and third houses, 1 + 3.
+    - input: |
+        best_haul([5])
+      output: |
+        5
+    - input: |
+        best_haul([1, 2])
+      output: |
+        2

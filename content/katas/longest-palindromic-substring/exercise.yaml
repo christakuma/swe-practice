@@ -10,19 +10,12 @@ prompt: |
   Return the longest contiguous substring that is a palindrome. If several tie
   for longest, return the one that starts earliest.
 
-  ```
-  longest_palindrome("babad")   ->  "bab"
-  longest_palindrome("cbbd")    ->  "bb"
-  longest_palindrome("a")       ->  "a"
-  longest_palindrome("")        ->  ""
-  ```
-
   Every character counts — no case folding, no skipping punctuation. A
   single character is a palindrome of length one, so a non-empty string always
   has an answer.
 
   Checking every substring is `O(n^3)`, or `O(n^2)` with care. `O(n^2)` time and
-  `O(1)` space is the target.
+  `O(1)` extra space is the target.
 
 hints:
   - "Rather than asking \"is this substring a palindrome?\" for every substring,
@@ -47,3 +40,28 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= len(text) <= 5000"
+    - "The string may hold any characters, and they are compared exactly."
+  examples:
+    - input: |
+        longest_palindrome("babad")
+      output: |
+        "bab"
+      explanation: |
+        "aba" is just as long, but "bab" starts earlier.
+    - input: |
+        longest_palindrome("cbbd")
+      output: |
+        "bb"
+    - input: |
+        longest_palindrome("abc")
+      output: |
+        "a"
+      explanation: |
+        Nothing longer than one character is a palindrome, and the first single
+        character is the earliest.
+    - input: |
+        longest_palindrome("")
+      output: |
+        ""

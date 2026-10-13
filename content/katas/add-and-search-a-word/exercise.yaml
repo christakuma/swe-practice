@@ -9,32 +9,21 @@ estimated_minutes: 30
 prompt: |
   Build a word store supporting two operations:
 
-  - `add(word)` — store a word.
-  - `search(pattern)` — does any stored word match? A `.` in the pattern
-    matches **exactly one** character of any kind.
+  - `add(word)` — store a word. Adding the same word twice changes nothing.
+  - `search(pattern)` — does any stored word match the pattern? A `.` in the
+    pattern matches **exactly one** character of any kind; every other
+    character matches only itself.
 
-  ```
-  store = WordStore()
-  store.add("bad")
-  store.add("dad")
-  store.add("mad")
+  A `.` never matches zero characters and never matches several, so a pattern
+  can only match words of its own length. `search("")` is `True` only if `""`
+  was added.
 
-  store.search("pad")   ->  False
-  store.search("bad")   ->  True
-  store.search(".ad")   ->  True
-  store.search("b..")   ->  True
-  store.search("b.")    ->  False    # length must match
-  store.search("...")   ->  True
-  ```
-
-  A `.` matches one character and never zero or many, so the pattern's length
-  must equal the word's. `search("")` is `True` only if `""` was added.
-
-  Characters are arbitrary. A literal `.` cannot be stored and searched for
-  distinctly — treat `.` in a pattern as always a wildcard.
+  A `.` in a pattern is always a wildcard — there is no way to search for a
+  literal dot.
 
   A pattern of all wildcards may have to look everywhere, but a pattern with
   literal characters must not: `search("b..")` should only descend below `b`.
+  The tests check that it does.
 
 hints:
   - "Build on a prefix tree. A pattern with no wildcards is an ordinary trie
@@ -57,3 +46,34 @@ kata:
   complexity:
     expected_time: "O(len(pattern)) with no wildcards; O(nodes) in the worst case"
     expected_space: "O(total characters added)"
+  constraints:
+    - "0 <= len(word) <= 20 and 0 <= len(pattern) <= 20"
+    - "Words hold any characters at all, not only lowercase letters."
+    - "At most 2 * 10**5 calls are made to add and search combined."
+  examples:
+    - input: |
+        store = WordStore()
+        store.add("bad")
+        store.add("dad")
+        store.search(".ad")
+      output: |
+        True
+      explanation: |
+        The wildcard stands for one character, so ".ad" matches both stored words.
+    - input: |
+        store = WordStore()
+        store.add("bad")
+        store.search("b.")
+      output: |
+        False
+      explanation: |
+        One wildcard is exactly one character: "b." is two characters long and
+        "bad" is three.
+    - input: |
+        store = WordStore()
+        store.add("bad")
+        store.add("dad")
+        store.add("mad")
+        (store.search("pad"), store.search("b.."), store.search("..."))
+      output: |
+        (False, True, True)

@@ -9,13 +9,6 @@ estimated_minutes: 25
 prompt: |
   Count the contiguous, non-empty slices of a list that add up to a target.
 
-  ```
-  count_subarrays([1, 1, 1], 2)     ->  2     ([1,1] twice, overlapping)
-  count_subarrays([1, -1, 0], 0)    ->  3
-  count_subarrays([0, 0, 0], 0)     ->  6
-  count_subarrays([1, 2, 3], 7)     ->  0
-  ```
-
   Slices at different positions count separately, and they may overlap.
 
   Values may be **negative or zero**, which rules out more approaches than it
@@ -45,3 +38,31 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
+  constraints:
+    - "0 <= len(numbers) <= 10**5"
+    - "-1000 <= numbers[i] <= 1000"
+    - "-10**8 <= target <= 10**8"
+  examples:
+    - input: |
+        count_subarrays([1, 1, 1], 2)
+      output: |
+        2
+      explanation: |
+        The first two values, and the last two. They overlap, and both count.
+    - input: |
+        count_subarrays([1, -1, 0], 0)
+      output: |
+        3
+      explanation: |
+        [1, -1], [1, -1, 0] and [0].
+    - input: |
+        count_subarrays([0, 0, 0], 0)
+      output: |
+        6
+      explanation: |
+        Every slice of a run of zeros sums to zero: three of length one, two of
+        length two and one of length three.
+    - input: |
+        count_subarrays([1, 2, 3], 7)
+      output: |
+        0

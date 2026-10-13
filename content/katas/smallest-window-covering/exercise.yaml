@@ -11,19 +11,14 @@ prompt: |
   `needed`, counting multiplicities. If no such substring exists, return `""`.
   If several shortest windows tie, return the one that starts earliest.
 
-  ```
-  smallest_window("ADOBECODEBANC", "ABC")  ->  "BANC"
-  smallest_window("a", "a")                ->  "a"
-  smallest_window("a", "aa")               ->  ""     # only one a available
-  smallest_window("ab", "")                ->  ""     # nothing to cover
-  ```
-
   Multiplicity matters: covering `"aa"` requires **two** `a`s in the window.
   The window may contain extra characters — it only has to contain at least
   what is needed. Every character is significant and case matters.
 
-  `O(n + m)` time. Checking every substring is `O(n^2)` windows and far too
-  slow on the inputs the tests use.
+  When `needed` is empty there is nothing to cover, and the answer is `""`.
+
+  Aim for `O(n + m)` time. Checking every substring is `O(n^2)` windows and far
+  too slow on the inputs the tests use.
 
 hints:
   - "Grow a window on the right until it covers everything needed, then shrink
@@ -48,3 +43,31 @@ kata:
   complexity:
     expected_time: "O(n + m)"
     expected_space: "O(k) for k distinct needed characters"
+  constraints:
+    - "0 <= len(text) <= 10**6"
+    - "0 <= len(needed) <= 10**4"
+    - "Characters are compared exactly."
+  examples:
+    - input: |
+        smallest_window("ADOBECODEBANC", "ABC")
+      output: |
+        "BANC"
+      explanation: |
+        "ADOBEC" covers all three as well, but it is six characters and the window
+        at the end is four.
+    - input: |
+        smallest_window("a", "aa")
+      output: |
+        ""
+      explanation: |
+        Two a's are needed and the text has one.
+    - input: |
+        smallest_window("abab", "ab")
+      output: |
+        "ab"
+      explanation: |
+        "ab", "ba" and "ab" again are all two characters long. The earliest wins.
+    - input: |
+        smallest_window("ab", "")
+      output: |
+        ""

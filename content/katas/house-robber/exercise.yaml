@@ -10,14 +10,9 @@ prompt: |
   Given non-negative values in a row, pick a subset with the largest total,
   subject to one rule: you may not pick two values that are next to each other.
 
-  ```
-  best_haul([1, 2, 3])        ->  4      (1 and 3)
-  best_haul([2, 100, 2])      ->  100
-  best_haul([5, 1, 1, 5])     ->  10     (the two ends)
-  best_haul([])               ->  0
-  ```
+  Picking nothing is allowed, so an empty row has a total of `0`.
 
-  The list may be long enough that trying every subset is impossible.
+  The row may be long enough that trying every subset is impossible.
 
 hints:
   - "Try \"take every other one\" on `[5, 1, 1, 5]`. Both alignments give 6,
@@ -39,3 +34,30 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= len(values) <= 10**5"
+    - "0 <= values[i] <= 10**4"
+  examples:
+    - input: |
+        best_haul([1, 2, 3])
+      output: |
+        4
+      explanation: |
+        Take the 1 and the 3, which are not neighbours.
+    - input: |
+        best_haul([2, 100, 2])
+      output: |
+        100
+      explanation: |
+        The middle value alone beats the two ends together.
+    - input: |
+        best_haul([5, 1, 1, 5])
+      output: |
+        10
+      explanation: |
+        The two ends, skipping both values in the middle. Taking every other value
+        would give only 6.
+    - input: |
+        best_haul([])
+      output: |
+        0

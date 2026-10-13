@@ -11,17 +11,11 @@ prompt: |
   Return the length of the longest run of a single repeated character you can
   produce.
 
-  ```
-  longest_run("ABAB", 2)      ->  4     # change both Bs, or both As
-  longest_run("AABABBA", 1)   ->  4     # "AABA" -> "AAAA"
-  longest_run("ABCDE", 0)     ->  1     # no changes allowed
-  longest_run("", 2)          ->  0
-  ```
+  `k` may exceed the length of the string, in which case the whole string can
+  be made uniform. Every character is significant, and case matters.
 
-  `k` is never negative and may exceed the length of the string. Every
-  character is significant, and case matters.
-
-  `O(n)` time. Trying every substring is `O(n^2)` even with counts cached.
+  Aim for `O(n)` time. Trying every substring is `O(n^2)` even with counts
+  cached.
 
 hints:
   - "A substring can be made uniform with at most k changes exactly when
@@ -45,3 +39,30 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(k) for k distinct characters"
+  constraints:
+    - "0 <= len(text) <= 10**6"
+    - "0 <= k <= 10**6"
+    - "The string may hold any characters, not only letters."
+  examples:
+    - input: |
+        longest_run("ABAB", 2)
+      output: |
+        4
+      explanation: |
+        Change both B's, or both A's.
+    - input: |
+        longest_run("AABABBA", 1)
+      output: |
+        4
+      explanation: |
+        Changing the first B gives "AAAABBA", whose first four characters match.
+    - input: |
+        longest_run("ABCDE", 0)
+      output: |
+        1
+      explanation: |
+        With no changes allowed, the longest run is whatever is already there.
+    - input: |
+        longest_run("AB", 5)
+      output: |
+        2

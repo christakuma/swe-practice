@@ -10,17 +10,11 @@ prompt: |
   Count the distinct ways to climb a staircase, taking one or two steps at a
   time.
 
-  ```
-  ways_to_climb(1)  ->  1       1
-  ways_to_climb(2)  ->  2       1+1, 2
-  ways_to_climb(3)  ->  3       1+1+1, 1+2, 2+1
-  ways_to_climb(0)  ->  1       take no steps
-  ```
+  Order matters: a one-step followed by a two-step is a different way from a
+  two-step followed by a one-step.
 
-  Order matters: `1+2` and `2+1` are different ways.
-
-  The staircase may have hundreds of steps, so the answer can be a very large
-  number — and the obvious recursion is far too slow.
+  The count grows quickly — the answer for a few hundred steps has over a
+  hundred digits — and the obvious recursion is far too slow to reach it.
 
 hints:
   - "Ask what the *last* step was. There are only two possibilities, and each
@@ -43,3 +37,29 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= steps <= 500"
+    - "The answer is exact however large it is; Python integers do not overflow."
+  examples:
+    - input: |
+        ways_to_climb(2)
+      output: |
+        2
+      explanation: |
+        1+1, or 2.
+    - input: |
+        ways_to_climb(3)
+      output: |
+        3
+      explanation: |
+        1+1+1, 1+2, or 2+1.
+    - input: |
+        ways_to_climb(5)
+      output: |
+        8
+    - input: |
+        ways_to_climb(0)
+      output: |
+        1
+      explanation: |
+        There is exactly one way to climb no steps: take none.

@@ -10,15 +10,8 @@ prompt: |
   Return `True` if the second string is a rearrangement of the first — same
   characters, same multiplicities, any order.
 
-  ```
-  is_anagram("anagram", "nagaram")  ->  True
-  is_anagram("rat", "car")          ->  False
-  is_anagram("a", "ab")             ->  False
-  is_anagram("", "")                ->  True
-  ```
-
   Comparison is exact: case matters, and so does every character, including
-  spaces and punctuation. The strings may be long.
+  spaces and punctuation.
 
   `sorted(a) == sorted(b)` is a correct one-liner and is banned — the lesson
   here is that the question is about *counts*, and sorting answers a stronger
@@ -44,3 +37,33 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(k) for k distinct characters"
+  constraints:
+    - "0 <= len(first) <= 10**6"
+    - "0 <= len(second) <= 10**6"
+    - "Any Unicode characters may appear, not only ASCII."
+  examples:
+    - input: |
+        is_anagram("anagram", "nagaram")
+      output: |
+        True
+    - input: |
+        is_anagram("rat", "car")
+      output: |
+        False
+    - input: |
+        is_anagram("aab", "abb")
+      output: |
+        False
+      explanation: |
+        The same two letters, but two a's against one. The counts have to match, not
+        only the set of letters.
+    - input: |
+        is_anagram("Listen", "Silent")
+      output: |
+        False
+      explanation: |
+        Case matters: "L" is not "l" and "S" is not "s".
+    - input: |
+        is_anagram("", "")
+      output: |
+        True

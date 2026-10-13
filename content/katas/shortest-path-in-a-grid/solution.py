@@ -4,7 +4,7 @@ from collections import deque
 
 
 def shortest_path(grid: list[list[int]]) -> int:
-    """Return the fewest steps from the top-left cell to the bottom-right.
+    """Return the number of cells on the shortest route across the grid.
 
     Breadth-first search, and the reason it has to be breadth-first is the whole
     point: BFS reaches every cell by the fewest steps, because it finishes all of

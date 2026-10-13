@@ -10,18 +10,13 @@ prompt: |
   Deep-copy a connected undirected graph. Return the copy of the node you were
   given.
 
-  ```
-  1 --- 2        every node copied, every edge copied,
-  |     |   ->   and no node in the copy is a node from the original
-  4 --- 3
-  ```
-
-  The graph may contain cycles — in fact an undirected edge *is* a cycle, since
+  The graph may contain cycles — in fact every undirected edge *is* one, since
   it appears in both nodes' neighbour lists. It may be a single node with no
-  neighbours, or empty (`None`).
+  neighbours, a node that is its own neighbour, or empty (`None`).
 
   The copy must share **no** nodes with the original: every node is new, and
-  every neighbour list points only at new nodes. The shape must match exactly.
+  every neighbour list points only at new nodes. The shape must match exactly,
+  and the original must be left as you found it.
 
   The tests build graphs with the `Node` class in the stub.
 
@@ -45,3 +40,35 @@ kata:
   complexity:
     expected_time: "O(V + E)"
     expected_space: "O(V)"
+  constraints:
+    - "The graph has between 0 and 300 nodes; the empty graph is None."
+    - "Every node can be reached from the one you are given."
+    - "Edges are undirected: if b is in a.neighbours then a is in b.neighbours."
+    - "Values may repeat. Two nodes are the same node only if they are the same object."
+  examples:
+    - input: |
+        a, b = Node(1), Node(2)
+        a.neighbours.append(b)
+        b.neighbours.append(a)
+        copy = clone_graph(a)
+        (copy.value, [n.value for n in copy.neighbours], copy is a)
+      output: |
+        (1, [2], False)
+      explanation: |
+        The copy holds the same value and the same neighbours, and is a different
+        object from the node it was copied from.
+    - input: |
+        a, b = Node(1), Node(2)
+        a.neighbours.append(b)
+        b.neighbours.append(a)
+        copy = clone_graph(a)
+        copy.neighbours[0].neighbours[0] is copy
+      output: |
+        True
+      explanation: |
+        Following the edge out to the copied 2 and back again arrives at the copied
+        1 itself — not at a second copy of it, and not at the original.
+    - input: |
+        clone_graph(None)
+      output: |
+        None

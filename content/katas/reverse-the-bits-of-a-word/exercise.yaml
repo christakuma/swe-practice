@@ -10,15 +10,6 @@ prompt: |
   Reverse the bits of a **32-bit unsigned** integer and return the result as an
   integer.
 
-  ```
-  reverse_bits(1)           ->  2147483648     # 0b0...01  ->  0b10...0
-  reverse_bits(2147483648)  ->  1
-  reverse_bits(0)           ->  0
-  reverse_bits(4294967295)  ->  4294967295     # all ones is its own reverse
-  ```
-
-  The input is in `0..2**32 - 1`. The output must be too.
-
   The width matters and Python will not supply it. A Python integer has no
   fixed size, so `0b1` is not "thirty-one zeros then a one" unless you say so —
   the leading zeros you are reversing *into* position only exist because the
@@ -48,3 +39,30 @@ kata:
   complexity:
     expected_time: "O(1), thirty-two steps regardless of input"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= n <= 2**32 - 1"
+    - "The result is in the same range."
+  examples:
+    - input: |
+        reverse_bits(1)
+      output: |
+        2147483648
+      explanation: |
+        Bit 0 moves to bit 31, and 2**31 is 2147483648.
+    - input: |
+        reverse_bits(43261596)
+      output: |
+        964176192
+      explanation: |
+        As 32-bit words, 00000010100101000001111010011100 read backwards is
+        00111001011110000010100101000000.
+    - input: |
+        reverse_bits(4294967295)
+      output: |
+        4294967295
+      explanation: |
+        All thirty-two bits are set, and that reads the same in both directions.
+    - input: |
+        reverse_bits(0)
+      output: |
+        0

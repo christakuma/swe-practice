@@ -10,11 +10,6 @@ prompt: |
   Move every zero in a list to the end, keeping the non-zero elements in their
   original relative order.
 
-  ```
-  [0, 1, 0, 3, 12]  ->  [1, 3, 12, 0, 0]
-  [1, 0, 3, 0, 4]   ->  [1, 3, 4, 0, 0]
-  ```
-
   Do it **in place**: the function returns `None`, and the caller reads the
   result from the list it passed in.
 
@@ -41,3 +36,30 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= len(numbers) <= 10**5"
+    - "-10**9 <= numbers[i] <= 10**9"
+  examples:
+    - input: |
+        numbers = [0, 1, 0, 3, 12]
+        move_zeroes(numbers)
+        numbers
+      output: |
+        [1, 3, 12, 0, 0]
+      explanation: |
+        1, 3 and 12 keep the order they had, and both zeros end up behind them.
+    - input: |
+        numbers = [4, 0, -1, 0]
+        move_zeroes(numbers)
+        numbers
+      output: |
+        [4, -1, 0, 0]
+      explanation: |
+        A negative number is an ordinary non-zero value.
+    - input: |
+        numbers = [0, 1]
+        (move_zeroes(numbers), numbers)
+      output: |
+        (None, [1, 0])
+      explanation: |
+        Nothing is returned. The list that was passed in is the result.

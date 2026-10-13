@@ -12,12 +12,6 @@ prompt: |
 
   Return those two positions as a tuple, smaller index first.
 
-  ```
-  two_sum([2, 7, 11, 15], 9)   ->  (0, 1)
-  two_sum([3, 2, 4], 6)        ->  (1, 2)
-  two_sum([3, 3], 6)           ->  (0, 1)
-  ```
-
   The list is not sorted. It may contain negatives and repeated values, and it
   may be long enough that comparing every pair is too slow.
 
@@ -42,3 +36,31 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
+  constraints:
+    - "2 <= len(numbers) <= 10**5"
+    - "-10**9 <= numbers[i] <= 10**9"
+    - "-10**9 <= target <= 10**9"
+    - "Exactly one pair of positions adds up to the target."
+  examples:
+    - input: |
+        two_sum([2, 7, 11, 15], 9)
+      output: |
+        (0, 1)
+      explanation: |
+        2 + 7 is 9, and they sit at positions 0 and 1.
+    - input: |
+        two_sum([3, 2, 4], 6)
+      output: |
+        (1, 2)
+      explanation: |
+        2 + 4. The 3 is half the target, but one position cannot be used twice.
+    - input: |
+        two_sum([3, 3], 6)
+      output: |
+        (0, 1)
+      explanation: |
+        Two equal values at two different positions are a legitimate pair.
+    - input: |
+        two_sum([-3, 4, -7, 1], -10)
+      output: |
+        (0, 2)

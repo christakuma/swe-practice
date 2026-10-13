@@ -10,17 +10,8 @@ prompt: |
   Given a list of `(start, end)` intervals, merge the ones that overlap and
   return the fewest intervals that cover the same ground, sorted by start.
 
-  ```
-  merge_intervals([(1, 4), (2, 6)])             ->  [(1, 6)]
-  merge_intervals([(8, 10), (1, 3), (2, 6)])    ->  [(1, 6), (8, 10)]
-  merge_intervals([(1, 2), (5, 7)])             ->  [(1, 2), (5, 7)]
-  ```
-
-  The intervals arrive in no particular order. They are **closed**: `(1, 3)`
-  and `(3, 5)` share the point 3 and should merge into `(1, 5)`.
-
-  `start <= end` always holds, and a zero-length interval like `(2, 2)` is
-  legal.
+  The intervals are **closed**: `(1, 3)` and `(3, 5)` share the point 3 and
+  merge into `(1, 5)`. A zero-length interval like `(2, 2)` is legal.
 
 hints:
   - "On unsorted input, \"does this interval overlap any of the ones I have
@@ -44,3 +35,35 @@ kata:
   complexity:
     expected_time: "O(n log n)"
     expected_space: "O(n) for the output"
+  constraints:
+    - "0 <= len(intervals) <= 10**5"
+    - "Each interval is (start, end) with -10**9 <= start <= end <= 10**9."
+    - "Intervals arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        merge_intervals([(1, 4), (2, 6)])
+      output: |
+        [(1, 6)]
+    - input: |
+        merge_intervals([(8, 10), (1, 3), (2, 6)])
+      output: |
+        [(1, 6), (8, 10)]
+      explanation: |
+        The input is unordered; the output is sorted by start.
+    - input: |
+        merge_intervals([(1, 3), (3, 5)])
+      output: |
+        [(1, 5)]
+      explanation: |
+        The two share the point 3, and closed intervals that touch are merged.
+    - input: |
+        merge_intervals([(1, 10), (2, 3)])
+      output: |
+        [(1, 10)]
+      explanation: |
+        The second interval lies inside the first, so the wider end is the one that
+        is kept.
+    - input: |
+        merge_intervals([(1, 2), (5, 7)])
+      output: |
+        [(1, 2), (5, 7)]

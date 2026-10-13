@@ -11,19 +11,11 @@ prompt: |
   combination of candidates that sums to the target. **A candidate may be used
   as many times as you like.**
 
-  ```
-  combination_sum([2, 3, 6, 7], 7)   ->  [(2, 2, 3), (7,)]
-  combination_sum([2, 3, 5], 8)      ->  [(2, 2, 2, 2), (2, 3, 3), (3, 5)]
-  combination_sum([2], 1)            ->  []
-  combination_sum([2, 3], 0)         ->  [()]      # one way: take nothing
-  ```
-
   Each combination is a tuple in **ascending** order, and the returned list is
   sorted ascending. Two combinations using the same multiset of candidates are
   the same combination — `(2, 3, 2)` and `(2, 2, 3)` are one answer, not two.
 
-  Candidates are distinct and positive. The target is non-negative; a target of
-  zero has exactly one combination, the empty one.
+  A target of zero has exactly one combination, the empty one.
 
 hints:
   - "Build combinations by choosing candidates one at a time, subtracting from
@@ -47,3 +39,29 @@ kata:
   complexity:
     expected_time: "O(number of combinations * target / smallest candidate)"
     expected_space: "O(target / smallest candidate) for the recursion"
+  constraints:
+    - "0 <= len(candidates) <= 10"
+    - "1 <= candidates[i] <= 100, and no two candidates are equal."
+    - "0 <= target <= 300"
+    - "Candidates arrive in no particular order."
+    - "The answer never holds more than 1,000 combinations."
+  examples:
+    - input: |
+        combination_sum([2, 3, 6, 7], 7)
+      output: |
+        [(2, 2, 3), (7,)]
+    - input: |
+        combination_sum([2, 3, 5], 8)
+      output: |
+        [(2, 2, 2, 2), (2, 3, 3), (3, 5)]
+    - input: |
+        combination_sum([2], 1)
+      output: |
+        []
+    - input: |
+        combination_sum([2, 3], 0)
+      output: |
+        [()]
+      explanation: |
+        There is one way to reach zero: take nothing. That is one combination, the
+        empty tuple, and not the same as there being none.

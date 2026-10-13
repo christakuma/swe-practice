@@ -10,15 +10,9 @@ prompt: |
   Given `(weight, value)` items and a weight capacity, return the most value
   you can carry. Each item may be taken **at most once** and cannot be split.
 
-  ```
-  best_value([(1, 1), (3, 4), (4, 5), (5, 7)], 7)      ->  9
-  best_value([(10, 60), (20, 100), (30, 120)], 50)     ->  220
-  best_value([(2, 3)], 1)                              ->  0
-  best_value([], 5)                                    ->  0
-  ```
+  Carrying nothing is allowed, so the answer is `0` when nothing fits.
 
-  Two hundred items and a capacity in the thousands, so enumerating subsets is
-  out.
+  With a couple of hundred items, enumerating subsets is out.
 
 hints:
   - "Try the greedy approaches first and find out how they fail: most valuable
@@ -41,3 +35,31 @@ kata:
   complexity:
     expected_time: "O(items * capacity)"
     expected_space: "O(capacity)"
+  constraints:
+    - "0 <= len(items) <= 200"
+    - "Each item is (weight, value) with 1 <= weight <= 1000 and 1 <= value <= 1000."
+    - "0 <= capacity <= 5000"
+  examples:
+    - input: |
+        best_value([(1, 1), (3, 4), (4, 5), (5, 7)], 7)
+      output: |
+        9
+      explanation: |
+        The items weighing 3 and 4 fill the bag exactly and are worth 4 + 5.
+    - input: |
+        best_value([(10, 60), (20, 100), (30, 120)], 50)
+      output: |
+        220
+      explanation: |
+        The 20 and the 30. Taking the best value per unit of weight first picks the
+        10 and then the 20, and stops at 160 with no room for the 30.
+    - input: |
+        best_value([(5, 10)], 10)
+      output: |
+        10
+      explanation: |
+        There is room for two of them and only one to take.
+    - input: |
+        best_value([(2, 3)], 1)
+      output: |
+        0

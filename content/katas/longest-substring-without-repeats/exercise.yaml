@@ -10,18 +10,10 @@ prompt: |
   Given a string, return the length of the longest substring in which every
   character is distinct.
 
-  ```
-  longest_unique_run("pwwkew")   ->  3     ("wke")
-  longest_unique_run("abcdef")   ->  6     (the whole thing)
-  longest_unique_run("bbbbb")    ->  1
-  longest_unique_run("")         ->  0
-  ```
-
   A substring is contiguous — `"pwke"` is not a substring of `"pwwkew"`.
 
-  Any character can appear: letters, digits, spaces, punctuation. The string
-  may be long enough that re-scanning it from each starting position is too
-  slow.
+  The string may be long enough that re-scanning it from each starting
+  position is too slow.
 
 hints:
   - "Write the obvious version first: for every start position, extend until
@@ -47,3 +39,33 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(k), k distinct characters"
+  constraints:
+    - "0 <= len(text) <= 5 * 10**4"
+    - "Any character can appear: letters, digits, spaces, punctuation."
+  examples:
+    - input: |
+        longest_unique_run("pwwkew")
+      output: |
+        3
+      explanation: |
+        "wke". The longer "pwke" has no repeats but skips a character, so it is a
+        subsequence and not a substring.
+    - input: |
+        longest_unique_run("abcdef")
+      output: |
+        6
+    - input: |
+        longest_unique_run("abba")
+      output: |
+        2
+      explanation: |
+        "ab" or "ba". The final a repeats one that is no longer inside the run, so
+        it does not end it.
+    - input: |
+        longest_unique_run("bbbbb")
+      output: |
+        1
+    - input: |
+        longest_unique_run("")
+      output: |
+        0

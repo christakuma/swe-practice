@@ -10,17 +10,9 @@ prompt: |
   `n` nodes are labelled `0` to `n - 1`. Given a list of undirected edges,
   count the connected components.
 
-  ```
-  count_components(5, [(0, 1), (1, 2), (3, 4)])  ->  2
-  count_components(5, [])                         ->  5
-  count_components(1, [])                         ->  1
-  count_components(0, [])                         ->  0
-  ```
-
-  An isolated node is a component of its own. Edges may repeat, and an edge may
-  join two nodes that are already connected — such an edge changes nothing.
-
-  Edges are given as `(a, b)` pairs and are undirected.
+  An isolated node is a component of its own. An edge that joins two nodes
+  which are already connected changes nothing — and that includes a repeated
+  edge and an edge from a node to itself.
 
 hints:
   - "Start from the answer with no edges at all: `n` components, one per node.
@@ -44,3 +36,28 @@ kata:
   complexity:
     expected_time: "O((V + E) * almost-constant)"
     expected_space: "O(V)"
+  constraints:
+    - "0 <= n <= 2 * 10**5"
+    - "0 <= len(edges) <= 2 * 10**5"
+    - "Each edge is a pair (a, b) with 0 <= a < n and 0 <= b < n."
+    - "Edges may repeat, and a may equal b."
+  examples:
+    - input: |
+        count_components(5, [(0, 1), (1, 2), (3, 4)])
+      output: |
+        2
+      explanation: |
+        Nodes 0, 1 and 2 form one component, and 3 and 4 the other.
+    - input: |
+        count_components(5, [])
+      output: |
+        5
+      explanation: |
+        With no edges, every node is on its own.
+    - input: |
+        count_components(4, [(0, 1), (1, 0), (2, 2)])
+      output: |
+        3
+      explanation: |
+        The second edge repeats the first and the third joins 2 to itself, so
+        neither merges anything: the components are {0, 1}, {2} and {3}.

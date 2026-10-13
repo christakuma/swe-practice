@@ -10,19 +10,12 @@ prompt: |
   Return `True` if the string reads the same forwards and backwards, **ignoring
   case and ignoring every character that is not a letter or a digit**.
 
-  ```
-  is_palindrome("A man, a plan, a canal: Panama")  ->  True
-  is_palindrome("race a car")                      ->  False
-  is_palindrome(".,")                              ->  True    # nothing left
-  is_palindrome("")                                ->  True
-  ```
-
   A string with no letters or digits is a palindrome, because an empty sequence
   reads the same both ways.
 
   Use `O(1)` extra space. Filtering the string into a new one and comparing it
   with its reverse is correct and allocates two more strings the size of the
-  input; the input may be very large.
+  input, and the input may be very large.
 
 hints:
   - "Two pointers, one from each end, comparing as they move inward. They meet
@@ -44,3 +37,33 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= len(text) <= 3 * 10**6"
+    - "Any Unicode characters may appear, not only ASCII."
+    - "A character counts when str.isalnum() is true of it; case is folded with str.lower()."
+  examples:
+    - input: |
+        is_palindrome("A man, a plan, a canal: Panama")
+      output: |
+        True
+      explanation: |
+        Without spaces, punctuation and case it reads "amanaplanacanalpanama".
+    - input: |
+        is_palindrome("race a car")
+      output: |
+        False
+      explanation: |
+        "raceacar" backwards is "racaecar".
+    - input: |
+        is_palindrome("0P")
+      output: |
+        False
+      explanation: |
+        Digits count. This is "0p", which is not "p0".
+    - input: |
+        is_palindrome(".,")
+      output: |
+        True
+      explanation: |
+        Nothing is left once the punctuation is ignored, and nothing reads the same
+        both ways.

@@ -13,15 +13,8 @@ prompt: |
   Two pixels are in the same region when they touch up, down, left or right and
   **started** with the same colour. Diagonals do not connect.
 
-  ```
-  1 1 1                 2 2 2
-  1 1 0   fill(1,1,2)   2 2 0
-  1 0 1                 2 0 1      the bottom-right 1 is only diagonally
-                                   connected, so it stays
-  ```
-
-  Modify the image in place and return it. The image may be a few hundred
-  pixels on a side.
+  Modify the image in place and return it. An empty image is returned as it
+  is.
 
 hints:
   - "It is the same walk as counting islands: from the starting pixel, visit
@@ -44,3 +37,38 @@ kata:
   complexity:
     expected_time: "O(rows * columns)"
     expected_space: "O(rows * columns) for the stack in the worst case"
+  constraints:
+    - "0 <= rows <= 300 and 1 <= columns <= 300"
+    - "0 <= colour <= 10**6, for the new colour and for every pixel."
+    - "(row, column) is a pixel of the image whenever the image has any."
+    - "A region may cover the whole image: 90,000 pixels, far deeper than Python will recurse."
+  examples:
+    - input: |
+        image = [
+            [1, 1, 1],
+            [1, 1, 0],
+            [1, 0, 1],
+        ]
+        flood_fill(image, 1, 1, 2)
+      output: |
+        [[2, 2, 2], [2, 2, 0], [2, 0, 1]]
+      explanation: |
+        The 1 in the bottom-right corner touches the region only diagonally, so it
+        keeps its colour.
+    - input: |
+        image = [[0, 0], [0, 0]]
+        flood_fill(image, 0, 0, 0)
+      output: |
+        [[0, 0], [0, 0]]
+      explanation: |
+        The region is already the colour it is being filled with, so nothing
+        changes.
+    - input: |
+        image = [[5, 5, 3]]
+        result = flood_fill(image, 0, 0, 7)
+        (result is image, image)
+      output: |
+        (True, [[7, 7, 3]])
+      explanation: |
+        The image is recoloured in place, and what comes back is the same list that
+        went in.

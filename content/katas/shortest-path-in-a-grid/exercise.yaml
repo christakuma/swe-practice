@@ -11,15 +11,11 @@ prompt: |
   bottom-right, moving only up, down, left or right, and never entering a cell
   holding `1`.
 
-  ```
-  0 0 0            0 1 0
-  0 0 0  ->  5     0 1 0  ->  5     0 1  ->  -1
-  0 0 0            0 0 0            1 0
-  ```
+  Count both ends: the answer for a `1 x 1` open grid is `1`. Return `-1` when
+  there is no route — which includes a start or a destination that is itself a
+  wall, and a grid with no cells at all.
 
-  Count both ends: a 1x1 open grid is `1`. Return `-1` when there is no route.
-
-  You may modify the grid. It may be a few hundred cells on a side.
+  You may modify the grid.
 
 hints:
   - "This is the grid-as-a-graph problem again, but \"shortest\" changes which
@@ -44,3 +40,44 @@ kata:
   complexity:
     expected_time: "O(rows * columns)"
     expected_space: "O(rows * columns)"
+  constraints:
+    - "The grid has at most 200 rows and 200 columns, and may be empty."
+    - "Every row is the same length, and every cell is 0 (open) or 1 (wall)."
+  examples:
+    - input: |
+        grid = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+        ]
+        shortest_path(grid)
+      output: |
+        5
+      explanation: |
+        Two moves right and two down, in any order, visit five cells counting both
+        ends.
+    - input: |
+        grid = [
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 0, 0],
+        ]
+        shortest_path(grid)
+      output: |
+        5
+      explanation: |
+        The wall leaves one way through: down the left side and along the bottom.
+    - input: |
+        grid = [
+            [0, 1],
+            [1, 0],
+        ]
+        shortest_path(grid)
+      output: |
+        -1
+      explanation: |
+        Both ways out of the start are walls, and diagonal moves are not allowed.
+    - input: |
+        shortest_path([[0]])
+      output: |
+        1

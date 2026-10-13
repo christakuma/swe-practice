@@ -9,15 +9,8 @@ estimated_minutes: 30
 prompt: |
   Add two **signed 32-bit** integers without using `+` or `-` anywhere.
 
-  ```
-  add(1, 2)              ->  3
-  add(-1, 1)             ->  0
-  add(-2, -3)            -> -5
-  add(2147483647, 1)     -> -2147483648    # it wraps, like a 32-bit word
-  ```
-
-  Both inputs are in `-2**31 .. 2**31 - 1`, and so is the result: the arithmetic
-  is 32-bit two's complement and **overflow wraps** rather than growing.
+  The arithmetic is 32-bit two's complement, so **overflow wraps** rather than
+  growing: one more than the largest value is the smallest.
 
   Allowed: `&`, `|`, `^`, `~`, `<<`, `>>`, comparisons, and assignment. Banned:
   `+`, `-` (both as operators and as unary negation), `sum`, `abs`, `math.*`,
@@ -49,3 +42,23 @@ kata:
   complexity:
     expected_time: "O(1), at most thirty-two carry rounds"
     expected_space: "O(1)"
+  constraints:
+    - "-2**31 <= a <= 2**31 - 1"
+    - "-2**31 <= b <= 2**31 - 1"
+    - "The result is in the same range: a sum outside it wraps round."
+  examples:
+    - input: |
+        add(1, 2)
+      output: |
+        3
+    - input: |
+        add(-2, -3)
+      output: |
+        -5
+    - input: |
+        add(2147483647, 1)
+      output: |
+        -2147483648
+      explanation: |
+        2147483647 is 2**31 - 1, the largest signed 32-bit value. Adding one carries
+        into the sign bit, which makes it the smallest.

@@ -9,19 +9,10 @@ estimated_minutes: 28
 prompt: |
   Given meeting intervals, return the fewest rooms needed to hold all of them.
 
-  ```
-  rooms_needed([(0, 30), (5, 10), (15, 20)])  ->  2
-  rooms_needed([(7, 10), (2, 4)])              ->  1
-  rooms_needed([])                              ->  0
-  rooms_needed([(1, 5), (1, 5), (1, 5)])       ->  3
-  ```
-
   A meeting ending exactly when another starts does **not** need a second room:
-  `(1, 2)` and `(2, 3)` share one. Intervals are `(start, end)` with
-  `start < end` — every meeting has positive duration — given in no particular
-  order, and may repeat.
+  `(1, 2)` and `(2, 3)` share one. Every meeting has positive duration.
 
-  `O(n log n)`.
+  Aim for `O(n log n)`.
 
 hints:
   - "The answer is the largest number of meetings running at the same moment --
@@ -43,3 +34,29 @@ kata:
   complexity:
     expected_time: "O(n log n)"
     expected_space: "O(n)"
+  constraints:
+    - "0 <= len(meetings) <= 2 * 10**5"
+    - "Each meeting is (start, end) with -10**9 <= start < end <= 10**9."
+    - "Meetings arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        rooms_needed([(0, 30), (5, 10), (15, 20)])
+      output: |
+        2
+      explanation: |
+        The long meeting needs a room for the whole half hour. The two short ones do
+        not overlap each other, so they can share a second.
+    - input: |
+        rooms_needed([(7, 10), (2, 4)])
+      output: |
+        1
+    - input: |
+        rooms_needed([(1, 2), (2, 3)])
+      output: |
+        1
+      explanation: |
+        The first meeting has left by the time the second arrives.
+    - input: |
+        rooms_needed([(1, 5), (1, 5), (1, 5)])
+      output: |
+        3

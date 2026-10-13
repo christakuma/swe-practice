@@ -7,21 +7,15 @@ tags: [graphs, grids, dfs, bfs, connected-components]
 estimated_minutes: 22
 
 prompt: |
-  Count the connected groups of `1`s in a rectangular grid of `0`s and `1`s.
+  Count the islands in a rectangular grid of `0`s and `1`s. An island is a
+  connected group of `1`s.
 
   Cells connect **only** up, down, left and right. Diagonal neighbours do not
   count.
 
-  ```
-  1 1 0 0
-  1 1 0 0    ->  2
-  0 0 1 0
-  ```
-
   An empty grid has no islands. You may modify the grid.
 
-  The grid may be large — up to a few hundred cells on a side, all of it one
-  island.
+  The grid may be large, and all of it may be one island.
 
 hints:
   - "A grid is a graph in disguise: every cell is a node, and \"directly
@@ -45,3 +39,30 @@ kata:
   complexity:
     expected_time: "O(rows * columns)"
     expected_space: "O(rows * columns) for the stack in the worst case"
+  constraints:
+    - "0 <= rows <= 300 and 0 <= columns <= 300"
+    - "Every row is the same length, and every cell is 0 or 1."
+    - "One island may cover the whole grid: 90,000 cells, far deeper than Python will recurse."
+  examples:
+    - input: |
+        grid = [
+            [1, 1, 0, 0],
+            [1, 1, 0, 0],
+            [0, 0, 1, 0],
+        ]
+        count_islands(grid)
+      output: |
+        2
+      explanation: |
+        The block of four in the top-left is one island and the single cell below
+        and to the right of it is another.
+    - input: |
+        count_islands([[1, 0], [0, 1]])
+      output: |
+        2
+      explanation: |
+        The two 1s touch only at a corner, and diagonals do not connect.
+    - input: |
+        count_islands([])
+      output: |
+        0

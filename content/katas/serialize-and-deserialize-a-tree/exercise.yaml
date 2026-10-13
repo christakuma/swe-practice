@@ -11,21 +11,18 @@ prompt: |
   binary tree into a string, and `deserialize` turns it back into exactly the
   same tree.
 
-  ```
-  deserialize(serialize(tree))  ->  a tree identical in shape and values
-  serialize(None)               ->  some string
-  deserialize(serialize(None))  ->  None
-  ```
-
   The tree is an arbitrary binary tree — **not** a search tree, so there is no
   ordering to lean on. Values may be negative and may repeat. The tree may be
-  empty, a single node, or a chain a thousand deep.
+  empty, a single node, lopsided, or tens of thousands of nodes.
 
   Shape must survive. Two trees holding the same values in different positions
-  must not serialise to the same string.
+  must not serialise to the same string — a lone left child and a lone right
+  child are different trees.
 
   You may not use `json`, `pickle`, `repr`, `ast`, or any other serialiser.
   Build the format yourself.
+
+  The tests build trees with the `TreeNode` class in the stub.
 
 hints:
   - "A plain pre-order traversal of the values is not enough. Two different
@@ -48,3 +45,40 @@ kata:
   complexity:
     expected_time: "O(n) both directions"
     expected_space: "O(n)"
+  constraints:
+    - "The tree has between 0 and 10**5 nodes and is at most 500 levels deep; an empty tree is None."
+    - "-10**9 <= node.value <= 10**9, and values may repeat."
+    - "deserialize is only ever given a string that serialize returned."
+  examples:
+    - input: |
+        root = TreeNode(1, TreeNode(2), TreeNode(3, TreeNode(4), TreeNode(5)))
+        deserialize(serialize(root))
+      output: |
+        TreeNode(1, TreeNode(2), TreeNode(3, TreeNode(4), TreeNode(5)))
+      explanation: |
+        What comes back is a tree with the same shape and the same values.
+
+                1
+               / \
+              2   3
+                 / \
+                4   5
+    - input: |
+        left = TreeNode(1, TreeNode(2))
+        right = TreeNode(1, None, TreeNode(2))
+        serialize(left) == serialize(right)
+      output: |
+        False
+      explanation: |
+        The same two values in two different shapes. If these serialised to the same
+        string, deserialize could not know which tree to rebuild.
+    - input: |
+        deserialize(serialize(None))
+      output: |
+        None
+    - input: |
+        isinstance(serialize(None), str)
+      output: |
+        True
+      explanation: |
+        Even the empty tree becomes a string, and what the string says is up to you.

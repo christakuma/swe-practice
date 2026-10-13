@@ -10,19 +10,12 @@ prompt: |
   Count the palindromic substrings in a string. Substrings at different
   positions count separately even when they are identical.
 
-  ```
-  count_palindromes("abc")    ->  3     # a, b, c
-  count_palindromes("aaa")    ->  6     # a, a, a, aa, aa, aaa
-  count_palindromes("")       ->  0
-  ```
-
   Every single character is a palindrome, so a string of length `n` has at
-  least `n`. The two `aa`s in `"aaa"` are different substrings — one at
-  positions 0-1 and one at 1-2 — and both count.
+  least `n`.
 
   Every character is significant: no case folding, no skipping punctuation.
 
-  `O(n^2)` time and `O(1)` space.
+  Aim for `O(n^2)` time and `O(1)` extra space.
 
 hints:
   - "You have already solved the hard part if you have done
@@ -45,3 +38,31 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= len(text) <= 5000"
+    - "The string may hold any characters, and they are compared exactly."
+  examples:
+    - input: |
+        count_palindromes("abc")
+      output: |
+        3
+      explanation: |
+        Only the single characters: a, b and c.
+    - input: |
+        count_palindromes("aaa")
+      output: |
+        6
+      explanation: |
+        Three single characters, "aa" at positions 0-1, "aa" again at positions 1-2,
+        and "aaa". The two "aa"s are different substrings and both count.
+    - input: |
+        count_palindromes("abba")
+      output: |
+        6
+      explanation: |
+        The four single characters, "bb" and "abba". The last two are centred on the
+        gap between the two b's rather than on a character.
+    - input: |
+        count_palindromes("")
+      output: |
+        0

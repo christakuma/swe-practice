@@ -11,17 +11,13 @@ prompt: |
   new interval, merging anything it overlaps, and return the result — still
   sorted and still non-overlapping.
 
-  ```
-  insert([(1, 3), (6, 9)], (2, 5))                 ->  [(1, 5), (6, 9)]
-  insert([(1, 2), (3, 5), (6, 7), (8, 10)], (4, 8)) ->  [(1, 2), (3, 10)]
-  insert([], (5, 7))                                ->  [(5, 7)]
-  insert([(1, 5)], (2, 3))                          ->  [(1, 5)]
-  ```
+  Intervals are closed, so two that merely meet at a point count as
+  overlapping: `(1, 3)` and `(3, 5)` merge into `(1, 5)`.
 
-  Intervals are `(start, end)` with `start <= end`, and they **touch** when they
-  merely meet at a point: `(1, 3)` and `(3, 5)` merge into `(1, 5)`.
+  Return a new list and leave the one you were given alone.
 
-  `O(n)` — the input is already sorted, so there is no reason to sort anything.
+  Aim for `O(n)` — the input is already sorted, so there is no reason to sort
+  anything.
 
 hints:
   - "Three groups, in order: intervals entirely before the new one, intervals
@@ -44,3 +40,33 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n) for the output"
+  constraints:
+    - "0 <= len(intervals) <= 10**5"
+    - "Every interval, the new one included, is (start, end) with -10**9 <= start <= end <= 10**9."
+    - "The given intervals are sorted by start and no two of them overlap."
+  examples:
+    - input: |
+        insert([(1, 3), (6, 9)], (2, 5))
+      output: |
+        [(1, 5), (6, 9)]
+    - input: |
+        insert([(1, 2), (3, 5), (6, 7), (8, 10)], (4, 8))
+      output: |
+        [(1, 2), (3, 10)]
+      explanation: |
+        The new interval reaches into (3, 5), covers (6, 7) and meets (8, 10), so
+        all three are swallowed into one.
+    - input: |
+        insert([(1, 3)], (3, 5))
+      output: |
+        [(1, 5)]
+      explanation: |
+        The two meet at 3, and touching counts as overlapping here.
+    - input: |
+        insert([(1, 5)], (2, 3))
+      output: |
+        [(1, 5)]
+    - input: |
+        insert([], (5, 7))
+      output: |
+        [(5, 7)]

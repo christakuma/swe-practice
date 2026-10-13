@@ -9,15 +9,8 @@ estimated_minutes: 10
 prompt: |
   Return the longest string that every word in the list starts with.
 
-  ```
-  longest_common_prefix(["flower", "flow", "flight"])     ->  "fl"
-  longest_common_prefix(["dog", "racecar", "car"])        ->  ""
-  longest_common_prefix(["interview", "inter"])           ->  "inter"
-  longest_common_prefix([])                               ->  ""
-  ```
-
-  Comparison is case sensitive. An empty list, and an empty string among the
-  words, both have the empty string as their answer.
+  Comparison is case sensitive. The answer is the empty string when the list
+  is empty, and when any word in it is.
 
 hints:
   - "Whatever the answer is, it is a prefix of the first word — so it can never
@@ -39,3 +32,35 @@ kata:
   complexity:
     expected_time: "O(n m) for n words with a shared prefix of length m"
     expected_space: "O(m)"
+  constraints:
+    - "0 <= len(words) <= 10**4"
+    - "0 <= len(words[i]) <= 1000"
+    - "Characters are compared exactly."
+  examples:
+    - input: |
+        longest_common_prefix(["flower", "flow", "flight"])
+      output: |
+        "fl"
+    - input: |
+        longest_common_prefix(["dog", "racecar", "car"])
+      output: |
+        ""
+      explanation: |
+        The first characters already differ.
+    - input: |
+        longest_common_prefix(["interview", "inter"])
+      output: |
+        "inter"
+      explanation: |
+        The prefix can be no longer than the shortest word, and here it is all of
+        it.
+    - input: |
+        longest_common_prefix(["Apple", "apple"])
+      output: |
+        ""
+      explanation: |
+        "A" and "a" are different characters.
+    - input: |
+        longest_common_prefix(["solo"])
+      output: |
+        "solo"

@@ -7,23 +7,15 @@ tags: [grids, invariants, scanning]
 estimated_minutes: 25
 
 prompt: |
-  Return every value of an `m x n` matrix in spiral order: left along the top
-  row, down the right column, right-to-left along the bottom, up the left
-  column, then inward and repeat.
-
-  ```
-  [[1, 2, 3],
-   [4, 5, 6],   ->  [1, 2, 3, 6, 9, 8, 7, 4, 5]
-   [7, 8, 9]]
-
-  [[1, 2, 3, 4],
-   [5, 6, 7, 8]]  ->  [1, 2, 3, 4, 8, 7, 6, 5]
-  ```
+  Return every value of an `m x n` matrix in spiral order: left to right along
+  the top row, down the right column, right to left along the bottom row, up
+  the left column, then inward and repeat.
 
   The matrix need not be square, and it may be empty or a single row or column.
   Every value appears in the output exactly once.
 
-  Do not build a grid of visited flags. Four boundaries are enough.
+  Do not build a grid of visited flags — four boundaries are enough — and leave
+  the matrix as you found it.
 
 hints:
   - "Hold four numbers: the first unread row, the last unread row, the first
@@ -48,3 +40,38 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(1) beyond the output"
+  constraints:
+    - "0 <= m <= 400 and 0 <= n <= 400, for m rows of n values each."
+    - "-10**9 <= matrix[i][j] <= 10**9"
+  examples:
+    - input: |
+        matrix = [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+        ]
+        spiral_order(matrix)
+      output: |
+        [1, 2, 3, 6, 9, 8, 7, 4, 5]
+      explanation: |
+        Round the outside clockwise from the top-left, then the 5 left in the
+        middle.
+    - input: |
+        matrix = [
+            [1, 2, 3, 4],
+            [5, 6, 7, 8],
+        ]
+        spiral_order(matrix)
+      output: |
+        [1, 2, 3, 4, 8, 7, 6, 5]
+      explanation: |
+        With two rows, the trip back along the bottom finishes the matrix. There is
+        no left column left to climb.
+    - input: |
+        spiral_order([[1], [2], [3]])
+      output: |
+        [1, 2, 3]
+    - input: |
+        spiral_order([])
+      output: |
+        []

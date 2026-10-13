@@ -7,22 +7,16 @@ tags: [dynamic-programming, grids, counting, recurrence]
 estimated_minutes: 20
 
 prompt: |
-  Starting at the top-left of an `m x n` grid and moving only **right or down**,
-  count the distinct paths to the bottom-right.
+  A grid is `width` columns wide and `height` rows tall. Starting in the
+  top-left cell and moving only **right or down**, count the distinct paths to
+  the bottom-right cell.
 
-  ```
-  count_paths(3, 2)   ->  3      # RR D, R D R, D RR  (3 wide, 2 tall)
-  count_paths(3, 7)   ->  28
-  count_paths(1, 1)   ->  1      # already there
-  count_paths(1, 5)   ->  1      # only one way down a single column
-  count_paths(0, 5)   ->  0      # no grid at all
-  ```
+  If either dimension is zero there is no grid, and so no path. A `1 x 1` grid
+  has one path: you are already there.
 
-  `count_paths(width, height)`. Either dimension may be zero, in which case
-  there is no path.
-
-  `O(m * n)` time, and `O(min(m, n))` space is achievable — one row of the
-  table is enough.
+  Aim for `O(width * height)` time. `O(min(width, height))` space is
+  achievable — one row of the table is enough, and it should be the shorter
+  one.
 
 hints:
   - "How many ways are there to reach a given cell? You can only have arrived
@@ -46,3 +40,31 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(min(m, n))"
+  constraints:
+    - "0 <= width <= 10**5 and 0 <= height <= 10**5"
+    - "width * height <= 10**6"
+    - "The answer is exact however large it is; a float is not accepted."
+  examples:
+    - input: |
+        count_paths(3, 2)
+      output: |
+        3
+      explanation: |
+        Three columns and two rows, so every path is two moves right and one down:
+        right-right-down, right-down-right or down-right-right.
+    - input: |
+        count_paths(3, 7)
+      output: |
+        28
+    - input: |
+        count_paths(1, 5)
+      output: |
+        1
+      explanation: |
+        A single column leaves no choice but to go straight down.
+    - input: |
+        count_paths(0, 5)
+      output: |
+        0
+      explanation: |
+        A grid with no columns has no cells, so there is nowhere to start.

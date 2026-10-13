@@ -10,17 +10,10 @@ prompt: |
   Return the fewest coins that add up to an amount. Each coin value may be used
   as many times as you like.
 
-  ```
-  fewest_coins([1, 2, 5], 11)   ->  3     (5 + 5 + 1)
-  fewest_coins([1, 3, 4], 6)    ->  2     (3 + 3)
-  fewest_coins([2], 3)          ->  -1
-  fewest_coins([1], 0)          ->  0
-  ```
+  Return `-1` when no combination reaches the amount. An amount of zero needs
+  no coins at all.
 
-  Return `-1` when no combination reaches the amount.
-
-  Amounts may be in the thousands, so enumerating combinations is not an
-  option.
+  Amounts run into the thousands, so enumerating combinations is not an option.
 
 hints:
   - "Write the greedy version — take the largest coin that fits, repeat — and
@@ -42,3 +35,30 @@ kata:
   complexity:
     expected_time: "O(amount * number of coins)"
     expected_space: "O(amount)"
+  constraints:
+    - "0 <= len(coins) <= 12"
+    - "1 <= coins[i] <= 10**4"
+    - "0 <= amount <= 10**4"
+  examples:
+    - input: |
+        fewest_coins([1, 2, 5], 11)
+      output: |
+        3
+      explanation: |
+        5 + 5 + 1.
+    - input: |
+        fewest_coins([1, 3, 4], 6)
+      output: |
+        2
+      explanation: |
+        3 + 3. Taking the largest coin first gives 4 + 1 + 1, which is three coins.
+    - input: |
+        fewest_coins([2], 3)
+      output: |
+        -1
+      explanation: |
+        Twos can only make even amounts.
+    - input: |
+        fewest_coins([1], 0)
+      output: |
+        0

@@ -10,19 +10,8 @@ prompt: |
   Return `True` if two binary trees have the same shape and the same values in
   the same positions.
 
-  ```
-     1        1
-    / \      / \      ->  True
-   2   3    2   3
-
-     1        1
-    /          \      ->  False   (same values, different shape)
-   2            2
-
-  None, None                 ->  True
-  ```
-
-  Two empty trees are the same. A tree is never the same as an empty tree.
+  Two empty trees are the same. An empty tree is never the same as a non-empty
+  one.
 
   Shape matters as much as values: a tree with a single left child is not the
   same as a tree with a single right child, even though both hold the same two
@@ -52,3 +41,36 @@ kata:
   complexity:
     expected_time: "O(n) for the smaller tree"
     expected_space: "O(h)"
+  constraints:
+    - "Each tree has between 0 and 100 nodes; an empty tree is None."
+    - "-10**4 <= node.value <= 10**4"
+  examples:
+    - input: |
+        first = TreeNode(1, TreeNode(2), TreeNode(3))
+        second = TreeNode(1, TreeNode(2), TreeNode(3))
+        is_same_tree(first, second)
+      output: |
+        True
+      explanation: |
+        Both trees are
+
+              1
+             / \
+            2   3
+    - input: |
+        first = TreeNode(1, TreeNode(2))
+        second = TreeNode(1, None, TreeNode(2))
+        is_same_tree(first, second)
+      output: |
+        False
+      explanation: |
+        The same two values in a different shape: 2 is a left child in the first
+        tree and a right child in the second.
+
+              1        1
+             /          \
+            2            2
+    - input: |
+        is_same_tree(None, None)
+      output: |
+        True

@@ -10,13 +10,6 @@ prompt: |
   Given a non-negative integer `n`, return a list of length `n + 1` where entry
   `i` is the number of 1 bits in `i`.
 
-  ```
-  count_bits_up_to(2)   ->  [0, 1, 1]            # 0, 1, 10
-  count_bits_up_to(5)   ->  [0, 1, 1, 2, 1, 2]   # 0, 1, 10, 11, 100, 101
-  ```
-
-  `n` may be zero, in which case the answer is `[0]`.
-
   Counting each number's bits independently costs `O(n log n)` and is the
   obvious answer. Do it in `O(n)` — one constant-time step per entry, with no
   inner loop over bits at all.
@@ -44,3 +37,22 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n) for the result"
+  constraints:
+    - "0 <= n <= 10**6"
+  examples:
+    - input: |
+        count_bits_up_to(2)
+      output: |
+        [0, 1, 1]
+      explanation: |
+        In binary, 0 is 0, 1 is 1 and 2 is 10.
+    - input: |
+        count_bits_up_to(5)
+      output: |
+        [0, 1, 1, 2, 1, 2]
+      explanation: |
+        The numbers are 0, 1, 10, 11, 100 and 101.
+    - input: |
+        count_bits_up_to(0)
+      output: |
+        [0]

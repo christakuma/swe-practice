@@ -10,20 +10,11 @@ prompt: |
   Letters are encoded as numbers: `A` is `1`, `B` is `2`, … `Z` is `26`. Given a
   string of digits, count the ways to decode it back into letters.
 
-  ```
-  count_decodings("12")     ->  2     # "AB" (1 2) or "L" (12)
-  count_decodings("226")    ->  3     # BBF, BZ, VF
-  count_decodings("06")     ->  0     # no letter is encoded "06"
-  count_decodings("0")      ->  0
-  count_decodings("")       ->  0
-  count_decodings("10")     ->  1     # only "J" -- 1 then 0 is not decodable
-  ```
-
   The encoding has **no leading zeros**: `"06"` is not a valid encoding of `F`,
   and a `0` can never stand alone. A string that cannot be decoded at all has
-  zero ways.
+  zero ways, and by this kata's convention so does the empty string.
 
-  The input is digits only. `O(n)` time and `O(1)` space.
+  Aim for `O(n)` time and `O(1)` extra space.
 
 hints:
   - "Count the decodings of each prefix. The decodings of a prefix ending at
@@ -48,3 +39,32 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= len(digits) <= 10**4"
+    - "Every character is one of the digits 0 to 9."
+    - "The answer is exact however large it is."
+  examples:
+    - input: |
+        count_decodings("12")
+      output: |
+        2
+      explanation: |
+        "AB" (1, 2) or "L" (12).
+    - input: |
+        count_decodings("226")
+      output: |
+        3
+      explanation: |
+        2 2 6 is "BBF", 22 6 is "VF" and 2 26 is "BZ".
+    - input: |
+        count_decodings("10")
+      output: |
+        1
+      explanation: |
+        Only "J". Reading it as 1 then 0 fails, because no letter is encoded as 0.
+    - input: |
+        count_decodings("06")
+      output: |
+        0
+      explanation: |
+        No letter is encoded with a leading zero, and a 0 cannot stand alone.

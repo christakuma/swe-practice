@@ -9,15 +9,8 @@ estimated_minutes: 28
 prompt: |
   Return the largest product of any **contiguous** non-empty run of values.
 
-  ```
-  max_product([2, 3, -2, 4])      ->  6      # 2 * 3
-  max_product([-2, 0, -1])        ->  0      # the single 0 beats -2 and -1
-  max_product([-2, 3, -4])        ->  24     # the whole thing: two negatives
-  max_product([-3])               -> -3      # the run must be non-empty
-  ```
-
-  The list is never empty. The run must be contiguous and must contain at
-  least one value, so a list of only negatives has a negative answer.
+  The run must contain at least one value, so a list of only negatives can
+  have a negative answer.
 
   Comparing every run is `O(n^2)`. Do it in one pass.
 
@@ -44,3 +37,33 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "1 <= len(numbers) <= 10**5"
+    - "-10 <= numbers[i] <= 10"
+    - "Every run's product is small enough to be an ordinary 64-bit integer."
+  examples:
+    - input: |
+        max_product([2, 3, -2, 4])
+      output: |
+        6
+      explanation: |
+        2 * 3. Carrying on through the -2 turns everything after it negative.
+    - input: |
+        max_product([-2, 3, -4])
+      output: |
+        24
+      explanation: |
+        The whole list: the two negatives cancel.
+    - input: |
+        max_product([-2, 0, -1])
+      output: |
+        0
+      explanation: |
+        The zero on its own beats either negative, and no run can cross it without
+        becoming zero.
+    - input: |
+        max_product([-3])
+      output: |
+        -3
+      explanation: |
+        The run cannot be empty, so the only value is the answer.

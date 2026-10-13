@@ -10,14 +10,9 @@ prompt: |
   Reorder a list so it alternates between the front and the back: first node,
   last node, second node, second-to-last, and so on inward.
 
-  ```
-  1 -> 2 -> 3 -> 4         ->   1 -> 4 -> 2 -> 3
-  1 -> 2 -> 3 -> 4 -> 5    ->   1 -> 5 -> 2 -> 4 -> 3
-  ```
-
   Reorder in place and return nothing — the caller keeps the head it passed in,
   so the node it holds must end up first. An empty list and a one-node list are
-  already correct.
+  already correct, and so is a two-node list.
 
   Relink the nodes you were given. You may not collect them into a Python list
   and read it from both ends, and you may not copy values between nodes.
@@ -44,3 +39,32 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "The list has between 0 and 2 * 10**4 nodes; an empty list is None."
+    - "Values may repeat."
+  examples:
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3, ListNode(4))))
+        reorder_list(head)
+        head
+      output: |
+        ListNode(1, ListNode(4, ListNode(2, ListNode(3))))
+      explanation: |
+        1 -> 2 -> 3 -> 4 becomes 1 -> 4 -> 2 -> 3: first, last, second,
+        second-to-last.
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3, ListNode(4, ListNode(5)))))
+        reorder_list(head)
+        head
+      output: |
+        ListNode(1, ListNode(5, ListNode(2, ListNode(4, ListNode(3)))))
+      explanation: |
+        With an odd number of nodes, the middle one ends up last.
+    - input: |
+        head = ListNode(1, ListNode(2))
+        (reorder_list(head), head)
+      output: |
+        (None, ListNode(1, ListNode(2)))
+      explanation: |
+        Nothing is returned, and first-then-last is the order the two nodes were
+        already in.

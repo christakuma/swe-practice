@@ -10,12 +10,6 @@ prompt: |
   Return `True` if any value appears more than once in the list, `False` if
   every value is distinct.
 
-  ```
-  has_duplicate([1, 2, 3, 1])     ->  True
-  has_duplicate([1, 2, 3, 4])     ->  False
-  has_duplicate([])               ->  False
-  ```
-
   The list may be long, and the answer is often decidable long before the end
   of it. **Return as soon as you know** — a list whose first two values match
   must be answered without reading the rest. The tests check this directly.
@@ -46,3 +40,21 @@ kata:
   complexity:
     expected_time: "O(n), and often far less"
     expected_space: "O(n)"
+  constraints:
+    - "0 <= len(numbers) <= 10**6"
+    - "-10**9 <= numbers[i] <= 10**9"
+  examples:
+    - input: |
+        has_duplicate([1, 2, 3, 1])
+      output: |
+        True
+    - input: |
+        has_duplicate([1, 2, 3, 4])
+      output: |
+        False
+    - input: |
+        has_duplicate([])
+      output: |
+        False
+      explanation: |
+        Nothing can repeat in a list that holds nothing.

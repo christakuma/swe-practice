@@ -10,13 +10,6 @@ prompt: |
   Decide whether a string can be split into a sequence of words from a
   dictionary. Words may be reused, and not every word has to be used.
 
-  ```
-  can_segment("leetcode", ["leet", "code"])                     ->  True
-  can_segment("applepenapple", ["apple", "pen"])                ->  True
-  can_segment("catsandog", ["cats", "dog", "sand", "and", "cat"]) -> False
-  can_segment("", ["a"])                                        ->  True
-  ```
-
   An empty string is always splittable — by the empty sequence of words.
 
   Strings may be several hundred characters long, so trying every way to cut
@@ -43,3 +36,36 @@ kata:
   complexity:
     expected_time: "O(n * k^2) for a longest word of length k"
     expected_space: "O(n)"
+  constraints:
+    - "0 <= len(text) <= 1000"
+    - "0 <= len(words) <= 1000"
+    - "1 <= len(words[i]) <= 20"
+    - "Characters are compared exactly."
+  examples:
+    - input: |
+        can_segment("leetcode", ["leet", "code"])
+      output: |
+        True
+    - input: |
+        can_segment("applepenapple", ["apple", "pen"])
+      output: |
+        True
+      explanation: |
+        "apple", "pen", "apple" — the same word may be used twice.
+    - input: |
+        can_segment("catsandog", ["cats", "dog", "sand", "and", "cat"])
+      output: |
+        False
+      explanation: |
+        "cats and" and "cat sand" both get as far as "og", and no word finishes it.
+    - input: |
+        can_segment("abcd", ["abc", "ab", "cd"])
+      output: |
+        True
+      explanation: |
+        "ab" then "cd". Taking the longest word that fits first picks "abc" and is
+        left with a "d" nothing matches.
+    - input: |
+        can_segment("", ["a"])
+      output: |
+        True

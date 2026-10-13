@@ -11,17 +11,12 @@ prompt: |
   every name comes after everything it depends on. Return `None` if no such
   order exists.
 
-  ```
-  topological_order({"c": ["b"], "b": ["a"], "a": []})   ->  ["a", "b", "c"]
-  topological_order({"build": ["tools"]})                ->  ["tools", "build"]
-  topological_order({"a": ["b"], "b": ["a"]})            ->  None
-  ```
-
   Several orders are usually valid. To make the answer unique, always choose the
-  **alphabetically smallest** name that is ready.
+  **alphabetically smallest** name that is ready — one whose dependencies have
+  all been placed already.
 
   A name may appear only as a dependency and never as a key — it still belongs
-  in the output. Graphs may be ten thousand names deep.
+  in the output.
 
 hints:
   - "Which name can safely go first? Whichever one depends on nothing. Emit it,
@@ -45,3 +40,31 @@ kata:
   complexity:
     expected_time: "O((V + E) log V) with the heap"
     expected_space: "O(V + E)"
+  constraints:
+    - "At most 2 * 10**4 names, and at most 4 * 10**4 dependencies between them."
+    - "Names are non-empty strings, compared as Python compares strings."
+    - "A chain may be 10**4 names deep, far deeper than Python will recurse."
+  examples:
+    - input: |
+        topological_order({"c": ["b"], "b": ["a"], "a": []})
+      output: |
+        ["a", "b", "c"]
+    - input: |
+        topological_order({"build": ["tools"]})
+      output: |
+        ["tools", "build"]
+      explanation: |
+        "tools" has no entry of its own, and is in the output all the same.
+    - input: |
+        topological_order({"z": [], "a": ["z"], "m": []})
+      output: |
+        ["m", "z", "a"]
+      explanation: |
+        "a" is the smallest name but is not ready until "z" has been placed. Of the
+        two that are ready at the start, "m" comes before "z".
+    - input: |
+        topological_order({"a": ["b"], "b": ["a"]})
+      output: |
+        None
+      explanation: |
+        Each waits for the other, so neither is ever ready.

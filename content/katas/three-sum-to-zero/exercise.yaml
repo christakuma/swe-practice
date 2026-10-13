@@ -9,19 +9,13 @@ estimated_minutes: 32
 prompt: |
   Return every distinct triple of values from the list that adds up to zero.
 
-  ```
-  three_sum([-1, 0, 1, 2, -1, -4])  ->  [(-1, -1, 2), (-1, 0, 1)]
-  three_sum([0, 0, 0, 0])           ->  [(0, 0, 0)]
-  three_sum([1, 2, 3])              ->  []
-  ```
-
   Each triple uses three **different positions**, and each is returned once as
   a tuple sorted ascending. The list of triples must itself be sorted ascending.
   Duplicate values in the input are allowed and must not produce duplicate
-  triples — `[-1, 0, 1, 2, -1, -4]` contains two `-1`s and `(-1, 0, 1)` appears
-  only once.
+  triples.
 
-  Three nested loops is `O(n^3)`. Aim for `O(n^2)`.
+  Three nested loops is `O(n^3)`. Aim for `O(n^2)`. Leave the list you were
+  given in the order you found it.
 
 hints:
   - "Sorting first costs O(n log n), which is free next to the O(n^2) you are
@@ -46,3 +40,31 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(1) beyond the output and the sort"
+  constraints:
+    - "0 <= len(numbers) <= 2000"
+    - "-10**5 <= numbers[i] <= 10**5"
+    - "Values arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        three_sum([-1, 0, 1, 2, -1, -4])
+      output: |
+        [(-1, -1, 2), (-1, 0, 1)]
+      explanation: |
+        There are two -1s, so (-1, -1, 2) is allowed — and (-1, 0, 1), which either
+        of them could supply, is still listed only once.
+    - input: |
+        three_sum([0, 0, 0, 0])
+      output: |
+        [(0, 0, 0)]
+      explanation: |
+        Four different ways to choose three positions, all giving the same triple.
+    - input: |
+        three_sum([1, 2, 3])
+      output: |
+        []
+    - input: |
+        three_sum([0, 0])
+      output: |
+        []
+      explanation: |
+        A triple needs three positions and there are two.

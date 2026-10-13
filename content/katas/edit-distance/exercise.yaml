@@ -10,14 +10,8 @@ prompt: |
   Return the fewest single-character edits that turn one string into another.
   An edit inserts a character, deletes one, or replaces one.
 
-  ```
-  edit_distance("kitten", "sitting")   ->  3
-  edit_distance("horse", "ros")        ->  3
-  edit_distance("abc", "")             ->  3
-  edit_distance("same", "same")        ->  0
-  ```
-
-  There is no transposition operation, so `"ab"` to `"ba"` costs two.
+  There is no transposition operation, so swapping two neighbouring characters
+  costs two edits.
 
   The strings may be a few hundred characters long, which rules out trying
   every sequence of edits.
@@ -44,3 +38,34 @@ kata:
   complexity:
     expected_time: "O(n * m)"
     expected_space: "O(min(n, m)) with two rows"
+  constraints:
+    - "0 <= len(source) <= 500"
+    - "0 <= len(target) <= 500"
+    - "Characters are compared exactly; case matters."
+  examples:
+    - input: |
+        edit_distance("kitten", "sitting")
+      output: |
+        3
+      explanation: |
+        Replace k with s, replace e with i, and insert g at the end.
+    - input: |
+        edit_distance("horse", "ros")
+      output: |
+        3
+      explanation: |
+        Replace h with r, delete the second r, and delete e.
+    - input: |
+        edit_distance("ab", "ba")
+      output: |
+        2
+      explanation: |
+        There is no swap, so it takes two replacements — or a delete and an insert.
+    - input: |
+        edit_distance("abc", "")
+      output: |
+        3
+    - input: |
+        edit_distance("same", "same")
+      output: |
+        0

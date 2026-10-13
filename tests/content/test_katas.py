@@ -19,11 +19,20 @@ only an unimplemented one. `tests/integration/kata/test_pytest_runner.py` holds
 one such case for two-sum by hand; the general form would need a counter-example
 per kata, which is what git scenarios already require (§5.4) and what katas
 should grow if the library gets large enough to need it.
+
+**The examples a kata shows are run here too** (ADR 0027), and that half costs
+nothing: each one is a few lines executed in-process against the reference, so
+it adds milliseconds to a file whose every other test starts a subprocess.
+In-process is right for it and wrong for grading. Grading runs a *solver's*
+source, which is untrusted and goes through the sandbox; an example runs the
+*author's* reference, which is trusted content in the same sense a fixture is
+(§8.1), and what is being checked is the page rather than the solution.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import ast
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -43,7 +52,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from practice.adapters.sandbox import SubprocessWorkspace
-    from practice.domain.exercise import Exercise
+    from practice.domain.exercise import Example, Exercise
     from practice.domain.verdict import Verdict
 
 CONTENT_ROOT = content_root()
@@ -65,11 +74,16 @@ def _kata_directories() -> list[Path]:
             exercise = load_exercise(directory)
         except ContentError:
             continue
-        if isinstance(exercise.spec, KataSpec):
+        if isinstance(exercise.spec, KataSpec) and not exercise.is_variant:
             found.append(directory)
     return found
 
 
+#: The standard katas. Their variants are graded by `test_variants.py`, from
+#: these same tests and fixtures -- a second *file*, because `--dist loadfile`
+#: puts a file on one worker and this one is already the suite's critical path
+#: (CLAUDE.md). Doubling it would have moved the floor of every run; a sibling
+#: runs beside it.
 KATA_DIRECTORIES = _kata_directories()
 
 type Grade = Callable[[str, ComplexityClaim | None], Verdict]
@@ -256,3 +270,111 @@ def test_its_declared_complexity_is_compared_rather_than_graded(
     else:
         assert verdict.outcome is Outcome.PASS_WITH_ADVISORIES
         assert len(verdict.advisories) == 1
+
+
+# --- the statement: constraints and examples -------------------------------
+
+#: How far a linked structure is followed before it is called cyclic. Far above
+#: any example on the page and far below anything that would hang the suite.
+_WALK_LIMIT = 10_000
+
+
+def _plain(value: Any) -> object:
+    """Turn a returned node into data that can be compared and printed.
+
+    A kata's `ListNode` and `TreeNode` are the solver's own classes and define
+    no `__eq__`, so two equal lists compare unequal and print as two memory
+    addresses. Recognised by shape rather than by name or by import, because
+    every kata declares its own copy of the class in its own stub -- there is
+    no shared type to test against, deliberately (a kata is one file). That
+    is also why the parameter is `Any`: the attributes read here belong to
+    classes this module can never import.
+
+    A tree keeps its `None` children, which is what makes a left-only child a
+    different value from a right-only one. A list is walked with a limit, so an
+    example whose answer accidentally loops fails here instead of hanging.
+    """
+    if isinstance(value, list | tuple):
+        return type(value)(_plain(item) for item in value)
+    if hasattr(value, "left") and hasattr(value, "right"):
+        return ("tree", value.value, _plain(value.left), _plain(value.right))
+    link = next((name for name in ("next", "next_node") if hasattr(value, name)), None)
+    if link is None:
+        return value
+    values: list[object] = []
+    node = value
+    while node is not None:
+        assert len(values) < _WALK_LIMIT, "the list in this example does not end"
+        values.append(node.value)
+        node = getattr(node, link)
+    return ("list", *values)
+
+
+def _reference_namespace(directory: Path, spec: KataSpec) -> dict[str, object]:
+    """The reference solution's globals: what a solver's file would define."""
+    namespace: dict[str, object] = {"__name__": "solution"}
+    code = compile(_read(directory, spec.reference), spec.reference, "exec")
+    # Trusted content, executed on purpose: the reference is the author's own
+    # answer, in this repository, and running it is the only way to learn what
+    # it returns. A solver's source never comes near this function.
+    exec(code, namespace)  # noqa: S102
+    return namespace
+
+
+def _run(example: Example, namespace: dict[str, object]) -> tuple[object, object]:
+    """What the input's last line gives, and what the output says it should.
+
+    Each half gets its own copy of the namespace. The output is evaluated
+    against the module alone and never against what the input left behind, so
+    `output: numbers` cannot be written -- an expectation that names the very
+    list the input mutated is the hand-counted length ADR 0022 is about.
+    """
+    *setup, last = ast.parse(example.input).body
+    assert isinstance(last, ast.Expr), (
+        "an example's input must end in an expression, whose value is the output"
+    )
+    scope = dict(namespace)
+    exec(compile(ast.Module(setup, type_ignores=[]), "<input>", "exec"), scope)  # noqa: S102
+    got = eval(compile(ast.Expression(last.value), "<input>", "eval"), scope)  # noqa: S307
+    want = eval(example.output, dict(namespace))  # noqa: S307
+    return got, want
+
+
+def test_it_states_its_constraints(spec: KataSpec) -> None:
+    """A problem with no stated bounds leaves the algorithm to guesswork.
+
+    "The list may be long" was how the first eighty-three prompts said it, and
+    a solver cannot choose between `O(n log n)` and `O(n^2)` from an adjective.
+    A quality rule rather than a domain invariant, so it is asserted here and
+    the schema lets a draft load without one (`domain/exercise.py`).
+    """
+    assert spec.constraints
+
+
+def test_it_shows_more_than_one_example(spec: KataSpec) -> None:
+    """One example cannot tell a rule from a coincidence."""
+    assert len(spec.examples) > 1
+
+
+def test_its_examples_give_the_output_they_show(
+    spec: KataSpec, kata_directory: Path
+) -> None:
+    """Every example on the page, run against the reference solution.
+
+    An example is a claim about the right answer, printed where a solver will
+    compare their own output against it -- so a wrong one sends somebody
+    debugging code that works (ADR 0022, applied to the page rather than to
+    the suite). Compared by `repr` of the plain form rather than by `==`,
+    because `==` would accept `1` where the function returns `True`, `2` where
+    it returns `2.0` and a list where it returns a tuple, and each of those is a
+    difference a solver reading the example would be misled by.
+    """
+    namespace = _reference_namespace(kata_directory, spec)
+
+    for number, example in enumerate(spec.examples, start=1):
+        got, want = _run(example, namespace)
+
+        assert repr(_plain(got)) == repr(_plain(want)), (
+            f"example {number} shows {example.output!r}, and the reference "
+            f"gives {_plain(got)!r}"
+        )

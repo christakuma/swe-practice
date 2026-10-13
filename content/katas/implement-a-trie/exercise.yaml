@@ -9,25 +9,13 @@ estimated_minutes: 28
 prompt: |
   Build a prefix tree supporting three operations:
 
-  - `insert(word)` — add a word.
+  - `insert(word)` — add a word. Inserting the same word twice changes nothing.
   - `contains(word)` — is this exact word in the trie?
-  - `starts_with(prefix)` — is any stored word prefixed by this?
-
-  ```
-  trie = Trie()
-  trie.insert("apple")
-  trie.contains("apple")       ->  True
-  trie.contains("app")         ->  False    # a prefix is not a word
-  trie.starts_with("app")      ->  True
-  trie.insert("app")
-  trie.contains("app")         ->  True
-  ```
+  - `starts_with(prefix)` — does any stored word begin with this?
 
   The empty string is a prefix of everything, so `starts_with("")` is `True`
   once anything is stored — and `contains("")` is `True` only if `""` was
-  itself inserted. Inserting the same word twice changes nothing.
-
-  Characters are arbitrary, not just lowercase letters.
+  itself inserted. A stored word is a prefix of itself.
 
   Each operation must be `O(len(word))` — **independent of how many words are
   stored**. A set of strings answers `contains` in `O(1)` and cannot answer
@@ -54,3 +42,32 @@ kata:
   complexity:
     expected_time: "O(len(word)) per operation"
     expected_space: "O(total characters inserted)"
+  constraints:
+    - "0 <= len(word) <= 20 and 0 <= len(prefix) <= 20"
+    - "Words hold any characters at all, not only lowercase letters."
+    - "At most 2 * 10**5 calls are made to the three methods combined."
+  examples:
+    - input: |
+        trie = Trie()
+        trie.insert("apple")
+        (trie.contains("apple"), trie.contains("app"), trie.starts_with("app"))
+      output: |
+        (True, False, True)
+      explanation: |
+        "app" is the start of a stored word, but it was never inserted as a word of
+        its own.
+    - input: |
+        trie = Trie()
+        trie.insert("apple")
+        trie.insert("app")
+        trie.contains("app")
+      output: |
+        True
+      explanation: |
+        Now it has been. Both words are stored, though one is a prefix of the other.
+    - input: |
+        trie = Trie()
+        trie.insert("apple")
+        (trie.starts_with(""), trie.contains(""))
+      output: |
+        (True, False)

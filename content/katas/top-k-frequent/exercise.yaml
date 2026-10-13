@@ -8,15 +8,10 @@ estimated_minutes: 18
 
 prompt: |
   Return the `k` most frequent words in a list, most frequent first. Words that
-  appear the same number of times are ordered **alphabetically**.
+  appear the same number of times are ordered **alphabetically**, by ordinary
+  string comparison.
 
-  ```
-  top_k_frequent(["b", "a", "a", "b", "a"], 2)      ->  ["a", "b"]
-  top_k_frequent(["pear", "apple", "fig"], 3)       ->  ["apple", "fig", "pear"]
-  top_k_frequent(["cat", "cat", "zebra", "ant"], 3) ->  ["cat", "ant", "zebra"]
-  ```
-
-  `k` is never larger than the number of distinct words. The list may be long.
+  The list may be long.
 
 hints:
   - "Two steps: count, then order. The counting is a dict from word to how many
@@ -40,3 +35,30 @@ kata:
   complexity:
     expected_time: "O(n + d log d) for d distinct words"
     expected_space: "O(d)"
+  constraints:
+    - "0 <= len(words) <= 10**5"
+    - "1 <= len(words[i]) <= 20"
+    - "0 <= k <= the number of distinct words"
+  examples:
+    - input: |
+        top_k_frequent(["b", "a", "a", "b", "a"], 2)
+      output: |
+        ["a", "b"]
+      explanation: |
+        "a" appears three times and "b" twice.
+    - input: |
+        top_k_frequent(["pear", "apple", "fig"], 3)
+      output: |
+        ["apple", "fig", "pear"]
+      explanation: |
+        Every word appears once, so the whole order is the alphabetical tie-break.
+    - input: |
+        top_k_frequent(["cat", "cat", "zebra", "ant"], 3)
+      output: |
+        ["cat", "ant", "zebra"]
+      explanation: |
+        "cat" leads on count. "ant" and "zebra" tie, and tie alphabetically.
+    - input: |
+        top_k_frequent(["a", "b"], 0)
+      output: |
+        []

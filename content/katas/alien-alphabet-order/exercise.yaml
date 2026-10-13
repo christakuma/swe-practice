@@ -15,15 +15,6 @@ prompt: |
   ordinary Python string comparison — so the answer is unique. Return `""` if
   no ordering is consistent.
 
-  ```
-  alien_order(["wrt", "wrf", "er", "ett", "rftt"])  ->  "wertf"
-  alien_order(["z", "x"])                            ->  "zx"
-  alien_order(["z", "x", "z"])                       ->  ""      # z before and after x
-  alien_order(["abc", "ab"])                         ->  ""      # a prefix cannot follow
-  alien_order(["a", "b", "c"])                       ->  "abc"
-  alien_order([])                                    ->  ""
-  ```
-
   Every character appearing in any word must appear exactly once in the result,
   including characters that no comparison constrains.
 
@@ -55,3 +46,36 @@ kata:
   complexity:
     expected_time: "O(total input length + C log C) for C distinct characters"
     expected_space: "O(C^2) worst case for the edges"
+  constraints:
+    - "0 <= len(words) <= 100"
+    - "1 <= len(words[i]) <= 20"
+    - "Every word is made of lowercase letters a to z."
+    - "The same word may appear more than once."
+  examples:
+    - input: |
+        alien_order(["wrt", "wrf", "er", "ett", "rftt"])
+      output: |
+        "wertf"
+      explanation: |
+        Each neighbouring pair gives one fact, from the first position where the two
+        words differ: t before f, w before e, r before t, e before r. Chained
+        together that is w, e, r, t, f.
+    - input: |
+        alien_order(["z", "x", "z"])
+      output: |
+        ""
+      explanation: |
+        z comes before x and x comes before z. That is a cycle, so no alphabet fits.
+    - input: |
+        alien_order(["abc", "ab"])
+      output: |
+        ""
+      explanation: |
+        "ab" is a proper prefix of "abc", and in any alphabet a prefix sorts first.
+    - input: |
+        alien_order(["zb", "za"])
+      output: |
+        "baz"
+      explanation: |
+        The only fact is b before a. Nothing constrains z, so "baz", "bza" and "zba"
+        are all consistent, and "baz" is the smallest of them as a string.

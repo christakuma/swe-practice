@@ -11,15 +11,8 @@ prompt: |
   return the largest profit available. If no pair of days turns a profit, return
   `0`.
 
-  ```
-  max_profit([7, 1, 5, 3, 6, 4])   ->  5      # buy at 1, sell at 6
-  max_profit([7, 6, 4, 3, 1])      ->  0      # prices only fall
-  max_profit([])                   ->  0
-  max_profit([5])                  ->  0      # no later day to sell on
-  ```
-
   You must sell after you buy — a single day gives no profit, and you cannot
-  sell at the minimum and buy at the maximum when the maximum came first.
+  buy at the minimum and sell at the maximum when the maximum came first.
 
   Comparing every pair of days is `O(n^2)`. Do it in one pass.
 
@@ -44,3 +37,31 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= len(prices) <= 10**6"
+    - "-10**6 <= prices[i] <= 10**6"
+  examples:
+    - input: |
+        max_profit([7, 1, 5, 3, 6, 4])
+      output: |
+        5
+      explanation: |
+        Buy at 1 on the second day and sell at 6 on the fifth.
+    - input: |
+        max_profit([7, 6, 4, 3, 1])
+      output: |
+        0
+      explanation: |
+        Prices only fall, so every sale would lose money. The best you can do is not
+        trade.
+    - input: |
+        max_profit([9, 2, 5, 1, 3])
+      output: |
+        3
+      explanation: |
+        The largest price, 9, comes before the smallest, 1, so those two are no use
+        as a pair. Buying at 2 and selling at 5 is the best that respects the order.
+    - input: |
+        max_profit([5])
+      output: |
+        0

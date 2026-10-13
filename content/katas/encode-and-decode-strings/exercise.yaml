@@ -11,17 +11,10 @@ prompt: |
   strings into one string, and `decode` turns it back into exactly the list it
   started from.
 
-  ```
-  decode(encode(["hello", "world"]))  ->  ["hello", "world"]
-  decode(encode([]))                  ->  []
-  decode(encode([""]))                ->  [""]
-  decode(encode(["", ""]))            ->  ["", ""]
-  ```
-
-  The strings are arbitrary. They may be empty, they may contain **any**
+  The strings are arbitrary. They may be empty, and they may contain **any**
   character — including whatever you were planning to use as a separator,
   including newlines, commas, nulls and your own encoding's syntax. The list
-  itself may be empty.
+  itself may be empty, which is not the same list as one empty string.
 
   `decode(encode(x)) == x` must hold for every list of strings, with no
   exceptions and no reserved characters.
@@ -52,3 +45,31 @@ kata:
   complexity:
     expected_time: "O(total length) for both directions"
     expected_space: "O(total length)"
+  constraints:
+    - "0 <= len(strings) <= 10**4"
+    - "0 <= len(strings[i]) <= 10**5"
+    - "A string may hold any Unicode character, including \"\\0\", line breaks and digits."
+    - "decode is only ever given a string that encode returned."
+  examples:
+    - input: |
+        decode(encode(["hello", "world"]))
+      output: |
+        ["hello", "world"]
+    - input: |
+        decode(encode(["a,b", "", "3:c\n"]))
+      output: |
+        ["a,b", "", "3:c\n"]
+      explanation: |
+        A comma, an empty string, something that looks like a length prefix and a
+        line break all come back exactly as they went in.
+    - input: |
+        decode(encode([""]))
+      output: |
+        [""]
+      explanation: |
+        A list holding one empty string has to encode differently from the empty
+        list, or this comes back as [].
+    - input: |
+        decode(encode([]))
+      output: |
+        []

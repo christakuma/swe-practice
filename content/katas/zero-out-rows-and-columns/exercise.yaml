@@ -10,12 +10,6 @@ prompt: |
   An `m x n` matrix comes in. Wherever it holds a zero, set that cell's whole
   row and whole column to zero. Mutate the matrix in place and return nothing.
 
-  ```
-  [[1, 1, 1],        [[1, 0, 1],
-   [1, 0, 1],   ->    [0, 0, 0],
-   [1, 1, 1]]         [1, 0, 1]]
-  ```
-
   The zeros that *you* write must not themselves trigger more clearing — only
   the zeros present in the original matrix count.
 
@@ -47,3 +41,42 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= m <= 200 and 0 <= n <= 200, for m rows of n values each."
+    - "-10**9 <= matrix[i][j] <= 10**9"
+  examples:
+    - input: |
+        matrix = [
+            [1, 1, 1],
+            [1, 0, 1],
+            [1, 1, 1],
+        ]
+        set_zeroes(matrix)
+        matrix
+      output: |
+        [[1, 0, 1], [0, 0, 0], [1, 0, 1]]
+      explanation: |
+        The one zero clears the middle row and the middle column.
+    - input: |
+        matrix = [
+            [0, 1, 2, 0],
+            [3, 4, 5, 2],
+            [1, 3, 1, 5],
+        ]
+        set_zeroes(matrix)
+        matrix
+      output: |
+        [[0, 0, 0, 0], [0, 4, 5, 0], [0, 3, 1, 0]]
+      explanation: |
+        Two zeros in the top row clear that row and the first and last columns. The
+        zeros written into the other rows clear nothing further.
+    - input: |
+        matrix = [
+            [1, 2],
+            [3, 4],
+        ]
+        (set_zeroes(matrix), matrix)
+      output: |
+        (None, [[1, 2], [3, 4]])
+      explanation: |
+        Nothing is returned, and a matrix with no zeros is left alone.

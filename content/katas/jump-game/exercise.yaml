@@ -10,15 +10,8 @@ prompt: |
   Each position holds the furthest you may move forward from it. Starting at
   position 0, decide whether the last position is reachable.
 
-  ```
-  can_reach_the_end([2, 3, 1, 1, 4])   ->  True
-  can_reach_the_end([3, 2, 1, 0, 4])   ->  False
-  can_reach_the_end([2, 5, 0, 0])      ->  True
-  can_reach_the_end([0])               ->  True
-  ```
-
   A jump of `n` may land anywhere from 1 to `n` positions forward, so a long
-  jump can clear a zero.
+  jump can clear a zero. A list of one position is already at its end.
 
   The list may have tens of thousands of positions.
 
@@ -42,3 +35,29 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
+  constraints:
+    - "1 <= len(jumps) <= 10**5"
+    - "0 <= jumps[i] <= 10**5"
+  examples:
+    - input: |
+        can_reach_the_end([2, 3, 1, 1, 4])
+      output: |
+        True
+      explanation: |
+        One step to position 1, then a jump of three to the end.
+    - input: |
+        can_reach_the_end([3, 2, 1, 0, 4])
+      output: |
+        False
+      explanation: |
+        Every route arrives at the 0 in position 3 and can go no further.
+    - input: |
+        can_reach_the_end([2, 5, 0, 0])
+      output: |
+        True
+      explanation: |
+        The 5 at position 1 clears both zeros.
+    - input: |
+        can_reach_the_end([0])
+      output: |
+        True

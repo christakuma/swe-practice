@@ -9,12 +9,6 @@ estimated_minutes: 22
 prompt: |
   Rotate an `n x n` matrix 90 degrees clockwise, **in place**. Return nothing.
 
-  ```
-  [[1, 2, 3],        [[7, 4, 1],
-   [4, 5, 6],   ->    [8, 5, 2],
-   [7, 8, 9]]         [9, 6, 3]]
-  ```
-
   A `0 x 0` and a `1 x 1` matrix are already rotated.
 
   In place means you mutate the list of lists you were given and allocate no
@@ -45,3 +39,30 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(1)"
+  constraints:
+    - "0 <= n <= 300"
+    - "The matrix is square: n rows of n values each."
+    - "-10**9 <= matrix[i][j] <= 10**9"
+  examples:
+    - input: |
+        matrix = [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+        ]
+        rotate(matrix)
+        matrix
+      output: |
+        [[7, 4, 1], [8, 5, 2], [9, 6, 3]]
+      explanation: |
+        The left column, read upwards, becomes the top row.
+    - input: |
+        matrix = [
+            [1, 2],
+            [3, 4],
+        ]
+        (rotate(matrix), matrix)
+      output: |
+        (None, [[3, 1], [4, 2]])
+      explanation: |
+        Nothing is returned. The matrix that was passed in is the result.

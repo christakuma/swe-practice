@@ -10,18 +10,11 @@ prompt: |
   Given a dependency graph as a dict from a name to the names it depends on,
   decide whether any chain of dependencies leads back to where it started.
 
-  ```
-  has_cycle({"a": ["b"], "b": ["a"]})                          ->  True
-  has_cycle({"a": ["b"], "b": ["c"], "c": []})                 ->  False
-  has_cycle({"a": ["b", "c"], "b": ["d"], "c": ["d"], "d": []}) ->  False
-  has_cycle({"a": ["a"]})                                      ->  True
-  ```
-
   A name may appear as a dependency without having an entry of its own — that is
   how a leaf is written.
 
-  The graph may have several disconnected parts, and chains may be ten thousand
-  links long.
+  The graph may have several disconnected parts, and a cycle may sit in any of
+  them. Two names depending on the same third name is not a cycle.
 
 hints:
   - "Walk the graph depth-first from every node you have not already finished
@@ -45,3 +38,27 @@ kata:
   complexity:
     expected_time: "O(V + E)"
     expected_space: "O(V)"
+  constraints:
+    - "At most 2 * 10**4 names, and at most 4 * 10**4 dependencies between them."
+    - "Names are non-empty strings. A name may depend on itself."
+    - "A chain may be 10**4 links long, far deeper than Python will recurse."
+  examples:
+    - input: |
+        has_cycle({"a": ["b"], "b": ["a"]})
+      output: |
+        True
+    - input: |
+        has_cycle({"a": ["b"], "b": ["c"], "c": []})
+      output: |
+        False
+    - input: |
+        has_cycle({"a": ["b", "c"], "b": ["d"], "c": ["d"], "d": []})
+      output: |
+        False
+      explanation: |
+        Two routes lead from a to d, but neither leads back. A shared dependency is
+        a diamond, not a cycle.
+    - input: |
+        has_cycle({"a": ["a"]})
+      output: |
+        True

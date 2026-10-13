@@ -11,20 +11,12 @@ prompt: |
   list that can be spelled by a path through the grid, stepping only up, down,
   left or right and using **no cell twice**.
 
-  Return the found words sorted ascending.
+  Return the found words sorted ascending, each one once however many times it
+  appears in the list and however many paths spell it. An empty string in the
+  list is never returned.
 
-  ```
-  board = [["o", "a", "a", "n"],
-           ["e", "t", "a", "e"],
-           ["i", "h", "k", "r"],
-           ["i", "f", "l", "v"]]
-
-  find_words(board, ["oath", "pea", "eat", "rain"])  ->  ["eat", "oath"]
-  ```
-
-  Duplicates in the word list are returned once. The empty word list gives
-  `[]`, and so does an empty grid. A word longer than the grid has cells cannot
-  be present.
+  An empty word list gives `[]`, and so does an empty grid. A word longer than
+  the grid has cells cannot be present. Leave the grid as you found it.
 
   **Running `find-a-word-in-a-grid` once per word is too slow** when the words
   share prefixes — the tests use a list where that costs thousands of
@@ -54,3 +46,38 @@ kata:
   complexity:
     expected_time: "O(cells * 4^longest word) worst case, pruned heavily in practice"
     expected_space: "O(total characters in the word list)"
+  constraints:
+    - "0 <= rows <= 8 and 0 <= columns <= 8"
+    - "0 <= len(words) <= 100"
+    - "0 <= len(words[i]) <= 14"
+    - "Every cell is a single character. Matching is exact, so case matters."
+  examples:
+    - input: |
+        board = [
+            ["o", "a", "a", "n"],
+            ["e", "t", "a", "e"],
+            ["i", "h", "k", "r"],
+            ["i", "f", "l", "v"],
+        ]
+        find_words(board, ["oath", "pea", "eat", "rain"])
+      output: |
+        ["eat", "oath"]
+      explanation: |
+        "oath" runs from the top-left corner right, down and down again; "eat"
+        starts at the end of the second row and goes up and left. There is no p
+        for "pea", and "rain" has its letters but no path joining them.
+    - input: |
+        board = [
+            ["a", "b"],
+            ["c", "d"],
+        ]
+        find_words(board, ["ab", "abdc", "abcd", "aba", "ab"])
+      output: |
+        ["ab", "abdc"]
+      explanation: |
+        "ab" is listed twice and returned once. "abcd" would need a diagonal step
+        from b to c, and "aba" would need the a twice.
+    - input: |
+        find_words([], ["a"])
+      output: |
+        []
