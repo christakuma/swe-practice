@@ -3,7 +3,7 @@ id: variants/flood-fill-across-diagonals
 kind: kata
 title: "Flood Fill Across Diagonals"
 difficulty: easy
-tags: [grids, depth-first-search]
+tags: [grids, dfs]
 estimated_minutes: 15
 
 variant:

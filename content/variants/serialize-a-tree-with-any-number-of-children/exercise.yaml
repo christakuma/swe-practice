@@ -3,7 +3,7 @@ id: variants/serialize-a-tree-with-any-number-of-children
 kind: kata
 title: "Serialize a Tree With Any Number of Children"
 difficulty: hard
-tags: [trees, design]
+tags: [trees, invariants]
 estimated_minutes: 35
 
 variant:

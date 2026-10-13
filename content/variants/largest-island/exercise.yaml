@@ -3,7 +3,7 @@ id: variants/largest-island
 kind: kata
 title: "Largest Island in a Grid"
 difficulty: medium
-tags: [grids, graphs, depth-first-search]
+tags: [grids, graphs, dfs]
 estimated_minutes: 20
 
 variant:

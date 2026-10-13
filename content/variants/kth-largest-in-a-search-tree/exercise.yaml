@@ -3,7 +3,7 @@ id: variants/kth-largest-in-a-search-tree
 kind: kata
 title: "Kth Largest in a BST"
 difficulty: medium
-tags: [trees, binary-search-tree]
+tags: [trees, binary-search]
 estimated_minutes: 20
 
 variant:

@@ -3,7 +3,7 @@ id: variants/zigzag-level-order
 kind: kata
 title: "Read a Tree Level by Level, Zigzag"
 difficulty: medium
-tags: [trees, breadth-first-search]
+tags: [trees, bfs]
 estimated_minutes: 20
 
 variant:

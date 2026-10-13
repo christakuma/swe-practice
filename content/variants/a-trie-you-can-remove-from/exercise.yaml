@@ -3,7 +3,7 @@ id: variants/a-trie-you-can-remove-from
 kind: kata
 title: "A Trie You Can Remove From"
 difficulty: hard
-tags: [tries, data-structure-design]
+tags: [tries, strings, invariants]
 estimated_minutes: 35
 
 variant:

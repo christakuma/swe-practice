@@ -3,7 +3,7 @@ id: variants/rebuild-a-search-tree-from-preorder
 kind: kata
 title: "Rebuild a Search Tree from Pre-order"
 difficulty: medium
-tags: [trees, binary-search-tree, stack, invariants]
+tags: [trees, binary-search, stack, invariants]
 estimated_minutes: 35
 
 variant:

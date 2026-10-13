@@ -3,7 +3,7 @@ id: variants/kth-largest-in-a-stream
 kind: kata
 title: "Kth Largest in a Stream"
 difficulty: medium
-tags: [heap, data-structure-design]
+tags: [heap, invariants]
 estimated_minutes: 20
 
 variant:

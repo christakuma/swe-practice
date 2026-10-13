@@ -3,7 +3,7 @@ id: variants/longest-path-in-a-tree
 kind: kata
 title: "Longest Path in a Tree"
 difficulty: medium
-tags: [trees, depth-first-search]
+tags: [trees, dfs]
 estimated_minutes: 20
 
 variant:

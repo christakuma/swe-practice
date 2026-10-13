@@ -3,7 +3,7 @@ id: variants/smallest-window-holding-a-subsequence
 kind: kata
 title: "Smallest Window Holding a Subsequence"
 difficulty: hard
-tags: [strings, sliding-window, two-pointers, subsequence]
+tags: [strings, sliding-window, two-pointers]
 estimated_minutes: 40
 
 variant:

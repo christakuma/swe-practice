@@ -3,7 +3,7 @@ id: variants/search-tree-with-repeats-on-the-left
 kind: kata
 title: "Is This a Search Tree, Allowing Repeats"
 difficulty: medium
-tags: [trees, binary-search-tree]
+tags: [trees, binary-search]
 estimated_minutes: 20
 
 variant:

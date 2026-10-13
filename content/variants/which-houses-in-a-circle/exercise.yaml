@@ -3,7 +3,7 @@ id: variants/which-houses-in-a-circle
 kind: kata
 title: "Which Houses in a Circle"
 difficulty: medium
-tags: [dynamic-programming, arrays, recurrence, reconstruction]
+tags: [dynamic-programming, arrays, recurrence]
 estimated_minutes: 30
 
 variant:

@@ -419,6 +419,35 @@ def test_every_kata_offers_a_variant() -> None:
     assert not without
 
 
+def test_a_variant_carries_no_tag_the_listing_does_not() -> None:
+    """A tag is how practice is found again, and a variant is never listed.
+
+    An attempt at a variant counts towards the variant's tags
+    (`SummariseProgress`), and the only exercises anybody can browse for a tag
+    are the listed ones. So a tag that only variants carry is a row under
+    Mastery by tag that leads nowhere -- and, in the case that prompted this,
+    a second spelling of a tag the library already had. Ten variants said
+    `depth-first-search`, `breadth-first-search` and `matrices` where every
+    listed exercise says `dfs`, `bfs` and `grids`, which split one skill's
+    record across two rows. Nothing compares one exercise's tags with
+    another's, so nothing said so.
+
+    A twist that really is about something no listed exercise practises is the
+    case this refuses, on purpose: tag a listed exercise with it first.
+    """
+    repository = FilesystemContentRepository(CONTENT_ROOT)
+    listed = repository.list_exercises()
+    vocabulary = {tag for exercise in listed for tag in exercise.tags}
+    strays = {
+        str(variant.id): sorted(str(tag) for tag in set(variant.tags) - vocabulary)
+        for exercise in listed
+        for variant in repository.variants_of(exercise.id)
+        if not set(variant.tags) <= vocabulary
+    }
+
+    assert not strays
+
+
 def test_the_first_screen_of_the_curriculum_offers_every_kind() -> None:
     """The dashboard offers the top `QUEUE_LIMIT` rows, so the curriculum's first
     few entries *are* the product's front page on a fresh install.

@@ -3,7 +3,7 @@ id: variants/minimum-depth-of-a-binary-tree
 kind: kata
 title: "Shallowest Leaf of a Binary Tree"
 difficulty: medium
-tags: [trees, breadth-first-search]
+tags: [trees, bfs]
 estimated_minutes: 20
 
 variant:

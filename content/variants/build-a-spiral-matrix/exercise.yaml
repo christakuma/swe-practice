@@ -3,7 +3,7 @@ id: variants/build-a-spiral-matrix
 kind: kata
 title: "Build a Spiral Matrix"
 difficulty: medium
-tags: [matrices, simulation]
+tags: [grids, invariants]
 estimated_minutes: 20
 
 variant:

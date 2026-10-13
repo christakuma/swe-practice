@@ -3,7 +3,7 @@ id: variants/zero-out-like-a-queen
 kind: kata
 title: "Zero Out Like a Queen"
 difficulty: medium
-tags: [grids, in-place, invariants, diagonals]
+tags: [grids, in-place, invariants]
 estimated_minutes: 28
 
 variant:

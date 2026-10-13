@@ -3,7 +3,7 @@ id: variants/encode-strings-for-an-ascii-channel
 kind: kata
 title: "Encode Strings for an ASCII Channel"
 difficulty: medium
-tags: [strings, design]
+tags: [strings, invariants, scanning]
 estimated_minutes: 30
 
 variant:

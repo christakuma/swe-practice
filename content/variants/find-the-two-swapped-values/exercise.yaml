@@ -3,7 +3,7 @@ id: variants/find-the-two-swapped-values
 kind: kata
 title: "Find the Two Swapped Values"
 difficulty: medium
-tags: [trees, binary-search-tree, dfs, invariants]
+tags: [trees, binary-search, dfs, invariants]
 estimated_minutes: 35
 
 variant:

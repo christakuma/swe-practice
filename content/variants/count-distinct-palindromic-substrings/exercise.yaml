@@ -3,7 +3,7 @@ id: variants/count-distinct-palindromic-substrings
 kind: kata
 title: "Count Distinct Palindromic Substrings"
 difficulty: medium
-tags: [strings, two-pointers, hash-set]
+tags: [strings, two-pointers, hash-map]
 estimated_minutes: 25
 
 variant:

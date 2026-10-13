@@ -3,7 +3,7 @@ id: variants/lowest-common-ancestor-in-a-search-tree
 kind: kata
 title: "Lowest Common Ancestor in a BST"
 difficulty: medium
-tags: [trees, binary-search-tree]
+tags: [trees, binary-search]
 estimated_minutes: 20
 
 variant:

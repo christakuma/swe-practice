@@ -3,7 +3,7 @@ id: variants/total-set-bits-up-to-n
 kind: kata
 title: "Total Set Bits Up To N"
 difficulty: hard
-tags: [bit-manipulation, math]
+tags: [bit-manipulation, counting]
 estimated_minutes: 30
 
 variant:

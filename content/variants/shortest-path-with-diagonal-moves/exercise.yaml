@@ -3,7 +3,7 @@ id: variants/shortest-path-with-diagonal-moves
 kind: kata
 title: "Shortest Path With Diagonal Moves"
 difficulty: medium
-tags: [grids, breadth-first-search]
+tags: [grids, bfs]
 estimated_minutes: 20
 
 variant:

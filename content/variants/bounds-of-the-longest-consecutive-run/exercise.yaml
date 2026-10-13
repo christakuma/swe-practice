@@ -3,7 +3,7 @@ id: variants/bounds-of-the-longest-consecutive-run
 kind: kata
 title: "Bounds of the Longest Consecutive Run"
 difficulty: medium
-tags: [arrays, hash-set]
+tags: [arrays, hash-map]
 estimated_minutes: 20
 
 variant:

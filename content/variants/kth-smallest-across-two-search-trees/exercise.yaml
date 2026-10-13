@@ -3,7 +3,7 @@ id: variants/kth-smallest-across-two-search-trees
 kind: kata
 title: "Kth Smallest Across Two Search Trees"
 difficulty: medium
-tags: [trees, binary-search-tree, merging, heap]
+tags: [trees, binary-search, merging, heap]
 estimated_minutes: 30
 
 variant:

@@ -3,7 +3,7 @@ id: variants/median-of-the-last-k-values
 kind: kata
 title: "Median of the Last k Values"
 difficulty: hard
-tags: [heap, sliding-window, binary-search, design]
+tags: [heap, sliding-window, binary-search]
 estimated_minutes: 40
 
 variant:

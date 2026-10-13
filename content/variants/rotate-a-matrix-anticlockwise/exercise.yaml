@@ -3,7 +3,7 @@ id: variants/rotate-a-matrix-anticlockwise
 kind: kata
 title: "Rotate a Matrix Anticlockwise"
 difficulty: medium
-tags: [matrices, in-place]
+tags: [grids, in-place]
 estimated_minutes: 20
 
 variant:

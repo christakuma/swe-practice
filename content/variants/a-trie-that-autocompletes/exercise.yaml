@@ -3,7 +3,7 @@ id: variants/a-trie-that-autocompletes
 kind: kata
 title: "A Trie That Autocompletes"
 difficulty: medium
-tags: [tries, strings, dfs, design]
+tags: [tries, strings, dfs]
 estimated_minutes: 35
 
 variant:

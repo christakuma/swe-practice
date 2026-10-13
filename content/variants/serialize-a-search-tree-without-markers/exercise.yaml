@@ -3,7 +3,7 @@ id: variants/serialize-a-search-tree-without-markers
 kind: kata
 title: "Serialize a Search Tree Without Markers"
 difficulty: medium
-tags: [trees, binary-search-tree, invariants, stack]
+tags: [trees, binary-search, invariants, stack]
 estimated_minutes: 40
 
 variant:
