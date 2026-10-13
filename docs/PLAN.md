@@ -5990,3 +5990,99 @@ reports 277 exercises — the 115 the library lists and 162 variants;
 clean. The run before it, with seventeen fewer variants, took 10m32s; that
 is a wider gap than seventeen variants explain and well inside the spread
 this machine has shown, and one run each is not a measurement of either.
+
+**2026-10-13 — A review of the variants, and what a cross-check cannot see.**
+The request: *review the sixteen commits since the last push, and make sure
+the variants also make sense*; then *fix all of them*. Eleven findings and
+eleven fixes, in the ten commits before this one. Seven are in the content
+and four in the code around it.
+
+**The cross-checks held, and they were not the check that was missing.** All
+162 prompts were read, and every variant's suite was run again against its
+base's reference and its sibling's — this time with the function renamed
+wherever only the name differed, so that an `ImportError` could not stand in
+for a difference. 303 runs, none passed; seventeen pairs differ in more than
+a name and were not run. Every twist is a different problem from its base
+and from its sibling.
+
+What that cannot see is whether a suite *holds a solver to the twist*, which
+is a claim about answers nobody had written. The content suite proves the
+reference passes and the stub fails, and the base check proves one more
+answer fails. So the answer each prompt says is not good enough was written
+and run: twenty-five of them, over twenty-three variants. Sixteen failed as
+their prompts say. Nine passed.
+
+- *One variant was another kata.* `can-a-team-attend-every-meeting` was
+  `how-many-meeting-rooms`, the next step on the same track, with `<= people`
+  on the end: that kata's reference and a one-line wrapper passed all seven
+  tests. It is the duplication 24a839a removed from the base kata, back one
+  level down. The variant is replaced by `meetings-that-repeat-every-day` —
+  the diary is a circle, and a meeting may run through midnight — which keeps
+  the base's name and fails its reference on behaviour.
+- *Three tests named "does not walk" defeated recursion and nothing else.*
+  Each hung a chain 100,000 deep where the answer is not, and a walk with its
+  own stack reached the bottom and passed. For
+  `lowest-common-ancestor-in-a-search-tree` that walk is the base's answer
+  written without recursion, so the base check was green only because the
+  base's reference happens to recurse. The three suites now plant the
+  `Landmine` that `kth-smallest-in-a-bst` already used.
+- *The read counter could be walked around without trying.* It counted
+  subscripts and iteration, and `in`, `index`, `count` and `copy` read a list
+  inside the interpreter without either. `numbers.index(target)` passed
+  `first-and-last-position`'s reads test having read two million values.
+- *A timing claim, a fourth time.* `kth-largest-in-a-stream` said a sorted
+  list "does not finish". Keeping every value sorted finished in 9.3 seconds
+  of ten, and an `O(k)`-per-arrival tracker in 2.2. The suite now measures
+  what is kept — 576 bytes against eight megabytes — and times a `k` of
+  half a million, where the list took 158 and 154 seconds and the heap 0.4.
+- *The ninth was fair.* A re-scan with an early exit gets through
+  `longest-substring-with-k-distinct`'s long string. A plain re-scan does
+  not, which is what the prompt rules out, and the suite is as it was.
+
+**The two standard katas the read counter came from never had one.**
+`find-the-minimum-in-a-rotated-array` said in a docstring that a linear scan
+also passes, under a test named for logarithmic time, and
+`search-a-rotated-array` accepted `numbers.index(target)`. Older than the
+range under review and fixed with it: both now count reads, with the same
+class.
+
+**One finding was about the library and no single exercise.** Twenty-nine
+variants carried a tag no listed exercise has, and ten of those were a
+second spelling of one the library did have — `depth-first-search` beside
+`dfs`. That began to matter with 78e5826, which counts an attempt at a
+variant towards its tags: one skill, two rows under Mastery by tag, and one
+of them leading nowhere because Browse filters a listing no variant is in.
+The tags are the library's now, and
+`test_a_variant_carries_no_tag_the_listing_does_not` holds them there.
+
+**Four in the code, one of them a behaviour.** Resuming a version that is
+already open never read the interview box, so ticking it for a variant open
+as practice handed back a workbench with hints and no clock; that is a 409
+with the reason, and the other direction still resumes. The rest were waste
+the variants had made visible: `variants_of` scanned the library once per
+Start control under a comment saying it was a dictionary read, the progress
+route repeated the use case's lookup of unlisted exercises, and `validate`
+loaded every exercise twice.
+
+**What deviated.** A variant was replaced where the others were repaired,
+and its id changed: 24a839a kept an id because that kata had shipped, and
+this variant had not left the machine it was written on. One variant's
+constraints grew, `k` to 5 * 10**5 and the stream to 10**6, because the test
+that makes its claim true needs them. And the tag rule refuses a twist about
+something no listed exercise practises, by design — tag a listed exercise
+with it first.
+
+**Not done.** Nothing compares an exercise with its *neighbours*. The
+duplicate was found by reading 162 prompts beside the list of katas, and the
+next one will be too. The read counter stops an honest scan and not
+`list.__getitem__(numbers, i)`. And twenty-five naive answers is a sample:
+it was aimed at the prompts that name the answer they rule out, and a suite
+whose prompt promises nothing was not asked anything.
+
+**Final numbers.** 8,679 passing and one skipped, where the last entry ended
+on 8,676: the tag test, and two for the interview box. The tests added
+inside hidden suites do not show in that count, which has one entry per
+exercise per claim. 100% statement and branch coverage over 2,946 statements
+and 650 branches. `practice validate` still reports 277 exercises and
+`practice fixtures --check` is unchanged. The gate took 13m22s, one run,
+clean.

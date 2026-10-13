@@ -244,7 +244,13 @@ A phase ends with a `docs:` commit that:
   `tests/content/test_library.py::test_every_kata_offers_a_variant` fails a
   kata added without it; seventy-nine have two, which nothing requires. A second
   variant should be a different twist, not a harder first one — check it
-  against the sibling as well as the base. **The 162 are dealt alternately
+  against the sibling as well as the base, and read it beside its base's
+  neighbours on the track, which nothing checks: one shipped as the next
+  kata along with a comparison on the end. **A variant's tags must be tags a
+  listed exercise carries**
+  (`test_a_variant_carries_no_tag_the_listing_does_not`): an attempt at one
+  counts towards its tags, and only the listing can be browsed for one.
+  `dfs`, not `depth-first-search`. **The 162 are dealt alternately
   between the two files**, in directory order, because one file would have
   been the longest in the suite by a wide margin and `--dist loadfile` makes
   the longest file the floor. A new variant lands in whichever shard its slug
@@ -286,6 +292,19 @@ A phase ends with a `docs:` commit that:
   expected values are computed by hand, check them against an oracle in bulk
   rather than by eye. An expected value that needs the code's own arithmetic is
   not an expectation.
+- **Write the answer the prompt rules out, and run that too.** The content
+  suite proves the reference passes and the stub fails; it cannot see a suite
+  that does not hold a solver to the prompt. A review of the variants ran
+  twenty-five such answers and nine passed (PLAN.md §16). Three shapes to
+  look for. A test that only *recursion* fails: a deep chain stops a
+  recursive walk and not one with its own stack, so to check that a subtree
+  was not read, plant a node that raises when touched (`Landmine`, in
+  `kth-smallest-in-a-bst`'s suite). A count that some reads go round:
+  `Watched` charges `in`, `index`, `count`, `copy`, `reversed`, `+` and `*`
+  for the whole list, because none of them calls `__getitem__`. And a time
+  limit asked to see work the interpreter does in C: shifting a list is
+  gigabytes a second, so measure what is kept, or pick a size whose slow
+  answer is ten times the limit and not one and a half.
 - **Run the content, do not read it.** Every drill bug in Phase 14 — a vacuous
   `LIMIT`, a counter-example that returned the reference's rows, a query plan
   that scanned the other table — was invisible on the page and obvious the
