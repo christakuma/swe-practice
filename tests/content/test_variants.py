@@ -15,6 +15,20 @@ worker, `test_katas.py` is already the suite's critical path, and every variant
 costs three pytest subprocesses. Here they run beside the standard katas
 instead of after them.
 
+**And then a third file, for the same reason.** With one variant per kata this
+file was as long as the one it sits beside. A second variant for seventy-nine
+of the katas would have made it nearly twice that, and the gate's floor is its
+longest file. So the variants are dealt out between `SHARDS` files --
+alternately, in directory order -- and this one grades the first share.
+`test_variants_second_shard.py` grades the other, from these same tests, and
+holds the check that the shares add up to everything. Dealt alternately rather
+than by anything meaningful, because nothing meaningful divides them evenly:
+which variant came first is an accident of when it was written, and "the katas
+in the first half of the alphabet" is no less arbitrary than every other one.
+ADR 0028 names a marked tier as the fix for this file growing; that is still
+the fix if the *total* becomes the problem, and it is not what was needed for
+the longest file.
+
 **The one thing more is `test_its_base_solution_does_not_pass_it`.** A twist
 that the standard answer already satisfies is not a twist -- it is the same
 exercise listed twice, and a solver who chose "surprise me" would be handed a
@@ -62,6 +76,12 @@ if TYPE_CHECKING:
     from practice.domain.exercise import Exercise
 
 
+#: How many test files the variants are graded across. Changing it means adding
+#: or removing a file like `test_variants_second_shard.py`, and that file's
+#: last test fails until the two agree.
+SHARDS = 2
+
+
 def _variant_directories() -> list[Path]:
     """Every kata that is a variant, found as defensively as the katas are."""
     found = []
@@ -75,7 +95,19 @@ def _variant_directories() -> list[Path]:
     return found
 
 
-VARIANT_DIRECTORIES = _variant_directories()
+ALL_VARIANT_DIRECTORIES = _variant_directories()
+
+
+def shard(index: int) -> list[Path]:
+    """Every `SHARDS`-th variant directory, starting from the `index`-th.
+
+    Slices of one sorted list, so the shards are disjoint and complete by
+    construction for as long as every index below `SHARDS` has a file.
+    """
+    return ALL_VARIANT_DIRECTORIES[index::SHARDS]
+
+
+VARIANT_DIRECTORIES = shard(0)
 
 
 @pytest.fixture(params=VARIANT_DIRECTORIES, ids=_identify)
