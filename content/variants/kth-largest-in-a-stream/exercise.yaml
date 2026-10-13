@@ -20,8 +20,12 @@ prompt: |
 
   Repeats count separately: in `5, 5, 3` the second largest is `5`.
 
-  `add` must be `O(log k)`. Keeping every value sorted makes each addition
-  linear, and the tests add enough values that it does not finish.
+  `add` must be `O(log k)`, and the tracker may hold on to only `O(k)` values.
+  A sorted list is quicker than its `O(n)` insertions suggest, because the
+  shifting is done inside the interpreter, so the tests come at it from both
+  ends: a small `k` over a long stream, where what you keep is measured, and
+  a `k` of half a million, where shifting a list on every arrival does not
+  finish.
 
 hints:
   - "You only ever need the k largest values. Anything smaller than all k of them can be forgotten for good: it can never be the kth largest again."
@@ -38,9 +42,9 @@ kata:
     expected_time: "O(log k) per add"
     expected_space: "O(k)"
   constraints:
-    - "1 <= k <= 10**4"
+    - "1 <= k <= 5 * 10**5"
     - "-10**9 <= value <= 10**9"
-    - "At most 2 * 10**5 values are added to one tracker."
+    - "At most 10**6 values are added to one tracker."
   examples:
     - input: |
         tracker = KthLargest(3)

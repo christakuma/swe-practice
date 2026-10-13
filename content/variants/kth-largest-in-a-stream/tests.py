@@ -3,6 +3,7 @@
 Each test's docstring becomes the label on its `CheckReport`.
 """
 
+import tracemalloc
 from itertools import product
 
 from solution import KthLargest
@@ -88,3 +89,47 @@ def test_handles_two_hundred_thousand_values() -> None:
     assert (
         sum(1 for value in range(200_000) if (value * 7919) % 200_003 >= last) == 10_000
     )
+
+
+def test_keeps_only_k_values_of_a_long_stream() -> None:
+    """Holds on to ten values out of two hundred thousand, not all of them.
+
+    Measured rather than timed, because timing cannot see it: a tracker that
+    keeps every value in a sorted list does its shifting inside the
+    interpreter, and gets through this stream as quickly as the heap does.
+    What it cannot do is fit. The heap peaks at a few hundred bytes here and
+    the full list at eight million.
+    """
+    values = [(value * 7919) % 200_003 for value in range(200_000)]
+    tracker = KthLargest(10)
+
+    tracemalloc.start()
+    for value in values:
+        last = tracker.add(value)
+    _, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    assert last == sorted(values)[-10]
+    assert peak < 64_000, f"allocated {peak} bytes"
+
+
+def test_does_not_shift_a_list_on_every_arrival() -> None:
+    """Adds a million rising values with k at five hundred thousand.
+
+    The stream rises, so once the tracker is full every arrival belongs among
+    the k largest and the smallest of them has to go. Kept in a sorted list,
+    that is half a million entries moved up one place per arrival. Measured on
+    the machine this was written on: about 155 seconds for the list, twice,
+    against 0.4 for the heap -- a margin wide enough to survive a slow run,
+    which the first version of this suite did not have. It added 200,000
+    values with k at 10,000, and both sorted-list trackers finished inside
+    the limit.
+    """
+    size, k = 1_000_000, 500_000
+    values = [3 * index + (index * 7919) % 5 for index in range(size)]
+    tracker = KthLargest(k)
+
+    for value in values:
+        last = tracker.add(value)
+
+    assert last == sorted(values)[-k]
