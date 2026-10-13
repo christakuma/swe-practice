@@ -918,6 +918,12 @@ def start(
     typer.echo(_describe_attempt(started.attempt))
     typer.echo("")
     typer.echo(_next_step(started))
+    # The attempt somebody just asked for is the one they are on, so a tutor
+    # asked about "this" is shown it (ADR 0026). Here and not in `StartAttempt`,
+    # because `solve` starts one too and is nobody turning to an attempt; and
+    # last, so the start is finished and reported before the one write in this
+    # command that it could do without.
+    services.mark_current_attempt(started.attempt.id)
 
 
 @app.command()
@@ -988,8 +994,9 @@ def attempts(
         typer.echo("No open attempts.")
         return
 
+    current = services.find_current_attempt()
     for found in open_attempts:
-        _report_open_attempt(found)
+        _report_open_attempt(found, is_current=found.attempt.id == current)
     typer.echo("")
     typer.echo(
         f"{len(open_attempts)} open {_plural('attempt', len(open_attempts))}. "
@@ -1060,6 +1067,10 @@ def resume(
         database=db.resolve() if db is not None else None,
     )
     resumed = _load(services.resume_attempt, attempt)
+    # Picking a session back up is the solver saying which attempt they are on
+    # (ADR 0026). In this command and not in `ResumeAttempt`, which `submit`
+    # also loads through -- on its way to closing the attempt, not turning to it.
+    services.mark_current_attempt(resumed.attempt.id)
 
     typer.secho(f"{resumed.exercise.id}  {resumed.exercise.title}", bold=True)
     typer.echo(_describe_attempt(resumed.attempt, now=services.clock.now()))
@@ -1963,15 +1974,19 @@ def _minutes(whole: float) -> str:
     return f"{int(whole)} {_plural('minute', int(whole))}"
 
 
-def _report_open_attempt(found: OpenAttempt) -> None:
+def _report_open_attempt(found: OpenAttempt, *, is_current: bool) -> None:
     """One open attempt, and whether it can be resumed at all.
 
     The id in full, because that is what `resume` takes; the short form is the
     workspace directory's name and nothing accepts it (PLAN.md §8.1).
+
+    `(current)` is the attempt `practice mcp` hands a tutor that does not say
+    which, so it is on the only open attempt too -- marked or not.
     """
     marker = _OK if found.can_resume else _NOTE
     colour = typer.colors.GREEN if found.can_resume else typer.colors.YELLOW
-    typer.secho(f"{marker}{found.attempt.id}  {found.label}", fg=colour)
+    current = "  (current)" if is_current else ""
+    typer.secho(f"{marker}{found.attempt.id}  {found.label}{current}", fg=colour)
     typer.echo(_describe_attempt(found.attempt))
     if found.exercise is None:
         typer.echo(f"{_INDENT}the exercise is gone, so this can only be abandoned")

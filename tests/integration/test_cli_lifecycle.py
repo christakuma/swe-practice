@@ -279,6 +279,61 @@ def test_attempts_prints_the_id_in_full(storage: tuple[Path, Path]) -> None:
     assert len(attempt_id) == 36
 
 
+def test_attempts_says_which_one_is_current(storage: tuple[Path, Path]) -> None:
+    """The one `practice start` or `practice resume` was last run for, which is
+    the one `practice mcp` hands a tutor that does not say which (ADR 0026).
+    """
+    older = start(storage, TWO_SUM)
+    newer = start(storage, TWO_SUM)
+
+    _, started_last = run(storage, "attempts")
+    run(storage, "resume", older)
+    _, resumed_last = run(storage, "attempts")
+
+    assert f"{newer}  Two Sum  (current)" in started_last
+    assert f"{older}  Two Sum  (current)" not in started_last
+    assert f"{older}  Two Sum  (current)" in resumed_last
+    assert f"{newer}  Two Sum  (current)" not in resumed_last
+
+
+def test_submitting_another_attempt_does_not_take_the_mark(
+    storage: tuple[Path, Path], tmp_path: Path
+) -> None:
+    """`submit` loads the attempt the way `resume` does, on its way to closing
+    it. When that marked it, grading one attempt from a terminal made a tutor
+    forget which one was being worked on.
+    """
+    working_on = start(storage, TWO_SUM)
+    start(storage, TWO_SUM)
+    other = start(storage, TWO_SUM)
+    run(storage, "resume", working_on)
+    mine = tmp_path / "mine.py"
+    mine.write_text(SOLVED, encoding="utf-8")
+
+    code, output = run(storage, "submit", other, "--source", str(mine))
+    _, listing = run(storage, "attempts")
+
+    assert code == 0, output
+    assert "2 open attempts" in listing
+    assert f"{working_on}  Two Sum  (current)" in listing
+
+
+def test_solve_does_not_take_the_mark(storage: tuple[Path, Path]) -> None:
+    """It starts an attempt and finishes it in the same breath, for an author
+    checking a reference. Nobody turned to that attempt.
+    """
+    working_on = start(storage, TWO_SUM)
+    start(storage, TWO_SUM)
+    run(storage, "resume", working_on)
+
+    code, output = run(storage, "solve", TWO_SUM, "--reference", "--no-prompt")
+    _, listing = run(storage, "attempts")
+
+    assert code == 0, output
+    assert "2 open attempts" in listing
+    assert f"{working_on}  Two Sum  (current)" in listing
+
+
 def test_attempts_shows_the_history_of_one_exercise(storage: tuple[Path, Path]) -> None:
     """The other question the attempt table can answer, and the reason the
     `history_for` port method had no caller until this phase.
