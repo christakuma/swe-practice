@@ -1,0 +1,84 @@
+schema_version: 1
+id: variants/meetings-that-repeat-every-day
+kind: kata
+title: "Meetings That Repeat Every Day"
+difficulty: medium
+tags: [intervals, sorting, invariants]
+estimated_minutes: 25
+
+variant:
+  of: katas/meeting-rooms
+  twist: "The meetings repeat every day and one may run through midnight, so the diary is a circle."
+
+prompt: |
+  Every meeting in the list happens **every day**. Each is `(start, end)` in
+  minutes after midnight, from `0` to `1439`. Return `True` if one person
+  could attend all of them, day after day.
+
+  A meeting whose `end` is **smaller** than its `start` runs **through
+  midnight**: `(1320, 120)` starts at 22:00 and finishes at 02:00 the next
+  morning — where it can collide with tomorrow's early meetings, which are the
+  same as today's. A meeting that finishes at midnight exactly is written with
+  an `end` of `0`.
+
+  Intervals are **half-open**, as before, and midnight is no exception: a
+  meeting may start at the minute another ends, on either side of it.
+  `start` and `end` are never equal, so a meeting lasts between one minute and
+  one minute short of a whole day.
+
+  The standard version sorted the meetings and compared neighbours. The day
+  has no first meeting and no last one now. Leave the list as you found it.
+
+hints:
+  - "An `end` that is smaller than its `start` cannot be compared with anything as it stands. What is true of every meeting, whichever side of midnight it finishes on? It has a start, and it has a length."
+  - "The length is `(end - start) % 1440`. Sort by start, and a meeting is clear of the next one when its start plus its length is no later than the next start. That is the standard version's neighbour check, written so that midnight does not matter."
+  - "One pair is still unchecked. In start order the last meeting of the day has no next one in the list, and it does have one in the diary: the first meeting, tomorrow, at its start plus 1440."
+  - "Check that pair with the same comparison and the circle is closed. A single meeting is its own next one a whole day later, which it can never reach, so the answer for one meeting falls out as `True` without a special case."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n) for the sorted copy"
+  constraints:
+    - "0 <= len(meetings) <= 10**4"
+    - "Each meeting is (start, end) with 0 <= start <= 1439, 0 <= end <= 1439 and start != end."
+    - "end < start means the meeting runs through midnight into the next day."
+    - "Meetings arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        can_attend_all([(1320, 120), (180, 240)])
+      output: |
+        True
+      explanation: |
+        22:00 to 02:00, and then 03:00 to 04:00. The first runs through
+        midnight and is over an hour before the second begins.
+    - input: |
+        can_attend_all([(1320, 120), (60, 90)])
+      output: |
+        False
+      explanation: |
+        The second meeting is at 01:00, and last night's 22:00 meeting is
+        still going on. Compared as written, 60 to 90 is nowhere near 1320.
+    - input: |
+        can_attend_all([(540, 600), (1380, 0), (0, 60)])
+      output: |
+        True
+      explanation: |
+        23:00 to midnight, written with an end of 0, and then midnight to
+        01:00. They touch, and touching is not overlapping.
+    - input: |
+        can_attend_all([(60, 120), (1400, 90)])
+      output: |
+        False
+      explanation: |
+        In start order the 23:20 meeting is last, and nothing in the list
+        comes after it. Tomorrow's 01:00 meeting does.
+    - input: |
+        can_attend_all([])
+      output: |
+        True
