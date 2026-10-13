@@ -51,6 +51,7 @@ __all__ = [
     "CounterExample",
     "Difficulty",
     "EditableSource",
+    "Example",
     "Exercise",
     "ExerciseFilter",
     "ExerciseKind",
@@ -60,6 +61,7 @@ __all__ = [
     "KataSpec",
     "ParamValue",
     "SqlDrillSpec",
+    "Variant",
     "editable_source",
     "validate_checks",
     "validate_filename",
@@ -175,11 +177,75 @@ class CheckSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class Example:
+    """One worked example: source to run, and the value its last line gives.
+
+    **Both halves are source in the kata's own language rather than prose**,
+    and that is the decision this class exists to hold (ADR 0027). The first
+    eighty-three katas carried their examples inside the prompt, as aligned
+    text in a fence -- `two_sum([2, 7, 11, 15], 9)   ->  (0, 1)` -- which reads
+    well and which nothing ever ran. An example is a claim about what the
+    correct answer is, so by ADR 0022 an example nobody executed is a guess;
+    and a guess printed on the exercise itself is the one a solver debugs their
+    own correct code against.
+
+    So `input` is a snippet whose last line is an expression, `output` is an
+    expression for the value that line must have, and the content suite runs
+    every pair against the reference solution. Text that had to be *described*
+    to a harness -- `head = [1, 2, 3]` standing for a linked list, the way
+    LeetCode writes it -- was the rejected alternative: it needs a codec per
+    node type and a rule per in-place function, and the notation it displays is
+    not something a solver can paste into the file in front of them. A snippet
+    is. It also covers the shapes a single call cannot: an in-place function is
+    three lines ending in the list it mutated, and a class is a constructor,
+    some calls and a question.
+
+    **Nothing here knows that the language is Python**, and neither invariant
+    below pretends to: that `input` parses and ends in an expression is a fact
+    the content suite learns by running it, which is the same split
+    `GitScenarioSpec` makes between a reference that is named and a reference
+    that passes. `explanation` is optional because a good share of the examples
+    in the library are arithmetic nobody needs walked through.
+    """
+
+    input: str
+    output: str
+    explanation: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.input.strip():
+            raise InvalidValueError("an example needs an input")
+        if not self.output.strip():
+            raise InvalidValueError("an example needs an output")
+        if self.explanation is not None and not self.explanation.strip():
+            raise InvalidValueError(
+                "an example's explanation is either written or left out; it "
+                "cannot be blank"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class KataSpec:
     """The kata engine's inputs.
 
     Filenames are relative to the exercise directory; resolving them is the
     content adapter's job, so the domain never holds a filesystem path.
+
+    **`constraints` and `examples` are the two parts of a problem statement
+    that are not prose**, which is why they are fields here rather than
+    paragraphs of the prompt. A constraint is a promise about the inputs the
+    hidden suite will pass -- how long, how large, what is guaranteed -- and a
+    solver chooses an algorithm from it; an `Example` is a checked claim about
+    the answer. Both default to empty, because "every kata states its
+    constraints and shows at least two examples" is a rule about a *good*
+    exercise and the module docstring puts those in the content suite. What is
+    refused here is only the unrepresentable: a constraint that is blank.
+
+    They are on the kata's spec and not on `Exercise`, deliberately. A git
+    scenario's inputs are a repository and a SQL drill's are a schema, and
+    neither has an input-and-output pair to show -- a field every kind carried
+    and two kinds left empty would be the `references:` key §5.1 already
+    declined.
     """
 
     language: str
@@ -188,6 +254,8 @@ class KataSpec:
     reference: str
     time_limit_seconds: int = 10
     complexity: ComplexityExpectation | None = None
+    constraints: tuple[str, ...] = ()
+    examples: tuple[Example, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.language.strip():
@@ -202,6 +270,8 @@ class KataSpec:
             validate_filename(value, field=name, subject="kata spec")
         if self.time_limit_seconds < 1:
             raise InvalidValueError("time_limit_seconds must be at least 1")
+        if any(not constraint.strip() for constraint in self.constraints):
+            raise InvalidValueError("a constraint cannot be blank")
 
     @property
     def kind(self) -> ExerciseKind:
@@ -569,6 +639,42 @@ def editable_source(spec: ExerciseSpec) -> EditableSource | None:
 
 
 @dataclass(frozen=True, slots=True)
+class Variant:
+    """What makes an exercise a twist on another one, and which one.
+
+    The interviewer's follow-up: the list is sorted now, the houses stand in a
+    circle, return the pairs themselves instead of counting them. **A variant
+    is a whole exercise** -- its own prompt, constraints, examples, stub, hidden
+    suite and reference -- that carries this to say whose twist it is (ADR
+    0028). That is the decision, and the rejected alternative is the one the
+    word suggests: a variant as a *mode* of its base, stored on the attempt and
+    resolved to a second set of files beside the first.
+
+    A mode would have been a new column on every attempt, a second path through
+    the provisioner and the grader, a relaxation of `validate_filename`'s
+    bare-name rule to reach `variants/sorted/tests.py`, and a second copy of
+    every content test -- to end up with something the solver cannot tell from
+    an exercise. As an exercise it is provisioned, graded, resumed, tutored and
+    reviewed by code that already exists and is already tested, and what is
+    new is only how it is *offered*: never in the listing or the curriculum,
+    always under its base (`ContentRepository.variants_of`).
+
+    `twist` is one sentence, and it is the sentence a solver reads when
+    choosing a version, so it says what changed rather than what the problem
+    is. Whether `of` names something real is the library's question, not this
+    object's: a value object cannot see the other exercises, and
+    `adapters/content/validation.py` can.
+    """
+
+    of: ExerciseId
+    twist: str
+
+    def __post_init__(self) -> None:
+        if not self.twist.strip():
+            raise InvalidValueError("a variant must say what its twist is")
+
+
+@dataclass(frozen=True, slots=True)
 class Exercise:
     """Common metadata plus the kind-specific spec.
 
@@ -585,6 +691,7 @@ class Exercise:
     hints: tuple[Hint, ...]
     notes: str
     spec: ExerciseSpec
+    variant: Variant | None = None
 
     def __post_init__(self) -> None:
         # `kind` is redundant with `spec.kind` and kept anyway, because the YAML
@@ -605,10 +712,65 @@ class Exercise:
             )
         if len(set(self.tags)) != len(self.tags):
             raise InvalidValueError(f"exercise {self.id} repeats a tag")
+        if self.variant is not None and self.variant.of == self.id:
+            raise InvalidValueError(f"exercise {self.id} is a variant of itself")
+
+    @property
+    def is_variant(self) -> bool:
+        return self.variant is not None
 
     @property
     def hint_count(self) -> int:
         return len(self.hints)
+
+    @property
+    def statement(self) -> str:
+        """The whole task as plain text: the prompt, then what a kata adds to it.
+
+        For the surfaces that have no tabs to put things in -- `practice solve`
+        prints this and the tutor export fences it. Before examples and
+        constraints were structured they were paragraphs of the prompt, so
+        every surface that showed the prompt showed them; moving them into
+        fields would otherwise have quietly taken them away from the two
+        surfaces that are not a web page, one of which is the tutor that most
+        needs to know what a right answer looks like.
+
+        Here rather than in either caller so that the terminal and the tutor
+        cannot disagree about what the task says. Just the prompt for a
+        scenario and a drill, which have nothing to add.
+        """
+        sections = [self.prompt.strip()]
+        if isinstance(self.spec, KataSpec):
+            if self.spec.constraints:
+                bullets = [f"- {constraint}" for constraint in self.spec.constraints]
+                sections.append("\n".join(["Constraints:", *bullets]))
+            sections.extend(
+                _example_text(number, example)
+                for number, example in enumerate(self.spec.examples, start=1)
+            )
+        return "\n\n".join(sections)
+
+
+def _example_text(number: int, example: Example) -> str:
+    """One example as indented text, labelled the way the workbench labels it."""
+    lines = [
+        f"Example {number}",
+        "  Input:",
+        _indented(example.input),
+        "  Output:",
+        _indented(example.output),
+    ]
+    if example.explanation is not None:
+        lines.extend(["  Explanation:", _indented(example.explanation)])
+    return "\n".join(lines)
+
+
+def _indented(text: str) -> str:
+    """Indent a block under its label. A blank line stays empty rather than
+    becoming trailing whitespace, which a tutor's Markdown fence would keep."""
+    return "\n".join(
+        f"      {line}" if line.strip() else "" for line in text.splitlines()
+    )
 
 
 @dataclass(frozen=True, slots=True)

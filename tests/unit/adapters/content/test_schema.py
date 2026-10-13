@@ -28,11 +28,14 @@ from practice.adapters.content.schema import (
 )
 from practice.domain.exercise import (
     Difficulty,
+    Example,
     ExerciseKind,
     GitScenarioSpec,
     KataSpec,
     SqlDrillSpec,
+    Variant,
 )
+from practice.domain.ids import ExerciseId
 from practice.domain.verdict import Severity
 
 if TYPE_CHECKING:
@@ -572,6 +575,93 @@ def test_a_half_declared_complexity_is_rejected() -> None:
     assert rejected(payload) == [("kata.complexity.expected_space", "Field required")]
 
 
+def test_a_kata_states_no_constraints_or_examples_unless_it_says_so() -> None:
+    """Optional here, required by the content suite (`KataSpecModel`)."""
+    spec = EXERCISE_FILE.validate_python(a_kata()).to_exercise(notes="n").spec
+
+    assert isinstance(spec, KataSpec)
+    assert spec.constraints == ()
+    assert spec.examples == ()
+
+
+def test_a_katas_constraints_and_examples_reach_the_domain() -> None:
+    """Written the way a file writes them: a snippet as a block scalar.
+
+    YAML ends every `|` block with a newline that is the format's, and the
+    examples tab would draw it as an empty last line in each box -- so the
+    line breaks at either end go, and nothing else does. The explanation here
+    opens with indentation that is part of a drawing, and keeps it.
+    """
+    payload = a_kata()
+    payload["kata"]["constraints"] = ["2 <= len(numbers) <= 10**5"]
+    payload["kata"]["examples"] = [
+        {
+            "input": "numbers = [3, 3]\ntwo_sum(numbers, 6)\n",
+            "output": "(0, 1)\n",
+            "explanation": "    3   3\nTwo equal values, two positions.\n",
+        },
+        {"input": "two_sum([2, 7], 9)\n", "output": "(0, 1)\n"},
+    ]
+
+    spec = EXERCISE_FILE.validate_python(payload).to_exercise(notes="n").spec
+
+    assert isinstance(spec, KataSpec)
+    assert spec.constraints == ("2 <= len(numbers) <= 10**5",)
+    assert spec.examples == (
+        Example(
+            input="numbers = [3, 3]\ntwo_sum(numbers, 6)",
+            output="(0, 1)",
+            explanation="    3   3\nTwo equal values, two positions.",
+        ),
+        Example(input="two_sum([2, 7], 9)", output="(0, 1)"),
+    )
+
+
+def test_an_example_output_that_yaml_read_as_data_is_rejected() -> None:
+    """`output: [0, 1]` is a YAML list and `output: 3` a YAML integer.
+
+    The mistake every author makes once, because an expected value *looks*
+    like data. It is source, to be shown as written and evaluated -- so the
+    schema refuses anything that is not a string rather than guessing how the
+    author would have spelled it, and the fix is a block scalar.
+    """
+    payload = a_kata()
+    payload["kata"]["examples"] = [
+        {"input": "two_sum([2, 7], 9)", "output": [0, 1]},
+        {"input": "count([])", "output": 3},
+    ]
+
+    assert rejected(payload) == [
+        ("kata.examples.0.output", "Input should be a valid string"),
+        ("kata.examples.1.output", "Input should be a valid string"),
+    ]
+
+
+def test_a_blank_constraint_or_example_part_is_located_where_it_is_blank() -> None:
+    payload = a_kata()
+    payload["kata"]["constraints"] = ["2 <= len(numbers)", "  "]
+    payload["kata"]["examples"] = [
+        {"input": "two_sum([2, 7], 9)", "output": "(0, 1)", "explanation": ""}
+    ]
+
+    assert rejected(payload) == [
+        ("kata.constraints.1", "Value error, must not be blank"),
+        ("kata.examples.0.explanation", "Value error, must not be blank"),
+    ]
+
+
+def test_an_example_takes_no_keys_but_its_own() -> None:
+    """`expected:` for `output:` is the typo, and it must not load as an
+    example with no output -- or, worse, be dropped and leave a valid one."""
+    payload = a_kata()
+    payload["kata"]["examples"] = [{"input": "two_sum([2, 7], 9)", "expected": "x"}]
+
+    assert rejected(payload) == [
+        ("kata.examples.0.output", "Field required"),
+        ("kata.examples.0.expected", "Extra inputs are not permitted"),
+    ]
+
+
 def test_every_problem_in_a_file_is_reported_at_once() -> None:
     """Fixing one typo per run to discover the next is a bad afternoon."""
     payload = a_scenario()
@@ -744,3 +834,51 @@ def test_a_counter_example_naming_an_unknown_check_is_rejected_for_a_drill_too()
 
     assert location == "drill"
     assert "expects unknown check(s): nope" in message
+
+
+# --- variants ----------------------------------------------------------------
+
+
+def test_a_file_is_a_standard_exercise_unless_it_has_a_variant_block() -> None:
+    assert (
+        EXERCISE_FILE.validate_python(a_kata()).to_exercise(notes="n").variant is None
+    )
+
+
+def test_a_variant_block_reaches_the_domain() -> None:
+    payload = a_kata()
+    payload["id"] = "variants/two-sum-sorted"
+    payload["variant"] = {"of": "katas/two-sum", "twist": " The list is sorted. "}
+
+    exercise = EXERCISE_FILE.validate_python(payload).to_exercise(notes="n")
+
+    assert exercise.variant == Variant(
+        of=ExerciseId("katas/two-sum"), twist="The list is sorted."
+    )
+
+
+def test_a_variant_of_something_that_is_not_an_id_is_located_at_the_field() -> None:
+    payload = a_kata()
+    payload["variant"] = {"of": "two-sum", "twist": "The list is sorted."}
+
+    ((location, message),) = rejected(payload)
+
+    assert location == "variant.of"
+    assert "two-sum" in message
+
+
+def test_a_variant_block_needs_both_halves_and_nothing_else() -> None:
+    payload = a_kata()
+    payload["variant"] = {"of": "katas/two-sum", "why": "sorted"}
+
+    assert rejected(payload) == [
+        ("variant.twist", "Field required"),
+        ("variant.why", "Extra inputs are not permitted"),
+    ]
+
+
+def test_a_blank_twist_is_rejected() -> None:
+    payload = a_kata()
+    payload["variant"] = {"of": "katas/two-sum", "twist": " "}
+
+    assert rejected(payload) == [("variant.twist", "Value error, must not be blank")]

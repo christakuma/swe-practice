@@ -68,6 +68,7 @@ from practice.domain.exercise import (
     ComplexityExpectation,
     CounterExample,
     Difficulty,
+    Example,
     Exercise,
     ExerciseKind,
     ExerciseSpec,
@@ -76,6 +77,7 @@ from practice.domain.exercise import (
     KataSpec,
     ParamValue,
     SqlDrillSpec,
+    Variant,
 )
 from practice.domain.ids import ExerciseId, tag
 from practice.domain.verdict import Severity
@@ -92,6 +94,7 @@ __all__ = [
     "ComplexityModel",
     "CounterExampleModel",
     "DrillCheckModel",
+    "ExampleModel",
     "ExerciseFile",
     "GitScenarioFile",
     "GitScenarioSpecModel",
@@ -99,6 +102,7 @@ __all__ = [
     "KataSpecModel",
     "SqlDrillFile",
     "SqlDrillSpecModel",
+    "VariantModel",
 ]
 
 #: Bumped only for a change that would make an existing file load *incorrectly*
@@ -313,8 +317,53 @@ class _SpecModel(_Model):
         raise NotImplementedError
 
 
+class ExampleModel(_Model):
+    """One entry in a kata's `examples:` list: source to run, and its value.
+
+    `input` is a snippet whose last line is an expression and `output` is an
+    expression for what that line gives -- both in the kata's language, both
+    run against the reference by the content suite (`domain.exercise.Example`
+    has the argument, ADR 0027 the rejected alternatives).
+
+    **Not validated as Python here**, though it would be a three-line
+    `ast.parse`. This module's rule is that nothing restates a claim another
+    layer already holds, and "the example parses" is strictly weaker than "the
+    example runs and gives the output it says", which the content suite asserts
+    per kata. A schema check would report a syntax error a few seconds sooner
+    and would leave an author believing a file that passed `practice validate`
+    had examples that were *right*.
+    """
+
+    input: _Text
+    output: _Text
+    explanation: _Text | None = None
+
+    def to_domain(self) -> Example:
+        """Drop the line break YAML adds to the end of every block scalar.
+
+        `input: |` is how a three-line snippet is written, and the block ends
+        in a newline that is the format's rather than the author's -- one that
+        would otherwise be drawn as an empty last line in every `pre` on the
+        examples tab. Only line breaks are stripped, never spaces: the first
+        line of an explanation may be the top of a drawing, and its
+        indentation is the drawing.
+        """
+        explanation = self.explanation
+        return Example(
+            input=self.input.strip("\n"),
+            output=self.output.strip("\n"),
+            explanation=explanation.strip("\n") if explanation is not None else None,
+        )
+
+
 class KataSpecModel(_SpecModel):
-    """The `kata:` block. Filenames are relative to the exercise directory."""
+    """The `kata:` block. Filenames are relative to the exercise directory.
+
+    `constraints` and `examples` are optional here and required by
+    `tests/content/test_katas.py`, which is the line `domain/exercise.py` draws
+    between a representable exercise and a good one: a kata someone is halfway
+    through drafting loads, and does not ship.
+    """
 
     language: _Text
     stub: _Text
@@ -322,6 +371,8 @@ class KataSpecModel(_SpecModel):
     reference: _Text
     time_limit_seconds: Annotated[int, Field(ge=1)] = 10
     complexity: ComplexityModel | None = None
+    constraints: tuple[_Text, ...] = ()
+    examples: tuple[ExampleModel, ...] = ()
 
     def to_domain(self) -> KataSpec:
         return KataSpec(
@@ -331,6 +382,8 @@ class KataSpecModel(_SpecModel):
             reference=self.reference,
             time_limit_seconds=self.time_limit_seconds,
             complexity=self.complexity.to_domain() if self.complexity else None,
+            constraints=self.constraints,
+            examples=tuple(example.to_domain() for example in self.examples),
         )
 
 
@@ -412,6 +465,28 @@ class SqlDrillSpecModel(_SpecModel):
 # --- the file itself -------------------------------------------------------
 
 
+class VariantModel(_Model):
+    """The `variant:` block: whose twist this exercise is, and what the twist is.
+
+    `of` is checked for being an exercise id and for nothing more. That it
+    names an exercise that exists, of the same kind, which is not itself a
+    variant, are all statements about the library, and one file cannot make
+    them (`validation.validate_library` does).
+    """
+
+    of: _Text
+    twist: _Text
+
+    @field_validator("of")
+    @classmethod
+    def _must_be_an_exercise_id(cls, value: str) -> str:
+        ExerciseId(value)
+        return value
+
+    def to_domain(self) -> Variant:
+        return Variant(of=ExerciseId(self.of), twist=self.twist.strip())
+
+
 class _ExerciseFileBase(_Model):
     """Metadata common to every kind.
 
@@ -429,6 +504,7 @@ class _ExerciseFileBase(_Model):
     estimated_minutes: Annotated[int, Field(ge=1)]
     tags: tuple[_Text, ...] = ()
     hints: tuple[_Text, ...] = ()
+    variant: VariantModel | None = None
 
     @field_validator("id")
     @classmethod
@@ -472,6 +548,7 @@ class _ExerciseFileBase(_Model):
             hints=tuple(Hint(text) for text in self.hints),
             notes=notes,
             spec=self.spec,
+            variant=self.variant.to_domain() if self.variant else None,
         )
 
 

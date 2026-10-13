@@ -20,12 +20,14 @@ from practice.domain.exercise import (
     CheckSpec,
     ComplexityExpectation,
     Difficulty,
+    Example,
     Exercise,
     ExerciseKind,
     GitScenarioSpec,
     Hint,
     KataSpec,
     SqlDrillSpec,
+    Variant,
 )
 from practice.domain.ids import ExerciseId, tag
 from practice.domain.verdict import Severity
@@ -47,6 +49,10 @@ def a_kata(
     estimated_minutes: int = 15,
     hints: tuple[str, ...] = ("Trade space for time.",),
     tags: tuple[str, ...] = ("arrays", "hash-map"),
+    constraints: tuple[str, ...] = (),
+    examples: tuple[Example, ...] = (),
+    title: str = "Two Sum",
+    variant: Variant | None = None,
 ) -> Exercise:
     """A kata whose files are named the way the real ones are.
 
@@ -58,7 +64,7 @@ def a_kata(
     return Exercise(
         id=ExerciseId(exercise_id),
         kind=ExerciseKind.KATA,
-        title="Two Sum",
+        title=title,
         prompt="Return the two positions whose values add up to the target.",
         difficulty=Difficulty.EASY,
         tags=tuple(tag(name) for name in tags),
@@ -72,7 +78,10 @@ def a_kata(
             reference="solution.py",
             time_limit_seconds=time_limit_seconds,
             complexity=complexity,
+            constraints=constraints,
+            examples=examples,
         ),
+        variant=variant,
     )
 
 
@@ -169,12 +178,24 @@ class FakeContentRepository:
         found = [
             exercise
             for exercise in self._exercises.values()
-            if criteria is None or criteria.matches(exercise)
+            if not exercise.is_variant
+            and (criteria is None or criteria.matches(exercise))
         ]
         return sorted(found, key=lambda exercise: exercise.id)
 
     def get(self, exercise_id: ExerciseId) -> Exercise | None:
         return self._exercises.get(exercise_id)
+
+    def variants_of(self, exercise_id: ExerciseId) -> Sequence[Exercise]:
+        """Held to the real repository's two rules: unlisted, and sorted by id."""
+        return sorted(
+            (
+                exercise
+                for exercise in self._exercises.values()
+                if exercise.variant is not None and exercise.variant.of == exercise_id
+            ),
+            key=lambda exercise: exercise.id,
+        )
 
     def list_tracks(self) -> Sequence[Track]:
         """The tracks this fake was given, in the order it was given them.

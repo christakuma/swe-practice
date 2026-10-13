@@ -16,6 +16,7 @@ from practice.domain.exercise import (
     CounterExample,
     Difficulty,
     EditableSource,
+    Example,
     Exercise,
     ExerciseFilter,
     ExerciseKind,
@@ -23,6 +24,7 @@ from practice.domain.exercise import (
     Hint,
     KataSpec,
     SqlDrillSpec,
+    Variant,
     editable_source,
 )
 from practice.domain.ids import ExerciseId, tag
@@ -552,3 +554,177 @@ class TestEditableSource:
 
         assert source is not None
         assert source.reference == "model-answer.sql"
+
+
+# --- a kata's statement: constraints and examples --------------------------
+
+_EXAMPLE = Example(input="two_sum([2, 7], 9)", output="(0, 1)")
+
+
+def test_an_example_holds_source_and_the_value_it_gives() -> None:
+    example = Example(
+        input="numbers = [0, 1]\nmove_zeroes(numbers)\nnumbers",
+        output="[1, 0]",
+        explanation="The zero moves behind the one.",
+    )
+
+    assert example.input.splitlines()[-1] == "numbers"
+    assert example.output == "[1, 0]"
+    assert example.explanation == "The zero moves behind the one."
+
+
+def test_an_example_needs_no_explanation() -> None:
+    assert _EXAMPLE.explanation is None
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"input": "  \n"}, "needs an input"),
+        ({"output": ""}, "needs an output"),
+        ({"explanation": " "}, "cannot be blank"),
+    ],
+)
+def test_an_example_with_a_blank_part_is_refused(
+    changes: dict[str, Any], message: str
+) -> None:
+    """A blank explanation is refused rather than read as "none".
+
+    `None` is how an author says there is nothing to explain. An empty string
+    is how a file looks when somebody meant to come back to it.
+    """
+    with pytest.raises(InvalidValueError, match=message):
+        replace(_EXAMPLE, **changes)
+
+
+def test_a_kata_states_nothing_until_its_author_does() -> None:
+    """Both default to empty: a draft is representable (the module docstring).
+
+    That every *shipped* kata has both is the content suite's claim.
+    """
+    assert _KATA.constraints == ()
+    assert _KATA.examples == ()
+
+
+def test_a_blank_constraint_is_refused() -> None:
+    with pytest.raises(InvalidValueError, match="constraint cannot be blank"):
+        replace(_KATA, constraints=("2 <= len(numbers)", "  "))
+
+
+def _a_kata_exercise(spec: KataSpec) -> Exercise:
+    return replace(
+        _EXERCISE,
+        id=ExerciseId("katas/two-sum"),
+        kind=ExerciseKind.KATA,
+        prompt="Return the two positions that add up to the target.\n",
+        spec=spec,
+    )
+
+
+def test_the_statement_of_a_scenario_is_its_prompt() -> None:
+    assert _EXERCISE.statement == "You pushed the most recent commit to origin/main."
+
+
+def test_the_statement_of_a_kata_with_nothing_to_add_is_its_prompt() -> None:
+    exercise = _a_kata_exercise(_KATA)
+
+    assert exercise.statement == "Return the two positions that add up to the target."
+
+
+def test_the_statement_of_a_kata_carries_its_constraints_and_examples() -> None:
+    """What `practice solve` prints and what a tutor is handed.
+
+    Asserted whole, because the shape *is* the claim: the two surfaces with no
+    tabs must show everything the web page splits across two, in the order a
+    problem is read -- the task, its bounds, then worked answers.
+    """
+    spec = replace(
+        _KATA,
+        constraints=("2 <= len(numbers) <= 10**5", "Exactly one pair adds up."),
+        examples=(
+            Example(
+                input="two_sum([2, 7], 9)",
+                output="(0, 1)",
+                explanation="2 + 7 is 9.",
+            ),
+            Example(
+                input="numbers = [3, 3]\ntwo_sum(numbers, 6)",
+                output="(0, 1)",
+            ),
+        ),
+    )
+
+    assert _a_kata_exercise(spec).statement == "\n".join(
+        [
+            "Return the two positions that add up to the target.",
+            "",
+            "Constraints:",
+            "- 2 <= len(numbers) <= 10**5",
+            "- Exactly one pair adds up.",
+            "",
+            "Example 1",
+            "  Input:",
+            "      two_sum([2, 7], 9)",
+            "  Output:",
+            "      (0, 1)",
+            "  Explanation:",
+            "      2 + 7 is 9.",
+            "",
+            "Example 2",
+            "  Input:",
+            "      numbers = [3, 3]",
+            "      two_sum(numbers, 6)",
+            "  Output:",
+            "      (0, 1)",
+        ]
+    )
+
+
+def test_a_blank_line_inside_an_example_is_not_padded() -> None:
+    """A drawing has blank lines in it, and they stay empty.
+
+    Indenting one would leave trailing spaces inside the tutor's Markdown
+    fence, which is the kind of whitespace a diff of two exports trips over.
+    """
+    spec = replace(
+        _KATA,
+        examples=(
+            Example(input="depth(root)", output="2", explanation="A tree:\n\n  1\n 2"),
+        ),
+    )
+
+    lines = _a_kata_exercise(spec).statement.splitlines()
+
+    assert lines[-4:] == ["      A tree:", "", "        1", "       2"]
+
+
+# --- variants ----------------------------------------------------------------
+
+_TWIST = Variant(of=ExerciseId("katas/two-sum"), twist="The list is sorted.")
+
+
+def test_an_exercise_is_standard_unless_it_says_whose_twist_it_is() -> None:
+    assert _EXERCISE.variant is None
+    assert not _EXERCISE.is_variant
+
+
+def test_a_variant_names_its_base_and_its_twist() -> None:
+    variant = replace(_EXERCISE, variant=_TWIST)
+
+    assert variant.is_variant
+    assert variant.variant == _TWIST
+    assert variant.variant.of == ExerciseId("katas/two-sum")
+
+
+def test_a_variant_must_say_what_its_twist_is() -> None:
+    """The twist is the sentence a solver chooses a version by, so a blank one
+    is a version nobody can tell from the others."""
+    with pytest.raises(InvalidValueError, match="must say what its twist is"):
+        Variant(of=ExerciseId("katas/two-sum"), twist="  ")
+
+
+def test_an_exercise_cannot_be_a_variant_of_itself() -> None:
+    """The one claim about a base this object can check without seeing the
+    library. That the base exists is `validate`'s to say (`Variant`)."""
+    with pytest.raises(InvalidValueError, match="is a variant of itself"):
+        replace(_EXERCISE, variant=Variant(of=_EXERCISE.id, twist="Nothing."))
