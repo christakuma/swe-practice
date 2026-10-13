@@ -12,7 +12,8 @@ prompt: |
 
   A rotation of zero is allowed, so the list may be fully sorted.
 
-  Scanning for the minimum is `O(n)` and obvious. Do it in `O(log n)`.
+  Scanning for the minimum is `O(n)` and obvious. Do it in `O(log n)`. The
+  tests count how many values you read.
 
 hints:
   - "A rotation leaves the list as two sorted runs, one after the other, where

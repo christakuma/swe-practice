@@ -15,7 +15,8 @@ prompt: |
   Aim for `O(log n)`, in one pass of binary search. Finding the rotation point
   first and then searching the correct run is also `O(log n)` and also
   acceptable — but the single-pass version is the one worth getting right,
-  because the reasoning it forces is the transferable part.
+  because the reasoning it forces is the transferable part. The tests count
+  how many values you read, so a scan is not an answer.
 
 hints:
   - "Binary search works when you can decide, in constant time, which half to

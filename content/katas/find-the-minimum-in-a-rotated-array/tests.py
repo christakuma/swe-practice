@@ -3,7 +3,69 @@
 Each test's docstring becomes the label on its `CheckReport`.
 """
 
+from collections.abc import Iterator
+
 from solution import find_minimum
+
+
+class Watched(list[int]):
+    """A list that counts how many of its values have been read.
+
+    The only way to hold a solution to `O(log n)` from the outside: two
+    million values are scanned in a few milliseconds, so no time limit can
+    tell a scan from a search, and a count can.
+
+    Subscripting and iteration are counted a value at a time. **The methods
+    that read the whole list are charged for the whole list**, because they
+    are where a count kept in `__getitem__` goes blind: `in`, `index`,
+    `count`, `copy`, `reversed`, `+` and `*` all walk every value inside the
+    interpreter and never call it.
+    """
+
+    reads = 0
+
+    def __getitem__(self, index):  # type: ignore[no-untyped-def]  # noqa: ANN001, ANN204
+        if isinstance(index, slice):
+            self.reads += len(range(*index.indices(len(self))))
+        else:
+            self.reads += 1
+        return super().__getitem__(index)
+
+    def __iter__(self) -> Iterator[int]:
+        for position in range(len(self)):
+            yield self[position]
+
+    def __contains__(self, value: object) -> bool:
+        self.reads += len(self)
+        return super().__contains__(value)
+
+    def index(self, value: int, *bounds: int) -> int:  # type: ignore[override]
+        self.reads += len(self)
+        return super().index(value, *bounds)
+
+    def count(self, value: int) -> int:
+        self.reads += len(self)
+        return super().count(value)
+
+    def copy(self) -> list[int]:
+        self.reads += len(self)
+        return super().copy()
+
+    def __reversed__(self) -> Iterator[int]:
+        self.reads += len(self)
+        return super().__reversed__()
+
+    def __add__(self, other: list[int]) -> list[int]:  # type: ignore[override]
+        self.reads += len(self)
+        return super().__add__(other)
+
+    def __mul__(self, times: int) -> list[int]:  # type: ignore[override]
+        self.reads += len(self)
+        return super().__mul__(times)
+
+    def __rmul__(self, times: int) -> list[int]:  # type: ignore[override]
+        self.reads += len(self)
+        return super().__rmul__(times)
 
 
 def rotations(values: list[int]) -> list[list[int]]:
@@ -89,15 +151,18 @@ def test_leaves_the_input_alone() -> None:
 
 
 def test_searches_a_large_list_in_logarithmic_time() -> None:
-    """Finds the minimum in a list of two million values.
+    """Reads at most a hundred of two million values, wherever the minimum is.
 
-    A linear scan also answers this and the time limit is generous, so this is
-    about the answer rather than the bound -- an index arithmetic error that
-    only shows up past a few thousand elements shows up here.
+    Halving two million takes twenty-one rounds, and each round reads two
+    values. `min()` reads all of them. This test used to check the answer
+    alone and say so -- "a linear scan also answers this" -- which left the
+    one thing the prompt asks for ungraded.
     """
     size = 2_000_000
-    pivot = 1_234_567
     base = list(range(size))
-    rotated = base[pivot:] + base[:pivot]
+    for pivot in (0, 1, 1_234_567, size // 2, size - 1):
+        rotated = Watched(base[pivot:] + base[:pivot])
+        rotated.reads = 0
 
-    assert find_minimum(rotated) == 0
+        assert find_minimum(rotated) == 0, pivot
+        assert rotated.reads <= 100, f"read {rotated.reads} values"

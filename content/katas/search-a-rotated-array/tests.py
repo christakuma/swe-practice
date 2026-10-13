@@ -3,7 +3,69 @@
 Each test's docstring becomes the label on its `CheckReport`.
 """
 
+from collections.abc import Iterator
+
 from solution import search
+
+
+class Watched(list[int]):
+    """A list that counts how many of its values have been read.
+
+    The only way to hold a solution to `O(log n)` from the outside: two
+    million values are scanned in a few milliseconds, so no time limit can
+    tell a scan from a search, and a count can.
+
+    Subscripting and iteration are counted a value at a time. **The methods
+    that read the whole list are charged for the whole list**, because they
+    are where a count kept in `__getitem__` goes blind: `in`, `index`,
+    `count`, `copy`, `reversed`, `+` and `*` all walk every value inside the
+    interpreter and never call it.
+    """
+
+    reads = 0
+
+    def __getitem__(self, index):  # type: ignore[no-untyped-def]  # noqa: ANN001, ANN204
+        if isinstance(index, slice):
+            self.reads += len(range(*index.indices(len(self))))
+        else:
+            self.reads += 1
+        return super().__getitem__(index)
+
+    def __iter__(self) -> Iterator[int]:
+        for position in range(len(self)):
+            yield self[position]
+
+    def __contains__(self, value: object) -> bool:
+        self.reads += len(self)
+        return super().__contains__(value)
+
+    def index(self, value: int, *bounds: int) -> int:  # type: ignore[override]
+        self.reads += len(self)
+        return super().index(value, *bounds)
+
+    def count(self, value: int) -> int:
+        self.reads += len(self)
+        return super().count(value)
+
+    def copy(self) -> list[int]:
+        self.reads += len(self)
+        return super().copy()
+
+    def __reversed__(self) -> Iterator[int]:
+        self.reads += len(self)
+        return super().__reversed__()
+
+    def __add__(self, other: list[int]) -> list[int]:  # type: ignore[override]
+        self.reads += len(self)
+        return super().__add__(other)
+
+    def __mul__(self, times: int) -> list[int]:  # type: ignore[override]
+        self.reads += len(self)
+        return super().__mul__(times)
+
+    def __rmul__(self, times: int) -> list[int]:  # type: ignore[override]
+        self.reads += len(self)
+        return super().__rmul__(times)
 
 
 def test_finds_a_value_in_the_rotated_tail() -> None:
@@ -128,3 +190,30 @@ def test_searches_a_large_list() -> None:
     assert rotated[search(rotated, 0)] == 0
     assert rotated[search(rotated, base[-1])] == base[-1]
     assert search(rotated, 1) == -1
+
+
+def test_reads_only_a_handful_of_values() -> None:
+    """Reads at most three hundred of two million values per search.
+
+    Halving two million takes twenty-one rounds. The single-pass search reads
+    up to five values a round and finding the rotation first reads fewer, so
+    three hundred leaves either plenty of room. A scan reads two million, and
+    so do `in` and `index` -- which were an accepted answer here until this
+    test, because the one above checks what comes back and not how.
+    """
+    size = 2_000_000
+    pivot = 1_234_567
+    base = list(range(0, size * 2, 2))
+    plain = base[pivot:] + base[:pivot]
+    rotated = Watched(plain)
+    present = (base[0], base[-1], plain[0], plain[-1], base[777_777], base[1_999_000])
+    absent = (1, -5, size * 2 + 1, plain[0] + 1)
+
+    for target in present:
+        rotated.reads = 0
+        assert search(rotated, target) == plain.index(target), target
+        assert rotated.reads <= 300, f"read {rotated.reads} values"
+    for target in absent:
+        rotated.reads = 0
+        assert search(rotated, target) == -1, target
+        assert rotated.reads <= 300, f"read {rotated.reads} values"
