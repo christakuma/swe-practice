@@ -55,6 +55,19 @@ class NextExercise:
         `exercise_id` need not be on the track. Somebody who wandered off to an
         exercise from Browse and pressed Next is sent to the first unfinished
         step from the top, which is where they were.
+
+        **A variant stands where its base stands.** It is on no track, by
+        construction (ADR 0028), so asked about literally it is always the
+        wanderer above -- and somebody who took the twist on step forty and
+        pressed Next was handed step three. They have not wandered: the track
+        page is where they chose it. So the search starts after the base.
+
+        And it ends *on* the base, which is the one place a variant differs
+        from the exercise it stands in for. `TrackProgress.after` never offers
+        an exercise as its own successor, rightly -- but the twist is not the
+        base, and a solver who took it on the last unfinished step would
+        otherwise be told there was nothing left on a track with a step still
+        open.
         """
         chosen = choose(self.content.list_tracks(), track)
         if chosen is None:
@@ -66,4 +79,17 @@ class NextExercise:
             },
             records=records_of(self.attempts.completed()),
         )
-        return NextStep(progress=progress, step=progress.after(exercise_id))
+        finished = self.content.get(exercise_id)
+        if finished is None or finished.variant is None:
+            return NextStep(progress=progress, step=progress.after(exercise_id))
+
+        base = finished.variant.of
+        step = progress.after(base) or next(
+            (
+                found
+                for found in progress.steps
+                if found.exercise.id == base and not found.is_done
+            ),
+            None,
+        )
+        return NextStep(progress=progress, step=step)

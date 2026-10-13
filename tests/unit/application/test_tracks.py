@@ -29,6 +29,7 @@ from practice.application.use_cases import (
     NextExercise,
     RecallExercises,
 )
+from practice.domain.exercise import Variant
 from practice.domain.ids import ExerciseId
 from practice.domain.track import Track
 from tests.fakes import a_kata
@@ -470,6 +471,48 @@ def test_next_moves_on_without_a_schedule_grade() -> None:
     assert upcoming is not None
     assert upcoming.step is not None
     assert upcoming.step.exercise.id == THREE.id
+
+
+def test_next_after_a_variant_is_the_step_after_its_base() -> None:
+    """A variant is on no track (ADR 0028), so asked about by its own id it is
+    an exercise somebody wandered off to, and the answer was the first
+    unfinished step from the top -- step one, for a solver who chose the twist
+    on step three from the track's own page.
+    """
+    twist = a_kata(
+        exercise_id="variants/three-backwards",
+        variant=Variant(of=THREE.id, twist="Read it from the other end."),
+    )
+    world = a_world(a_track())
+    world.content.add(twist)
+    solve(world, twist)
+
+    upcoming = NextExercise(content=world.content, attempts=world.attempts)(twist.id)
+
+    assert upcoming is not None
+    assert upcoming.step is not None
+    assert upcoming.step.exercise.id == FOUR.id
+
+
+def test_next_after_a_variant_comes_back_round_to_its_base() -> None:
+    """Starting after the base is not skipping it. An exercise is never its
+    own successor, but the twist is not the base -- so when everything else is
+    done the standard version is what is left, and it is offered.
+    """
+    twist = a_kata(
+        exercise_id="variants/two-backwards",
+        variant=Variant(of=TWO.id, twist="Read it from the other end."),
+    )
+    world = a_world(a_track(ONE, TWO))
+    world.content.add(twist)
+    solve(world, ONE)
+    solve(world, twist)
+
+    upcoming = NextExercise(content=world.content, attempts=world.attempts)(twist.id)
+
+    assert upcoming is not None
+    assert upcoming.step is not None
+    assert upcoming.step.exercise.id == TWO.id
 
 
 def test_next_on_a_finished_track_says_which_track_ran_out() -> None:
