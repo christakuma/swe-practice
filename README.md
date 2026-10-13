@@ -466,7 +466,17 @@ The client has three tools:
 |---|---|
 | `get_context` | the same text the **Ask an AI** panel prepares, as of this moment |
 | `read_file` | one file from your repository — the working tree's copy, or the committed one at a revision such as `origin/main` |
-| `list_attempts` | the attempts you have open, when there is more than one |
+| `list_attempts` | the attempts you have open, with the current one marked |
+
+**With several attempts open, "this" is the one in front of you.** `practice
+start` and `practice resume` mark an attempt as current, and so does bringing
+its workbench tab to the front — so with two exercises in two tabs it is the tab
+you looked at last. That is the one a tutor is shown when it does not say which,
+and an exercise left unfinished no longer turns every question into *which
+attempt?*. Submitting does not move it, so *what did I get wrong?* straight
+after is answered from the attempt you just finished, with its verdict. It only
+asks when you abandon the current one and more than one is still open
+([ADR 0026](docs/adr/0026-the-current-attempt-is-a-mark-the-solver-leaves.md)).
 
 **All three read, and there is no fourth.** Letting the tutor run a command is
 left out on purpose: it would land in *your* attempt's log, count against your

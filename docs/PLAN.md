@@ -304,8 +304,18 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > ([ADR 0025](adr/0025-tracks-are-a-second-manifest.md)). No migration and no
 > new port.
 >
+> **And one change since, not a phase, from using Phase 19.** The MCP server
+> asked *which attempt?* whenever more than one was open, which with a single
+> exercise left unfinished is every time. The app now marks the attempt in front
+> of its solver — `practice start`, `practice resume`, a workbench tab coming to
+> the front — and the server reads the mark instead of asking
+> ([ADR 0026](adr/0026-the-current-attempt-is-a-mark-the-solver-leaves.md)).
+> The fourth migration, and the first for something that is not an attempt or a
+> card.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 20 (tracks, and done-and-when), 2026-10-12
+> · **Last phase:** 20 (tracks, and done-and-when), 2026-10-12 · **Last
+> change:** the current-attempt mark, 2026-10-12
 
 ---
 
@@ -2720,6 +2730,7 @@ changed"* is worth more than any code sample.
 | [0023](adr/0023-the-tutor-context-is-what-the-solver-has-seen.md) | The tutor context is a projection of what the solver has already seen | accepted |
 | [0024](adr/0024-an-mcp-server-that-can-only-read.md) | An MCP server over stdio that can only read, on the SDK as an optional extra | accepted |
 | [0025](adr/0025-tracks-are-a-second-manifest.md) | Tracks are a second manifest, read off the attempt log and carried in the URL | accepted |
+| [0026](adr/0026-the-current-attempt-is-a-mark-the-solver-leaves.md) | The current attempt is a mark the solver leaves, not something a tutor infers | accepted |
 
 ---
 
@@ -5518,3 +5529,85 @@ branch coverage over a gated surface of **2,823 statements and
 method on one existing port, no new port, no migration. `practice validate` now
 audits `tracks.yaml` as well; `practice fixtures --check` is unchanged. The gate
 took 5m48s, one run, which CLAUDE.md is right to say is not a measurement.
+
+**2026-10-12 — After Phase 20: the current-attempt mark, built three times.**
+Not a phase: one report from using Phase 19 — *"whenever I try the MCP, it
+claims I have multiple attempts open"* — and the change that answers it.
+[ADR 0026](adr/0026-the-current-attempt-is-a-mark-the-solver-leaves.md) has the
+decision. What is worth keeping is how many times it was wrong on the way, and
+what found each one.
+
+**ADR 0024 priced the refusal at "one round trip" and it was every round
+trip.** It was written for several attempts being open, as though that were
+unusual. Abandoning an attempt is a deliberate act and leaving one is not, so
+one unfinished exercise is the ordinary state of the database.
+
+**The cheap answer could not be built, and reading one docstring said so.** The
+open attempt with the most recent event needs no migration and no write.
+`watch_solution_file.py` settled in Phase 10 that an editor save is not an
+event (ADR 0013), so a kata has the same last activity after half an hour of
+typing as when it was started, and "most recent" is "most recently started" for
+most of the library. The mark had to be something the solver does.
+
+**The first build marked on page load, and a question from the person it was
+for took it apart**: *what happens if I have two problems open in different
+tabs?* The mark sat with whichever page had loaded last, because switching tabs
+makes no request. It had also made a GET write, which `security.py` rules out
+in a sentence the cross-origin guard depends on. The suggestion that came with
+the question — ask, at that point — is the behaviour one would want and cannot
+be built: a page cannot keep asserting that it is open, because a browser
+throttles, freezes and then discards a background tab. What a page *can* say
+reliably is that it has come to the front, and that answers the question
+instead of raising it.
+
+**The second build passed the whole suite, 5,214 tests and a mutation run, and
+a review of its own diff found ten things.** Three were the feature being
+wrong. With one attempt left unfinished and another just submitted, the only
+open attempt is the stale one, and a rule that looked at what was open handed
+*that* to a tutor asked what went wrong — the exact situation in the report,
+one step later. `practice submit` loads through `ResumeAttempt`, which marked,
+so grading one attempt from a terminal took the mark from another. And a page
+restored by the back button reruns no script and changes neither visibility nor
+focus, so it never said it was in front. **None of the three could have failed
+a test, because each test had been written from the same picture of the feature
+as the code.** The mutation run proved the tests could see the code change; it
+could not show that the code was the right code.
+
+**So the third build has one writer and one reader.** `MarkCurrentAttempt` is
+the only thing that sets the mark and is called by the three surfaces that put
+an attempt in front of a person; `StartAttempt`, `ResumeAttempt`,
+`ListOpenAttempts` and `OpenWorkbench` are byte-for-byte what they were before
+any of this. `FindCurrentAttempt` holds the rule, and the rule lets a submitted
+attempt keep the mark — which closes the hole and also retires ADR 0024's "pass
+its id, which is in the workbench URL" for the commonest post-mortem there is.
+
+**The page's script was tested by finding its text in the page.** Three
+substrings, all present in a version with no answer to the back button. It is
+now `static/in-front.js`, the first JavaScript of ours outside a template, and
+`tests/web/test_in_front_script.py` runs it under node against a document that
+is a list of events. That is ADR 0022's rule arriving somewhere it was not
+written for: an assertion about code nobody executed is a guess. The cost is a
+test that skips where node is not installed.
+
+**What a deliberately broken copy found that review had not.** Thirty-four
+mutations over the third build; one survived. Taking the `focus` listener back
+off after a refusal changed nothing observable, because the flag that
+de-duplicates reports was already holding the page silent. The four
+`removeEventListener` calls became one flag, which cannot be half done.
+
+**Left open, and recorded in the ADR as costs.** "Looked at last" is not "being
+asked about": glance at the other tab and the tutor is shown it. A submitted
+attempt holds the mark until something else is in front, so the next morning's
+question is answered from yesterday's verdict. A fourth surface that puts an
+attempt in front of somebody has to remember to say so. And none of it has been
+exercised by a real tab switch — the browser available to the session that
+built it keeps its pane hidden, so visibility was simulated there and in node.
+The MSIX redirection Phase 20 recorded is still open and still decides whether
+an MCP client sees any of this.
+
+**Final numbers.** 5,236 passing and one skipped. 100% statement and branch
+coverage over a gated surface of **2,861 statements and 614 branches**, against
+Phase 20's 2,823 and 604 — the delta is the two use cases and their wiring. Two
+new methods on one existing port, no new port, one migration. Twenty-four use
+cases where there were twenty-two. `practice validate` and `practice fixtures
+--check` are unchanged. The gate took 6m28s, one run.

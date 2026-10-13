@@ -47,6 +47,7 @@ an afternoon do not need one.
 | [0023](0023-the-tutor-context-is-what-the-solver-has-seen.md) | The tutor context is a projection of what the solver has already seen | accepted |
 | [0024](0024-an-mcp-server-that-can-only-read.md) | An MCP server over stdio that can only read, on the SDK as an optional extra | accepted |
 | [0025](0025-tracks-are-a-second-manifest.md) | Tracks are a second manifest, read off the attempt log and carried in the URL | accepted |
+| [0026](0026-the-current-attempt-is-a-mark-the-solver-leaves.md) | The current attempt is a mark the solver leaves, not something a tutor infers | accepted |
 
 0022 is the odd one in this set: the only record here about **how the content is
 authored** rather than how the code is arranged. It exists because Phase 17's
