@@ -152,17 +152,36 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         that variant; `random` is a draw among all of them (`ChooseVersion`).
         What comes back is an exercise id, and from there this route does what
         it always did -- an attempt at a variant is an attempt.
+
+        **A version with an attempt already open is resumed, not started
+        again.** Every page that draws a Start button hides it behind Resume
+        when the row's exercise has an open attempt, so that one piece of work
+        is never split across two workspaces. That join is by row, and a
+        variant has no row: its open attempt is invisible under its base, which
+        went on offering Start -- and the same variant, or a draw that landed
+        on it, provisioned a second workspace. The pages cannot hold the rule
+        for a version they do not list, so it is held here as well, where the
+        version is finally known. For a standard exercise this is the page's
+        rule a second time, which is what a stale tab needs.
         """
         mode = AttemptMode.INTERVIEW if interview else AttemptMode.PRACTICE
         try:
             version = services.choose_version(ExerciseId(exercise_id), variant)
-            started = services.start_attempt(version, mode=mode)
+            already_open = next(
+                (
+                    found.attempt
+                    for found in services.list_open_attempts()
+                    if found.can_resume and found.attempt.exercise_id == version
+                ),
+                None,
+            )
+            attempt = already_open or services.start_attempt(version, mode=mode).attempt
         except (ApplicationError, ValueError) as exc:
             return render_problem(
                 templates, request, title="Cannot start", detail=str(exc), status=404
             )
         return RedirectResponse(
-            workbench_url(started.attempt.id, known_track(services, track)),
+            workbench_url(attempt.id, known_track(services, track)),
             status_code=303,
         )
 

@@ -156,6 +156,56 @@ def test_surprise_me_draws_from_every_version(
     assert _started(varied) == [THREE]
 
 
+def test_choosing_a_variant_that_is_already_open_resumes_it(
+    client: TestClient, varied: Wiring
+) -> None:
+    """A row offers Resume in place of Start when its exercise has an attempt
+    open, so that one piece of work is never split across two workspaces. A
+    variant has no row for that to happen on -- its base goes on offering
+    Start -- so the route holds the rule for it.
+    """
+    opened = varied.services.start_attempt(SORTED)
+
+    response = client.post(
+        "/attempt",
+        data={"exercise_id": KATA.value, "variant": SORTED.value},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/attempt/{opened.attempt.id}"
+    assert _started(varied) == [SORTED]
+
+
+def test_a_draw_that_lands_on_an_open_version_resumes_it(
+    client: TestClient, varied: Wiring
+) -> None:
+    """The fake picks last, which is the variant already under way."""
+    opened = varied.services.start_attempt(THREE)
+
+    response = client.post(
+        "/attempt",
+        data={"exercise_id": KATA.value, "variant": "random"},
+        follow_redirects=False,
+    )
+
+    assert response.headers["location"] == f"/attempt/{opened.attempt.id}"
+    assert _started(varied) == [THREE]
+
+
+def test_an_open_variant_does_not_stand_in_for_the_standard_version(
+    client: TestClient, varied: Wiring
+) -> None:
+    """They are different exercises. Somebody part-way through the twist who
+    asks for the problem as written gets it.
+    """
+    varied.services.start_attempt(SORTED)
+
+    client.post("/attempt", data={"exercise_id": KATA.value})
+
+    assert _started(varied) == [SORTED, KATA]
+
+
 def test_a_variant_of_something_else_is_refused_and_starts_nothing(
     client: TestClient, varied: Wiring
 ) -> None:
