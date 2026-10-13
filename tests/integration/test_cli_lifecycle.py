@@ -736,3 +736,67 @@ def _remove(directory: Path) -> None:
         target.rmdir() if target.is_dir() else target.unlink()
 
     shutil.rmtree(directory, onexc=force)
+
+
+# --- variants ----------------------------------------------------------------
+
+#: A variant the shipped library has, and the kata it is a twist on.
+SORTED_TWO_SUM = "two-sum-in-a-sorted-list"
+
+
+def test_start_takes_a_variant_by_name(storage: tuple[Path, Path]) -> None:
+    """The slug alone, which is what somebody types. The id that comes back is
+    the variant's own, and the twist is said before anything else is.
+    """
+    code, output = run(
+        storage, "start", TWO_SUM, "--variant", SORTED_TWO_SUM, "--no-prompt"
+    )
+
+    assert code == 0, output
+    assert f"variants/{SORTED_TWO_SUM}" in output
+    assert f"variant of {TWO_SUM}:" in output
+    assert "count from 1" in output
+
+
+def test_a_variant_is_printed_as_the_problem_it_is(storage: tuple[Path, Path]) -> None:
+    """The prompt, constraints and examples are the variant's own."""
+    code, output = run(storage, "start", TWO_SUM, "--variant", SORTED_TWO_SUM)
+
+    assert code == 0, output
+    assert "sorted in ascending order" in output
+    assert "(1, 2)" in output
+
+
+def test_start_without_the_flag_is_the_standard_version(
+    storage: tuple[Path, Path],
+) -> None:
+    code, output = run(storage, "start", TWO_SUM, "--no-prompt")
+
+    assert code == 0, output
+    assert "variant of" not in output
+
+
+def test_a_random_start_is_some_version_of_the_exercise(
+    storage: tuple[Path, Path],
+) -> None:
+    """Chance is real here, so what is asserted is what holds whichever way it
+    falls: the attempt is at the kata or at one of its variants, and if it is
+    a variant the output says so. That every version is a candidate, and
+    nothing else is, is `test_choose_version.py`'s claim over a fixed chooser.
+    """
+    code, output = run(storage, "start", TWO_SUM, "--variant", "random", "--no-prompt")
+
+    assert code == 0, output
+    first_line = output.splitlines()[0]
+    assert first_line.startswith((TWO_SUM, "variants/"))
+    assert ("variant of" in output) == first_line.startswith("variants/")
+
+
+def test_a_variant_that_does_not_exist_is_refused_with_the_ones_that_do(
+    storage: tuple[Path, Path],
+) -> None:
+    code, output = run(storage, "start", TWO_SUM, "--variant", "upside-down")
+
+    assert code == 2
+    assert "has no variant called 'upside-down'" in output
+    assert SORTED_TWO_SUM in output

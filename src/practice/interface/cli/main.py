@@ -835,6 +835,16 @@ def start(
             help="Interview conditions: a clock, no hints, no workspace path.",
         ),
     ] = False,
+    variant: Annotated[
+        str | None,
+        typer.Option(
+            "--variant",
+            help=(
+                "Start a variant of the exercise instead of the standard version: "
+                "a variant's name, or 'random' for any version, standard included."
+            ),
+        ),
+    ] = None,
     content: Annotated[
         Path | None,
         typer.Option(
@@ -899,15 +909,25 @@ def start(
 
     mode = AttemptMode.INTERVIEW if interview else AttemptMode.PRACTICE
     try:
-        started = services.start_attempt(_exercise_id(exercise), mode=mode)
+        # Resolved to an id first and started second, which is the whole of
+        # what a variant costs here: `ChooseVersion` names the version and
+        # everything after this line has never heard of one (ADR 0028).
+        version = services.choose_version(_exercise_id(exercise), variant)
+        started = services.start_attempt(version, mode=mode)
     except ApplicationError as exc:
         typer.secho(str(exc), fg=typer.colors.RED)
         raise typer.Exit(code=2) from exc
 
     typer.secho(f"{started.exercise.id}  {started.exercise.title}", bold=True)
+    if started.exercise.variant is not None:
+        # Said before the prompt, and whether or not the prompt is printed:
+        # after `--variant random` this line is how a solver learns that what
+        # came up is not the problem they named.
+        twist = started.exercise.variant
+        typer.secho(f"variant of {twist.of}: {twist.twist}", fg=typer.colors.YELLOW)
     if prompt:
         typer.echo("")
-        typer.echo(started.exercise.prompt.strip())
+        typer.echo(started.exercise.statement)
     typer.echo("")
     typer.secho(f"{_OK}attempt {started.attempt.id}", fg=typer.colors.GREEN)
     # **No `now` here, deliberately.** The attempt was created a moment ago, so
@@ -1553,7 +1573,7 @@ def solve(
     typer.secho(f"{started.exercise.id}  {started.exercise.title}", bold=True)
     if prompt:
         typer.echo("")
-        typer.echo(started.exercise.prompt.strip())
+        typer.echo(started.exercise.statement)
     typer.echo("")
 
     _require_flags_for_kind(started, source=source, commands=commands, complexity=claim)
