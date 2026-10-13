@@ -12,7 +12,7 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > tab of their own; and a problem can carry **variants** — the interviewer's
 > follow-up — that a solver picks or draws at random
 > ([ADR 0028](adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md)).
-> Every one of the eighty-three katas has one.
+> Every one of the eighty-three katas has one, and seventy-nine have a second.
 > Phases 0–10 built the engine, Phase 11 filled it with 54 exercises, and Phase
 > 12 is the front door and the portfolio artifacts: `uv sync && uv run practice
 > up` is the whole of getting started, and it refuses with an instruction rather
@@ -5844,3 +5844,149 @@ and 83 variants; `practice fixtures --check` is unchanged. The gate took
 10m05s, one run, clean. The first tranche's two runs were 10m31s and 9m55s
 with a sixth as many variants, which says that this machine's noise is wider
 than the cost of sixty-nine more, and nothing more precise than that.
+
+**2026-10-13 — Second variants: seventy-nine katas get another twist.** The
+request: *two versions isn't enough — at least three for a lot of these where
+possible, and make sure the variants make sense.* Seventy-nine of the
+eighty-three katas now have a second variant, 162 in all, and the work
+changed nothing under `src/`. ADR 0028's select, `--variant` and draw were
+written for *each* variant rather than *the* variant, so a second one is one
+more directory. They were written as sixty-two and then seventeen, and
+committed together.
+
+**"Make sense" was read as three tests, and each one cost candidates.** A
+second variant had to be failed by its base's reference, which the suite
+already holds. It had to be a *different* twist from its sibling and not a
+harder copy of it: each variant's suite was run against the other variant's
+reference, 158 cross-checks, and none passed — 110 on the import and
+forty-eight on behaviour. And it had to be a question an interviewer really
+asks next. Four katas were left with one variant because no candidate
+survived those tests (`is-it-a-subtree`, `product-except-self`,
+`water-flowing-to-both-oceans`, `count-bits-for-every-number-up-to-n`): in
+each, what was left was the first variant again, a constant-factor change, or
+a different problem wearing the kata's name.
+
+**Two candidates were replaced on the same grounds once they were looked at
+closely.** *The values every list shares* for `merge-k-sorted-lists` is one
+call to `set.intersection`, and no test could tell that from walking the
+lists in step; it became *the narrowest range touching every list*, which is
+the merge's own heap read as a window. *Partition around a value* for
+`reorder-a-linked-list` is two chains joined end to end, which is what the
+sibling already asks by position; it became *sort the list*, which reuses the
+kata's halving and replaces the weave with a merge.
+
+**The second twists are not the first tranche's kinds over again.** Four
+shapes account for most of them:
+
+- *The constraint that made the standard answer legal is removed.* The tree
+  is a hundred thousand levels deep, so the three-line recursion is out. One
+  wall may be passed, so a cell is no longer a position. A jump is exact, so
+  the reachable set has gaps and the greedy scan has nothing to stand on.
+  The grid wraps, so a coordinate is no longer a cell.
+- *Return the witness, not the verdict.* Name the cycle, spell out the
+  subsequence, say which room, say which houses. Nearly always the standard
+  solution was already holding the answer and threw it away.
+- *The answer is maintained, not computed.* Components after every edge,
+  strings from a stream cut anywhere, the median of the last `k`.
+- *The same machinery under another question.* Cheapest climb and cheapest
+  path (`min` where the sum was), fill the bag exactly, count the longest;
+  delete where the original replaced, and the same window answers with its
+  count where it used to answer with its width.
+
+**Three hundred and seventy-three wrong solutions were run against the
+suites, and 368 are kept.** What the other five and their neighbours turned
+out to be:
+
+- *Three were right, and my notes were wrong.* A dropped-element slice sum
+  whose second state starts at 0 rather than minus infinity; a bracket stack
+  that pushes a mismatched closer instead of resetting; a build-time pass that
+  counts a repeated dependency twice. Each passed, each was correct, and each
+  contradicted a sentence in the reference's docstring or the notes saying the
+  original form was necessary. The sentences were rewritten and, in the third
+  case, the guard deleted.
+- *A fourth such claim was caught before it was written down.* The deletion
+  version of `longest-run-after-k-replacements` was going to keep a list of
+  positions per character, on the belief that the original's lazy window
+  could not answer it. A brute force over 147,620 short cases said the
+  original's window is exact if it returns its commonest count where it
+  returned its width — and that the obvious shortcut, the replacement answer
+  minus `k`, is wrong 8,352 times. The reference is the one-line change, and
+  the docstring carries the argument for trusting a stale maximum that the
+  sweep prompted.
+- *One performance claim was false at the size chosen.* The one-letter word
+  store said a scan of every stored word would not finish. It finished in 5.6
+  seconds of a ten-second limit. The claim came out of the prompt, the test
+  and the notes; ADR 0022's sentence about constants, a third time.
+- *Five tests could not fail for their stated reason.* The alien-order
+  suite's "word before its own prefix" cases were ambiguous orders anyway;
+  the letter-pattern suite's eleven-letter case compared the wrong pair of
+  words; the wrapped grid's no-reuse cases all used words longer than the
+  grid, so a length check refused them first; the repeated-word case for
+  unique prefixes used words short enough that a slice hid the bug; and the
+  "answer leaves out the first house" case had an answer the other half of
+  the reduction also finds. Every one showed only because a mutant was
+  killed by the exhaustive sweep and by nothing with a name. Three more
+  suites got a named test for the same reason.
+- *One hand-built counter-example did not discriminate, twice.* The grid
+  meant to defeat a per-cell visited set had a wall for its destination, and
+  its replacement tied. Every 3 x 4, 4 x 3 and 3 x 5 grid was then searched
+  for one that defeats the bug under all twenty-four neighbour orders, and the
+  smallest is the one in the suite.
+- *Three were bad mutants*: one equivalent by construction and rewritten, one
+  that never terminated, and one killed by the clock rather than by a check,
+  because a test helper was quadratic on the chain the bug built. Three more
+  were sound mutants that only *timed out* on a large input, which hides
+  whether a named test would have caught them; two were given a size guard
+  and one was rewritten to be fast, and all three were run again.
+
+**Twenty-five expected values were wrong as first written**, every one caught
+by the reference disagreeing, which is the class the content suite is
+reliable for: ninety-nine coins where ninety-one do, a word that is exactly a
+third of a list and not more, a count of triples below a target that was
+right for the target one higher. Three tests were wrong in themselves rather
+than in what they expected — a helper quadratic on a deep chain (47.8 seconds
+for a suite that now takes 0.4), one that could not zip an empty list, and an
+assertion that printed a ten-thousand-digit integer past Python's conversion
+limit.
+
+**One reference had to stop recursing because of a constraint the base
+set.** *Every character at least `k` times* is solved by cutting the string
+at its rare characters and recursing on the pieces, and the usual statement
+of it bounds the depth at twenty-six by allowing only lower-case letters.
+The base kata allows any character. A string built two characters at a time
+nests one level per character, so fifteen hundred characters is fifteen
+hundred frames; the reference keeps its own list of pieces and the suite has
+that string.
+
+**The gate got a third long file, on purpose.** One file of 162 variants
+would have been the longest in the suite by a wide margin, and under `--dist
+loadfile` the longest file is the floor. The variants are dealt alternately
+between `test_variants.py` and `test_variants_second_shard.py`, eighty-one
+each beside the eighty-three katas, and the second holds the test that the
+two shares are every variant. ADR 0028 named a marked tier as the fix for
+this; a shard is narrower, keeps everything graded on every run, and is
+recorded in an addendum there.
+
+**Found on the way and not fixed here.** The *standard* `median-of-a-stream`
+suite requires the `ValueError`'s message to match `"no values"`, which no
+prompt mentions. A correct solution with another message fails a hidden
+check for an unstated requirement.
+
+**Not done.** Four katas have one variant. None has three. "Different from
+its sibling" is a convention with a one-off check behind it, not a test: two
+variants of a kata usually differ in name or signature, so the check would
+mostly be an `ImportError`. Still no variants of scenarios or drills, packs
+still do not carry them, and `practice solve` still has no `--variant`.
+
+**Final numbers.** 8,676 passing and one skipped, where the last
+entry ended on 7,162: nineteen tests for each of seventy-nine variants, the
+two the second shard holds that are not about any one variant, and eleven
+from four fixes to how a variant is started, followed, counted and validated,
+committed between that entry and this one. 100% statement and branch coverage
+over 2,945 statements and 650 branches; the growth is those
+fixes', since no line under `src/` was touched here. `practice validate`
+reports 277 exercises — the 115 the library lists and 162 variants;
+`practice fixtures --check` is unchanged. The gate took 18m37s, one run,
+clean. The run before it, with seventeen fewer variants, took 10m32s; that
+is a wider gap than seventeen variants explain and well inside the spread
+this machine has shown, and one run each is not a measurement of either.

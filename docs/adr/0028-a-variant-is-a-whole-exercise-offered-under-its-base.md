@@ -181,3 +181,26 @@ prompt nobody has read as the solver will.
 - The variant count grows until `test_variants.py` is the critical path. The
   fix is the one CLAUDE.md already names for the exhaustive sweeps: a marked
   tier, argued for rather than drifted into.
+
+## Addendum, 2026-10-13 — second variants, and the file that grades them
+
+*"One each" stopped being true, and the last trigger above fired.* Seventy-nine
+katas now have a second variant, 162 in all (PLAN.md §16 has the account).
+Nothing in the decision changed and nothing under `src/` was touched: the
+select, `--variant` and the draw were written for *each variant*, not for
+*the* variant, and a second one is one more directory.
+
+**The trigger was met with a narrower fix than the one named.** A marked
+tier trades coverage per run for time. What had actually grown was one
+*file*, and under `--dist loadfile` the longest file is the floor. So the
+variants are dealt alternately between `test_variants.py` and
+`test_variants_second_shard.py`, each no longer than `test_katas.py`, with a
+test that the two shares add up to every variant. Everything is still graded
+on every run. The marked tier remains the answer if the total, rather than
+the longest file, becomes the cost.
+
+**One rule was added for a second variant, and only by convention**: it must
+be a different twist from its sibling, not a harder version of it. The suite
+checks a variant against its base's reference and not against the other
+variant's, because two variants of one kata usually differ in name or
+signature and the check would be an `ImportError` proving nothing.

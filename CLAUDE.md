@@ -236,13 +236,21 @@ A phase ends with a `docs:` commit that:
   takes **no** line in `curriculum.yaml` or `tracks.yaml` — naming one there
   fails `validate` — and is reached only through
   `ContentRepository.variants_of` and `get`. `tests/content/test_variants.py`
-  grades them, importing `test_katas.py`'s tests, and adds one of its own: the
-  *base's* reference solution must fail the variant's suite. Keep the function
-  name the same as the base's when the signature is, so that check is about
-  behaviour rather than an `ImportError`. **Every kata has one**, and
+  and `test_variants_second_shard.py` grade them, importing `test_katas.py`'s
+  tests, and add one of their own: the *base's* reference solution must fail
+  the variant's suite. Keep the function name the same as the base's when the
+  signature is, so that check is about behaviour rather than an `ImportError`.
+  **Every kata has one**, and
   `tests/content/test_library.py::test_every_kata_offers_a_variant` fails a
-  kata added without it. With eighty-three of them `test_variants.py` is as
-  long as `test_katas.py`, so the suite has two critical paths side by side.
+  kata added without it; seventy-nine have two, which nothing requires. A second
+  variant should be a different twist, not a harder first one — check it
+  against the sibling as well as the base. **The 162 are dealt alternately
+  between the two files**, in directory order, because one file would have
+  been the longest in the suite by a wide margin and `--dist loadfile` makes
+  the longest file the floor. A new variant lands in whichever shard its slug
+  sorts into and needs no line anywhere; a *third* shard needs `SHARDS`
+  raised and a third file, and the second shard's last test fails until both
+  are done. The suite now has three long kata files side by side.
 - **A new exercise may also need a line in `content/tracks.yaml`**, and nothing
   but a content test will say so. The git and SQL tracks are explicit lists
   that are meant to be exhaustive; `practice validate` cannot know that, so

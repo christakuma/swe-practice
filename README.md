@@ -52,9 +52,10 @@ captured output of that command and `docs/demo/render.py` draws it
 - **Problem statements you can check**: every kata lists its constraints and
   has an Examples tab of inputs and outputs, each one run against the
   reference solution.
-- **A variant of every kata, like an interviewer's follow-up**: the list is
+- **Variants of every kata, like an interviewer's follow-ups**: the list is
   sorted now, count the ways instead of finding the fewest, the houses are in a
-  circle. Pick one, or ask to be surprised.
+  circle. Every kata has one and seventy-nine have two — 162 in all. Pick one, or
+  ask to be surprised.
 - **Tracks you can follow**: the whole library, the Blind 75, every git
   scenario, every SQL drill. Each list says which steps you have passed and
   when, and a finished attempt has a **Next** button for the step after it.
@@ -136,9 +137,10 @@ the list it changed. Every pair is executed against the reference solution by
 the content suite, which is why the page can call them checked
 ([ADR 0027](docs/adr/0027-examples-are-source-run-against-the-reference.md)).
 
-Every kata has a **variant**, and its Start control has a version select:
-*Standard*, each variant by name, and *Surprise me*, which draws from all of
-them including the standard one. A variant is the same problem with a twist —
+Every kata has a **variant**, most have two, and its Start control has a
+version select: *Standard*, each variant by name, and *Surprise me*, which
+draws from all of them including the standard one. A variant is the same
+problem with a twist —
 sorted input and 1-based positions, a circular list, count the ways rather than
 find the fewest — and it has its own prompt, constraints, examples and hidden
 suite. Its workbench says what the twist is above the prompt, which after a
@@ -538,10 +540,13 @@ only its files and a line in `content/curriculum.yaml`
 A **variant** is the one kind of exercise that takes no line in the curriculum.
 It is a directory under `content/variants/` whose `exercise.yaml` carries a
 `variant:` block naming the exercise it is a twist on, and it is offered under
-that exercise rather than listed. All eighty-three katas have one; the content
-suite holds each to everything a kata is held to, requires that the standard
-problem's reference solution *fails* it — a twist the standard answer already
-passes is the same exercise twice — and fails if a kata is added without one.
+that exercise rather than listed. All eighty-three katas have one and
+seventy-nine have a second; the content suite holds each to everything a kata is
+held to, requires that the standard problem's reference solution *fails* it —
+a twist the standard answer already passes is the same exercise twice — and
+fails if a kata is added without one. A kata's second variant is not a harder
+copy of its first: Two Sum's are *the list is sorted* and *count every pair*,
+and neither answer solves the other.
 
 ```bash
 uv run practice validate
