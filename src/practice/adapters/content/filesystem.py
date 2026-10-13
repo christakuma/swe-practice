@@ -44,6 +44,7 @@ class FilesystemContentRepository:
     def __init__(self, root: Path) -> None:
         self._root = root
         self._exercises: dict[ExerciseId, Exercise] | None = None
+        self._variants: dict[ExerciseId, tuple[Exercise, ...]] | None = None
         self._order: Curriculum | None = None
         self._tracks: tuple[Track, ...] | None = None
 
@@ -89,15 +90,25 @@ class FilesystemContentRepository:
         return self._loaded().get(exercise_id)
 
     def variants_of(self, exercise_id: ExerciseId) -> Sequence[Exercise]:
-        """The variants of one exercise, by id so the order never shuffles."""
-        return sorted(
-            (
-                found
-                for found in self._loaded().values()
-                if found.variant is not None and found.variant.of == exercise_id
-            ),
-            key=lambda found: found.id,
-        )
+        """The variants of one exercise, by id so the order never shuffles.
+
+        **Grouped once and then looked up**, because of who asks. Every Start
+        control on Browse, the dashboard and a track page calls this for its
+        own row, so a scan of the library per call is a scan per row -- listed
+        times loaded, on every page, and growing with each variant added. The
+        first version was that scan, under a comment at the call site saying
+        the lookups were dictionary reads.
+        """
+        if self._variants is None:
+            grouped: dict[ExerciseId, list[Exercise]] = {}
+            for found in self._loaded().values():
+                if found.variant is not None:
+                    grouped.setdefault(found.variant.of, []).append(found)
+            self._variants = {
+                base: tuple(sorted(twists, key=lambda found: found.id))
+                for base, twists in grouped.items()
+            }
+        return self._variants.get(exercise_id, ())
 
     def list_tracks(self) -> Sequence[Track]:
         """Every track `tracks.yaml` declares, resolved against this library.

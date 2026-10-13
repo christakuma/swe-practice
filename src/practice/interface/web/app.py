@@ -111,8 +111,8 @@ def create_app(services: Services) -> FastAPI:
     # track -- each listing different exercises. Threading "the variants of
     # every exercise on this page" through three routes would be three chances
     # for one of them to forget, and a Start control with no version select is
-    # not an error anybody would see. The repository caches, so the lookups are
-    # dictionary reads.
+    # not an error anybody would see. The repository groups the variants by
+    # base once, so each of those lookups is a dictionary read.
     templates.env.globals["variants_of"] = services.content.variants_of
     templates.env.filters["short_ref"] = short_ref
     templates.env.filters["commit_graph"] = render_graph

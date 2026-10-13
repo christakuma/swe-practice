@@ -104,14 +104,14 @@ def test_the_variants_of_an_exercise_come_back_in_id_order(stocked: Path) -> Non
 def test_an_exercise_without_variants_has_none(stocked: Path) -> None:
     repository = FilesystemContentRepository(stocked)
 
-    assert repository.variants_of(ExerciseId("git/undo-a-commit")) == []
-    assert repository.variants_of(ExerciseId("katas/not-there")) == []
+    assert not repository.variants_of(ExerciseId("git/undo-a-commit"))
+    assert not repository.variants_of(ExerciseId("katas/not-there"))
 
 
 def test_a_variant_has_no_variants_of_its_own(stocked: Path) -> None:
     repository = FilesystemContentRepository(stocked)
 
-    assert repository.variants_of(ExerciseId("variants/sorted")) == []
+    assert not repository.variants_of(ExerciseId("variants/sorted"))
 
 
 def test_a_library_of_only_variants_lists_nothing(
