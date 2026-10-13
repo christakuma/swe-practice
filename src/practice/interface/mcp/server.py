@@ -18,6 +18,11 @@ this module keeps by being careful; there is no use case on `Services` it could
 call that would. Each tool also carries the protocol's read-only annotation,
 which is the same fact said in the vocabulary a client can act on.
 
+**Which attempt, when a call does not say, is read too.** The app marks the
+attempt its solver has in front of them and `FindCurrentAttempt` reads it back;
+this module only asks. The first version refused whenever more than one attempt
+was open, which turned out to be most of the time (ADR 0026).
+
 **No tool runs a command, deliberately.** It was the obvious fourth one. A
 command the model ran would land in the attempt's log, count against the
 solver's budget, and be read by the advisory checks and the grade suggestion as
@@ -116,13 +121,23 @@ def build_server(services: Services) -> MCPServer:
     def resolve(attempt_id: str | None) -> AttemptId:
         """The attempt a tool call is about, or a refusal that says how to pick.
 
-        An id is optional because the ordinary case is one open attempt and a
-        solver asking about "this". Guessing among several would be worse than
-        asking: a tutor confidently describing the wrong repository is the
-        failure this exists to prevent.
+        An id is optional because the ordinary case is a solver asking about
+        "this", and `FindCurrentAttempt` holds the whole rule for what that
+        means (ADR 0026): the attempt they last had in front of them, finished
+        or not, and failing that the only one open. Read, not inferred here --
+        the first version of this function decided it from the open list alone
+        and handed over a stale attempt the moment the current one was graded.
+
+        **It still refuses rather than guesses when that finds nothing**, which
+        is what is left of ADR 0024's rule: a tutor confidently describing the
+        wrong repository is the failure this exists to prevent. The refusal
+        lists what is open and says how to get out of it without an id.
         """
         if attempt_id is not None:
             return AttemptId.parse(attempt_id)
+        current = services.find_current_attempt()
+        if current is not None:
+            return current
         attempts = services.list_open_attempts()
         if not attempts:
             raise ToolError(
@@ -130,25 +145,37 @@ def build_server(services: Services) -> MCPServer:
                 "for a post-mortem on a finished attempt, pass its id, which is "
                 "in the workbench URL."
             )
-        if len(attempts) > 1:
-            listing = "\n".join(_describe(found) for found in attempts)
-            raise ToolError(
-                f"{len(attempts)} attempts are open, so say which one by passing "
-                f"attempt_id:\n{listing}"
-            )
-        return attempts[0].attempt.id
+        listing = "\n".join(_describe(found, is_current=False) for found in attempts)
+        raise ToolError(
+            f"{len(attempts)} attempts are open and none of them is marked as "
+            f"current, so say which one by passing attempt_id. Bringing one to "
+            f"the front in the practice app marks it.\n{listing}"
+        )
 
     @server.tool(annotations=_READ_ONLY, structured_output=False)
     def list_attempts() -> str:
         """List the practice attempts that are open right now, with their ids.
 
-        Use this when get_context says more than one attempt is open, or when
-        the user refers to an exercise by name.
+        The one the user has in front of them is marked as current. Use this
+        when get_context cannot tell which attempt they mean, or when they
+        refer to an exercise by name.
         """
         attempts = services.list_open_attempts()
-        if not attempts:
-            return "No attempt is open."
-        return "\n".join(_describe(found) for found in attempts)
+        current = services.find_current_attempt()
+        lines = [
+            _describe(found, is_current=found.attempt.id == current)
+            for found in attempts
+        ] or ["No attempt is open."]
+        # Said here because it is otherwise invisible: the listing is of what
+        # is open, and the attempt `get_context` will hand over is not in it.
+        if current is not None and all(
+            found.attempt.id != current for found in attempts
+        ):
+            lines.append(
+                f"{current}  finished, and the last one the user had in front "
+                f"of them (current)"
+            )
+        return "\n".join(lines)
 
     @server.tool(annotations=_READ_ONLY, structured_output=False)
     def get_context(attempt_id: str | None = None) -> str:
@@ -156,10 +183,11 @@ def build_server(services: Services) -> MCPServer:
 
         Returns the task, every command they ran with its output, the hints
         they revealed, and the current repository state or solution file, under
-        instructions on how to tutor. Omit attempt_id when one attempt is open.
-        Pass the id of a finished attempt to get its verdict and the author's
-        notes for a post-mortem. This is a snapshot: call it again after the
-        user runs something.
+        instructions on how to tutor. Omit attempt_id for the attempt the user
+        has in front of them, which may be one they have just finished: that
+        comes with its verdict and the author's notes, for a post-mortem. Pass
+        an id for any other attempt. This is a snapshot: call it again after
+        the user runs something.
         """
         try:
             return render_markdown(services.export_tutor_context(resolve(attempt_id)))
@@ -225,7 +253,7 @@ def _unavailable(reason: str) -> str:
     )
 
 
-def _describe(found: OpenAttempt) -> str:
+def _describe(found: OpenAttempt, *, is_current: bool) -> str:
     """One open attempt on one line, with the id first because it is the handle.
 
     The full uuid, as `practice attempts` prints it and for the same reason:
@@ -237,6 +265,9 @@ def _describe(found: OpenAttempt) -> str:
         f"{attempt.command_count} commands run",
         f"{attempt.hints_revealed} hints revealed",
     ]
+    if is_current:
+        # First, because it is the note that answers "which one".
+        notes.insert(0, "current")
     if attempt.policy.is_interview:
         notes.append("interview: no tutor until it is finished")
     if not found.workspace_on_disk:

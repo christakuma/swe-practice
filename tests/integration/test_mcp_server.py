@@ -43,6 +43,7 @@ if TYPE_CHECKING:
 
 REVERT = ExerciseId("git/revert-a-pushed-commit")
 TWO_SUM = ExerciseId("katas/two-sum")
+STAIRS = ExerciseId("katas/climbing-stairs")
 
 TOOLS = {"get_context", "list_attempts", "read_file"}
 
@@ -74,7 +75,11 @@ def text_of(result: CallToolResult) -> str:
 
 @dataclass(frozen=True)
 class Shared:
-    """Two open attempts over one set of services, for the read-only tests."""
+    """Two open attempts over one set of services, for the read-only tests.
+
+    The kata is marked as the one in front of the solver (ADR 0026) and stays
+    so: nothing else in this file marks either of them.
+    """
 
     services: Services
     scenario: AttemptId
@@ -88,6 +93,7 @@ def shared(tmp_path_factory: pytest.TempPathFactory) -> Shared:
     scenario = services.start_attempt(REVERT).attempt.id
     services.run_scenario_command(scenario, "git log --oneline")
     kata = services.start_attempt(TWO_SUM).attempt.id
+    services.mark_current_attempt(kata)
     return Shared(services=services, scenario=scenario, kata=kata)
 
 
@@ -221,14 +227,29 @@ def test_with_nothing_open_the_prompt_says_so_instead_of_failing(
     assert TUTOR_PROMPT not in text
 
 
-def test_with_two_open_the_prompt_lists_them_instead_of_failing(
+def test_with_two_open_the_prompt_is_about_the_current_one(
     shared: Shared,
 ) -> None:
+    """Found by a person, like the two above: an unfinished attempt left open
+    made every `/swe-practice:tutor` an argument about which one was meant.
+    """
     text = ask(shared.services, "what did I break?")
 
-    assert "2 attempts are open" in text
-    assert str(shared.scenario) in text
-    assert str(shared.kata) in text
+    assert text.startswith(TUTOR_PROMPT)
+    assert "# Two Sum" in text
+    assert "Undo a commit that is already on origin" not in text
+
+
+def test_with_several_open_and_none_current_the_prompt_lists_them(
+    tmp_path: Path,
+) -> None:
+    services, first, second = two_open_and_none_current(tmp_path)
+
+    text = ask(services, "what did I break?")
+
+    assert "2 attempts are open and none of them is marked as current" in text
+    assert str(first) in text
+    assert str(second) in text
     assert "call get_context with its id" in text
 
 
@@ -262,29 +283,39 @@ def test_get_context_is_the_attempt_read_from_the_real_repository(
     assert "## The author's notes" not in text
 
 
-def test_with_two_attempts_open_it_asks_which_rather_than_guessing(
+def test_with_two_attempts_open_no_id_means_the_one_opened_last(
     shared: Shared,
 ) -> None:
-    """A tutor confidently describing the wrong repository is the failure worth
-    a refusal. The refusal carries both ids, so the next call can be right.
-    """
+    """Read, not guessed: the kata is the one marked (ADR 0026)."""
     result = call(shared.services, "get_context")
 
-    assert result.is_error
+    assert not result.is_error
     text = text_of(result)
-    assert "2 attempts are open" in text
-    assert str(shared.scenario) in text
-    assert str(shared.kata) in text
+    assert "# Two Sum" in text
+    assert "Undo a commit that is already on origin" not in text
 
 
-def test_list_attempts_names_each_open_attempt_with_its_full_id(
+def test_read_file_without_an_id_reads_the_attempt_get_context_described(
+    shared: Shared,
+) -> None:
+    """One resolver for both, so a tutor that was shown the kata cannot then be
+    handed a file out of the scenario's repository.
+    """
+    stub = call(shared.services, "read_file", path="stub.py")
+    script = call(shared.services, "read_file", path="build.sh")
+
+    assert not stub.is_error
+    assert "def two_sum" in text_of(stub)
+    assert script.is_error
+
+
+def test_list_attempts_names_each_open_attempt_and_marks_the_current_one(
     shared: Shared,
 ) -> None:
     text = text_of(call(shared.services, "list_attempts"))
 
-    assert f"{shared.scenario}  Undo a commit that is already on origin" in text
-    assert f"{shared.kata}  Two Sum" in text
-    assert "1 commands run" in text
+    assert f"{shared.scenario}  Undo a commit that is already on origin (1 " in text
+    assert f"{shared.kata}  Two Sum (current, 0 commands run" in text
 
 
 # --- read_file -------------------------------------------------------------
@@ -373,6 +404,83 @@ def test_a_malformed_attempt_id_is_a_sentence_not_a_crash(shared: Shared) -> Non
 
     assert result.is_error
     assert "not a valid attempt id" in text_of(result)
+
+
+# --- which attempt, when nobody says ---------------------------------------
+
+
+def two_open_and_none_current(tmp_path: Path) -> tuple[Services, AttemptId, AttemptId]:
+    """Two katas left open, and a third that was current until it was abandoned."""
+    services = services_in(tmp_path)
+    first = services.start_attempt(TWO_SUM).attempt.id
+    second = services.start_attempt(STAIRS).attempt.id
+    third = services.start_attempt(TWO_SUM).attempt.id
+    services.mark_current_attempt(third)
+    services.abandon_attempt(third)
+    return services, first, second
+
+
+def test_going_back_to_an_older_attempt_makes_it_the_one_a_tutor_is_shown(
+    tmp_path: Path,
+) -> None:
+    """The case that rules out inferring it from the log. Nothing has been run
+    or saved in the older attempt since the newer one was started -- editing a
+    kata records nothing until it is submitted -- and it is the one on screen.
+    """
+    services = services_in(tmp_path)
+    older = services.start_attempt(TWO_SUM).attempt.id
+    newer = services.start_attempt(STAIRS).attempt.id
+    services.mark_current_attempt(newer)
+    assert "# Ways to Climb the Stairs" in text_of(call(services, "get_context"))
+
+    services.mark_current_attempt(older)
+
+    assert "# Two Sum" in text_of(call(services, "get_context"))
+
+
+def test_with_several_open_and_none_current_it_asks_rather_than_guessing(
+    tmp_path: Path,
+) -> None:
+    """What is left of ADR 0024's refusal, and the reason it is left: a tutor
+    confidently describing the wrong repository is still the failure worth one.
+    The refusal carries both ids and says how to avoid needing them.
+    """
+    services, first, second = two_open_and_none_current(tmp_path)
+
+    result = call(services, "get_context")
+
+    assert result.is_error
+    text = text_of(result)
+    assert "2 attempts are open and none of them is marked as current" in text
+    assert "Bringing one to the front in the practice app marks it." in text
+    assert str(first) in text
+    assert str(second) in text
+    assert "current," not in text_of(call(services, "list_attempts"))
+
+
+def test_the_attempt_just_submitted_is_the_one_a_tutor_is_shown(
+    tmp_path: Path,
+) -> None:
+    """**The review's first finding, over the real adapters.** One attempt left
+    unfinished, another worked and submitted, and the question is what went
+    wrong. The stale one is the only attempt still open, and the first version
+    handed it over because of that.
+    """
+    services = services_in(tmp_path)
+    stale = services.start_attempt(STAIRS).attempt.id
+    worked = services.start_attempt(TWO_SUM).attempt.id
+    services.mark_current_attempt(worked)
+    services.submit_solution(worked, source="def two_sum(values, target): ...")
+
+    text = text_of(call(services, "get_context"))
+    listing = text_of(call(services, "list_attempts"))
+
+    assert "# Two Sum" in text
+    assert "## The verdict" in text
+    assert "Ways to Climb the Stairs" not in text
+    # The listing is of what is open, so it says where the current one went.
+    assert f"{stale}  Ways to Climb the Stairs (0 commands run" in listing
+    assert f"{worked}  finished, and the last one the user had in front" in listing
 
 
 # --- the three states the shared attempt is not in -------------------------
