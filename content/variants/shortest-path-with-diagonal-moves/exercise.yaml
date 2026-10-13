@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/shortest-path-with-diagonal-moves
+kind: kata
+title: "Shortest Path With Diagonal Moves"
+difficulty: medium
+tags: [grids, breadth-first-search]
+estimated_minutes: 20
+
+variant:
+  of: katas/shortest-path-in-a-grid
+  twist: "A step may go diagonally, so each cell has eight neighbours."
+
+prompt: |
+  Return the fewest cells on a route from the top-left of a grid to the
+  bottom-right, never entering a cell holding `1` — where a step may go to any
+  of the **eight** surrounding cells, diagonals included.
+
+  Count both ends: a `1 x 1` open grid is `1`. Return `-1` when there is no
+  route, which includes a blocked start or destination and a grid with no cells.
+
+  A diagonal step may pass between two walls that touch at a corner.
+
+hints:
+  - "Breadth-first search still finds the shortest route, because every step still costs the same."
+  - "All that changes is which cells a step can reach: eight offsets rather than four."
+  - "Mark a cell when it is queued, not when it is taken out, or it will be queued once for each neighbour that reaches it."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns)"
+    expected_space: "O(rows * columns)"
+  constraints:
+    - "The grid has at most 200 rows and 200 columns, and may be empty."
+    - "Every row is the same length, and every cell is 0 (open) or 1 (wall)."
+  examples:
+    - input: |
+        grid = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+        ]
+        shortest_path(grid)
+      output: |
+        3
+      explanation: |
+        Straight down the diagonal. With only four directions it takes five cells.
+    - input: |
+        grid = [
+            [0, 1],
+            [1, 0],
+        ]
+        shortest_path(grid)
+      output: |
+        2
+      explanation: |
+        One diagonal step between the two walls. The standard version has no route
+        here at all.
+    - input: |
+        shortest_path([[0, 1, 1], [1, 1, 0]])
+      output: |
+        -1

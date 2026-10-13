@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/copy-a-list-with-random-pointers
+kind: kata
+title: "Copy a List With Random Pointers"
+difficulty: medium
+tags: [linked-lists, hash-map]
+estimated_minutes: 30
+
+variant:
+  of: katas/clone-a-graph
+  twist: "The structure is a linked list whose nodes each hold an extra pointer to any node in it."
+
+prompt: |
+  Each node of a linked list has a `next` pointer and also a `random` pointer,
+  which may point at **any** node in the list — including itself — or at
+  nothing. Return a deep copy of the list.
+
+  The copy must share no nodes with the original. Each copied node's `next` and
+  `random` must point at the copies of whatever the original's pointed at, and
+  the original must be left exactly as it was.
+
+  The tests build lists with the `Node` class in the stub.
+
+hints:
+  - "The difficulty is the same as cloning a graph: a pointer may lead to a node you have not copied yet, or to one you have."
+  - "Keep a dict from each original node to its copy. With that, \"the copy of what this pointer points at\" is a lookup."
+  - "Two passes are the simplest way to make sure every copy exists before any pointer is set: first create a bare copy of every node, then fill in next and random from the dict."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
+  constraints:
+    - "The list has between 0 and 10**4 nodes; an empty list is None."
+    - "Values may repeat. Two nodes are the same node only if they are the same object."
+    - "A random pointer may point forwards, backwards, at its own node, or be None."
+  examples:
+    - input: |
+        second = Node(2)
+        first = Node(1, second)
+        first.random = second
+        second.random = second
+        copy = copy_list(first)
+        (copy.value, copy.random.value, copy.next.random is copy.next, copy is first)
+      output: |
+        (1, 2, True, False)
+      explanation: |
+        The copied 2 points at itself — the copy of itself, not the original.
+    - input: |
+        node = Node(5)
+        copy = copy_list(node)
+        (copy.random, copy.next, node.random)
+      output: |
+        (None, None, None)
+    - input: |
+        copy_list(None)
+      output: |
+        None

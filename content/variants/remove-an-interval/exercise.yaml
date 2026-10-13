@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/remove-an-interval
+kind: kata
+title: "Remove an Interval"
+difficulty: medium
+tags: [intervals]
+estimated_minutes: 20
+
+variant:
+  of: katas/insert-an-interval
+  twist: "An interval is cut out of the list instead of being merged into it."
+
+prompt: |
+  A list of non-overlapping **half-open** intervals is given in ascending order.
+  Remove everything covered by one more interval, `gone`, and return what is
+  left — still sorted and still non-overlapping.
+
+  An interval `(start, end)` covers `start` up to but not including `end`. An
+  interval that `gone` only partly covers is trimmed; one that `gone` falls
+  inside is split in two; one it covers completely disappears. Never return an
+  empty interval.
+
+  Return a new list and leave the one you were given alone.
+
+hints:
+  - "Take the intervals one at a time. For each, there are only two cases: it has nothing in common with the removed stretch, or it has."
+  - "If it overlaps, at most two pieces survive: the part before the removed stretch starts, and the part after it ends."
+  - "Each piece exists only if it has positive length. Test that with strict comparisons, or an interval that ends exactly where the removal begins leaves an empty piece behind."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n) for the output"
+  constraints:
+    - "0 <= len(intervals) <= 10**5"
+    - "Every interval, gone included, is (start, end) with -10**9 <= start < end <= 10**9."
+    - "The given intervals are sorted by start and no two of them overlap."
+  examples:
+    - input: |
+        remove([(0, 2), (3, 4), (5, 7)], (1, 6))
+      output: |
+        [(0, 1), (6, 7)]
+      explanation: |
+        The first interval loses its second half, the middle one goes entirely, and
+        the last loses its first half.
+    - input: |
+        remove([(0, 5)], (2, 3))
+      output: |
+        [(0, 2), (3, 5)]
+      explanation: |
+        The removed stretch is inside the interval, so it is split in two.
+    - input: |
+        remove([(0, 2), (5, 7)], (2, 5))
+      output: |
+        [(0, 2), (5, 7)]
+      explanation: |
+        The removed stretch only touches its neighbours, and half-open intervals
+        that touch share nothing.

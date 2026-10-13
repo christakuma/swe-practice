@@ -1,0 +1,54 @@
+schema_version: 1
+id: variants/total-set-bits-up-to-n
+kind: kata
+title: "Total Set Bits Up To N"
+difficulty: hard
+tags: [bit-manipulation, math]
+estimated_minutes: 30
+
+variant:
+  of: katas/count-bits-for-every-number-up-to-n
+  twist: "Return one number, the total of all those counts, for an n far too large to list."
+
+prompt: |
+  Return the **total** number of 1 bits in the binary representations of every
+  integer from `0` to `n` inclusive — the sum of the list the standard version
+  returned.
+
+  `n` may be as large as `10**18`, so building that list, or visiting each number
+  at all, is out of the question. Count the bits a column at a time instead.
+
+hints:
+  - "Write 0 to 7 in binary, one per line, and look down a single column rather than across a row. What does the lowest column do? The next one?"
+  - "The lowest alternates 0, 1. The next goes 0, 0, 1, 1. Column i repeats a block of 2**i zeros followed by 2**i ones."
+  - "So for each column, count the complete blocks among the n + 1 numbers and then the ones in the part-block left over. There are only about sixty columns."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(log n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= n <= 10**18"
+  examples:
+    - input: |
+        total_bits_up_to(5)
+      output: |
+        7
+      explanation: |
+        0, 1, 10, 11, 100, 101 hold 0 + 1 + 1 + 2 + 1 + 2 ones.
+    - input: |
+        total_bits_up_to(7)
+      output: |
+        12
+      explanation: |
+        Eight numbers of three bits, and each column is 1 exactly half the time:
+        3 * 4.
+    - input: |
+        total_bits_up_to(0)
+      output: |
+        0

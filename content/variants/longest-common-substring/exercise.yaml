@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/longest-common-substring
+kind: kata
+title: "Longest Common Substring"
+difficulty: medium
+tags: [strings, dynamic-programming]
+estimated_minutes: 25
+
+variant:
+  of: katas/longest-common-subsequence
+  twist: "The shared characters must now be contiguous in both strings."
+
+prompt: |
+  Return the length of the longest **substring** common to two strings — a run
+  of characters that appears, unbroken, in both.
+
+  This is the question the standard version warned about confusing itself with.
+  `"ace"` is a common *subsequence* of `"abcde"` and `"ace"`, but the longest
+  common *substring* of those two is a single character.
+
+  Characters may repeat, and case matters.
+
+hints:
+  - "The subsequence table asked \"what is the best over the first i and first j characters?\". A substring cannot skip, so ask something narrower: how long is the common run that *ends* exactly at i and at j?"
+  - "If the two characters match, it is one more than the run ending just before both. If they differ, the run ending here has length zero -- not the best of the neighbours, which is the subsequence rule."
+  - "The answer is the largest value anywhere in the table, not the last cell."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(m * n)"
+    expected_space: "O(min(m, n))"
+  constraints:
+    - "0 <= len(first) <= 1000"
+    - "0 <= len(second) <= 1000"
+    - "Characters are compared exactly."
+  examples:
+    - input: |
+        longest_common_substring("abcde", "ace")
+      output: |
+        1
+      explanation: |
+        No two neighbouring characters of "ace" are neighbours in "abcde".
+    - input: |
+        longest_common_substring("xabcdy", "zabcdw")
+      output: |
+        4
+      explanation: |
+        "abcd" appears whole in both.
+    - input: |
+        longest_common_substring("abab", "baba")
+      output: |
+        3
+      explanation: |
+        "aba" or "bab".
+    - input: |
+        longest_common_substring("abc", "def")
+      output: |
+        0

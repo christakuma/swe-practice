@@ -1,0 +1,76 @@
+schema_version: 1
+id: variants/zigzag-level-order
+kind: kata
+title: "Read a Tree Level by Level, Zigzag"
+difficulty: medium
+tags: [trees, breadth-first-search]
+estimated_minutes: 20
+
+variant:
+  of: katas/level-order-traversal
+  twist: "Every other level is read right to left."
+
+prompt: |
+  Return a tree's values grouped by level, top to bottom — but **alternate the
+  direction**. The first level is read left to right, the second right to left,
+  the third left to right again, and so on.
+
+  An empty tree gives `[]`. Missing children leave no gap — a level holds only
+  the nodes that exist.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "You already have the levels, each left to right. What is the smallest change that gives the right answer?"
+  - "Reversing every second level's list before appending it. That is the whole solution, and it is worth being sure why the tempting alternative is wrong."
+  - "The tempting alternative is to visit the children in the opposite order on alternate levels. That reverses the order nodes enter the queue, which scrambles the level *after* it: the traversal has to stay left to right underneath, and only the reporting flips."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(w) for a tree of maximum width w"
+  constraints:
+    - "The tree has between 0 and 2 * 10**4 nodes; an empty tree is None."
+    - "A single level may hold thousands of nodes."
+    - "-10**4 <= node.value <= 10**4"
+  examples:
+    - input: |
+        root = TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))
+        level_order(root)
+      output: |
+        [[3], [20, 9], [15, 7]]
+      explanation: |
+        The second level is read right to left, so 20 comes before 9. The third is
+        back to left to right.
+
+                3
+               / \
+              9  20
+                /  \
+               15   7
+    - input: |
+        root = TreeNode(
+            1,
+            TreeNode(2, TreeNode(4), TreeNode(5)),
+            TreeNode(3, TreeNode(6), TreeNode(7)),
+        )
+        level_order(root)
+      output: |
+        [[1], [3, 2], [4, 5, 6, 7]]
+      explanation: |
+        Only the direction a level is *reported* in alternates. The third level is
+        still 4, 5, 6, 7 — the children of 2 and then of 3 — even though the level
+        above it was reported as 3 then 2.
+    - input: |
+        level_order(TreeNode(1))
+      output: |
+        [[1]]
+    - input: |
+        level_order(None)
+      output: |
+        []

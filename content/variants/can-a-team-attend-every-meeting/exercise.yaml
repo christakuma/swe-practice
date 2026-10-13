@@ -1,0 +1,59 @@
+schema_version: 1
+id: variants/can-a-team-attend-every-meeting
+kind: kata
+title: "Can a Team Attend Every Meeting"
+difficulty: medium
+tags: [intervals, sorting]
+estimated_minutes: 20
+
+variant:
+  of: katas/meeting-rooms
+  twist: "There are several people, and every meeting needs one of them."
+
+prompt: |
+  Given `(start, end)` meetings and a number of `people`, return `True` if the
+  team could cover every meeting — each meeting attended by one person, and
+  nobody in two meetings at once.
+
+  Intervals are **half-open**: someone leaving a meeting at 3 can walk straight
+  into one starting at 3. Every meeting has positive duration, and they arrive
+  in no particular order.
+
+  With one person this is the standard problem. With more, checking neighbours
+  after a sort is no longer enough.
+
+hints:
+  - "The team can cover everything exactly when no moment has more meetings in progress than there are people. So the question is the largest number of meetings running at once."
+  - "Sort the start times and, separately, the end times. Walk the starts in order; before counting each one, release every meeting whose end is at or before it."
+  - "Started minus released is how many are running at that moment. If it ever exceeds the team, the answer is no."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(meetings) <= 10**5"
+    - "Each meeting is (start, end) with -10**9 <= start < end <= 10**9."
+    - "0 <= people <= 10**5"
+  examples:
+    - input: |
+        can_attend_all([(0, 30), (5, 10), (15, 20)], 2)
+      output: |
+        True
+      explanation: |
+        One person takes the long meeting and the other takes both short ones.
+    - input: |
+        can_attend_all([(1, 4), (2, 5), (3, 6)], 2)
+      output: |
+        False
+      explanation: |
+        All three are in progress between 3 and 4, and there are two people.
+    - input: |
+        can_attend_all([(1, 2), (2, 3)], 1)
+      output: |
+        True

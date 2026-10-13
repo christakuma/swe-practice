@@ -1,0 +1,61 @@
+schema_version: 1
+id: variants/remove-the-middle-node
+kind: kata
+title: "Remove the Middle Node"
+difficulty: medium
+tags: [linked-lists, two-pointers]
+estimated_minutes: 20
+
+variant:
+  of: katas/remove-the-nth-node-from-the-end
+  twist: "The node to remove is the middle one, found without knowing the length."
+
+prompt: |
+  Remove the **middle** node of a singly linked list and return the head.
+
+  For a list of `n` nodes the middle is the node at index `n // 2`, counting
+  from 0 — so with an even number of nodes it is the second of the two in the
+  centre. Removing the only node of a one-node list leaves an empty list.
+
+  Do it in one pass, without measuring the list first, and unlink the node from
+  the chain you were given.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "Removing the nth node from the end used two pointers a fixed distance apart. The middle is not a fixed distance from anything -- but it is a fixed *fraction* of the way along."
+  - "Move one pointer two nodes at a time and another one node at a time. When the fast one runs out, the slow one is half way."
+  - "To unlink a node you need the one before it, so start the fast pointer two nodes ahead: the slow pointer then stops just short of the middle."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n), one pass"
+    expected_space: "O(1)"
+  constraints:
+    - "The list has between 1 and 10**5 nodes."
+    - "Values may repeat; the node to remove is chosen by position, not by value."
+  examples:
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3, ListNode(4, ListNode(5)))))
+        remove_middle(head)
+      output: |
+        ListNode(1, ListNode(2, ListNode(4, ListNode(5))))
+      explanation: |
+        Five nodes, so the middle is index 2: the 3.
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3, ListNode(4))))
+        remove_middle(head)
+      output: |
+        ListNode(1, ListNode(2, ListNode(4)))
+      explanation: |
+        Four nodes, so the middle is index 2 again — the second of the two in the
+        centre.
+    - input: |
+        remove_middle(ListNode(1))
+      output: |
+        None

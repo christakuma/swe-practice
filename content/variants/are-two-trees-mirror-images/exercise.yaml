@@ -1,0 +1,72 @@
+schema_version: 1
+id: variants/are-two-trees-mirror-images
+kind: kata
+title: "Are Two Trees Mirror Images"
+difficulty: easy
+tags: [trees, recursion]
+estimated_minutes: 15
+
+variant:
+  of: katas/are-two-trees-the-same
+  twist: "The second tree must be the first one reflected left to right, not a copy of it."
+
+prompt: |
+  Return `True` if the second tree is the **mirror image** of the first: the
+  same values, with left and right swapped at every node.
+
+  Two empty trees are mirror images of each other. An empty tree is never the
+  mirror image of a non-empty one.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "The same-tree check compared the two roots and then recursed on the left children together and the right children together. Which pairs should be compared here?"
+  - "The left child of one against the right child of the other, and the right against the left."
+  - "That cross-pairing has to happen at every level, not only the first. Swapping at the root and then comparing the subtrees as ordinary copies accepts a tree that is flipped once and no further."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n) for the smaller tree"
+    expected_space: "O(h)"
+  constraints:
+    - "Each tree has between 0 and 100 nodes; an empty tree is None."
+    - "-10**4 <= node.value <= 10**4"
+  examples:
+    - input: |
+        first = TreeNode(1, TreeNode(2), TreeNode(3))
+        second = TreeNode(1, TreeNode(3), TreeNode(2))
+        is_mirror(first, second)
+      output: |
+        True
+      explanation: |
+        The children have changed sides.
+
+              1          1
+             / \        / \
+            2   3      3   2
+    - input: |
+        first = TreeNode(1, TreeNode(2), TreeNode(3))
+        second = TreeNode(1, TreeNode(2), TreeNode(3))
+        is_mirror(first, second)
+      output: |
+        False
+      explanation: |
+        Identical trees are not mirror images unless they are symmetric, and this
+        one is not: 2 is on the left in both.
+    - input: |
+        first = TreeNode(1, TreeNode(2, TreeNode(4)))
+        second = TreeNode(1, None, TreeNode(2, None, TreeNode(4)))
+        is_mirror(first, second)
+      output: |
+        True
+      explanation: |
+        A chain down the left reflects to a chain down the right, at every level.
+    - input: |
+        is_mirror(None, None)
+      output: |
+        True

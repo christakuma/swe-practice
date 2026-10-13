@@ -1,0 +1,58 @@
+schema_version: 1
+id: variants/rotate-a-matrix-anticlockwise
+kind: kata
+title: "Rotate a Matrix Anticlockwise"
+difficulty: medium
+tags: [matrices, in-place]
+estimated_minutes: 20
+
+variant:
+  of: katas/rotate-a-matrix-in-place
+  twist: "The rotation is 90 degrees anticlockwise instead of clockwise."
+
+prompt: |
+  Rotate an `n x n` matrix 90 degrees **anticlockwise**, in place. Return
+  nothing.
+
+  As in the standard version, in place means you mutate the list of lists you
+  were given and allocate no second grid.
+
+hints:
+  - "The clockwise rotation was two simple moves: a transpose, then a mirror. The same two kinds of move give the other direction."
+  - "After a transpose, reversing each row turns clockwise. What does reversing the order of the rows do instead?"
+  - "Work a 2 x 2 by hand before trusting it. It is the only reliable way to tell the two directions apart."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= n <= 300"
+    - "The matrix is square: n rows of n values each."
+    - "-10**9 <= matrix[i][j] <= 10**9"
+  examples:
+    - input: |
+        matrix = [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+        ]
+        rotate(matrix)
+        matrix
+      output: |
+        [[3, 6, 9], [2, 5, 8], [1, 4, 7]]
+      explanation: |
+        The right-hand column, read downwards, becomes the top row.
+    - input: |
+        matrix = [
+            [1, 2],
+            [3, 4],
+        ]
+        (rotate(matrix), matrix)
+      output: |
+        (None, [[2, 4], [1, 3]])

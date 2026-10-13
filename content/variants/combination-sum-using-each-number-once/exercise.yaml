@@ -1,0 +1,70 @@
+schema_version: 1
+id: variants/combination-sum-using-each-number-once
+kind: kata
+title: "Combination Sum, Using Each Number Once"
+difficulty: medium
+tags: [backtracking, recursion]
+estimated_minutes: 30
+
+variant:
+  of: katas/combination-sum
+  twist: "Each candidate may be used at most once, and the candidates may now contain repeats."
+
+prompt: |
+  Given positive candidates and a target, return every distinct combination of
+  candidates that sums to the target. **Each candidate may be used at most
+  once** — but the list may hold the same value several times, and each copy is
+  a candidate in its own right.
+
+  Each combination is a tuple in **ascending** order, and the returned list is
+  sorted ascending. Two combinations holding the same values are the same
+  combination, whichever copies they were built from: `[1, 1, 2]` with a target
+  of 3 has one answer, `(1, 2)`, not two.
+
+  A target of zero has exactly one combination, the empty one.
+
+hints:
+  - "In the standard version, choosing a candidate left you free to choose it again, so the recursion continued from the *same* index. What does \"at most once\" change that to?"
+  - "The next index. That alone handles distinct candidates. Now run it on [1, 1, 2] with a target of 3 and count how many times (1, 2) comes out."
+  - "Twice, once per 1. Collecting the results in a set hides that and does not fix it: with thirty equal candidates the search still explores every subset before throwing almost all of them away."
+  - "Sort first, so equal values are neighbours. Then at any one depth of the recursion, try each *value* only once: skip a candidate that equals the one before it, unless it is the first one tried at this depth."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(2^n) in the worst case, pruned by the sort and the skip"
+    expected_space: "O(n) for the recursion"
+  constraints:
+    - "0 <= len(candidates) <= 30"
+    - "1 <= candidates[i] <= 50, and values may repeat."
+    - "0 <= target <= 40"
+    - "Candidates arrive in no particular order."
+  examples:
+    - input: |
+        combination_sum([10, 1, 2, 7, 6, 1, 5], 8)
+      output: |
+        [(1, 1, 6), (1, 2, 5), (1, 7), (2, 6)]
+      explanation: |
+        There are two 1s, so (1, 1, 6) is allowed. (1, 7) could be built from either
+        of them and is still listed once.
+    - input: |
+        combination_sum([2, 5, 2, 1, 2], 5)
+      output: |
+        [(1, 2, 2), (5,)]
+    - input: |
+        combination_sum([1, 1, 2], 3)
+      output: |
+        [(1, 2)]
+      explanation: |
+        Either 1 will do, and it is one combination either way. (1, 1, 1) is not
+        available: there are only two 1s to use.
+    - input: |
+        combination_sum([3], 6)
+      output: |
+        []
+      explanation: |
+        In the standard version this is (3, 3). Here the 3 can be used once.

@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/count-the-bits-that-differ
+kind: kata
+title: "Count the Bits That Differ"
+difficulty: easy
+tags: [bit-manipulation]
+estimated_minutes: 12
+
+variant:
+  of: katas/count-the-set-bits
+  twist: "Two numbers come in, and you count the positions where their bits differ."
+
+prompt: |
+  Given two non-negative integers, return the number of bit positions at which
+  they **differ** — their Hamming distance.
+
+  Line the two numbers up from the least significant bit. The shorter one has
+  zeros above its top bit, and those count as zeros.
+
+  As in the standard version, `bin()`, `int.bit_count()` and string tricks are
+  banned: the point is the bit arithmetic. The inputs may be far wider than 64
+  bits.
+
+hints:
+  - "You already know how to count the 1 bits in one number. Can you build a single number that has a 1 exactly where the two inputs disagree?"
+  - "That is what exclusive-or means: a ^ b has a 1 in each position where the bits differ and a 0 where they match."
+  - "So the answer is the set-bit count of a ^ b, and the counting loop is the one from the standard version, unchanged."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(d) for d differing bits"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= a < 2**2000"
+    - "0 <= b < 2**2000"
+  examples:
+    - input: |
+        hamming_distance(1, 4)
+      output: |
+        2
+      explanation: |
+        1 is 001 and 4 is 100. They differ in the first and third positions.
+    - input: |
+        hamming_distance(7, 7)
+      output: |
+        0
+    - input: |
+        hamming_distance(0, 255)
+      output: |
+        8
+      explanation: |
+        255 is eight 1s, and 0 has none of them.
+    - input: |
+        hamming_distance(10, 5)
+      output: |
+        4
+      explanation: |
+        1010 and 0101 disagree everywhere.

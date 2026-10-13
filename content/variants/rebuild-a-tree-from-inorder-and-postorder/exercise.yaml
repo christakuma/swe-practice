@@ -1,0 +1,68 @@
+schema_version: 1
+id: variants/rebuild-a-tree-from-inorder-and-postorder
+kind: kata
+title: "Rebuild a Tree From In-Order and Post-Order"
+difficulty: medium
+tags: [trees, recursion, hash-map]
+estimated_minutes: 30
+
+variant:
+  of: katas/rebuild-a-tree-from-traversals
+  twist: "The second traversal is post-order instead of pre-order, and the arguments come in a different order."
+
+prompt: |
+  Rebuild a binary tree from its **in-order** and **post-order** traversals.
+
+  In-order visits the left subtree, then the node, then the right. Post-order
+  visits the left subtree, then the right, then the node — so the root comes
+  **last**, not first. Both lists hold the same values, all distinct. Empty
+  lists give an empty tree.
+
+  Note the argument order: in-order first, then post-order.
+
+  Aim for `O(n)`, and leave both lists as you found them. Build the tree out of
+  the `TreeNode` class in the stub.
+
+hints:
+  - "With pre-order you read roots from the front. Post-order has the root at the back, so read it from the back instead."
+  - "Reading post-order backwards gives: root, then the *right* subtree's nodes, then the left's. Which subtree must you therefore build first?"
+  - "The right one. Consume post-order from the end with a single moving index, split the in-order range at the root using a dict of positions, and recurse right before left."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(inorder) <= 10**5, and len(postorder) == len(inorder)"
+    - "-10**9 <= value <= 10**9, and no value appears twice."
+    - "The two lists are traversals of one tree, which is at most 500 levels deep."
+  examples:
+    - input: |
+        rebuild([9, 3, 15, 20, 7], [9, 15, 7, 20, 3])
+      output: |
+        TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))
+      explanation: |
+        The last post-order value, 3, is the root. In-order, 9 is to its left and
+        15, 20, 7 to its right.
+
+                3
+               / \
+              9  20
+                /  \
+               15   7
+    - input: |
+        rebuild([2, 1], [2, 1])
+      output: |
+        TreeNode(1, TreeNode(2))
+    - input: |
+        rebuild([1, 2], [2, 1])
+      output: |
+        TreeNode(1, None, TreeNode(2))
+      explanation: |
+        The same post-order as the example above. In-order, 2 now comes after the
+        root, so it is the right child.

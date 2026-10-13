@@ -1,0 +1,68 @@
+schema_version: 1
+id: variants/longest-word-in-a-grid
+kind: kata
+title: "Longest Word in a Grid"
+difficulty: hard
+tags: [backtracking, grids]
+estimated_minutes: 35
+
+variant:
+  of: katas/find-words-in-a-grid
+  twist: "Only the longest word that can be spelled is wanted, not all of them."
+
+prompt: |
+  A grid of characters and a list of words come in. Return the **longest** word
+  from the list that can be spelled by a path through the grid, stepping only
+  up, down, left or right and using **no cell twice**.
+
+  If several words tie for longest, return the one that comes first
+  alphabetically. If no word can be spelled, return `""`. An empty string in the
+  list never counts as a word.
+
+  Leave the grid as you found it.
+
+hints:
+  - "You do not need every word that is present -- only the best one. In what order should the words be tried so that the first success is the answer?"
+  - "Longest first, and alphabetically within a length. Then the search can stop at the first word it finds."
+  - "Remove duplicates and empty strings before sorting, so neither is searched for."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(words * cells * 4^L) worst case, usually far less"
+    expected_space: "O(L) for the recursion"
+  constraints:
+    - "0 <= rows <= 5 and 0 <= columns <= 5"
+    - "0 <= len(words) <= 50"
+    - "0 <= len(words[i]) <= 12"
+    - "Every cell is a single character. Matching is exact, so case matters."
+  examples:
+    - input: |
+        board = [
+            ["o", "a", "a", "n"],
+            ["e", "t", "a", "e"],
+            ["i", "h", "k", "r"],
+            ["i", "f", "l", "v"],
+        ]
+        longest_word(board, ["oath", "pea", "eat", "rain", "oat"])
+      output: |
+        "oath"
+    - input: |
+        board = [
+            ["a", "b"],
+            ["c", "d"],
+        ]
+        longest_word(board, ["ab", "bd", "ac", "abcd"])
+      output: |
+        "ab"
+      explanation: |
+        "abcd" would need a diagonal step. "ab", "ac" and "bd" all work and tie, and
+        "ab" is first alphabetically.
+    - input: |
+        longest_word([["a"]], ["b", ""])
+      output: |
+        ""

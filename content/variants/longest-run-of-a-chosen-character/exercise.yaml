@@ -1,0 +1,59 @@
+schema_version: 1
+id: variants/longest-run-of-a-chosen-character
+kind: kata
+title: "Longest Run of a Chosen Character"
+difficulty: medium
+tags: [sliding-window, strings]
+estimated_minutes: 20
+
+variant:
+  of: katas/longest-run-after-k-replacements
+  twist: "The character the run must be made of is given, not chosen by you."
+
+prompt: |
+  You may change at most `k` characters of the string. Return the length of the
+  longest run of the **given** character `target` you can produce.
+
+  In the standard version you could turn a stretch into whichever character
+  suited it best. Here the character is fixed: every position in the run that is
+  not already `target` costs one change.
+
+  `k` may exceed the length of the string.
+
+hints:
+  - "A window is valid when it can be turned into all-target with at most k changes. What do you need to count to know that?"
+  - "Only the characters in the window that are *not* the target. The standard version had to track the most common character; here there is nothing to track but one number."
+  - "Grow the window on the right; while it holds more than k non-target characters, shrink it from the left."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(text) <= 10**6"
+    - "0 <= k <= 10**6"
+    - "target is a single character; text may hold any characters."
+  examples:
+    - input: |
+        longest_run("AABABBA", 1, "A")
+      output: |
+        4
+      explanation: |
+        Change the first B: "AAAABBA".
+    - input: |
+        longest_run("AABABBA", 1, "B")
+      output: |
+        4
+      explanation: |
+        Change the A between the B's near the end: "AABBBBA".
+    - input: |
+        longest_run("AAAA", 0, "B")
+      output: |
+        0
+      explanation: |
+        There is no B, and no changes are allowed.

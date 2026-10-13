@@ -1,0 +1,57 @@
+schema_version: 1
+id: variants/count-slices-divisible-by-k
+kind: kata
+title: "Count Slices With a Sum Divisible by K"
+difficulty: medium
+tags: [arrays, prefix-sums, hash-map]
+estimated_minutes: 25
+
+variant:
+  of: katas/subarray-sum-equals-k
+  twist: "The slice's sum has to be divisible by k rather than equal to it."
+
+prompt: |
+  Count the contiguous, non-empty slices of a list whose sum is **divisible by
+  `k`**.
+
+  A sum of zero is divisible by everything, and negative sums count too: `-6`
+  is divisible by `3`.
+
+  Slices at different positions count separately, and they may overlap. The
+  list may be long enough that trying every slice is too slow.
+
+hints:
+  - "The standard version noticed that a slice sums to k when two running totals differ by k. When is the difference of two running totals divisible by k?"
+  - "When the two totals leave the same remainder on division by k. So count how many times each remainder has been seen, and each new total pairs with every earlier total that shares its remainder."
+  - "Start with remainder 0 seen once -- the empty prefix -- or slices that begin at the first element are missed."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(min(n, k))"
+  constraints:
+    - "0 <= len(numbers) <= 10**5"
+    - "-10**4 <= numbers[i] <= 10**4"
+    - "1 <= k <= 10**4"
+  examples:
+    - input: |
+        count_subarrays([4, 5, 0, -2, -3, 1], 5)
+      output: |
+        7
+      explanation: |
+        [5], [0], [5, 0], [-2, -3], [0, -2, -3], [5, 0, -2, -3] and the whole list.
+    - input: |
+        count_subarrays([1, 2, 3], 3)
+      output: |
+        3
+      explanation: |
+        [3], [1, 2] and [1, 2, 3].
+    - input: |
+        count_subarrays([2, 2], 4)
+      output: |
+        1

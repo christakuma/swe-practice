@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/fewest-jumps-to-the-end
+kind: kata
+title: "Fewest Jumps to the End"
+difficulty: medium
+tags: [greedy, arrays]
+estimated_minutes: 25
+
+variant:
+  of: katas/jump-game
+  twist: "Return the fewest jumps that reach the end, or -1, instead of only whether it can be reached."
+
+prompt: |
+  Each position holds the furthest you may move forward from it. Starting at
+  position 0, return the **fewest jumps** needed to reach the last position, or
+  `-1` if it cannot be reached at all.
+
+  A jump of `n` may land anywhere from 1 to `n` positions forward. A list of one
+  position needs no jumps: you are already at the end.
+
+  The list may have a hundred thousand positions, so a table that considers
+  every earlier position for each one is too slow.
+
+hints:
+  - "Jumping as far as you can each time is not the answer: from [2, 3, 1, 1, 4] it takes three jumps where two will do. What should a jump be judged on, if not on where it lands?"
+  - "On where it lets you get to *next*. Think of the positions in layers: everything reachable in one jump, everything reachable in two, and so on. The answer is the layer the last position is in."
+  - "Each layer is a contiguous range. While you scan the current range, track the furthest position anything in it can reach; when you reach the end of the range, that furthest position is the end of the next one, and you have used one more jump."
+  - "If the scan reaches the end of a range and the furthest reach has not moved past it, the next layer is empty and the end is unreachable."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "1 <= len(jumps) <= 10**5"
+    - "0 <= jumps[i] <= 10**5"
+  examples:
+    - input: |
+        fewest_jumps([2, 3, 1, 1, 4])
+      output: |
+        2
+      explanation: |
+        One step to position 1, then a jump of three to the end. Jumping the full
+        two from the start lands on a 1 and takes three jumps in all.
+    - input: |
+        fewest_jumps([3, 2, 1, 0, 4])
+      output: |
+        -1
+      explanation: |
+        Every route arrives at the 0 in position 3 and can go no further.
+    - input: |
+        fewest_jumps([1, 1, 1, 1])
+      output: |
+        3
+    - input: |
+        fewest_jumps([0])
+      output: |
+        0

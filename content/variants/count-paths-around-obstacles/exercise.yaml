@@ -1,0 +1,62 @@
+schema_version: 1
+id: variants/count-paths-around-obstacles
+kind: kata
+title: "Count Paths Around Obstacles"
+difficulty: medium
+tags: [dynamic-programming, grids]
+estimated_minutes: 25
+
+variant:
+  of: katas/count-paths-through-a-grid
+  twist: "Some cells are blocked, so the grid is given cell by cell."
+
+prompt: |
+  A grid of `0`s and `1`s comes in, where `1` marks a **blocked** cell. Starting
+  in the top-left cell and moving only **right or down**, count the distinct
+  paths to the bottom-right cell that never enter a blocked one.
+
+  If the start or the destination is blocked there are no paths. A grid with no
+  cells has none either.
+
+  The count can be enormous and must be exact.
+
+hints:
+  - "The open-grid table said: the paths to a cell are the paths to the cell above plus the paths to the cell on the left. What is the count for a blocked cell?"
+  - "Zero. Nothing reaches it and nothing passes through it, so it simply contributes nothing to the cells after it."
+  - "Take care with the first row and column. In the open grid they were all 1; here a blocked cell cuts off everything beyond it along that edge."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns)"
+    expected_space: "O(columns)"
+  constraints:
+    - "0 <= rows <= 300 and 0 <= columns <= 300"
+    - "Every row is the same length, and every cell is 0 (open) or 1 (blocked)."
+  examples:
+    - input: |
+        grid = [
+            [0, 0, 0],
+            [0, 1, 0],
+            [0, 0, 0],
+        ]
+        count_paths(grid)
+      output: |
+        2
+      explanation: |
+        Round the top and right, or round the left and bottom. The blocked centre
+        removes the other four of the six.
+    - input: |
+        count_paths([[0, 1], [0, 0]])
+      output: |
+        1
+    - input: |
+        count_paths([[1, 0], [0, 0]])
+      output: |
+        0
+      explanation: |
+        The start itself is blocked.

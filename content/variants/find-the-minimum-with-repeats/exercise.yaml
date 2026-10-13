@@ -1,0 +1,60 @@
+schema_version: 1
+id: variants/find-the-minimum-with-repeats
+kind: kata
+title: "Find the Minimum in a Rotated Array With Repeats"
+difficulty: medium
+tags: [binary-search, arrays]
+estimated_minutes: 25
+
+variant:
+  of: katas/find-the-minimum-in-a-rotated-array
+  twist: "The values may repeat."
+
+prompt: |
+  A list sorted in non-decreasing order has been rotated left by some unknown
+  amount. The values may **repeat**. Return its smallest value.
+
+  When the middle value equals the last one, you cannot tell which side the
+  minimum is on — that is the case the standard version never had to handle.
+
+  Aim for `O(log n)` wherever the values allow it. The tests ask many times
+  about a large list.
+
+hints:
+  - "The standard version compares the middle with the last value: larger means the minimum is to the right, smaller means it is at the middle or to the left. What is the third possibility now?"
+  - "Equal. [3, 3, 1, 3] and [3, 1, 3, 3] both have a middle equal to their last value, with the minimum on opposite sides."
+  - "You cannot drop a half, but you can drop the last value: the middle holds an equal one, so nothing is lost. Shrink the window by one from the right and try again."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(log n) typically, O(n) when almost every value is equal"
+    expected_space: "O(1)"
+  constraints:
+    - "1 <= len(numbers) <= 2 * 10**6"
+    - "-10**9 <= numbers[i] <= 10**9"
+    - "The list is non-decreasing order rotated left by some number of places."
+  examples:
+    - input: |
+        find_minimum([2, 2, 2, 0, 1])
+      output: |
+        0
+    - input: |
+        find_minimum([3, 3, 1, 3])
+      output: |
+        1
+      explanation: |
+        The middle and the last value are both 3, and the minimum sits between
+        them.
+    - input: |
+        find_minimum([1, 3, 3])
+      output: |
+        1
+    - input: |
+        find_minimum([5, 5, 5])
+      output: |
+        5

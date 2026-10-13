@@ -1,0 +1,70 @@
+schema_version: 1
+id: variants/cells-that-reach-neither-ocean
+kind: kata
+title: "Cells That Reach Neither Ocean"
+difficulty: medium
+tags: [grids, breadth-first-search]
+estimated_minutes: 30
+
+variant:
+  of: katas/water-flowing-to-both-oceans
+  twist: "Return the cells from which water reaches neither ocean, rather than both."
+
+prompt: |
+  A grid gives the height of each cell. Water flows from a cell to any
+  orthogonal neighbour whose height is **less than or equal** to its own, and off
+  the edge of the grid into the ocean. The top and left edges border one ocean;
+  the bottom and right edges border the other.
+
+  Return every cell from which water can reach **neither** ocean — the cells
+  where it is trapped — as a sorted list of `(row, column)` pairs.
+
+  A cell on any edge always reaches an ocean, so trapped cells are in the
+  interior, in basins lower than everything around them. Leave the heights as
+  you found them.
+
+hints:
+  - "The standard solution worked backwards: start at each ocean's edge and climb uphill, marking every cell that could drain there. That gave two sets of cells."
+  - "\"Both oceans\" was the cells in both sets. What is \"neither\"?"
+  - "The cells in *no* set -- everything left over once the two are combined. Since only the combination matters, one search seeded from all four edges finds it."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(m * n)"
+    expected_space: "O(m * n)"
+  constraints:
+    - "0 <= m <= 200 and 0 <= n <= 200, for m rows of n heights each."
+    - "0 <= heights[i][j] <= 10**5"
+  examples:
+    - input: |
+        heights = [
+            [5, 5, 5],
+            [5, 1, 5],
+            [5, 5, 5],
+        ]
+        neither_ocean(heights)
+      output: |
+        [(1, 1)]
+      explanation: |
+        The centre is lower than all four neighbours, so water there has nowhere to
+        go.
+    - input: |
+        heights = [
+            [1, 2, 2, 3],
+            [3, 2, 3, 4],
+            [2, 4, 5, 3],
+        ]
+        neither_ocean(heights)
+      output: |
+        []
+      explanation: |
+        Every cell here drains to at least one ocean.
+    - input: |
+        neither_ocean([[9, 9, 9, 9], [9, 0, 0, 9], [9, 9, 9, 9]])
+      output: |
+        [(1, 1), (1, 2)]

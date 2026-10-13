@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/two-sum-in-a-sorted-list
+kind: kata
+title: "Two Sum in a Sorted List"
+difficulty: medium
+tags: [arrays, two-pointers]
+estimated_minutes: 15
+
+variant:
+  of: katas/two-sum
+  twist: "The list is sorted, you get O(1) extra space, and positions count from 1."
+
+prompt: |
+  You are given a list of integers **sorted in ascending order** and a target
+  value. Exactly one pair of distinct positions holds two numbers that add up
+  to the target.
+
+  Return those two positions as a tuple, smaller first — and count them **from
+  1**, not from 0.
+
+  Use **O(1) extra space**. A dict of the values seen so far still finds the
+  pair, and ignores the one thing this version tells you that the standard one
+  does not. The tests measure the memory you allocate.
+
+hints:
+  - "A dict still works here and wastes the one new fact you were given. What does *sorted* tell you about a pair's sum before you have looked at every pair?"
+  - "Take the smallest value and the largest. If their sum is too small, the smallest cannot be part of the answer: nothing larger is left to pair it with. What is the mirror-image statement when the sum is too big?"
+  - "Two indices walking inward from the ends, one step per comparison, and every step discards a value for good. Then check what the positions are counted from."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "2 <= len(numbers) <= 10**6"
+    - "-10**9 <= numbers[i] <= 10**9, and so is target."
+    - "numbers is in ascending order, and equal values may repeat."
+    - "Exactly one pair of positions adds up to the target."
+  examples:
+    - input: |
+        two_sum([2, 7, 11, 15], 9)
+      output: |
+        (1, 2)
+      explanation: |
+        2 + 7 is 9. They are the first and second values, so the answer is (1, 2)
+        where the standard version says (0, 1).
+    - input: |
+        two_sum([2, 3, 4], 6)
+      output: |
+        (1, 3)
+      explanation: |
+        2 + 4. The 3 is half the target, but one position cannot be used twice.
+    - input: |
+        two_sum([-5, -1, 0, 3], -6)
+      output: |
+        (1, 2)
+    - input: |
+        two_sum([1, 4, 4, 9], 8)
+      output: |
+        (2, 3)
+      explanation: |
+        Two equal values at two different positions are a legitimate pair.

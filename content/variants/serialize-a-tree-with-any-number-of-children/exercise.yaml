@@ -1,0 +1,69 @@
+schema_version: 1
+id: variants/serialize-a-tree-with-any-number-of-children
+kind: kata
+title: "Serialize a Tree With Any Number of Children"
+difficulty: hard
+tags: [trees, design]
+estimated_minutes: 35
+
+variant:
+  of: katas/serialize-and-deserialize-a-tree
+  twist: "A node may have any number of children, held in a list, instead of a left and a right."
+
+prompt: |
+  Write a pair of functions that survive a round trip: `serialize` turns a tree
+  into a string, and `deserialize` turns it back into exactly the same tree.
+
+  Here each node holds a **list of children**, of any length, in order. There is
+  no left and right, so there are no "missing child" slots to mark — and you
+  have to record how many children each node has some other way.
+
+  The order of children must survive, and so must the shape: two different trees
+  must not serialise to the same string. Values may be negative and may repeat.
+  The tree may be very deep.
+
+  You may not use `json`, `pickle`, `repr`, `ast`, or any other serialiser.
+
+  The tests build trees with the `Node` class in the stub.
+
+hints:
+  - "For a binary tree a pre-order walk plus a marker for each absent child was enough. With a list of children there is no fixed number of slots to mark. What is the smallest thing that pins down the shape?"
+  - "How many children each node has. Write each node as its value followed by its child count, in pre-order."
+  - "To read it back, keep a stack of nodes still waiting for children, each with the number it is owed. Each new node is attached to the top of the stack. Do both directions with a loop: the tree may be far deeper than the recursion limit."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n) both directions"
+    expected_space: "O(n)"
+  constraints:
+    - "The tree has between 0 and 10**5 nodes; an empty tree is None."
+    - "It may be a chain 10**4 deep, far deeper than Python will recurse."
+    - "-10**9 <= node.value <= 10**9, and values may repeat."
+    - "deserialize is only ever given a string that serialize returned."
+  examples:
+    - input: |
+        root = Node(1, [Node(3, [Node(5), Node(6)]), Node(2), Node(4)])
+        copy = deserialize(serialize(root))
+        (copy.value, [child.value for child in copy.children], [g.value for g in copy.children[0].children])
+      output: |
+        (1, [3, 2, 4], [5, 6])
+      explanation: |
+        Three children in their original order, and the first of them keeps its own
+        two.
+    - input: |
+        left = Node(1, [Node(2, [Node(3)])])
+        right = Node(1, [Node(2), Node(3)])
+        serialize(left) == serialize(right)
+      output: |
+        False
+      explanation: |
+        The same three values in pre-order, in two different shapes.
+    - input: |
+        deserialize(serialize(None))
+      output: |
+        None

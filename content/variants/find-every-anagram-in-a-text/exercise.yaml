@@ -1,0 +1,59 @@
+schema_version: 1
+id: variants/find-every-anagram-in-a-text
+kind: kata
+title: "Find Every Anagram in a Text"
+difficulty: medium
+tags: [strings, sliding-window, hash-map]
+estimated_minutes: 25
+
+variant:
+  of: katas/is-it-an-anagram
+  twist: "Find every place in a long text where an anagram of the pattern starts."
+
+prompt: |
+  Return every position in `text` at which an anagram of `pattern` begins — each
+  index `i` such that `text[i : i + len(pattern)]` is a rearrangement of
+  `pattern`. Return the positions in ascending order.
+
+  Comparison is exact, as in the standard version: case matters and every
+  character counts. A pattern longer than the text matches nowhere.
+
+  Checking each window from scratch is too slow when both strings are long.
+
+hints:
+  - "One window is the standard problem: do these two strings have the same character counts? Sliding the window one place changes very little."
+  - "One character enters and one leaves. Keep the counts and update those two entries instead of recounting."
+  - "To avoid comparing two whole dicts at every step, keep for each character the difference between window and pattern, plus one number: how many characters currently have a non-zero difference. A match is that number being zero."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n + m)"
+    expected_space: "O(k) for k distinct characters"
+  constraints:
+    - "0 <= len(text) <= 3 * 10**5"
+    - "1 <= len(pattern) <= 10**5"
+    - "Any characters may appear in either string."
+  examples:
+    - input: |
+        anagram_positions("cbaebabacd", "abc")
+      output: |
+        [0, 6]
+      explanation: |
+        "cba" at position 0 and "bac" at position 6.
+    - input: |
+        anagram_positions("abab", "ab")
+      output: |
+        [0, 1, 2]
+      explanation: |
+        "ab", "ba" and "ab" again. Overlapping matches all count.
+    - input: |
+        anagram_positions("aab", "ab")
+      output: |
+        [1]
+      explanation: |
+        "aa" has the right letters in the wrong quantities.

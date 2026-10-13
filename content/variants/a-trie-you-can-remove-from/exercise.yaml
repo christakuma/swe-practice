@@ -1,0 +1,73 @@
+schema_version: 1
+id: variants/a-trie-you-can-remove-from
+kind: kata
+title: "A Trie You Can Remove From"
+difficulty: hard
+tags: [tries, data-structure-design]
+estimated_minutes: 35
+
+variant:
+  of: katas/implement-a-trie
+  twist: "Words can be removed, and a prefix that only a removed word had must stop matching."
+
+prompt: |
+  Build a prefix tree supporting four operations:
+
+  - `insert(word)` — add a word. Inserting the same word twice changes nothing.
+  - `contains(word)` — is this exact word in the trie?
+  - `starts_with(prefix)` — does any **stored** word begin with this?
+  - `remove(word)` — take a word out. Return `True` if it was there and `False`
+    if it was not.
+
+  Removal has to be real. After `remove("apple")`, `starts_with("app")` is
+  `True` only if some *other* stored word begins with `"app"`. And removing a
+  word must not disturb words that share its prefix, or that it is a prefix of.
+
+  `starts_with("")` is `True` exactly when at least one word is stored.
+
+hints:
+  - "Clearing the end-of-word mark makes `contains` right and leaves `starts_with` wrong: the nodes are still there, so the prefix still seems to exist."
+  - "Each node needs to know how many stored words pass through it. Insertion adds one along the path; removal subtracts one."
+  - "A node whose count reaches zero is on no word's path and can be deleted. Check that the word is present before changing any counts, or a failed removal corrupts them."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(len(word)) per operation"
+    expected_space: "O(total characters stored)"
+  constraints:
+    - "0 <= len(word) <= 20 and 0 <= len(prefix) <= 20"
+    - "Words hold any characters at all, not only lowercase letters."
+    - "At most 2 * 10**5 calls are made to the four methods combined."
+  examples:
+    - input: |
+        trie = Trie()
+        trie.insert("apple")
+        trie.remove("apple")
+        (trie.contains("apple"), trie.starts_with("app"))
+      output: |
+        (False, False)
+      explanation: |
+        Nothing is stored any more, so nothing starts with "app".
+    - input: |
+        trie = Trie()
+        trie.insert("apple")
+        trie.insert("app")
+        trie.remove("app")
+        (trie.contains("app"), trie.contains("apple"), trie.starts_with("app"))
+      output: |
+        (False, True, True)
+      explanation: |
+        "apple" is still there, and it still begins with "app".
+    - input: |
+        trie = Trie()
+        trie.insert("apple")
+        (trie.remove("app"), trie.remove("apple"), trie.remove("apple"))
+      output: |
+        (False, True, False)
+      explanation: |
+        "app" was never a stored word, and "apple" can only be removed once.

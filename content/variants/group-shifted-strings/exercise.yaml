@@ -1,0 +1,61 @@
+schema_version: 1
+id: variants/group-shifted-strings
+kind: kata
+title: "Group Shifted Strings"
+difficulty: medium
+tags: [strings, hash-map]
+estimated_minutes: 20
+
+variant:
+  of: katas/group-anagrams
+  twist: "Words belong together when one is the other with every letter shifted the same distance."
+
+prompt: |
+  Two words are **shifts** of one another when moving every letter of one the
+  same number of steps along the alphabet gives the other. The alphabet wraps:
+  the letter after `z` is `a`. So `"abc"`, `"bcd"` and `"xyz"` are shifts of one
+  another, and so are `"az"` and `"ba"`.
+
+  Group a list of lowercase words so that shifts of one another end up together.
+
+  Order matters at both levels, as in the standard version: within a group, the
+  words appear in the order they appeared in the input, and the groups appear in
+  the order their first word appeared.
+
+hints:
+  - "Anagrams were grouped by a key that all members share and no outsider does. What stays the same about a word when every letter moves by the same amount?"
+  - "The gaps between its letters. \"abc\" and \"xyz\" both step by one each time."
+  - "Use the distance of each letter from the word's first letter as the key. Take it modulo 26, or a word that wraps past z gets a different key from one that does not."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(total characters)"
+    expected_space: "O(total characters)"
+  constraints:
+    - "0 <= len(words) <= 10**4"
+    - "0 <= len(words[i]) <= 50"
+    - "Every word is made of lowercase letters a to z."
+  examples:
+    - input: |
+        group_shifted(["abc", "bcd", "acef", "xyz", "az", "ba", "a", "z"])
+      output: |
+        [["abc", "bcd", "xyz"], ["acef"], ["az", "ba"], ["a", "z"]]
+      explanation: |
+        "az" shifted by one is "ba": the z wraps round to a. Every single letter is
+        a shift of every other.
+    - input: |
+        group_shifted(["ab", "ba"])
+      output: |
+        [["ab"], ["ba"]]
+      explanation: |
+        These are anagrams, not shifts. From a to b is one step; from b to a is
+        twenty-five.
+    - input: |
+        group_shifted([])
+      output: |
+        []

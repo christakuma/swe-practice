@@ -1,0 +1,68 @@
+schema_version: 1
+id: variants/does-one-tree-contain-the-other
+kind: kata
+title: "Does One Tree Contain the Other's Shape"
+difficulty: medium
+tags: [trees, recursion]
+estimated_minutes: 25
+
+variant:
+  of: katas/is-it-a-subtree
+  twist: "The candidate has to match from some node downwards, but the tree may carry on below it."
+
+prompt: |
+  Return `True` if `candidate` appears inside `tree` as a **substructure**: there
+  is some node of `tree` from which `candidate` can be laid over the tree, every
+  node of `candidate` landing on a node with the same value in the same
+  position.
+
+  Unlike the standard version, the match does **not** have to be complete. Where
+  `candidate` has no child, the tree may have anything at all — the tree is
+  allowed to carry on below the candidate's leaves.
+
+  An empty candidate is contained in anything, including an empty tree. A
+  non-empty candidate is never contained in an empty tree.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "The outer search does not change: try the match at every node of the tree."
+  - "The inner comparison does. In the standard version, running out of candidate while the tree still had nodes was a failure. What should it be now?"
+  - "Success. An absent candidate node matches anything, and only an absent *tree* node under a present candidate node fails."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n * m) in the worst case"
+    expected_space: "O(h)"
+  constraints:
+    - "The tree has between 0 and 500 nodes and the candidate between 0 and 100; an empty one is None."
+    - "-10**4 <= node.value <= 10**4"
+    - "Values may repeat within a tree."
+  examples:
+    - input: |
+        tree = TreeNode(3, TreeNode(4, TreeNode(1), TreeNode(2, TreeNode(0))), TreeNode(5))
+        candidate = TreeNode(4, TreeNode(1), TreeNode(2))
+        is_subtree(tree, candidate)
+      output: |
+        True
+      explanation: |
+        The candidate fits over the node 4. The tree's 2 has a child the candidate
+        does not, and here that is allowed. The standard version says False.
+    - input: |
+        tree = TreeNode(3, TreeNode(4, TreeNode(1)), TreeNode(5))
+        candidate = TreeNode(4, TreeNode(1), TreeNode(2))
+        is_subtree(tree, candidate)
+      output: |
+        False
+      explanation: |
+        The other way round is not allowed: the candidate has a right child, 2, and
+        the tree has nothing there.
+    - input: |
+        is_subtree(TreeNode(1), None)
+      output: |
+        True

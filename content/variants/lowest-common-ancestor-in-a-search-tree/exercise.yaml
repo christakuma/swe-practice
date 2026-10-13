@@ -1,0 +1,86 @@
+schema_version: 1
+id: variants/lowest-common-ancestor-in-a-search-tree
+kind: kata
+title: "Lowest Common Ancestor in a BST"
+difficulty: medium
+tags: [trees, binary-search-tree]
+estimated_minutes: 20
+
+variant:
+  of: katas/lowest-common-ancestor
+  twist: "The tree is a binary search tree, so the answer can be found without searching."
+
+prompt: |
+  Given a binary **search** tree and two values that are both in it, return the
+  value of the deepest node that has both of them at or below it.
+
+  A node counts as its own ancestor, so if one value sits above the other the
+  answer is the upper one.
+
+  The standard version had to look everywhere, because nothing said where a
+  value might be. Here the ordering does: every value in a node's left subtree
+  is smaller than the node and every value in its right subtree is larger. Walk
+  straight to the answer. The tests include a tree with an enormous subtree that
+  the walk has no reason to enter.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "Stand at the root with two values in hand. Compare them with the root's value. What are the three things that can be true?"
+  - "Both smaller: the answer is somewhere on the left. Both larger: on the right. Anything else -- one each side, or one of them equal to this node -- and this node is where their paths part, which is the answer."
+  - "So it is a single walk downwards with no backtracking and no recursion needed. Nothing off that one path is ever looked at."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(h)"
+    expected_space: "O(1)"
+  constraints:
+    - "The tree has between 1 and 2 * 10**5 nodes and is a valid search tree."
+    - "It may be a chain 10**5 deep on a side the answer does not involve."
+    - "-10**9 <= node.value <= 10**9, and no two nodes share a value."
+    - "Both values are in the tree, and they may be equal."
+  examples:
+    - input: |
+        root = TreeNode(
+            6,
+            TreeNode(2, TreeNode(0), TreeNode(4, TreeNode(3), TreeNode(5))),
+            TreeNode(8, TreeNode(7), TreeNode(9)),
+        )
+        lowest_common_ancestor(root, 2, 8)
+      output: |
+        6
+      explanation: |
+        2 is smaller than the root and 8 is larger, so they are on opposite sides.
+
+                    6
+                  /   \
+                 2     8
+                / \   / \
+               0   4 7   9
+                  / \
+                 3   5
+    - input: |
+        root = TreeNode(
+            6,
+            TreeNode(2, TreeNode(0), TreeNode(4, TreeNode(3), TreeNode(5))),
+            TreeNode(8, TreeNode(7), TreeNode(9)),
+        )
+        lowest_common_ancestor(root, 3, 5)
+      output: |
+        4
+    - input: |
+        root = TreeNode(
+            6,
+            TreeNode(2, TreeNode(0), TreeNode(4, TreeNode(3), TreeNode(5))),
+            TreeNode(8, TreeNode(7), TreeNode(9)),
+        )
+        lowest_common_ancestor(root, 2, 4)
+      output: |
+        2
+      explanation: |
+        4 is below 2, and a node counts as its own ancestor.

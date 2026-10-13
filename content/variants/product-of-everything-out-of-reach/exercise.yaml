@@ -1,0 +1,61 @@
+schema_version: 1
+id: variants/product-of-everything-out-of-reach
+kind: kata
+title: "Product of Everything Out of Reach"
+difficulty: medium
+tags: [arrays, prefix-sums]
+estimated_minutes: 25
+
+variant:
+  of: katas/product-except-self
+  twist: "Each position skips itself and its k nearest neighbours on each side."
+
+prompt: |
+  Given a list of integers and a reach `k`, return a list where position `i`
+  holds the product of every element **more than `k` positions away** from `i`.
+
+  So position `i` leaves out itself and up to `k` elements on each side. With
+  `k = 0` this is the standard problem. When nothing is far enough away, the
+  answer for that position is the empty product, `1`.
+
+  **Do not use division.** The list may contain zeros.
+
+hints:
+  - "In the standard version each answer was \"the product of everything before me\" times \"the product of everything after me\". What do those two pieces become when a whole window is skipped?"
+  - "The product of everything before the window, times the product of everything after it. Those are still a prefix product and a suffix product; only the positions you read them at have moved."
+  - "Build both arrays once, with one extra entry so that \"the product of nothing\" is 1 at each end, and clamp the two positions to the list."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(numbers) <= 2 * 10**4"
+    - "-30 <= numbers[i] <= 30"
+    - "0 <= k <= 2 * 10**4"
+    - "Every product asked for is small enough to be an ordinary 64-bit integer."
+  examples:
+    - input: |
+        product_except_window([1, 2, 3, 4, 5], 1)
+      output: |
+        [60, 20, 5, 2, 6]
+      explanation: |
+        Position 0 skips 1 and 2, leaving 3 * 4 * 5. Position 2 skips 2, 3 and 4,
+        leaving 1 * 5.
+    - input: |
+        product_except_window([1, 2, 3, 4], 0)
+      output: |
+        [24, 12, 8, 6]
+      explanation: |
+        A reach of zero skips only the element itself: the standard problem.
+    - input: |
+        product_except_window([2, 3, 4], 5)
+      output: |
+        [1, 1, 1]
+      explanation: |
+        Everything is within reach of everything, so nothing is left to multiply.

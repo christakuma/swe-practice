@@ -1,0 +1,61 @@
+schema_version: 1
+id: variants/longest-palindromic-subsequence
+kind: kata
+title: "Longest Palindromic Subsequence"
+difficulty: medium
+tags: [strings, dynamic-programming]
+estimated_minutes: 30
+
+variant:
+  of: katas/longest-palindromic-substring
+  twist: "The palindrome may skip characters, and you return its length."
+
+prompt: |
+  Return the **length** of the longest palindromic **subsequence** of a string:
+  the longest palindrome that can be made by deleting zero or more characters
+  and keeping the rest in order.
+
+  Unlike a substring, a subsequence need not be contiguous. Every character
+  counts — no case folding, no skipping punctuation.
+
+  Expanding around centres, which solved the substring version, does not work
+  here: the characters of the answer need not be next to each other.
+
+hints:
+  - "Look at the first and last characters of a stretch of the string. If they are equal, what can you say about the best palindrome inside it?"
+  - "They can both be used, as its two ends, around the best palindrome in what lies between. If they differ, at least one of them is not used, so the answer is the better of dropping the first or dropping the last."
+  - "That is a table over (start, end), filled from short stretches to long ones. Two rows are enough if you go by start, descending."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(text) <= 1000"
+    - "The string may hold any characters, and they are compared exactly."
+  examples:
+    - input: |
+        longest_palindromic_subsequence("bbbab")
+      output: |
+        4
+      explanation: |
+        "bbbb", dropping the a. The longest palindromic substring is only "bbb".
+    - input: |
+        longest_palindromic_subsequence("cbbd")
+      output: |
+        2
+    - input: |
+        longest_palindromic_subsequence("character")
+      output: |
+        5
+      explanation: |
+        "carac": c, a, r, a, c, picked out in order.
+    - input: |
+        longest_palindromic_subsequence("")
+      output: |
+        0

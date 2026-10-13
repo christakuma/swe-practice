@@ -1,0 +1,56 @@
+schema_version: 1
+id: variants/longest-non-decreasing-subsequence
+kind: kata
+title: "Longest Non-Decreasing Subsequence"
+difficulty: medium
+tags: [dynamic-programming, binary-search]
+estimated_minutes: 25
+
+variant:
+  of: katas/longest-increasing-subsequence
+  twist: "Equal values may now follow one another."
+
+prompt: |
+  Return the length of the longest **non-decreasing** subsequence: each value
+  must be at least as large as the one before it, so repeats are allowed to
+  extend it.
+
+  A subsequence keeps the original order but does not have to be contiguous.
+
+  The list may have a hundred thousand elements, so the quadratic solution is
+  not enough here.
+
+hints:
+  - "The strict version kept, for each length, the smallest value a subsequence of that length could end with, and placed each new value by binary search. Which entry did a new value replace?"
+  - "The first one greater than or equal to it. A value equal to an existing tail could not extend that subsequence, so it replaced the tail instead."
+  - "Now an equal value *can* extend it. So replace the first entry strictly greater than the new value -- one function name changes."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(numbers) <= 10**5"
+    - "-10**9 <= numbers[i] <= 10**9"
+  examples:
+    - input: |
+        longest_non_decreasing([7, 7, 7, 7])
+      output: |
+        4
+      explanation: |
+        Every value may follow an equal one. The strictly increasing answer is 1.
+    - input: |
+        longest_non_decreasing([1, 3, 3, 2, 3])
+      output: |
+        4
+      explanation: |
+        1, 3, 3, 3.
+    - input: |
+        longest_non_decreasing([5, 4, 3, 2, 1])
+      output: |
+        1

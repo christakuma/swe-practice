@@ -1,0 +1,65 @@
+schema_version: 1
+id: variants/merge-k-sorted-lists-without-repeats
+kind: kata
+title: "Merge K Sorted Lists, Dropping Repeats"
+difficulty: hard
+tags: [linked-lists, heap, merging]
+estimated_minutes: 30
+
+variant:
+  of: katas/merge-k-sorted-lists
+  twist: "Each value may appear only once in the merged list."
+
+prompt: |
+  A list of sorted linked lists comes in. Return the head of one sorted list in
+  which **each value appears once**, however many times it occurred across the
+  inputs or within one of them.
+
+  The outer list may be empty and any entry may be `None`. With no nodes at all,
+  return `None`.
+
+  Splice the nodes you were given; which of several equal nodes you keep does
+  not matter. Aim for `O(kn log k)`, as in the standard version.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "The heap still hands you nodes in ascending order. What do you need to know to decide whether to keep the one it just gave you?"
+  - "The last value you kept. Equal values come out of the heap next to each other, so one comparison with the tail is enough."
+  - "A skipped node must still have its successor pushed. And the last node you keep may still point at a duplicate you skipped: cut the tail off explicitly at the end."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(kn log k) for k lists of n nodes"
+    expected_space: "O(k) beyond the input"
+  constraints:
+    - "0 <= len(lists) <= 1000"
+    - "Each list has between 0 and 100 nodes, in ascending order; equal values may repeat."
+    - "-10**9 <= node.value <= 10**9"
+  examples:
+    - input: |
+        lists = [
+            ListNode(1, ListNode(4, ListNode(5))),
+            ListNode(1, ListNode(3, ListNode(4))),
+            ListNode(2, ListNode(6)),
+        ]
+        merge_k_lists(lists)
+      output: |
+        ListNode(1, ListNode(2, ListNode(3, ListNode(4, ListNode(5, ListNode(6))))))
+      explanation: |
+        The second 1 and the second 4 are left out.
+    - input: |
+        merge_k_lists([ListNode(2, ListNode(2, ListNode(2)))])
+      output: |
+        ListNode(2)
+      explanation: |
+        Repeats inside a single list are dropped too.
+    - input: |
+        merge_k_lists([])
+      output: |
+        None

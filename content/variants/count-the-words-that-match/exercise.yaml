@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/count-the-words-that-match
+kind: kata
+title: "Count the Words That Match"
+difficulty: medium
+tags: [tries, backtracking]
+estimated_minutes: 30
+
+variant:
+  of: katas/add-and-search-a-word
+  twist: "The store reports how many words match a pattern, not merely whether one does."
+
+prompt: |
+  Build a word store supporting two operations:
+
+  - `add(word)` — store a word. Adding the same word twice changes nothing.
+  - `count(pattern)` — **how many** stored words match the pattern? A `.`
+    matches exactly one character of any kind; every other character matches
+    only itself.
+
+  A pattern can only match words of its own length. A `.` in a pattern is always
+  a wildcard.
+
+  The yes-or-no version could stop at the first match. This one cannot — it has
+  to find them all — but it still must not look where no match can be.
+
+hints:
+  - "The search that answered yes-or-no returned as soon as one branch succeeded. What should it do with the branches instead?"
+  - "Add them up. At a wildcard, the count is the sum over every child; at a literal, it is the count below that one child, or zero if there is none."
+  - "At the end of the pattern, the count is one if a word ends at this node and zero otherwise."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(len(pattern)) with no wildcards; O(nodes) in the worst case"
+    expected_space: "O(total characters added)"
+  constraints:
+    - "0 <= len(word) <= 20 and 0 <= len(pattern) <= 20"
+    - "Words hold any characters at all, not only lowercase letters."
+    - "At most 2 * 10**5 calls are made to add and count combined."
+  examples:
+    - input: |
+        store = WordStore()
+        store.add("bad")
+        store.add("dad")
+        store.add("mad")
+        store.count(".ad")
+      output: |
+        3
+    - input: |
+        store = WordStore()
+        store.add("bad")
+        store.add("bed")
+        store.add("bad")
+        (store.count("b.d"), store.count("bad"), store.count("b."))
+      output: |
+        (2, 1, 0)
+      explanation: |
+        "bad" was added twice and is one word. "b." is the wrong length for either.
+    - input: |
+        WordStore().count("...")
+      output: |
+        0

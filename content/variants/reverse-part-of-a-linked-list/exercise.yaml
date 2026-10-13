@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/reverse-part-of-a-linked-list
+kind: kata
+title: "Reverse Part of a Linked List"
+difficulty: medium
+tags: [linked-lists]
+estimated_minutes: 25
+
+variant:
+  of: katas/reverse-a-linked-list
+  twist: "Only the nodes from position left to position right are reversed."
+
+prompt: |
+  Reverse the nodes of a singly linked list **from position `left` to position
+  `right`**, and return the head. Positions count from 1, and both ends are
+  included. Everything before `left` and after `right` stays where it is.
+
+  Relink the nodes you were given. Do not build new nodes, and do not copy
+  values from one node to another — the tests check both.
+
+  The head changes exactly when `left` is 1.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "Reversing the whole list needed nothing before the head. Reversing a stretch in the middle needs one extra thing: the node just before it, which has to end up pointing at the stretch's new first node."
+  - "That node does not exist when left is 1. A dummy node placed in front of the head gives every position a predecessor and removes the special case."
+  - "Walk to the node before the range. Then, right - left times, take the node after the range's first node and move it to the front of the range. The range's first node drifts to the back and never needs to be found again."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "The list has between 1 and 3 * 10**4 nodes."
+    - "1 <= left <= right <= the number of nodes"
+    - "Values may repeat."
+  examples:
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3, ListNode(4, ListNode(5)))))
+        reverse_between(head, 2, 4)
+      output: |
+        ListNode(1, ListNode(4, ListNode(3, ListNode(2, ListNode(5)))))
+      explanation: |
+        1 -> 2 -> 3 -> 4 -> 5 becomes 1 -> 4 -> 3 -> 2 -> 5. The first and last
+        nodes are outside the range and do not move.
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3)))
+        reverse_between(head, 1, 2)
+      output: |
+        ListNode(2, ListNode(1, ListNode(3)))
+      explanation: |
+        The range starts at the head, so the list that comes back starts with what
+        was the second node.
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3)))
+        reverse_between(head, 2, 2)
+      output: |
+        ListNode(1, ListNode(2, ListNode(3)))
+      explanation: |
+        A range of one node is already reversed.

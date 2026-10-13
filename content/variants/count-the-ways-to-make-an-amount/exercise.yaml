@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/count-the-ways-to-make-an-amount
+kind: kata
+title: "Count the Ways to Make an Amount"
+difficulty: medium
+tags: [dynamic-programming]
+estimated_minutes: 25
+
+variant:
+  of: katas/coin-change
+  twist: "Count how many combinations of coins make the amount, instead of finding the fewest coins."
+
+prompt: |
+  Return the **number of different combinations** of coins that add up to an
+  amount. Each coin value may be used as many times as you like.
+
+  Two combinations are different when they use a different number of some coin.
+  **Order does not matter**: `1 + 2` and `2 + 1` are one combination, not two.
+
+  An amount of zero can be made in exactly one way — with no coins — and that is
+  true even when there are no coins to choose from.
+
+hints:
+  - "Start from the table you built for the fewest coins: one entry per amount. What would an entry hold for this question, and what is the entry for an amount of zero?"
+  - "The obvious update -- for each amount, add up the entries for amount - coin over every coin -- gives 3 for coins [1, 2] and amount 3. It has counted 1+2 and 2+1 separately. Why?"
+  - "Because it lets any coin be the *last* one at every amount, which fixes an order. To count combinations, bring the coins in one at a time: finish with the first coin for every amount before the second coin is ever used."
+  - "So the coin is the outer loop and the amount is the inner one. That is the only difference from the version that counts orderings."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(amount * number of coins)"
+    expected_space: "O(amount)"
+  constraints:
+    - "0 <= len(coins) <= 12"
+    - "1 <= coins[i] <= 10**4, all distinct, in no particular order."
+    - "0 <= amount <= 10**4"
+    - "The answer is exact however large it is."
+  examples:
+    - input: |
+        ways_to_make([1, 2, 5], 5)
+      output: |
+        4
+      explanation: |
+        5, 2+2+1, 2+1+1+1 and 1+1+1+1+1.
+    - input: |
+        ways_to_make([1, 2], 3)
+      output: |
+        2
+      explanation: |
+        1+1+1 and 1+2. Counting 2+1 as well would make three, and it is the same
+        coins as 1+2.
+    - input: |
+        ways_to_make([2], 3)
+      output: |
+        0
+    - input: |
+        ways_to_make([], 0)
+      output: |
+        1
+      explanation: |
+        Nothing makes nothing, in one way.

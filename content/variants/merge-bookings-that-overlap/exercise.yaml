@@ -1,0 +1,68 @@
+schema_version: 1
+id: variants/merge-bookings-that-overlap
+kind: kata
+title: "Merge Bookings That Overlap"
+difficulty: medium
+tags: [intervals, sorting]
+estimated_minutes: 20
+
+variant:
+  of: katas/merge-intervals
+  twist: "The intervals are half-open, so two that merely touch are no longer merged."
+
+prompt: |
+  Given a list of `(start, end)` bookings, merge the ones that overlap and
+  return the result sorted by start.
+
+  The intervals are **half-open**: a booking occupies `start` up to but not
+  including `end`. So `(1, 3)` and `(3, 5)` do **not** overlap — one ends as the
+  other begins — and they stay two bookings. `(1, 4)` and `(3, 5)` do overlap,
+  and merge into `(1, 5)`.
+
+  Merging is contagious: if a booking overlaps a merged group, it joins it.
+  Every booking has positive length. Leave the list you were given alone.
+
+hints:
+  - "Everything you did for closed intervals still applies: sort by start, then walk the list keeping the last merged interval. One comparison decides whether the next one joins it."
+  - "In the closed version that comparison was \"starts at or before the current end\". What should it be when ending at 3 and starting at 3 share no time?"
+  - "Strictly before. One character changes, and it is the character that every interval problem turns on -- so check it against both kinds of pair: one that touches, and one that overlaps by a single unit."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n) for the output"
+  constraints:
+    - "0 <= len(intervals) <= 10**5"
+    - "Each interval is (start, end) with -10**9 <= start < end <= 10**9."
+    - "Intervals arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        merge_intervals([(1, 3), (3, 5)])
+      output: |
+        [(1, 3), (3, 5)]
+      explanation: |
+        They touch at 3 and share no time, so they are not merged. The standard
+        version, with closed intervals, returns [(1, 5)] here.
+    - input: |
+        merge_intervals([(1, 4), (3, 5)])
+      output: |
+        [(1, 5)]
+    - input: |
+        merge_intervals([(6, 7), (1, 3), (2, 6)])
+      output: |
+        [(1, 6), (6, 7)]
+      explanation: |
+        (1, 3) and (2, 6) overlap and become (1, 6). (6, 7) begins exactly where that
+        ends, so it stays separate.
+    - input: |
+        merge_intervals([(1, 10), (3, 4), (4, 5)])
+      output: |
+        [(1, 10)]
+      explanation: |
+        The two short bookings only touch each other, but both lie inside the long
+        one, and that merges all three.

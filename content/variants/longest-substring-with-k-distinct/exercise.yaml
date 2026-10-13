@@ -1,0 +1,71 @@
+schema_version: 1
+id: variants/longest-substring-with-k-distinct
+kind: kata
+title: "Longest Substring With at Most K Distinct Characters"
+difficulty: medium
+tags: [sliding-window, strings, hash-map]
+estimated_minutes: 25
+
+variant:
+  of: katas/longest-substring-without-repeats
+  twist: "Repeats are fine now; the limit is on how many different characters the substring holds."
+
+prompt: |
+  Given a string and a number `k`, return the length of the longest substring
+  that contains **at most `k` distinct characters**.
+
+  Characters may repeat as often as they like inside the substring — the limit
+  is on how many *different* ones there are. With `k = 0` no character is
+  allowed, so the answer is `0`.
+
+  The string may be long enough that re-scanning it from each starting position
+  is too slow.
+
+hints:
+  - "The standard version grew a window and shrank it when a character repeated. The window idea survives. What is the condition that makes this window invalid?"
+  - "More than k different characters inside it. A set tells you how many different characters there are, and cannot tell you when one of them has *left* as the window's start moves. What can?"
+  - "A count per character. Add one when a character enters on the right. When there are more than k keys, move the left edge forward, subtracting as you go, and delete a key the moment its count reaches zero."
+  - "The window only ever shrinks as far as it must, so it is always the longest valid window ending at the current position. Record its length after every step."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(k)"
+  constraints:
+    - "0 <= len(text) <= 10**6"
+    - "0 <= k <= 10**6"
+    - "Any character can appear, and case matters."
+  examples:
+    - input: |
+        longest_run_with_k_distinct("eceba", 2)
+      output: |
+        3
+      explanation: |
+        "ece" holds two different characters. Extending it to "eceb" would make
+        three.
+    - input: |
+        longest_run_with_k_distinct("aaabbbccc", 1)
+      output: |
+        3
+    - input: |
+        longest_run_with_k_distinct("abcabc", 3)
+      output: |
+        6
+      explanation: |
+        The whole string has only three different characters.
+    - input: |
+        longest_run_with_k_distinct("abaccc", 2)
+      output: |
+        4
+      explanation: |
+        "accc". The window that began at the first a has to give up "ab" to let the
+        c's in, but it keeps the second a.
+    - input: |
+        longest_run_with_k_distinct("abc", 0)
+      output: |
+        0

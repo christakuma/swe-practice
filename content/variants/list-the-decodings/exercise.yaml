@@ -1,0 +1,60 @@
+schema_version: 1
+id: variants/list-the-decodings
+kind: kata
+title: "List the Decodings"
+difficulty: medium
+tags: [backtracking, strings]
+estimated_minutes: 25
+
+variant:
+  of: katas/count-the-decodings
+  twist: "Return the decoded strings themselves, not how many there are."
+
+prompt: |
+  Letters are encoded as numbers: `A` is `1`, `B` is `2`, … `Z` is `26`. Given a
+  string of digits, return **every** way to decode it back into letters, as a
+  list of strings in ascending order.
+
+  The rules are the standard version's: no leading zeros, so `"06"` decodes to
+  nothing and a `0` can never stand alone. A string that cannot be decoded
+  gives `[]`, and so, by this kata's convention, does the empty string.
+
+hints:
+  - "Counting needed only two numbers carried along the string. Listing needs the strings themselves, so build each one a letter at a time."
+  - "At each position there are at most two choices: take one digit as a letter, or take two. Each is allowed only under the standard rules -- not a 0 alone, and not a pair above 26 or with a leading 0."
+  - "Recurse on what is left after each choice, and record the string built so far when nothing is left. Sort the results at the end."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n * number of decodings)"
+    expected_space: "O(n) beyond the output"
+  constraints:
+    - "0 <= len(digits) <= 20"
+    - "Every character is one of the digits 0 to 9."
+    - "There are at most 10,946 decodings."
+  examples:
+    - input: |
+        decodings("12")
+      output: |
+        ["AB", "L"]
+      explanation: |
+        1 and 2, or 12.
+    - input: |
+        decodings("226")
+      output: |
+        ["BBF", "BZ", "VF"]
+    - input: |
+        decodings("10")
+      output: |
+        ["J"]
+      explanation: |
+        Only 10. Reading it as 1 then 0 fails, because no letter is encoded as 0.
+    - input: |
+        decodings("06")
+      output: |
+        []

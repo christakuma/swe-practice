@@ -1,0 +1,59 @@
+schema_version: 1
+id: variants/count-distinct-palindromic-substrings
+kind: kata
+title: "Count Distinct Palindromic Substrings"
+difficulty: medium
+tags: [strings, two-pointers, hash-set]
+estimated_minutes: 25
+
+variant:
+  of: katas/count-palindromic-substrings
+  twist: "Each different palindrome is counted once, however many places it appears."
+
+prompt: |
+  Count the **different** palindromic substrings in a string. A palindrome that
+  appears at several positions is counted once.
+
+  `"aaa"` has six palindromic substrings by position — the standard version's
+  answer — and three distinct ones: `"a"`, `"aa"` and `"aaa"`.
+
+  Every character is significant: no case folding, no skipping punctuation.
+
+hints:
+  - "The expansion from every centre still finds every palindromic substring. What changes is what you do with each one when you find it."
+  - "Collect the substring itself rather than adding one to a count. A set keeps one copy of each."
+  - "The answer is the size of the set. The O(1) space of the counting version is gone: you now have to remember what you have seen."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n^2) expansions"
+    expected_space: "O(number of distinct palindromes)"
+  constraints:
+    - "0 <= len(text) <= 1000"
+    - "The string may hold any characters, and they are compared exactly."
+  examples:
+    - input: |
+        count_distinct_palindromes("aaa")
+      output: |
+        3
+      explanation: |
+        "a", "aa" and "aaa".
+    - input: |
+        count_distinct_palindromes("abab")
+      output: |
+        4
+      explanation: |
+        "a", "b", "aba" and "bab".
+    - input: |
+        count_distinct_palindromes("abc")
+      output: |
+        3
+    - input: |
+        count_distinct_palindromes("")
+      output: |
+        0

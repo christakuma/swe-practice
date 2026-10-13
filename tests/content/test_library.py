@@ -353,12 +353,70 @@ def test_the_repository_loads_the_whole_library() -> None:
     and the walk is in filesystem order. What the two have to agree about is
     *membership* — `test_the_curriculum_orders_the_whole_library` is what holds
     the order to the manifest.
+
+    **Two ways in since Phase 21, and together they must still be everything.**
+    A variant is loaded and never listed (ADR 0028), so the listing alone is no
+    longer the walk. What has to hold is that every directory is reachable:
+    either it is in the listing, or it is a variant of something that is. A
+    directory in neither would be an exercise the suite grades and no solver
+    can ever be offered.
     """
     repository = FilesystemContentRepository(CONTENT_ROOT)
+    listed = repository.list_exercises()
+    offered_under_a_base = [
+        variant
+        for exercise in listed
+        for variant in repository.variants_of(exercise.id)
+    ]
 
-    assert {str(exercise.id) for exercise in repository.list_exercises()} == {
+    assert {str(exercise.id) for exercise in (*listed, *offered_under_a_base)} == {
         _identify(directory) for directory in EXERCISE_DIRECTORIES
     }
+
+
+def test_no_variant_is_listed_and_every_variant_is_a_kata() -> None:
+    """The other half of the claim above, and the one a count would miss.
+
+    Listed and offered-under-a-base must be *disjoint*: a variant that also
+    appeared in the listing would be a row in Browse and a step on a track,
+    which is the thing being unlisted is for. And the shipped variants are all
+    katas -- `tests/content/test_variants.py` grades variants through the kata
+    suite, so one of another kind would be on disk and graded by nothing.
+    """
+    repository = FilesystemContentRepository(CONTENT_ROOT)
+    listed = repository.list_exercises()
+    variants = [
+        variant
+        for exercise in listed
+        for variant in repository.variants_of(exercise.id)
+    ]
+
+    assert variants
+    assert not any(exercise.is_variant for exercise in listed)
+    assert all(variant.kind is ExerciseKind.KATA for variant in variants)
+    assert {variant.id for variant in variants}.isdisjoint(
+        exercise.id for exercise in listed
+    )
+
+
+def test_every_kata_offers_a_variant() -> None:
+    """The version select is on every kata, which is a claim about content.
+
+    Nothing in the code requires it: an exercise with no variants draws no
+    select and behaves as it always did, which is right for a scenario or a
+    drill and for a kata somebody is halfway through adding. But the README
+    says every kata has a twist to try, and a kata added later without one
+    would make that false without failing anything -- except this.
+    """
+    repository = FilesystemContentRepository(CONTENT_ROOT)
+    without = [
+        str(exercise.id)
+        for exercise in repository.list_exercises()
+        if exercise.kind is ExerciseKind.KATA
+        and not repository.variants_of(exercise.id)
+    ]
+
+    assert not without
 
 
 def test_the_first_screen_of_the_curriculum_offers_every_kind() -> None:

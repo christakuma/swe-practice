@@ -1,0 +1,59 @@
+schema_version: 1
+id: variants/fewest-points-to-touch-every-interval
+kind: kata
+title: "Fewest Points to Touch Every Interval"
+difficulty: medium
+tags: [intervals, greedy, sorting]
+estimated_minutes: 25
+
+variant:
+  of: katas/fewest-intervals-to-remove
+  twist: "Choose the fewest points so that every interval contains one, and touching now counts."
+
+prompt: |
+  Given a list of **closed** intervals, return the fewest points you can choose
+  so that every interval contains at least one of them.
+
+  Closed means the ends are included: a point at 2 is inside both `(1, 2)` and
+  `(2, 3)`, so one point serves two intervals that merely touch. (In the
+  standard version, touching intervals were *not* in each other's way.)
+
+hints:
+  - "Whichever interval ends first has to be touched by something, and the point that touches it and reaches as far to the right as possible is its own end."
+  - "So sort by end. Put a point at the first end, skip every interval that point is already inside, and repeat with the next one it is not."
+  - "\"Inside\" for a closed interval is start <= point. Sorting by start instead of by end is the classic wrong turn: a long early interval then decides where the point goes."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n) for the sort"
+  constraints:
+    - "0 <= len(intervals) <= 2 * 10**5"
+    - "Each interval is (start, end) with -10**9 <= start <= end <= 10**9."
+    - "Intervals arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        fewest_points([(1, 6), (2, 8), (7, 12), (10, 16)])
+      output: |
+        2
+      explanation: |
+        A point at 6 is in the first two, and a point at 11 is in the other two.
+    - input: |
+        fewest_points([(1, 2), (2, 3), (3, 4)])
+      output: |
+        2
+      explanation: |
+        A point at 2 covers the first two; the third needs its own. No single point
+        is in all three.
+    - input: |
+        fewest_points([(1, 10), (2, 3), (4, 5)])
+      output: |
+        2
+      explanation: |
+        The long interval contains both short ones, but they do not contain each
+        other's points.

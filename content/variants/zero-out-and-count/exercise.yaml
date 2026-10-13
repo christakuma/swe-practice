@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/zero-out-and-count
+kind: kata
+title: "Zero Out Rows and Columns, and Count"
+difficulty: medium
+tags: [matrices, in-place]
+estimated_minutes: 20
+
+variant:
+  of: katas/zero-out-rows-and-columns
+  twist: "Return how many cells you actually changed."
+
+prompt: |
+  An `m x n` matrix comes in. Wherever it holds a zero, set that cell's whole
+  row and whole column to zero, in place — and **return the number of cells
+  whose value changed**.
+
+  A cell that was already zero has not changed and is not counted, and a cell
+  that lies in both a cleared row and a cleared column is counted once.
+
+  Only the zeros in the original matrix trigger clearing. What is graded here is
+  the matrix and the count; use whatever bookkeeping you like.
+
+hints:
+  - "Work out which rows and which columns have to be cleared before changing anything, exactly as before."
+  - "Then visit every cell once and ask two questions: is it in a row or a column to be cleared, and is it non-zero now?"
+  - "Counting \"rows cleared times width plus columns cleared times height\" counts the crossings twice and the original zeros as changes."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(m * n)"
+    expected_space: "O(m + n)"
+  constraints:
+    - "0 <= m <= 200 and 0 <= n <= 200, for m rows of n values each."
+    - "-10**9 <= matrix[i][j] <= 10**9"
+  examples:
+    - input: |
+        matrix = [
+            [1, 1, 1],
+            [1, 0, 1],
+            [1, 1, 1],
+        ]
+        (set_zeroes(matrix), matrix)
+      output: |
+        (4, [[1, 0, 1], [0, 0, 0], [1, 0, 1]])
+      explanation: |
+        Five cells are in the cleared row or column. One of them was the zero
+        already, so four changed.
+    - input: |
+        matrix = [
+            [0, 1],
+            [1, 0],
+        ]
+        (set_zeroes(matrix), matrix)
+      output: |
+        (2, [[0, 0], [0, 0]])
+    - input: |
+        matrix = [[1, 2], [3, 4]]
+        (set_zeroes(matrix), matrix)
+      output: |
+        (0, [[1, 2], [3, 4]])

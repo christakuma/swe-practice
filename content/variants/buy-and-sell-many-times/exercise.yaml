@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/buy-and-sell-many-times
+kind: kata
+title: "Buy and Sell as Often as You Like"
+difficulty: medium
+tags: [arrays, greedy]
+estimated_minutes: 15
+
+variant:
+  of: katas/best-time-to-buy-and-sell
+  twist: "You may trade as many times as you like, holding at most one share at a time."
+
+prompt: |
+  A list holds a price per day. You may buy and sell **as many times as you
+  like**, but you can hold at most one share at a time — you must sell before
+  you buy again. Return the largest total profit available.
+
+  Selling and buying again on the same day is allowed, and changes nothing. If
+  no trade turns a profit, return `0`.
+
+  Aim for one pass and `O(1)` extra space.
+
+hints:
+  - "Work a small case by hand: [1, 5, 3, 6]. The best single trade makes 5. What do you make if you are allowed two, and which days do you use?"
+  - "Look at a stretch where the price rises several days running. Is one trade across the whole stretch worth more, less, or the same as a trade on each day of it?"
+  - "The same. So every day the price is higher than the day before, that difference is profit you can have, and every day it is lower is a day you were not holding. Add up the rises."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(prices) <= 10**6"
+    - "0 <= prices[i] <= 10**6"
+  examples:
+    - input: |
+        max_profit([7, 1, 5, 3, 6, 4])
+      output: |
+        7
+      explanation: |
+        Buy at 1 and sell at 5, then buy at 3 and sell at 6: 4 + 3. One trade could
+        make at most 5.
+    - input: |
+        max_profit([1, 2, 3, 4, 5])
+      output: |
+        4
+      explanation: |
+        Buy at 1 and sell at 5. Trading every day along the way comes to the same 4.
+    - input: |
+        max_profit([7, 6, 4, 3, 1])
+      output: |
+        0
+      explanation: |
+        Prices only fall, so the best thing to do is nothing.
+    - input: |
+        max_profit([])
+      output: |
+        0

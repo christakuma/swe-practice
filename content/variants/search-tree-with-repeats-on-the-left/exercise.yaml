@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/search-tree-with-repeats-on-the-left
+kind: kata
+title: "Is This a Search Tree, Allowing Repeats"
+difficulty: medium
+tags: [trees, binary-search-tree]
+estimated_minutes: 20
+
+variant:
+  of: katas/validate-a-binary-search-tree
+  twist: "Equal values are allowed, but only in a node's left subtree."
+
+prompt: |
+  Decide whether a binary tree is a valid search tree under a rule that
+  **permits repeated values, on the left only**: every value in a node's left
+  subtree is **less than or equal to** the node, and every value in its right
+  subtree is **strictly greater**.
+
+  So a copy of a value may sit anywhere in the left subtree of the node holding
+  it, and nowhere in the right. An empty tree is valid.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "The standard check passes a range down the tree: every node must lie strictly between a lower and an upper bound. The range idea survives. Which of the two bounds may now be touched?"
+  - "Going left from a node with value v, everything below must be at most v: the upper bound becomes v and it is inclusive. Going right, everything must be greater than v: the lower bound becomes v and it is exclusive."
+  - "So one bound is always inclusive and the other always exclusive. It is tempting to make both `<=` or to special-case \"equal to the parent\". Both are wrong for a repeat that is not a direct child."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(h) for a tree of height h"
+  constraints:
+    - "The tree has between 0 and 500 nodes, and may be a single chain that deep."
+    - "-2**31 <= node.value <= 2**31 - 1"
+  examples:
+    - input: |
+        is_search_tree(TreeNode(2, TreeNode(2), TreeNode(3)))
+      output: |
+        True
+      explanation: |
+        The repeated 2 is on the left, where an equal value is allowed.
+    - input: |
+        is_search_tree(TreeNode(2, TreeNode(1), TreeNode(2)))
+      output: |
+        False
+      explanation: |
+        The repeated 2 is on the right, where values must be strictly greater.
+    - input: |
+        is_search_tree(TreeNode(5, TreeNode(3, None, TreeNode(5)), TreeNode(8)))
+      output: |
+        True
+      explanation: |
+        The lower 5 is deep in the left subtree of the upper one, and equal to it,
+        which is within the rule.
+    - input: |
+        is_search_tree(TreeNode(5, TreeNode(3), TreeNode(8, TreeNode(5))))
+      output: |
+        False
+      explanation: |
+        This 5 is a left child, but it is in the right subtree of the root's 5.

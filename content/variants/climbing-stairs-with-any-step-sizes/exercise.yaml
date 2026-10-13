@@ -1,0 +1,65 @@
+schema_version: 1
+id: variants/climbing-stairs-with-any-step-sizes
+kind: kata
+title: "Climb the Stairs With Any Step Sizes"
+difficulty: medium
+tags: [dynamic-programming]
+estimated_minutes: 20
+
+variant:
+  of: katas/climbing-stairs
+  twist: "The step sizes are an argument instead of always being one or two."
+
+prompt: |
+  Count the distinct ways to climb a staircase when each move may be **any of
+  the given step sizes** — not just one or two.
+
+  Order still matters: a 1 followed by a 3 is a different way from a 3 followed
+  by a 1. You must land exactly on the top, so some staircases cannot be
+  climbed at all, and the answer for those is `0`. There is exactly one way to
+  climb no steps: take none.
+
+hints:
+  - "In the standard problem the last move was a 1 or a 2, so the count for n was the count for n - 1 plus the count for n - 2. What was the last move here?"
+  - "Any of the sizes that fits. So the count for n is the sum, over every size s no larger than n, of the count for n - s."
+  - "That is a table of steps + 1 entries filled from the bottom, starting from one way to climb nothing. Two running variables are no longer enough: how far back do you need to look?"
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(steps * len(sizes))"
+    expected_space: "O(steps)"
+  constraints:
+    - "0 <= steps <= 500"
+    - "1 <= len(sizes) <= 10"
+    - "1 <= sizes[i] <= 50, all distinct, in no particular order."
+    - "The answer is exact however large it is."
+  examples:
+    - input: |
+        ways_to_climb(4, [1, 2, 3])
+      output: |
+        7
+      explanation: |
+        1+1+1+1, 1+1+2, 1+2+1, 2+1+1, 2+2, 1+3 and 3+1.
+    - input: |
+        ways_to_climb(3, [1, 2])
+      output: |
+        3
+      explanation: |
+        With sizes of one and two this is the standard problem.
+    - input: |
+        ways_to_climb(5, [2])
+      output: |
+        0
+      explanation: |
+        Steps of two can only reach an even height.
+    - input: |
+        ways_to_climb(6, [5, 1])
+      output: |
+        3
+      explanation: |
+        1+1+1+1+1+1, 1+5 and 5+1.

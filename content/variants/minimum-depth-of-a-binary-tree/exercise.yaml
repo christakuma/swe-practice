@@ -1,0 +1,75 @@
+schema_version: 1
+id: variants/minimum-depth-of-a-binary-tree
+kind: kata
+title: "Shallowest Leaf of a Binary Tree"
+difficulty: medium
+tags: [trees, breadth-first-search]
+estimated_minutes: 20
+
+variant:
+  of: katas/max-depth-of-a-binary-tree
+  twist: "Return the number of nodes on the shortest path down to a leaf, not the longest."
+
+prompt: |
+  Return the number of nodes on the **shortest** path from the root down to a
+  **leaf**.
+
+  A leaf is a node with no children at all. A node with one child is not a leaf,
+  so a path cannot stop there: the missing child is not somewhere to arrive.
+
+  An empty tree has depth 0; a single node has depth 1.
+
+  The tree may be very deep on one side and shallow on the other, and the
+  answer should not have to visit the deep side to find the shallow one.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "Changing max to min in the recursive solution gives 1 for a root with one child. Which path did it think it had found?"
+  - "The path into the missing child, which it counted as depth 0. A missing child is not a leaf. When one side is absent the answer has to come from the other side alone."
+  - "Even fixed, the recursion walks the whole tree. \"Shortest\" is a question breadth-first search answers by construction: it reaches nodes in order of depth, so the first leaf it takes off the queue is the shallowest."
+  - "Carry each node's depth with it in the queue and return the moment a node with no children comes off. It also never recurses, which matters when one side of the tree is a hundred thousand nodes deep."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n) worst case, but only the nodes no deeper than the answer"
+    expected_space: "O(w) for the widest level visited"
+  constraints:
+    - "The tree has between 0 and 10**5 nodes; an empty tree is None."
+    - "It may be a chain 10**5 nodes long, far deeper than Python will recurse."
+    - "-10**4 <= node.value <= 10**4"
+  examples:
+    - input: |
+        root = TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))
+        min_depth(root)
+      output: |
+        2
+      explanation: |
+        The 9 is a leaf one step below the root, so the shortest path is 3, 9.
+
+                3
+               / \
+              9  20
+                /  \
+               15   7
+    - input: |
+        root = TreeNode(1, TreeNode(2))
+        min_depth(root)
+      output: |
+        2
+      explanation: |
+        Not 1. The root has a child, so it is not a leaf, and the empty right side
+        is not a path to anywhere. The only leaf is the 2.
+    - input: |
+        min_depth(TreeNode(1))
+      output: |
+        1
+    - input: |
+        min_depth(None)
+      output: |
+        0

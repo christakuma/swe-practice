@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/odd-and-even-positions
+kind: kata
+title: "Odd and Even Positions"
+difficulty: medium
+tags: [linked-lists]
+estimated_minutes: 20
+
+variant:
+  of: katas/reorder-a-linked-list
+  twist: "The nodes at odd positions come first, then the ones at even positions."
+
+prompt: |
+  Reorder a list so that all the nodes at **odd positions** come first, followed
+  by all the nodes at **even positions**. Positions count from 1, and within each
+  group the nodes keep their original order.
+
+  It is the position that matters, not the value: the first node is odd, the
+  second even, whatever they hold.
+
+  Reorder in place and return nothing — the caller keeps the head it passed in,
+  and that node stays first. Relink the nodes you were given; do not copy values
+  between them.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "Think of the result as two lists joined end to end: the odd-position nodes, then the even-position ones. Can you build both in one walk?"
+  - "Keep two tails, one for each. Each odd node's successor is the node after the even one following it, and the same the other way round, so the two chains can leapfrog down the list."
+  - "Remember where the even chain started. When the walk ends, the odd tail is joined to that node."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "The list has between 0 and 2 * 10**4 nodes; an empty list is None."
+    - "Values may repeat."
+  examples:
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3, ListNode(4, ListNode(5)))))
+        reorder_list(head)
+        head
+      output: |
+        ListNode(1, ListNode(3, ListNode(5, ListNode(2, ListNode(4)))))
+      explanation: |
+        Positions 1, 3 and 5, then positions 2 and 4.
+    - input: |
+        head = ListNode(2, ListNode(1, ListNode(3, ListNode(5, ListNode(6, ListNode(4))))))
+        reorder_list(head)
+        head
+      output: |
+        ListNode(2, ListNode(3, ListNode(6, ListNode(1, ListNode(5, ListNode(4))))))
+      explanation: |
+        The values 2, 3, 6 are at positions 1, 3, 5. Their being odd or even numbers
+        has nothing to do with it.
+    - input: |
+        head = ListNode(1, ListNode(2))
+        (reorder_list(head), head)
+      output: |
+        (None, ListNode(1, ListNode(2)))

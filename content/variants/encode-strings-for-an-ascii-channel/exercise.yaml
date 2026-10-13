@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/encode-strings-for-an-ascii-channel
+kind: kata
+title: "Encode Strings for an ASCII Channel"
+difficulty: medium
+tags: [strings, design]
+estimated_minutes: 30
+
+variant:
+  of: katas/encode-and-decode-strings
+  twist: "The encoded string may contain only printable ASCII characters."
+
+prompt: |
+  Write a pair of functions that survive a round trip, as before: `encode` turns
+  a list of strings into one string, and `decode` turns it back into exactly the
+  list it started from.
+
+  This time the encoded string has to travel down a channel that only carries
+  **printable ASCII** — characters from space (32) to tilde (126). The strings
+  you are given can still contain anything: accented letters, emoji, newlines,
+  nulls.
+
+  So framing is no longer enough. Every character that is not printable ASCII
+  has to be represented by ones that are.
+
+  You may not use `json`, `pickle`, `repr`, `ast`, `base64` or any other
+  serialiser. Build the format yourself.
+
+hints:
+  - "A length prefix solved framing by never looking inside the payload. That no longer works: the payload itself has to change."
+  - "Every character has a number, its code point, and a number can be written in digits, which are printable ASCII. Encode each character as its code point and separate the numbers with a character that cannot be a digit."
+  - "You still have to mark where one string ends and the next begins, and to tell an empty list from a list holding one empty string. A marker in front of every string does both."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(total length) for both directions"
+    expected_space: "O(total length)"
+  constraints:
+    - "0 <= len(strings) <= 10**4"
+    - "0 <= len(strings[i]) <= 10**4"
+    - "A string may hold any Unicode character, including \"\\0\", line breaks and digits."
+    - "decode is only ever given a string that encode returned."
+  examples:
+    - input: |
+        decode(encode(["héllo", "wörld"]))
+      output: |
+        ["héllo", "wörld"]
+    - input: |
+        all(32 <= ord(character) <= 126 for character in encode(["naïve", "line\nbreak", "\0"]))
+      output: |
+        True
+      explanation: |
+        Whatever went in, only printable ASCII comes out.
+    - input: |
+        decode(encode([""]))
+      output: |
+        [""]
+    - input: |
+        decode(encode([]))
+      output: |
+        []

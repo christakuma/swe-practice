@@ -1,0 +1,73 @@
+schema_version: 1
+id: variants/where-the-loop-begins
+kind: kata
+title: "Where the Loop Begins"
+difficulty: medium
+tags: [linked-lists, two-pointers]
+estimated_minutes: 25
+
+variant:
+  of: katas/detect-a-cycle-in-a-linked-list
+  twist: "Return the node where the cycle begins, not just whether there is one."
+
+prompt: |
+  A singly linked list may loop back on itself. Return **the node where the
+  cycle begins** — the first node you reach twice when following `next_node`
+  from the head — or `None` if the list ends.
+
+  Return the node itself, not its value and not its position.
+
+  Solve it in **O(1) extra space**, and leave the list as you found it. A set of
+  visited nodes finds the answer and is not what this kata is for; the tests
+  measure the memory you allocate.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "Start with what you have: a slow pointer and a fast one that meet if there is a cycle. They meet somewhere *inside* it, which is usually not where it begins. Is the meeting point related to the start?"
+  - "Call the distance from the head to the start of the cycle a, and the distance from there on to the meeting point b. Slow has walked a + b. Fast has walked exactly twice that, and the extra is some whole number of laps."
+  - "So a + b is a whole number of laps. That means walking a more steps from the meeting point lands exactly on the start of the cycle -- and a is also how far the head is from it."
+  - "Put one pointer back at the head, leave the other at the meeting point, and move both one step at a time. Where they meet is the answer."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "The list has between 0 and 10**5 nodes; an empty list is None."
+    - "An acyclic list may be 10**5 nodes long, far deeper than Python will recurse."
+    - "Values tell you nothing: two nodes are the same node only if they are the same object."
+  examples:
+    - input: |
+        third = ListNode(3)
+        second = ListNode(2, third)
+        head = ListNode(1, second)
+        third.next_node = second
+        cycle_start(head) is second
+      output: |
+        True
+      explanation: |
+        1 -> 2 -> 3 -> 2 -> ... The last node points back at the second, so the
+        second is the first node to come round again.
+    - input: |
+        node = ListNode(1)
+        node.next_node = node
+        cycle_start(node) is node
+      output: |
+        True
+    - input: |
+        head = ListNode(1, ListNode(2, ListNode(3)))
+        cycle_start(head)
+      output: |
+        None
+      explanation: |
+        1 -> 2 -> 3 -> None. The list ends, so there is no cycle to begin anywhere.
+    - input: |
+        cycle_start(None)
+      output: |
+        None

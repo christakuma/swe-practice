@@ -1,0 +1,62 @@
+schema_version: 1
+id: variants/houses-in-a-circle-with-a-wider-alarm
+kind: kata
+title: "Houses in a Circle With a Wider Alarm"
+difficulty: hard
+tags: [dynamic-programming]
+estimated_minutes: 35
+
+variant:
+  of: katas/house-robber-in-a-circle
+  twist: "Taking a house now rules out the two houses on each side, not just the one."
+
+prompt: |
+  Houses stand in a **circle**. Each holds some amount. The alarm reaches
+  further than before: you may not take from two houses that are **one or two
+  places apart** round the circle. Return the largest total you can take.
+
+  So between any two houses you take there must be at least two you leave. With
+  five houses or fewer, every house is within two places of every other, and you
+  can take only one.
+
+  Reduce it to a straight row, as you did for the standard version — but check
+  carefully how many cases the reduction needs now.
+
+hints:
+  - "First the straight row with the wider alarm: the best for the first i houses is either the best without house i, or house i plus the best for everything at least three back."
+  - "For the circle, look at the four houses around the join: the last two and the first two. How many of them can be taken together?"
+  - "At most two, and only the outer pair -- second-to-last with second. So three rows cover every case: drop the first two houses, drop the last two, or drop one from each end."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1) beyond the slices"
+  constraints:
+    - "0 <= len(houses) <= 10**5"
+    - "0 <= houses[i] <= 10**4"
+  examples:
+    - input: |
+        best_haul([5, 1, 1, 5, 1, 1])
+      output: |
+        10
+      explanation: |
+        The first and fourth houses are three apart both ways round.
+    - input: |
+        best_haul([1, 2, 3, 4, 5])
+      output: |
+        5
+      explanation: |
+        In a circle of five, every pair is within two places.
+    - input: |
+        best_haul([0, 9, 0, 0, 9, 0])
+      output: |
+        18
+    - input: |
+        best_haul([])
+      output: |
+        0

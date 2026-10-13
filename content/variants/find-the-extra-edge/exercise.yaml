@@ -1,0 +1,53 @@
+schema_version: 1
+id: variants/find-the-extra-edge
+kind: kata
+title: "Find the Extra Edge"
+difficulty: medium
+tags: [graphs, union-find]
+estimated_minutes: 25
+
+variant:
+  of: katas/is-this-graph-a-tree
+  twist: "The graph is a tree with one edge too many, and you return that edge."
+
+prompt: |
+  `n` nodes are labelled `0` to `n - 1`, and you are given exactly `n` undirected
+  edges: a **tree with one extra edge** added. Return an edge that can be
+  removed to leave a tree.
+
+  Several edges may qualify — any edge on the cycle would do. Return the one
+  that appears **last** in the input, exactly as it was given.
+
+hints:
+  - "Add the edges one at a time. Most of them join two parts of the graph that were separate. One of them does not -- which one, and how do you recognise it?"
+  - "The one whose two ends are already connected. That is the edge that closes the cycle, and union-find answers \"already connected?\" directly."
+  - "It is also the answer the problem asks for: every other edge on the cycle came earlier."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n * almost-constant)"
+    expected_space: "O(n)"
+  constraints:
+    - "3 <= n <= 2 * 10**5"
+    - "len(edges) == n"
+    - "Each edge is a pair (a, b) with 0 <= a < n, 0 <= b < n and a != b; no edge repeats."
+    - "The edges form a connected graph with exactly one cycle."
+  examples:
+    - input: |
+        redundant_edge(3, [(0, 1), (0, 2), (1, 2)])
+      output: |
+        (1, 2)
+      explanation: |
+        All three edges are on the cycle, and (1, 2) is the last of them.
+    - input: |
+        redundant_edge(5, [(0, 1), (1, 2), (2, 3), (0, 3), (0, 4)])
+      output: |
+        (0, 3)
+      explanation: |
+        The cycle is 0, 1, 2, 3. The edge (0, 4) comes later but is not on it:
+        removing that one would cut node 4 off.

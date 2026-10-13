@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/largest-island
+kind: kata
+title: "Largest Island in a Grid"
+difficulty: medium
+tags: [grids, graphs, depth-first-search]
+estimated_minutes: 20
+
+variant:
+  of: katas/count-islands
+  twist: "Return the area of the largest island instead of how many islands there are."
+
+prompt: |
+  Return the **area** of the largest island in a rectangular grid of `0`s and
+  `1`s: the number of cells in the biggest connected group of `1`s.
+
+  Cells connect **only** up, down, left and right. Diagonal neighbours do not
+  count. If there is no land at all, the answer is `0`.
+
+  You may modify the grid. It may be large, and all of it may be one island.
+
+hints:
+  - "The flood that counted islands visited every cell of each one and threw that information away. What does it need to hand back instead?"
+  - "How many cells it reached. Count one each time a cell is taken off the stack, and compare the total with the best seen once the flood is done."
+  - "Mark a cell as visited when it goes *on* the stack rather than when it comes off. Otherwise two neighbours can each push the same cell, and it is counted twice -- a bug that counting islands never showed, because an island counted with a few repeats is still one island."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns)"
+    expected_space: "O(rows * columns) for the stack in the worst case"
+  constraints:
+    - "0 <= rows <= 300 and 0 <= columns <= 300"
+    - "Every row is the same length, and every cell is 0 or 1."
+    - "One island may cover the whole grid: 90,000 cells, far deeper than Python will recurse."
+  examples:
+    - input: |
+        grid = [
+            [1, 1, 0, 0],
+            [1, 0, 0, 1],
+            [0, 0, 1, 1],
+        ]
+        largest_island(grid)
+      output: |
+        3
+      explanation: |
+        Two islands of three cells each: one in the top-left corner and one in the
+        bottom-right.
+    - input: |
+        largest_island([[1, 0], [0, 1]])
+      output: |
+        1
+      explanation: |
+        The two cells touch only at a corner, so they are two islands of one.
+    - input: |
+        largest_island([[0, 0], [0, 0]])
+      output: |
+        0
+    - input: |
+        largest_island([])
+      output: |
+        0

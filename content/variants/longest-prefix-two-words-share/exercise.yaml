@@ -1,0 +1,63 @@
+schema_version: 1
+id: variants/longest-prefix-two-words-share
+kind: kata
+title: "Longest Prefix Two Words Share"
+difficulty: medium
+tags: [strings, sorting]
+estimated_minutes: 20
+
+variant:
+  of: katas/longest-common-prefix
+  twist: "The prefix only has to be shared by some two of the words, not by all of them."
+
+prompt: |
+  Return the longest string that is a prefix of **at least two** of the words —
+  two different entries in the list, which may be equal strings.
+
+  If several prefixes tie for longest, return the one that comes first
+  alphabetically. With fewer than two words, or when no two share even a first
+  character, the answer is the empty string.
+
+  Comparing every pair of words is too slow for a long list.
+
+hints:
+  - "The pair with the longest shared prefix has to be found without looking at every pair. Is there an arrangement of the words in which that pair is guaranteed to be next to each other?"
+  - "Sorted order. Words that share a long prefix sort together, and nothing can come between two words without sharing at least as much with one of them."
+  - "So sort, compare each word only with its neighbour, and keep the longest prefix seen -- breaking ties towards the smaller string."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n) comparisons"
+    expected_space: "O(n) for the sorted copy"
+  constraints:
+    - "0 <= len(words) <= 10**5"
+    - "0 <= len(words[i]) <= 100"
+    - "Characters are compared exactly."
+  examples:
+    - input: |
+        longest_shared_prefix(["flower", "dog", "flight", "dorm", "flow"])
+      output: |
+        "flow"
+      explanation: |
+        "flower" and "flow" share four characters. All five words share nothing.
+    - input: |
+        longest_shared_prefix(["apple", "bat", "cat"])
+      output: |
+        ""
+    - input: |
+        longest_shared_prefix(["ab", "ab"])
+      output: |
+        "ab"
+      explanation: |
+        Two entries, the same string: the whole of it is a shared prefix.
+    - input: |
+        longest_shared_prefix(["zebra", "zest", "anchor", "ankle"])
+      output: |
+        "an"
+      explanation: |
+        "ze" and "an" are both two characters long, and "an" comes first.

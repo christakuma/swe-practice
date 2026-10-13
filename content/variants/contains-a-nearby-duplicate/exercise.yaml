@@ -1,0 +1,61 @@
+schema_version: 1
+id: variants/contains-a-nearby-duplicate
+kind: kata
+title: "Contains a Nearby Duplicate"
+difficulty: easy
+tags: [arrays, hash-map, sliding-window]
+estimated_minutes: 15
+
+variant:
+  of: katas/contains-a-duplicate
+  twist: "The two equal values must be at most k positions apart."
+
+prompt: |
+  Return `True` if the list holds two equal values whose positions are **at most
+  `k` apart** — that is, some `i != j` with `numbers[i] == numbers[j]` and
+  `abs(i - j) <= k`.
+
+  A repeat further apart than that does not count. With `k = 0` nothing can
+  qualify, because two different positions are always at least one apart.
+
+  The list may be long and `k` may be large, so comparing each value with the
+  `k` before it is too slow.
+
+hints:
+  - "The standard version asks \"have I seen this value?\". This one asks \"have I seen it *recently*?\". What do you need to remember about a value besides the fact that it turned up?"
+  - "Where it last turned up. A dict from value to its most recent position answers the question with one subtraction."
+  - "Overwrite the position every time you see the value, match or no match. The nearest earlier copy is always the latest one, so an older position is never the one you want."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(min(n, k))"
+  constraints:
+    - "0 <= len(numbers) <= 10**6"
+    - "-10**9 <= numbers[i] <= 10**9"
+    - "0 <= k <= 10**6"
+  examples:
+    - input: |
+        has_duplicate([1, 2, 3, 1], 3)
+      output: |
+        True
+      explanation: |
+        The two 1s are three positions apart, and three is allowed.
+    - input: |
+        has_duplicate([1, 2, 3, 1], 2)
+      output: |
+        False
+      explanation: |
+        The same list. The only repeat is three apart, which is now too far.
+    - input: |
+        has_duplicate([1, 0, 1, 1], 1)
+      output: |
+        True
+      explanation: |
+        The first and third values are two apart, but the third and fourth are
+        neighbours.

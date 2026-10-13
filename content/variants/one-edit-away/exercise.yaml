@@ -1,0 +1,62 @@
+schema_version: 1
+id: variants/one-edit-away
+kind: kata
+title: "One Edit Away"
+difficulty: medium
+tags: [strings, two-pointers]
+estimated_minutes: 20
+
+variant:
+  of: katas/edit-distance
+  twist: "You only decide whether the two strings are at most one edit apart, in linear time."
+
+prompt: |
+  Return `True` if one string can be turned into the other with **at most one**
+  edit — inserting a character, deleting one, or replacing one. Equal strings
+  are zero edits apart, which counts.
+
+  You do not need the full edit distance, and you cannot afford it: the strings
+  may be a million characters long, and the table that computes the distance
+  has a cell for every pair of positions.
+
+hints:
+  - "The lengths tell you a lot before you read a character. What can you conclude if they differ by two or more? By exactly one? Not at all?"
+  - "Two or more: impossible. Equal: the only edit that fits is a replacement. One apart: an insertion into the shorter, which is a deletion from the longer."
+  - "Walk both strings together to the first place they disagree. After that single disagreement everything else has to match exactly -- skipping one character in both for a replacement, or in the longer one only for an insertion."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1) beyond the comparison of the tails"
+  constraints:
+    - "0 <= len(source) <= 10**6"
+    - "0 <= len(target) <= 10**6"
+    - "Characters are compared exactly; case matters."
+  examples:
+    - input: |
+        is_one_edit_away("pale", "ple")
+      output: |
+        True
+      explanation: |
+        Delete the a.
+    - input: |
+        is_one_edit_away("pale", "bale")
+      output: |
+        True
+      explanation: |
+        Replace the p.
+    - input: |
+        is_one_edit_away("pale", "bake")
+      output: |
+        False
+      explanation: |
+        Two replacements are needed.
+    - input: |
+        is_one_edit_away("same", "same")
+      output: |
+        True

@@ -1,0 +1,60 @@
+schema_version: 1
+id: variants/mirrored-copy-of-a-tree
+kind: kata
+title: "Mirrored Copy of a Tree"
+difficulty: easy
+tags: [trees, recursion]
+estimated_minutes: 15
+
+variant:
+  of: katas/invert-a-binary-tree
+  twist: "Return a new, mirrored tree and leave the original exactly as it was."
+
+prompt: |
+  Return a **new** tree that is the mirror image of the one you are given: the
+  same values, with every node's children swapped.
+
+  The original must be left exactly as it was, and the copy must share **no
+  nodes** with it — every node in the result is one you created. This is the
+  opposite of the standard version, which had to relink the original in place.
+
+  An empty tree mirrors to an empty tree.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "In place, you swapped a node's two children and recursed. For a copy, what do you build at each node, and from what?"
+  - "A new node with the same value, whose left child is the mirrored copy of the original's right subtree, and whose right child is the mirrored copy of its left."
+  - "Every level has to build new nodes. Creating a new root and handing it the original's subtrees the other way round shares everything below it."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(n) for the copy, O(h) for the recursion"
+  constraints:
+    - "The tree has between 0 and 500 nodes, and may be a single chain that deep."
+    - "-10**4 <= node.value <= 10**4"
+  examples:
+    - input: |
+        root = TreeNode(1, TreeNode(2), TreeNode(3))
+        mirrored(root)
+      output: |
+        TreeNode(1, TreeNode(3), TreeNode(2))
+    - input: |
+        root = TreeNode(1, TreeNode(2), TreeNode(3))
+        copy = mirrored(root)
+        (root.left.value, root.right.value, copy is root)
+      output: |
+        (2, 3, False)
+      explanation: |
+        The original still has 2 on its left and 3 on its right, and what came back
+        is a different object.
+    - input: |
+        mirrored(None)
+      output: |
+        None

@@ -1,0 +1,58 @@
+schema_version: 1
+id: variants/names-that-never-reach-a-cycle
+kind: kata
+title: "Names That Never Reach a Cycle"
+difficulty: medium
+tags: [graphs, topological-sort]
+estimated_minutes: 30
+
+variant:
+  of: katas/detect-a-dependency-cycle
+  twist: "Return every name whose dependencies can all be resolved, even if the graph has cycles elsewhere."
+
+prompt: |
+  Given a dependency graph as a dict from a name to the names it depends on,
+  return the names that are **safe**: every chain of dependencies starting from
+  a safe name comes to an end.
+
+  A name on a cycle is not safe. Neither is a name that depends, directly or
+  indirectly, on one — it can never be fully resolved. Everything else is safe,
+  including names that appear only as a dependency and have no entry of their
+  own.
+
+  Return the safe names sorted ascending.
+
+hints:
+  - "Start from what is certainly safe: a name with no dependencies at all."
+  - "A name is safe once *every* name it depends on is known to be safe. That is the same peeling as a topological sort, run from the leaves upward."
+  - "For each name keep a count of dependencies not yet known to be safe, and a list of the names that depend on it. When a name becomes safe, lower its dependents' counts; any that reach zero are safe too. What is never reached is unsafe."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(V + E) plus the final sort"
+    expected_space: "O(V + E)"
+  constraints:
+    - "At most 2 * 10**4 names, and at most 4 * 10**4 dependencies between them."
+    - "Names are non-empty strings. A name may depend on itself."
+    - "A chain may be 10**4 links long, far deeper than Python will recurse."
+  examples:
+    - input: |
+        safe_names({"a": ["b"], "b": ["c"], "c": []})
+      output: |
+        ["a", "b", "c"]
+    - input: |
+        safe_names({"app": ["lib"], "lib": ["core"], "core": ["lib"], "tool": ["util"]})
+      output: |
+        ["tool", "util"]
+      explanation: |
+        "lib" and "core" depend on each other, and "app" depends on "lib", so none
+        of the three can be resolved. "tool" needs only "util", which needs nothing.
+    - input: |
+        safe_names({"x": ["x"]})
+      output: |
+        []

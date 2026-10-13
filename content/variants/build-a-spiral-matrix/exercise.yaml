@@ -1,0 +1,58 @@
+schema_version: 1
+id: variants/build-a-spiral-matrix
+kind: kata
+title: "Build a Spiral Matrix"
+difficulty: medium
+tags: [matrices, simulation]
+estimated_minutes: 20
+
+variant:
+  of: katas/read-a-matrix-in-spiral-order
+  twist: "Instead of reading a matrix in spiral order, write the numbers 1 to n*n into one."
+
+prompt: |
+  Given `n`, return an `n x n` matrix filled with the numbers `1` to `n * n` in
+  **spiral order**: left to right along the top row, down the right column,
+  right to left along the bottom, up the left column, then inward.
+
+  `n = 0` gives an empty matrix, `[]`.
+
+hints:
+  - "Reading a spiral and writing one are the same walk. Keep the four boundaries you already had, and assign to each cell where you used to append its value."
+  - "Create the grid first, with each row its own list. A row repeated n times is one row seen n times, and every write will show up in all of them."
+  - "The counter never needs resetting: it runs from 1 to n * n across the whole walk."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(1) beyond the output"
+  constraints:
+    - "0 <= n <= 400"
+  examples:
+    - input: |
+        spiral_matrix(3)
+      output: |
+        [[1, 2, 3], [8, 9, 4], [7, 6, 5]]
+      explanation: |
+        Read as a grid:
+
+            1 2 3
+            8 9 4
+            7 6 5
+    - input: |
+        spiral_matrix(2)
+      output: |
+        [[1, 2], [4, 3]]
+    - input: |
+        spiral_matrix(1)
+      output: |
+        [[1]]
+    - input: |
+        spiral_matrix(0)
+      output: |
+        []

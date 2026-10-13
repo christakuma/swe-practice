@@ -1,0 +1,60 @@
+schema_version: 1
+id: variants/move-zeroes-to-the-front
+kind: kata
+title: "Move Zeroes to the Front"
+difficulty: easy
+tags: [arrays, two-pointers]
+estimated_minutes: 12
+
+variant:
+  of: katas/move-zeroes
+  twist: "The zeros go to the front instead of the end."
+
+prompt: |
+  Move every zero in a list to the **front**, keeping the non-zero elements in
+  their original relative order.
+
+  Do it **in place**: the function returns `None`, and the caller reads the
+  result from the list it passed in.
+
+  The list may be long enough that shifting elements one at a time is too slow.
+
+hints:
+  - "The standard version packed the non-zero values towards the front with a write index that started at 0. Which end should they be packed towards now?"
+  - "The back. So the write index starts at the last position, and to keep the values in order as they are packed that way, the read has to run backwards too."
+  - "Whatever is left in front of the write index when the scan finishes is where the zeros go."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(numbers) <= 3 * 10**5"
+    - "-10**9 <= numbers[i] <= 10**9"
+  examples:
+    - input: |
+        numbers = [0, 1, 0, 3, 12]
+        move_zeroes(numbers)
+        numbers
+      output: |
+        [0, 0, 1, 3, 12]
+      explanation: |
+        Both zeros lead, and 1, 3 and 12 keep the order they had.
+    - input: |
+        numbers = [4, 0, -1, 0]
+        move_zeroes(numbers)
+        numbers
+      output: |
+        [0, 0, 4, -1]
+    - input: |
+        numbers = [1, 0]
+        (move_zeroes(numbers), numbers)
+      output: |
+        (None, [0, 1])
+      explanation: |
+        Nothing is returned. The list that was passed in is the result.

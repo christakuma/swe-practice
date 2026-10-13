@@ -1,0 +1,66 @@
+schema_version: 1
+id: variants/kth-largest-in-a-search-tree
+kind: kata
+title: "Kth Largest in a BST"
+difficulty: medium
+tags: [trees, binary-search-tree]
+estimated_minutes: 20
+
+variant:
+  of: katas/kth-smallest-in-a-bst
+  twist: "The kth largest value is wanted instead of the kth smallest."
+
+prompt: |
+  Return the kth **largest** value in a binary search tree. `k` is 1-based, so
+  `k = 1` is the largest value.
+
+  The tree is a valid BST with distinct values. As in the standard version,
+  **stop as soon as you have the answer**: the tests include a tree whose
+  smaller half is far too deep to walk.
+
+  The tests build trees with the `TreeNode` class in the stub.
+
+hints:
+  - "An in-order walk visits a BST in ascending order: left, node, right. What order do you get from right, node, left?"
+  - "Descending. So the kth node that walk visits is the answer, and the walk can stop there."
+  - "Use an explicit stack rather than recursion that collects everything. Push the right spine, pop a node, count it, then move to its left child and push that child's right spine."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(h + k)"
+    expected_space: "O(h)"
+  constraints:
+    - "The tree has between 1 and 2 * 10**5 nodes."
+    - "Its left side may be a chain 10**5 deep; the part an answer needs is at most 500 deep."
+    - "1 <= k <= the number of nodes"
+    - "-10**9 <= node.value <= 10**9, and no two nodes share a value."
+  examples:
+    - input: |
+        root = TreeNode(5, TreeNode(3, TreeNode(2), TreeNode(4)), TreeNode(7, None, TreeNode(9)))
+        kth_largest(root, 1)
+      output: |
+        9
+      explanation: |
+        The largest value is the rightmost node.
+
+                5
+               / \
+              3   7
+             / \   \
+            2   4   9
+    - input: |
+        root = TreeNode(5, TreeNode(3, TreeNode(2), TreeNode(4)), TreeNode(7, None, TreeNode(9)))
+        kth_largest(root, 3)
+      output: |
+        5
+      explanation: |
+        From the top the values are 9, 7, 5, 4, 3, 2.
+    - input: |
+        kth_largest(TreeNode(8), 1)
+      output: |
+        8

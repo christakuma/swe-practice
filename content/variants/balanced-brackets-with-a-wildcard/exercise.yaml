@@ -1,0 +1,65 @@
+schema_version: 1
+id: variants/balanced-brackets-with-a-wildcard
+kind: kata
+title: "Balanced Brackets With a Wildcard"
+difficulty: medium
+tags: [strings, greedy]
+estimated_minutes: 25
+
+variant:
+  of: katas/valid-parentheses
+  twist: "One kind of bracket, plus a `*` that can stand for an opener, a closer, or nothing."
+
+prompt: |
+  The string contains only `(`, `)` and `*`. Each `*` is a wildcard: it may be
+  read as `(`, as `)`, or as nothing at all, and different stars may be read
+  differently.
+
+  Return `True` if there is **some** way of reading the stars that leaves the
+  round brackets balanced and correctly nested.
+
+  The string may be long and mostly stars, so trying every reading is out.
+
+hints:
+  - "A stack worked when every character was known. With stars, what you do not know is how many brackets are open -- but you do know the smallest and the largest that number could be."
+  - "Keep that range as two counters. An opener raises both. A closer lowers both. A star lowers the smallest and raises the largest, because it could go either way."
+  - "If the largest ever goes negative, even reading every star as an opener was not enough: fail. The smallest cannot really go below zero -- a star would simply not be read as a closer -- so clamp it. At the end, zero has to be in the range."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(text) <= 10**5"
+    - "Every character is one of ( ) *"
+  examples:
+    - input: |
+        is_balanced("(*)")
+      output: |
+        True
+      explanation: |
+        Read the star as nothing.
+    - input: |
+        is_balanced("(*))")
+      output: |
+        True
+      explanation: |
+        Read the star as an opener: "(())".
+    - input: |
+        is_balanced(")*(")
+      output: |
+        False
+      explanation: |
+        No reading helps. The first character closes something that is not open,
+        and the last opens something that is never closed.
+    - input: |
+        is_balanced("*(")
+      output: |
+        False
+      explanation: |
+        The star comes too early to close the bracket after it.

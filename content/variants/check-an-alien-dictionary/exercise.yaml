@@ -1,0 +1,61 @@
+schema_version: 1
+id: variants/check-an-alien-dictionary
+kind: kata
+title: "Check an Alien Dictionary"
+difficulty: easy
+tags: [strings, hash-map]
+estimated_minutes: 15
+
+variant:
+  of: katas/alien-alphabet-order
+  twist: "The alphabet is given, and you check whether the words are sorted by it."
+
+prompt: |
+  You are given a list of words and an **alphabet** — a string holding each
+  character once, in that language's order. Return `True` if the words are in
+  sorted order according to that alphabet.
+
+  The standard version had to work the alphabet out. Here it is handed to you,
+  and the question runs the other way.
+
+  The usual dictionary rule applies to prefixes: a word comes **before** any
+  longer word it is a prefix of, so `"app"` then `"apple"` is in order and
+  `"apple"` then `"app"` is not. Equal neighbours are in order.
+
+hints:
+  - "Being sorted is a property of neighbours: the list is in order exactly when every word is no later than the one after it."
+  - "To compare two words, find the first position where they differ and compare those two characters by their *positions in the alphabet*. A dict from character to position makes that a lookup."
+  - "If one word runs out before any difference, the shorter must be first. Translating each word into a list of positions lets Python's list comparison apply both rules at once."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(total characters)"
+    expected_space: "O(size of the alphabet)"
+  constraints:
+    - "0 <= len(words) <= 10**5"
+    - "0 <= len(words[i]) <= 20"
+    - "alphabet holds distinct characters, including every character used in words."
+  examples:
+    - input: |
+        is_sorted(["hello", "leetcode"], "hlabcdefgijkmnopqrstuvwxyz")
+      output: |
+        True
+      explanation: |
+        h comes before l in this alphabet.
+    - input: |
+        is_sorted(["word", "world", "row"], "worldabcefghijkmnpqstuvxyz")
+      output: |
+        False
+      explanation: |
+        "word" and "world" first differ at d against l, and here l comes before d.
+    - input: |
+        is_sorted(["apple", "app"], "abcdefghijklmnopqrstuvwxyz")
+      output: |
+        False
+      explanation: |
+        A word cannot follow a longer word that it is a prefix of.

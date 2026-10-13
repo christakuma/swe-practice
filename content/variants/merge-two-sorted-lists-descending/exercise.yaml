@@ -1,0 +1,60 @@
+schema_version: 1
+id: variants/merge-two-sorted-lists-descending
+kind: kata
+title: "Merge Two Sorted Lists, Largest First"
+difficulty: medium
+tags: [linked-lists, merging]
+estimated_minutes: 20
+
+variant:
+  of: katas/merge-two-sorted-lists
+  twist: "The two lists are ascending, and the merged list must come out descending."
+
+prompt: |
+  Two linked lists come in, each sorted in **ascending** order. Return the head
+  of one list holding all of their nodes in **descending** order.
+
+  Either list may be empty; two empty lists merge to an empty list.
+
+  Splice the nodes you were given, as in the standard version. Merging ascending
+  and then reversing is two passes; it can be done in one.
+
+  The tests build lists with the `ListNode` class in the stub.
+
+hints:
+  - "The standard merge takes the smaller front node each time and adds it to the *end* of the result. Where would you add it to get the reverse order?"
+  - "The front. The smallest node goes in first and ends up last, because everything after it is pushed in ahead of it."
+  - "Each step: detach the smaller front node, point it at the current head, and make it the head. No tail pointer and no dummy node are needed."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n + m)"
+    expected_space: "O(1)"
+  constraints:
+    - "Each list has between 0 and 2 * 10**4 nodes; an empty list is None."
+    - "Each list is in ascending order, and equal values may repeat."
+    - "-10**4 <= node.value <= 10**4"
+  examples:
+    - input: |
+        first = ListNode(1, ListNode(3, ListNode(5)))
+        second = ListNode(2, ListNode(4))
+        merge_two_lists(first, second)
+      output: |
+        ListNode(5, ListNode(4, ListNode(3, ListNode(2, ListNode(1)))))
+      explanation: |
+        1 -> 3 -> 5 and 2 -> 4 become 5 -> 4 -> 3 -> 2 -> 1.
+    - input: |
+        merge_two_lists(None, ListNode(7, ListNode(8)))
+      output: |
+        ListNode(8, ListNode(7))
+      explanation: |
+        With one list empty the other still has to be turned round.
+    - input: |
+        merge_two_lists(None, None)
+      output: |
+        None

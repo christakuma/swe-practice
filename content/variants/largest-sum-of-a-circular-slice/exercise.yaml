@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/largest-sum-of-a-circular-slice
+kind: kata
+title: "Largest Sum of a Slice That May Wrap"
+difficulty: medium
+tags: [arrays, dynamic-programming]
+estimated_minutes: 25
+
+variant:
+  of: katas/maximum-subarray
+  twist: "The list is circular, so a slice may run off the end and continue from the start."
+
+prompt: |
+  The list is **circular**: the value after the last one is the first one. Return
+  the largest sum achievable by any contiguous, **non-empty** slice — which may
+  now run off the end of the list and carry on from the start.
+
+  A slice may use each position at most once, so it can never be longer than the
+  list. An all-negative list still answers with its least negative value.
+
+  Aim for one pass and `O(1)` extra space.
+
+hints:
+  - "The best slice either wraps or it does not. You already know how to find the best one that does not."
+  - "A slice that wraps takes a piece from the end and a piece from the start. Look at what it leaves *out*: one contiguous stretch in the middle. What would you want that stretch to be?"
+  - "The smallest-sum slice. So the best wrapping total is the sum of the whole list minus the minimum slice, and the minimum slice is the same one-pass scan with the comparison turned round."
+  - "One case breaks that. If every value is negative, the minimum slice is the entire list, and \"everything minus everything\" is an empty slice worth 0 -- which is not allowed."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "1 <= len(numbers) <= 10**5"
+    - "-10**4 <= numbers[i] <= 10**4"
+  examples:
+    - input: |
+        max_slice_sum([5, -3, 5])
+      output: |
+        10
+      explanation: |
+        The last 5 and then the first 5, wrapping round the end. Without wrapping the
+        best is 7, the whole list.
+    - input: |
+        max_slice_sum([1, -2, 3, -2])
+      output: |
+        3
+      explanation: |
+        Just the 3. Wrapping is allowed, not required.
+    - input: |
+        max_slice_sum([3, -1, 2, -1])
+      output: |
+        4
+      explanation: |
+        2, -1, 3: from the third position round to the first. It cannot continue into
+        the 2 again, because a position is used at most once.
+    - input: |
+        max_slice_sum([-3, -2, -3])
+      output: |
+        -2
+      explanation: |
+        The slice cannot be empty, so the answer is the least bad single value.

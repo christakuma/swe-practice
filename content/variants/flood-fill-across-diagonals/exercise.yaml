@@ -1,0 +1,58 @@
+schema_version: 1
+id: variants/flood-fill-across-diagonals
+kind: kata
+title: "Flood Fill Across Diagonals"
+difficulty: easy
+tags: [grids, depth-first-search]
+estimated_minutes: 15
+
+variant:
+  of: katas/flood-fill
+  twist: "Pixels that touch at a corner are now part of the same region."
+
+prompt: |
+  Recolour the connected region of an image that contains a given pixel — but
+  here two pixels are connected when they touch on a side **or at a corner**, so
+  each pixel has up to eight neighbours instead of four.
+
+  As before, only pixels that **started** with the same colour as the chosen one
+  belong to the region. Modify the image in place and return it. An empty image
+  is returned as it is.
+
+hints:
+  - "Nothing about the search changes except the list of neighbours."
+  - "Generate all eight offsets rather than writing them out: every combination of -1, 0, 1 for the row and for the column, leaving out (0, 0)."
+  - "Keep the guard for a region that is already the new colour, and keep the explicit stack."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(rows * columns)"
+    expected_space: "O(rows * columns) for the stack in the worst case"
+  constraints:
+    - "0 <= rows <= 300 and 1 <= columns <= 300"
+    - "0 <= colour <= 10**6, for the new colour and for every pixel."
+    - "(row, column) is a pixel of the image whenever the image has any."
+    - "A region may cover the whole image: 90,000 pixels, far deeper than Python will recurse."
+  examples:
+    - input: |
+        image = [
+            [1, 1, 1],
+            [1, 1, 0],
+            [1, 0, 1],
+        ]
+        flood_fill(image, 1, 1, 2)
+      output: |
+        [[2, 2, 2], [2, 2, 0], [2, 0, 2]]
+      explanation: |
+        The 1 in the bottom-right corner touches the centre diagonally, so this time
+        it is part of the region. The standard version leaves it alone.
+    - input: |
+        image = [[1, 0], [0, 1]]
+        flood_fill(image, 0, 0, 5)
+      output: |
+        [[5, 0], [0, 5]]

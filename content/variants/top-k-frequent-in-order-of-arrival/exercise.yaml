@@ -1,0 +1,56 @@
+schema_version: 1
+id: variants/top-k-frequent-in-order-of-arrival
+kind: kata
+title: "Top K Most Frequent, Ties by Arrival"
+difficulty: medium
+tags: [hash-map, sorting]
+estimated_minutes: 20
+
+variant:
+  of: katas/top-k-frequent
+  twist: "Words with equal counts are ordered by which appeared first, not alphabetically."
+
+prompt: |
+  Return the `k` most frequent words in a list, most frequent first. Words that
+  appear the same number of times are ordered by **first appearance**: the one
+  that turned up earlier in the list comes first.
+
+  Only the tie-break has changed from the standard version, where it was
+  alphabetical.
+
+hints:
+  - "Counting is unchanged. What differs is the second thing you sort by."
+  - "For each word you need the position at which it first appeared. A dict remembers the order its keys were inserted in, so counting in one pass already gives you that order."
+  - "Sort by count, descending, and let ties fall back to that order -- a stable sort does it without a second key."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n + d log d) for d distinct words"
+    expected_space: "O(d)"
+  constraints:
+    - "0 <= len(words) <= 10**5"
+    - "1 <= len(words[i]) <= 20"
+    - "0 <= k <= the number of distinct words"
+  examples:
+    - input: |
+        top_k_frequent(["pear", "apple", "fig"], 3)
+      output: |
+        ["pear", "apple", "fig"]
+      explanation: |
+        Every word appears once, so they come back in the order they arrived. The
+        standard version returns them alphabetically.
+    - input: |
+        top_k_frequent(["b", "a", "a", "b", "c"], 2)
+      output: |
+        ["b", "a"]
+      explanation: |
+        Both appear twice, and "b" was seen first.
+    - input: |
+        top_k_frequent(["x", "y", "y"], 1)
+      output: |
+        ["y"]

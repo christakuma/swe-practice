@@ -1,0 +1,55 @@
+schema_version: 1
+id: variants/count-slices-with-a-small-product
+kind: kata
+title: "Count Slices With a Small Product"
+difficulty: medium
+tags: [arrays, sliding-window]
+estimated_minutes: 25
+
+variant:
+  of: katas/maximum-product-subarray
+  twist: "Count the slices whose product is below a limit, instead of finding the largest product."
+
+prompt: |
+  Given a list of **positive** integers and a `limit`, count the contiguous,
+  non-empty slices whose product is **strictly less than** `limit`.
+
+  Slices at different positions count separately. The list may be long enough
+  that multiplying out every slice is too slow.
+
+hints:
+  - "Every value is at least 1, so making a slice longer never makes its product smaller. What does that let you do with a window?"
+  - "Slide it. Grow the window on the right; while its product is too large, shrink it from the left by dividing out the value that leaves."
+  - "When the window ending at a position is as wide as it can be, every shorter slice ending there is also under the limit. How many is that?"
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(numbers) <= 10**5"
+    - "1 <= numbers[i] <= 1000"
+    - "0 <= limit <= 10**6"
+  examples:
+    - input: |
+        count_slices([10, 5, 2, 6], 100)
+      output: |
+        8
+      explanation: |
+        The four single values, then [10, 5], [5, 2], [2, 6] and [5, 2, 6]. The
+        product of [10, 5, 2] is exactly 100, which is not below the limit.
+    - input: |
+        count_slices([1, 2, 3], 0)
+      output: |
+        0
+      explanation: |
+        Every product is at least 1.
+    - input: |
+        count_slices([1, 1, 1], 2)
+      output: |
+        6

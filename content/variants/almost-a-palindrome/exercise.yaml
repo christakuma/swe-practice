@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/almost-a-palindrome
+kind: kata
+title: "Almost a Palindrome"
+difficulty: medium
+tags: [strings, two-pointers]
+estimated_minutes: 20
+
+variant:
+  of: katas/is-it-a-palindrome
+  twist: "You may delete at most one character, and every character now counts exactly as written."
+
+prompt: |
+  Return `True` if the string is a palindrome, or can be made into one by
+  **deleting at most one character**.
+
+  Unlike the standard version, nothing is ignored: every character counts, and
+  case matters. `"Aa"` is not a palindrome here — though deleting either
+  character makes it one.
+
+  The string may be long, so trying each deletion in turn and checking what is
+  left is too slow.
+
+hints:
+  - "Walk inward from both ends as you would for an ordinary palindrome. While the characters match there is no decision to make. What do you know at the first place they differ?"
+  - "One of those two characters has to be the deleted one. Nothing outside them can be, because everything outside already matches, and deleting from there would only break it."
+  - "So there are two candidates, not n: skip the left character, or skip the right. Check whether what remains *between* the pointers is a palindrome in each case."
+  - "Try both. It is tempting to skip whichever side \"looks\" wrong, and for some strings only one of the two works."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(text) <= 2 * 10**5"
+    - "Any characters may appear, and they are compared exactly."
+  examples:
+    - input: |
+        is_almost_palindrome("abca")
+      output: |
+        True
+      explanation: |
+        Delete the b to get "aca", or the c to get "aba".
+    - input: |
+        is_almost_palindrome("racecar")
+      output: |
+        True
+      explanation: |
+        Already a palindrome. Deleting nothing is allowed.
+    - input: |
+        is_almost_palindrome("abc")
+      output: |
+        False
+      explanation: |
+        Whichever single character goes, two different ones are left.
+    - input: |
+        is_almost_palindrome("abbca")
+      output: |
+        True
+      explanation: |
+        Delete the c. Deleting the b it is paired against leaves "abca", which is
+        not a palindrome, so only one of the two candidates works.

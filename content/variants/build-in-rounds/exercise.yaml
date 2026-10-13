@@ -1,0 +1,62 @@
+schema_version: 1
+id: variants/build-in-rounds
+kind: kata
+title: "Build in Rounds"
+difficulty: medium
+tags: [graphs, topological-sort]
+estimated_minutes: 30
+
+variant:
+  of: katas/topological-order
+  twist: "Group the names into rounds that could each be done in parallel."
+
+prompt: |
+  Given a dict from a name to the names it depends on, group the names into
+  **rounds**. A name goes in the earliest round in which everything it depends
+  on has already been placed in an earlier round, so everything in one round
+  could be built at the same time.
+
+  Return a list of rounds, each a list of names sorted ascending. Return `None`
+  if no such grouping exists, because of a cycle.
+
+  A name that appears only as a dependency still has to be placed — it has no
+  dependencies of its own, so it goes in the first round.
+
+hints:
+  - "The standard version took one ready name at a time. Take *all* the ready names at once: that set is a round."
+  - "Removing a whole round makes a new set of names ready -- those whose last unmet dependency was in the round just removed. That is the next round."
+  - "If the names run out, you are done. If a round comes up empty while names remain, what is left is waiting on itself: a cycle."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(V + E) plus sorting within rounds"
+    expected_space: "O(V + E)"
+  constraints:
+    - "At most 2 * 10**4 names, and at most 4 * 10**4 dependencies between them."
+    - "Names are non-empty strings, compared as Python compares strings."
+    - "A chain may be 10**4 names deep, far deeper than Python will recurse."
+  examples:
+    - input: |
+        build_rounds({"app": ["lib", "log"], "lib": ["core"], "log": [], "core": []})
+      output: |
+        [["core", "log"], ["lib"], ["app"]]
+      explanation: |
+        "core" and "log" need nothing. "lib" needs "core", so it waits one round.
+        "app" needs "lib", so it waits another, even though "log" was ready at once.
+    - input: |
+        build_rounds({"build": ["tools"]})
+      output: |
+        [["tools"], ["build"]]
+    - input: |
+        build_rounds({"a": ["b"], "b": ["a"]})
+      output: |
+        None
+    - input: |
+        build_rounds({})
+      output: |
+        []

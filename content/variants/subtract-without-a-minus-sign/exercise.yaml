@@ -1,0 +1,60 @@
+schema_version: 1
+id: variants/subtract-without-a-minus-sign
+kind: kata
+title: "Subtract Without a Minus Sign"
+difficulty: medium
+tags: [bit-manipulation]
+estimated_minutes: 25
+
+variant:
+  of: katas/add-without-a-plus-sign
+  twist: "Subtract instead of add, still without `+` or `-`."
+
+prompt: |
+  Subtract one **signed 32-bit** integer from another — return `a - b` — without
+  using `+` or `-` anywhere.
+
+  The arithmetic is 32-bit two's complement, so the result **wraps**: one less
+  than the smallest value is the largest.
+
+  The rules are the standard version's. Allowed: `&`, `|`, `^`, `~`, `<<`, `>>`,
+  comparisons, and assignment. Banned: `+`, `-` (as operators and as unary
+  negation), `sum`, `abs`, `math.*`.
+
+hints:
+  - "You already have addition from XOR and carries. Subtraction is addition of something. Of what?"
+  - "The negative of b. In two's complement, negating a number is flipping every bit and adding one -- and \"adding one\" is something your adder can do."
+  - "So a - b is add(a, add(~b, 1)). Keep every intermediate value masked to 32 bits, and turn the final word back into a signed number as before."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(1), at most thirty-two carry rounds per addition"
+    expected_space: "O(1)"
+  constraints:
+    - "-2**31 <= a <= 2**31 - 1"
+    - "-2**31 <= b <= 2**31 - 1"
+    - "The result is in the same range: a difference outside it wraps round."
+  examples:
+    - input: |
+        subtract(5, 3)
+      output: |
+        2
+    - input: |
+        subtract(3, 5)
+      output: |
+        -2
+    - input: |
+        subtract(-2147483648, 1)
+      output: |
+        2147483647
+      explanation: |
+        One below the smallest signed 32-bit value wraps round to the largest.
+    - input: |
+        subtract(7, -3)
+      output: |
+        10

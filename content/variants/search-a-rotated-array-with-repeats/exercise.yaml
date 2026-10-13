@@ -1,0 +1,62 @@
+schema_version: 1
+id: variants/search-a-rotated-array-with-repeats
+kind: kata
+title: "Search a Rotated Array With Repeats"
+difficulty: medium
+tags: [binary-search, arrays]
+estimated_minutes: 30
+
+variant:
+  of: katas/search-a-rotated-array
+  twist: "The values may repeat, and you return whether the target is present rather than where."
+
+prompt: |
+  A list sorted in non-decreasing order has been rotated left by some unknown
+  amount. The values may **repeat**. Return `True` if `target` is in the list
+  and `False` if it is not.
+
+  Repeats are what make this harder than the standard version: when the two ends
+  and the middle all hold the same value, nothing tells you which half is the
+  sorted one.
+
+  Aim for `O(log n)` wherever the values allow it. The tests search a large list
+  many times, and a linear scan per search is too slow.
+
+hints:
+  - "The standard search decides which half is sorted by comparing the first value with the middle one. Find a list where that comparison is a tie and the sorted half could be either."
+  - "[1, 0, 1, 1, 1]: first, middle and last are all 1. When all three are equal you cannot discard a half -- but you can discard the two ends, since neither is the target (the middle already was not)."
+  - "So add one case before the usual two: if the three are equal, move both ends in by one. Everything else is the standard search, with `<=` where the values may now tie."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(log n) typically, O(n) when almost every value is equal"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= len(numbers) <= 2 * 10**6"
+    - "-10**9 <= numbers[i] <= 10**9, and so is target."
+    - "The list is non-decreasing order rotated left by some number of places."
+  examples:
+    - input: |
+        contains([2, 5, 6, 0, 0, 1, 2], 0)
+      output: |
+        True
+    - input: |
+        contains([2, 5, 6, 0, 0, 1, 2], 3)
+      output: |
+        False
+    - input: |
+        contains([1, 0, 1, 1, 1], 0)
+      output: |
+        True
+      explanation: |
+        The first, middle and last values are all 1, so neither half can be ruled
+        out by comparing them. The 0 is in the left half.
+    - input: |
+        contains([], 5)
+      output: |
+        False

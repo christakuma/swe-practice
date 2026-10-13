@@ -1,0 +1,54 @@
+schema_version: 1
+id: variants/fill-the-bag-with-repeats
+kind: kata
+title: "Fill the Bag, Taking Items Repeatedly"
+difficulty: medium
+tags: [dynamic-programming]
+estimated_minutes: 25
+
+variant:
+  of: katas/knapsack
+  twist: "Each item may be taken as many times as you like."
+
+prompt: |
+  Given `(weight, value)` items and a weight capacity, return the most value you
+  can carry — where each **kind** of item may be taken **any number of times**.
+
+  Items still cannot be split. Carrying nothing is allowed, so the answer is `0`
+  when nothing fits.
+
+hints:
+  - "The standard table walked the capacities *downwards* for each item, precisely so that an item could not be used twice. What happens if you walk them upwards?"
+  - "The entry you read for the smaller capacity may already include this item. That was the bug before, and it is exactly what is wanted now."
+  - "So the loops are the same and one of them runs the other way."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(items * capacity)"
+    expected_space: "O(capacity)"
+  constraints:
+    - "0 <= len(items) <= 200"
+    - "Each item is (weight, value) with 1 <= weight <= 1000 and 1 <= value <= 1000."
+    - "0 <= capacity <= 5000"
+  examples:
+    - input: |
+        best_value([(5, 10)], 12)
+      output: |
+        20
+      explanation: |
+        Two of the one item fit. The standard version stops at one.
+    - input: |
+        best_value([(1, 1), (3, 4), (4, 5)], 7)
+      output: |
+        9
+      explanation: |
+        Two of the item weighing 3 and one weighing 1: 4 + 4 + 1.
+    - input: |
+        best_value([(2, 3)], 1)
+      output: |
+        0

@@ -1,0 +1,57 @@
+schema_version: 1
+id: variants/reverse-the-bytes-of-a-word
+kind: kata
+title: "Reverse the Bytes of a Word"
+difficulty: easy
+tags: [bit-manipulation]
+estimated_minutes: 12
+
+variant:
+  of: katas/reverse-the-bits-of-a-word
+  twist: "The four bytes change places, and the bits inside each byte stay as they are."
+
+prompt: |
+  Reverse the order of the **bytes** of a 32-bit unsigned integer and return the
+  result as an integer. The first byte changes places with the fourth and the
+  second with the third; the bits *within* each byte are not touched.
+
+  This is the conversion between big-endian and little-endian byte order.
+
+  `int.to_bytes`, `int.from_bytes`, `struct` and string tricks are banned. Build
+  the answer with shifts and masks.
+
+hints:
+  - "There are only four pieces to move. For each one: mask it out, and shift it to where it belongs."
+  - "The lowest byte moves up 24 bits and the highest moves down 24. The two in the middle move 8 bits, in opposite directions."
+  - "Combine the four with `|`. Mask before shifting left, so nothing is pushed beyond the 32nd bit."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(1)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= n <= 2**32 - 1"
+    - "The result is in the same range."
+  examples:
+    - input: |
+        reverse_bytes(0x12345678)
+      output: |
+        0x78563412
+      explanation: |
+        The bytes 12, 34, 56, 78 come back as 78, 56, 34, 12. Reversing the bits
+        would give 0x1E6A2C48 instead.
+    - input: |
+        reverse_bytes(1)
+      output: |
+        16777216
+      explanation: |
+        The lowest byte becomes the highest: 0x00000001 to 0x01000000.
+    - input: |
+        reverse_bytes(0xFF00FF00)
+      output: |
+        0x00FF00FF

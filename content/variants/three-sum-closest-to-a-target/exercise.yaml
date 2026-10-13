@@ -1,0 +1,60 @@
+schema_version: 1
+id: variants/three-sum-closest-to-a-target
+kind: kata
+title: "Three Sum Closest to a Target"
+difficulty: medium
+tags: [arrays, two-pointers, sorting]
+estimated_minutes: 25
+
+variant:
+  of: katas/three-sum-to-zero
+  twist: "Return the single sum of three values that comes closest to a target."
+
+prompt: |
+  Given a list of at least three integers and a target, return the **sum** of
+  three values, taken from three different positions, that is closest to the
+  target.
+
+  If two sums are equally close — one above the target and one below — return
+  the **smaller** of them, so the answer is unique.
+
+  Three nested loops is `O(n^3)`. Aim for `O(n^2)`. Leave the list you were
+  given in the order you found it.
+
+hints:
+  - "Sort a copy. Fix one value, and for the two others use a pointer at each end of what remains, exactly as for a sum of zero."
+  - "Each pair of pointers gives a sum. Compare it with the best so far, then move: if the sum is below the target, only moving the left pointer up can bring it closer from below; if above, move the right pointer down."
+  - "An exact hit can return at once. For the tie rule, prefer the smaller sum when two are equally far from the target."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n^2)"
+    expected_space: "O(n) for the sorted copy"
+  constraints:
+    - "3 <= len(numbers) <= 2000"
+    - "-10**5 <= numbers[i] <= 10**5"
+    - "-10**6 <= target <= 10**6"
+  examples:
+    - input: |
+        closest_sum([-1, 2, 1, -4], 1)
+      output: |
+        2
+      explanation: |
+        -1 + 2 + 1 is 2, one away from the target. No three values sum to 1.
+    - input: |
+        closest_sum([1, 1, 1, 0], -100)
+      output: |
+        2
+      explanation: |
+        The smallest sum available is 1 + 1 + 0, and it is still the closest.
+    - input: |
+        closest_sum([0, 1, 2, 4], 5)
+      output: |
+        5
+      explanation: |
+        0 + 1 + 4 is the target exactly, and nothing can be closer than that.

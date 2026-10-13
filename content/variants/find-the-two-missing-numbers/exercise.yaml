@@ -1,0 +1,57 @@
+schema_version: 1
+id: variants/find-the-two-missing-numbers
+kind: kata
+title: "Find the Two Missing Numbers"
+difficulty: medium
+tags: [arrays, bit-manipulation]
+estimated_minutes: 25
+
+variant:
+  of: katas/find-the-missing-number
+  twist: "Two values are missing from the range instead of one."
+
+prompt: |
+  A list holds `n` distinct integers drawn from the range `0..n + 1` inclusive.
+  Exactly **two** values from that range are missing. Return them as a tuple,
+  smaller first.
+
+  Use `O(1)` extra space and leave the list as you found it. A set of the
+  values present, or a sorted copy, finds the answer and spends memory the
+  problem does not need; the tests measure what you allocate.
+
+hints:
+  - "The one-missing version worked by cancelling: XOR everything in the range with everything in the list, and what survives is the missing value. Do the same here. What survives now?"
+  - "The XOR of the two missing values, a ^ b. That is one number and you need two, but it is not useless: it has a 1 somewhere, and at that bit a and b differ."
+  - "Pick any set bit of a ^ b. Split the range and the list by whether a number has that bit. Each half now has exactly one value missing, and the one-missing trick works on a half."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(1)"
+  constraints:
+    - "0 <= n <= 10**6, where n is len(numbers)"
+    - "0 <= numbers[i] <= n + 1"
+    - "All values are distinct, so exactly two values in 0..n + 1 are absent."
+    - "The list is in no particular order."
+  examples:
+    - input: |
+        find_missing([0, 3])
+      output: |
+        (1, 2)
+      explanation: |
+        Two values, so the range is 0..3, and 1 and 2 are the ones not there.
+    - input: |
+        find_missing([4, 1, 2])
+      output: |
+        (0, 3)
+    - input: |
+        find_missing([])
+      output: |
+        (0, 1)
+      explanation: |
+        With no values the range is 0..1, and both are missing.

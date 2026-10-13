@@ -1,0 +1,59 @@
+schema_version: 1
+id: variants/kth-largest-in-a-stream
+kind: kata
+title: "Kth Largest in a Stream"
+difficulty: medium
+tags: [heap, data-structure-design]
+estimated_minutes: 20
+
+variant:
+  of: katas/median-of-a-stream
+  twist: "Track the kth largest value seen so far, instead of the median."
+
+prompt: |
+  Numbers arrive one at a time. After each one, report the **kth largest** value
+  seen so far.
+
+  - `KthLargest(k)` — create a tracker for a fixed `k`.
+  - `add(value)` — take the next number and return the kth largest of
+    everything added so far, or `None` if fewer than `k` numbers have arrived.
+
+  Repeats count separately: in `5, 5, 3` the second largest is `5`.
+
+  `add` must be `O(log k)`. Keeping every value sorted makes each addition
+  linear, and the tests add enough values that it does not finish.
+
+hints:
+  - "You only ever need the k largest values. Anything smaller than all k of them can be forgotten for good: it can never be the kth largest again."
+  - "Of those k values, the one you report is the smallest. Which structure gives you the smallest of a changing collection in constant time?"
+  - "A min-heap capped at k entries. Push the new value; if there are more than k, pop the smallest. The top is the answer."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(log k) per add"
+    expected_space: "O(k)"
+  constraints:
+    - "1 <= k <= 10**4"
+    - "-10**9 <= value <= 10**9"
+    - "At most 2 * 10**5 values are added to one tracker."
+  examples:
+    - input: |
+        tracker = KthLargest(3)
+        [tracker.add(value) for value in [4, 5, 8, 2, 3, 5, 10, 9, 4]]
+      output: |
+        [None, None, 4, 4, 4, 5, 5, 8, 8]
+      explanation: |
+        With only two values there is no third largest. After 4, 5, 8 it is 4; it
+        stays 4 until a second 5 pushes the smallest of the top three out.
+    - input: |
+        tracker = KthLargest(1)
+        [tracker.add(value) for value in [3, 1, 7, 7]]
+      output: |
+        [3, 3, 7, 7]
+      explanation: |
+        With k = 1 this is the running maximum.

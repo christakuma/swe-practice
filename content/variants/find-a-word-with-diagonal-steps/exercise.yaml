@@ -1,0 +1,67 @@
+schema_version: 1
+id: variants/find-a-word-with-diagonal-steps
+kind: kata
+title: "Find a Word With Diagonal Steps"
+difficulty: medium
+tags: [backtracking, grids]
+estimated_minutes: 25
+
+variant:
+  of: katas/find-a-word-in-a-grid
+  twist: "The path may step diagonally as well as up, down, left and right."
+
+prompt: |
+  A grid of single characters and a word come in. Return `True` if the word can
+  be spelled by a path through the grid that may step to any of the **eight**
+  surrounding cells, and **uses no cell twice**.
+
+  The empty word is present in any grid, including an empty one. Leave the board
+  as you found it.
+
+hints:
+  - "The search and the undo are exactly what they were. Only the set of cells reachable in one step is larger."
+  - "Loop over row offsets and column offsets of -1, 0 and 1. The (0, 0) offset is the cell itself, which is already marked as used, so it rejects itself."
+  - "More neighbours means a much bigger search, which is why the board here is smaller."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(m * n * 8^L) worst case, for a word of length L"
+    expected_space: "O(L) for the recursion"
+  constraints:
+    - "0 <= rows <= 6 and 0 <= columns <= 6"
+    - "0 <= len(word) <= 12"
+    - "Every cell is a single character. Matching is exact, so case matters."
+  examples:
+    - input: |
+        board = [
+            ["A", "B"],
+            ["C", "D"],
+        ]
+        exists(board, "AD")
+      output: |
+        True
+      explanation: |
+        A and D touch at a corner. The standard version cannot make this step.
+    - input: |
+        board = [
+            ["A", "B"],
+            ["C", "D"],
+        ]
+        exists(board, "ADA")
+      output: |
+        False
+      explanation: |
+        Diagonal steps do not change the other rule: the A cannot be used twice.
+    - input: |
+        board = [
+            ["A", "B", "C"],
+            ["D", "E", "F"],
+        ]
+        exists(board, "AEC")
+      output: |
+        True

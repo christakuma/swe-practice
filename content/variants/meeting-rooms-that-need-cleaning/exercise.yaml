@@ -1,0 +1,57 @@
+schema_version: 1
+id: variants/meeting-rooms-that-need-cleaning
+kind: kata
+title: "Meeting Rooms That Need Cleaning"
+difficulty: medium
+tags: [intervals, heap, greedy]
+estimated_minutes: 25
+
+variant:
+  of: katas/how-many-meeting-rooms
+  twist: "A room must stand empty for a fixed gap after each meeting before it can be used again."
+
+prompt: |
+  Given meeting intervals and a cleaning `gap`, return the fewest rooms needed
+  to hold all of them, when a room must stand empty for **at least `gap`** after
+  one meeting ends before the next can begin in it.
+
+  A meeting ending at `e` frees its room for a meeting starting at `e + gap` or
+  later. With `gap = 0` this is the standard problem.
+
+hints:
+  - "A room that needs cleaning until e + gap is, as far as the next meeting is concerned, simply occupied until e + gap."
+  - "So the rule that decides whether the earliest-free room can be reused changes from \"its meeting has ended\" to \"its meeting ended at least gap ago\". Nothing else about the heap of end times changes."
+  - "Compare with `<=`: a room that becomes ready exactly when a meeting starts is ready."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n log n)"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(meetings) <= 2 * 10**5"
+    - "Each meeting is (start, end) with -10**9 <= start < end <= 10**9."
+    - "0 <= gap <= 10**9"
+    - "Meetings arrive in no particular order and may repeat."
+  examples:
+    - input: |
+        rooms_needed([(1, 2), (2, 3)], 0)
+      output: |
+        1
+    - input: |
+        rooms_needed([(1, 2), (2, 3)], 1)
+      output: |
+        2
+      explanation: |
+        The first room is not ready until 3, and the second meeting starts at 2.
+    - input: |
+        rooms_needed([(0, 10), (12, 20), (11, 15)], 2)
+      output: |
+        2
+      explanation: |
+        The room used until 10 is ready at 12, in time for (12, 20). The meeting at
+        11 arrives before it is ready and needs a room of its own.

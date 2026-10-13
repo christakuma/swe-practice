@@ -1,0 +1,55 @@
+schema_version: 1
+id: variants/smallest-window-with-every-character
+kind: kata
+title: "Smallest Window With Every Character"
+difficulty: medium
+tags: [sliding-window, strings, hash-map]
+estimated_minutes: 25
+
+variant:
+  of: katas/smallest-window-covering
+  twist: "The window must contain every distinct character of the text itself, at least once."
+
+prompt: |
+  Return the shortest substring of `text` that contains **every distinct
+  character that appears anywhere in `text`**, at least once each. If several
+  tie for shortest, return the one that starts earliest.
+
+  There is no second argument: what has to be covered is worked out from the
+  text. Every character is significant and case matters. An empty text gives
+  `""`.
+
+hints:
+  - "What must be covered is the set of characters in the text. Multiplicity no longer matters: one of each is enough."
+  - "So the window is complete when the number of distinct characters inside it equals the number in the whole text."
+  - "Grow on the right until complete, then shrink from the left while it stays complete, recording the best each time."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n)"
+    expected_space: "O(k) for k distinct characters"
+  constraints:
+    - "0 <= len(text) <= 10**6"
+    - "Any characters may appear, and they are compared exactly."
+  examples:
+    - input: |
+        smallest_window("aabcbcdbca")
+      output: |
+        "dbca"
+      explanation: |
+        The text uses a, b, c and d. "dbca" has all four in four characters.
+    - input: |
+        smallest_window("aaaa")
+      output: |
+        "a"
+    - input: |
+        smallest_window("abca")
+      output: |
+        "abc"
+      explanation: |
+        "abc" and "bca" both work and are the same length. The earlier one wins.

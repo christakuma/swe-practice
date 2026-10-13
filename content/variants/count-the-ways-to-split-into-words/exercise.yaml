@@ -1,0 +1,62 @@
+schema_version: 1
+id: variants/count-the-ways-to-split-into-words
+kind: kata
+title: "Count the Ways to Split Into Words"
+difficulty: medium
+tags: [dynamic-programming, strings]
+estimated_minutes: 25
+
+variant:
+  of: katas/word-break
+  twist: "Return how many different ways the string can be split, not just whether it can."
+
+prompt: |
+  Count the ways a string can be split into a sequence of words from a
+  dictionary. Words may be reused, and not every word has to be used.
+
+  Two ways are different when they cut the string at different places. A word
+  that appears twice in the dictionary is still one word and adds no extra ways.
+
+  The empty string can be split in exactly one way — into no words at all. The
+  count grows quickly, and it must be exact.
+
+hints:
+  - "The yes-or-no version kept one flag per prefix: can the first i characters be split? Keep a number there instead. What number, and what is it for the empty prefix?"
+  - "The number of ways to split that prefix. For the empty prefix it is 1 -- there is exactly one way to split nothing."
+  - "For each prefix, add up the counts of every shorter prefix that a dictionary word carries you on from. The yes-or-no version could stop at the first such word; this one has to add them all."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O(n * k) for a longest word of length k"
+    expected_space: "O(n)"
+  constraints:
+    - "0 <= len(text) <= 1000"
+    - "0 <= len(words) <= 1000"
+    - "1 <= len(words[i]) <= 20"
+    - "Characters are compared exactly."
+  examples:
+    - input: |
+        count_segmentations("catsanddog", ["cat", "cats", "and", "sand", "dog"])
+      output: |
+        2
+      explanation: |
+        "cat sand dog" and "cats and dog".
+    - input: |
+        count_segmentations("aaa", ["a", "aa"])
+      output: |
+        3
+      explanation: |
+        a-a-a, a-aa and aa-a.
+    - input: |
+        count_segmentations("catsandog", ["cats", "dog", "sand", "and", "cat"])
+      output: |
+        0
+    - input: |
+        count_segmentations("", ["a"])
+      output: |
+        1

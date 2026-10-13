@@ -1,0 +1,55 @@
+schema_version: 1
+id: variants/size-of-the-largest-component
+kind: kata
+title: "Size of the Largest Component"
+difficulty: medium
+tags: [graphs, union-find]
+estimated_minutes: 20
+
+variant:
+  of: katas/count-connected-components
+  twist: "Return how many nodes the largest component has, not how many components there are."
+
+prompt: |
+  `n` nodes are labelled `0` to `n - 1`. Given a list of undirected edges,
+  return the number of nodes in the **largest** connected component.
+
+  An isolated node is a component of one. With no nodes at all the answer is
+  `0`. Repeated edges and edges from a node to itself change nothing.
+
+hints:
+  - "Union-find already tracks which nodes are together. What else would each group need to know?"
+  - "Its size. Store it at the root and add the two sizes when two groups merge."
+  - "Only merge when the roots differ. A repeated edge joins a group to itself, and adding its size to itself doubles it."
+
+kata:
+  language: python
+  stub: stub.py
+  tests: tests.py
+  reference: solution.py
+  time_limit_seconds: 10
+  complexity:
+    expected_time: "O((V + E) * almost-constant)"
+    expected_space: "O(V)"
+  constraints:
+    - "0 <= n <= 2 * 10**5"
+    - "0 <= len(edges) <= 2 * 10**5"
+    - "Each edge is a pair (a, b) with 0 <= a < n and 0 <= b < n."
+    - "Edges may repeat, and a may equal b."
+  examples:
+    - input: |
+        largest_component(5, [(0, 1), (1, 2), (3, 4)])
+      output: |
+        3
+      explanation: |
+        Nodes 0, 1 and 2 are joined; 3 and 4 form a smaller component.
+    - input: |
+        largest_component(4, [])
+      output: |
+        1
+    - input: |
+        largest_component(3, [(0, 1), (1, 0), (2, 2)])
+      output: |
+        2
+      explanation: |
+        The repeated edge and the self-loop add nothing.
