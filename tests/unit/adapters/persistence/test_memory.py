@@ -202,6 +202,43 @@ def test_nothing_is_completed_in_an_empty_store() -> None:
     assert InMemoryAttemptRepository().completed() == ()
 
 
+def test_no_attempt_is_current_until_one_is_marked() -> None:
+    attempts = InMemoryAttemptRepository()
+    attempts.save(an_attempt(1))
+
+    assert attempts.current() is None
+
+
+def test_marking_a_second_attempt_replaces_the_first() -> None:
+    """One slot. "Current" is a relation between the attempts, not a flag on
+    each, so there is never a second one to clear (ADR 0026).
+    """
+    attempts = InMemoryAttemptRepository()
+    first, second = an_attempt(1), an_attempt(2)
+
+    attempts.mark_current(first.id)
+    attempts.mark_current(second.id)
+
+    assert attempts.current() == second.id
+
+
+def test_the_mark_outlives_the_attempt_it_names_being_finished() -> None:
+    """The id as marked, whatever became of the attempt: what a finished one
+    means is `FindCurrentAttempt`'s to decide -- a submitted attempt is still
+    current and an abandoned one is not -- and a store that filtered would be
+    a second place with an opinion about it.
+    """
+    attempts = InMemoryAttemptRepository()
+    attempt = an_attempt(1)
+    attempts.save(attempt)
+    attempts.mark_current(attempt.id)
+
+    attempt.abandon(at=attempt.started_at)
+    attempts.save(attempt)
+
+    assert attempts.current() == attempt.id
+
+
 def test_it_describes_itself_by_how_much_it_holds() -> None:
     attempts = InMemoryAttemptRepository()
     attempts.save(an_attempt(1))

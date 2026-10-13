@@ -403,6 +403,76 @@ def test_the_repository_describes_which_database_it_is_over(
     assert str(database.path) in repr(SqliteAttemptRepository(database))
 
 
+# --- which attempt is current ------------------------------------------------
+
+
+def test_no_attempt_is_current_in_a_database_nothing_has_marked(
+    attempts: AttemptRepository,
+) -> None:
+    """Which is every database written before 0004: the table arrives empty."""
+    attempts.save(an_attempt(1))
+
+    assert attempts.current() is None
+
+
+def test_marking_a_second_attempt_replaces_the_first(
+    attempts: AttemptRepository, database: Database
+) -> None:
+    """An upsert on a key that is always 1, so the table never has a second row
+    for a reader to choose between (`0004_current_attempt.sql`).
+    """
+    attempts.mark_current(an_id(1))
+    attempts.mark_current(an_id(2))
+
+    assert attempts.current() == an_id(2)
+    with database.connect() as connection:
+        (rows,) = connection.execute("SELECT count(*) FROM current_attempt").fetchone()
+    assert rows == 1
+
+
+def test_the_schema_refuses_a_second_current_attempt(database: Database) -> None:
+    """The schema's half of "at most one". Raw SQL, because the repository's own
+    statement cannot get here -- which is the hole the CHECK closes.
+    """
+    database.migrate()
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="CHECK constraint failed"),
+        database.connect() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO current_attempt (slot, attempt_id) VALUES (2, 'a')"
+        )
+
+
+def test_marking_does_not_touch_the_attempt_or_its_log(
+    attempts: AttemptRepository, database: Database
+) -> None:
+    """The reason the mark is not a column `save` writes: a tab comes to the
+    front while a command is being recorded against its attempt.
+    """
+    attempt = an_attempt(1)
+    attempt.record_command(["git", "status"], OK, at=at(1))
+    attempts.save(attempt)
+
+    attempts.mark_current(attempt.id)
+
+    assert events_in(database) == 1
+    loaded = attempts.get(attempt.id)
+    assert loaded is not None
+    assert loaded.command_count == 1
+    assert loaded.status is AttemptStatus.ACTIVE
+
+
+def test_the_mark_is_read_by_a_process_that_did_not_make_it(tmp_path: Path) -> None:
+    """The whole use of it: the web app marks the attempt on screen, and the MCP
+    server -- a different process over the same file -- reads which one that is.
+    """
+    path = tmp_path / "practice.db"
+    SqliteAttemptRepository(Database(path)).mark_current(an_id(7))
+
+    assert SqliteAttemptRepository(Database(path)).current() == an_id(7)
+
+
 # --- interview mode, through the real database ------------------------------
 
 

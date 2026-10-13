@@ -387,6 +387,26 @@ class AttemptRepository(Protocol):
         """
         ...
 
+    def mark_current(self, attempt_id: AttemptId) -> None:
+        """Remember this as the attempt in front of the solver. Replaces the mark.
+
+        Beside the attempts rather than on one, and not through `save`: it is
+        not part of the aggregate, and it is not in the log, because turning to
+        an attempt is not something the solver did *in the exercise* -- which
+        is the reason `ResumeAttempt` gives for recording no event (ADR 0026).
+        """
+        ...
+
+    def current(self) -> AttemptId | None:
+        """The id last marked, or `None` when nothing ever was.
+
+        **The id as marked, whatever has happened to that attempt since.** It
+        may be finished by now, and deciding what that means is the caller's
+        business: an adapter that filtered on status would be a second place
+        that knew what "open" is.
+        """
+        ...
+
 
 class ReviewRepository(Protocol):
     """Persistence for scheduling state."""

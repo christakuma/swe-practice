@@ -35,7 +35,7 @@ __all__ = ["InMemoryAttemptRepository", "InMemoryReviewRepository"]
 class InMemoryAttemptRepository:
     """Every attempt this process has saved, newest last."""
 
-    __slots__ = ("_attempts",)
+    __slots__ = ("_attempts", "_current")
 
     def __init__(self) -> None:
         # Insertion-ordered, which is what makes `history_for` return attempts
@@ -43,6 +43,7 @@ class InMemoryAttemptRepository:
         # implementation will have to order explicitly; this one gets it from
         # the dict, and the port's contract is the order, not the mechanism.
         self._attempts: dict[AttemptId, Attempt] = {}
+        self._current: AttemptId | None = None
 
     def save(self, attempt: Attempt) -> None:
         """Insert or replace. Replacing is the normal case: one attempt is saved
@@ -97,6 +98,15 @@ class InMemoryAttemptRepository:
             for attempt in self._attempts.values()
             if attempt.verdict is not None
         )
+
+    def mark_current(self, attempt_id: AttemptId) -> None:
+        """One slot, overwritten. Not checked against what is stored, because
+        the SQLite table is not either (`0004_current_attempt.sql`).
+        """
+        self._current = attempt_id
+
+    def current(self) -> AttemptId | None:
+        return self._current
 
     def __len__(self) -> int:
         """How many attempts are stored, for a test that wants to say so."""

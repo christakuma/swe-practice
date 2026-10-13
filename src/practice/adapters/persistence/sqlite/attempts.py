@@ -48,6 +48,7 @@ from practice.adapters.persistence.sqlite.mappers import (
     event_rows,
     to_attempt,
 )
+from practice.domain.ids import AttemptId
 
 if TYPE_CHECKING:
     import sqlite3
@@ -55,7 +56,7 @@ if TYPE_CHECKING:
 
     from practice.adapters.persistence.sqlite.connection import Database
     from practice.domain.attempt import Attempt
-    from practice.domain.ids import AttemptId, ExerciseId
+    from practice.domain.ids import ExerciseId
 
 __all__ = ["SqliteAttemptRepository"]
 
@@ -123,6 +124,15 @@ _SELECT_COMPLETED: Final = (
 _SELECT_EVENTS: Final = (
     "SELECT * FROM attempt_events WHERE attempt_id = :attempt_id ORDER BY position"
 )
+
+#: An upsert on a key that is always 1, which is what makes the table one row
+#: (`0004_current_attempt.sql`).
+_MARK_CURRENT: Final = (
+    "INSERT INTO current_attempt (slot, attempt_id) VALUES (1, :attempt_id) "
+    "ON CONFLICT (slot) DO UPDATE SET attempt_id = excluded.attempt_id"
+)
+
+_SELECT_CURRENT: Final = "SELECT attempt_id FROM current_attempt"
 
 
 class SqliteAttemptRepository:
@@ -198,6 +208,24 @@ class SqliteAttemptRepository:
         with self._database.connect() as connection:
             rows = connection.execute(_SELECT_COMPLETED).fetchall()
             return self._hydrate(connection, rows)
+
+    # --- which one is current -----------------------------------------------
+
+    def mark_current(self, attempt_id: AttemptId) -> None:
+        """One statement, and it does not go near the attempt's own rows.
+
+        That is the point of it not being a column `save` writes: a tab comes
+        to the front while a command is being recorded against its attempt, and
+        a mark that rewrote the event log would be racing the write that
+        matters.
+        """
+        with self._database.connect() as connection:
+            connection.execute(_MARK_CURRENT, {"attempt_id": str(attempt_id)})
+
+    def current(self) -> AttemptId | None:
+        with self._database.connect() as connection:
+            row = connection.execute(_SELECT_CURRENT).fetchone()
+        return AttemptId.parse(row["attempt_id"]) if row is not None else None
 
     def __len__(self) -> int:
         """How many attempts are stored, for a test that wants to say so."""
