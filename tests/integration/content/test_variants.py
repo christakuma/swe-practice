@@ -23,6 +23,7 @@ from ..conftest import a_kata, a_scenario
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from practice.adapters.content.validation import LibraryReport
     from practice.domain.ports import ContentRepository
 
     from ..conftest import WriteExercise
@@ -40,6 +41,16 @@ def a_variant(
         variant={"of": of, "twist": "The list is sorted."},
         **overrides,
     )
+
+
+def _unreadable(report: LibraryReport) -> list[str]:
+    """Where the failures are. By directory, because an exercise that will not
+    load has no id to be named by.
+    """
+    return [
+        failure.directory.relative_to(report.root).as_posix()
+        for failure in report.failures
+    ]
 
 
 @pytest.fixture
@@ -200,3 +211,48 @@ def test_a_variant_is_audited_like_any_other_exercise(
     report = validate_library(stocked)
 
     assert [failure.name for failure in report.failures] == ["variants/bare"]
+
+
+def test_a_variant_that_will_not_load_is_not_called_unlisted(
+    stocked: Path, write_exercise: WriteExercise
+) -> None:
+    """One problem, and it is the real one. Until it loads nothing can say it is
+    a variant, and filing it with the exercises the curriculum must name gave
+    `curriculum.yaml: does not list: variants/broken` -- advice that fails the
+    moment it is taken and the typo is fixed.
+    """
+    write_exercise(a_variant("broken", estimated_minutes=0), curriculum=False)
+
+    report = validate_library(stocked)
+
+    assert report.problems == ()
+    assert _unreadable(report) == ["variants/broken"]
+
+
+def test_an_exercise_that_will_not_load_and_is_named_is_still_on_disk(
+    stocked: Path, write_exercise: WriteExercise
+) -> None:
+    """The other half of the same rule: unreadable is not absent. A manifest
+    that names a broken exercise is naming something that is there.
+    """
+    write_exercise(a_kata(id="katas/broken", estimated_minutes=0))
+
+    report = validate_library(stocked)
+
+    assert report.problems == ()
+    assert _unreadable(report) == ["katas/broken"]
+
+
+def test_a_variant_of_an_exercise_that_will_not_load_is_reported_once(
+    library: Path, write_exercise: WriteExercise
+) -> None:
+    """The base is broken and says so itself. Whether the variant is a twist on
+    the right kind of thing cannot be asked until it loads.
+    """
+    write_exercise(a_kata(estimated_minutes=0))
+    write_exercise(a_variant("sorted"), curriculum=False)
+
+    report = validate_library(library)
+
+    assert report.problems == ()
+    assert _unreadable(report) == ["katas/two-sum"]

@@ -34,6 +34,7 @@ not — a green build on an unsolvable exercise.
 
 from __future__ import annotations
 
+import contextlib
 import itertools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
@@ -57,7 +58,7 @@ from practice.domain.errors import InvalidValueError
 from practice.domain.exercise import GitScenarioSpec, SqlDrillSpec
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Iterator, Mapping, Sequence
     from pathlib import Path
 
     from practice.domain.exercise import Exercise
@@ -184,10 +185,16 @@ def validate_library(root: Path) -> LibraryReport:
     if not directories and not problems:
         problems.append("holds no exercises")
 
-    variants = _variants(directories)
+    loaded = _loaded(directories)
+    variants = {
+        directory: exercise
+        for directory, exercise in loaded.items()
+        if exercise.is_variant
+    }
     placed = [directory for directory in directories if directory not in variants]
-    problems.extend(_audit_variants(root, directories, variants))
-    problems.extend(_audit_curriculum(root, placed))
+    unread = [directory for directory in directories if directory not in loaded]
+    problems.extend(_audit_variants(root, directories, loaded))
+    problems.extend(_audit_curriculum(root, placed, unread))
     problems.extend(_audit_tracks(root, placed))
 
     return LibraryReport(
@@ -197,26 +204,32 @@ def validate_library(root: Path) -> LibraryReport:
     )
 
 
-def _variants(directories: Sequence[Path]) -> dict[Path, Exercise]:
-    """The directories that hold a variant, with the exercise each one loads as.
+def _loaded(directories: Sequence[Path]) -> dict[Path, Exercise]:
+    """Every directory that loads, with the exercise it loads as.
 
-    A directory that will not load is in neither half: it is reported once, by
-    `validate_exercise`, and guessing here whether it *meant* to be a variant
-    would report it a second time for a problem it may not have.
+    The library-level audits ask two things of an exercise that only loading it
+    answers -- is it a variant, and what kind is it -- so it is read once here
+    and handed to each of them.
+
+    **A directory that will not load is absent, and that absence is carried
+    rather than guessed at.** It is reported once, by `validate_exercise`.
+    Whether it *meant* to be a variant cannot be known until it loads, so it
+    still counts as on disk -- a manifest that names it is not naming nothing
+    -- and `_audit_curriculum` is told not to call it unplaced. The first
+    version of this filed every unreadable directory under "must be placed",
+    and a typo in a variant came back with a second problem saying the
+    curriculum did not list it: advice that, followed, fails the moment the
+    typo is fixed.
     """
     found = {}
     for directory in directories:
-        try:
-            exercise = load_exercise(directory)
-        except ContentError:
-            continue
-        if exercise.is_variant:
-            found[directory] = exercise
+        with contextlib.suppress(ContentError):
+            found[directory] = load_exercise(directory)
     return found
 
 
 def _audit_variants(
-    root: Path, directories: Sequence[Path], variants: dict[Path, Exercise]
+    root: Path, directories: Sequence[Path], loaded: Mapping[Path, Exercise]
 ) -> Iterator[str]:
     """A variant must be a twist on a real, standard exercise of its own kind.
 
@@ -238,8 +251,8 @@ def _audit_variants(
     on_disk = {
         directory.relative_to(root).as_posix(): directory for directory in directories
     }
-    for directory, exercise in sorted(variants.items()):
-        if exercise.variant is None:  # pragma: no cover -- `_variants` filtered
+    for directory, exercise in sorted(loaded.items()):
+        if exercise.variant is None:
             continue
         base_id = exercise.variant.of.value
         located = f"{directory.relative_to(root).as_posix()}/{EXERCISE_FILENAME}"
@@ -247,15 +260,15 @@ def _audit_variants(
         if base_directory is None:
             yield f"{located}: is a variant of {base_id}, which is not in the library"
             continue
-        if base_directory in variants:
+        base = loaded.get(base_directory)
+        if base is None:
+            # On disk and unreadable, which `validate_exercise` reports.
+            continue
+        if base.is_variant:
             yield (
                 f"{located}: is a variant of {base_id}, which is itself a variant; "
                 f"a twist is on a standard exercise"
             )
-            continue
-        try:
-            base = load_exercise(base_directory)
-        except ContentError:
             continue
         if base.kind is not exercise.kind:
             yield (
@@ -264,7 +277,9 @@ def _audit_variants(
             )
 
 
-def _audit_curriculum(root: Path, directories: Sequence[Path]) -> Iterator[str]:
+def _audit_curriculum(
+    root: Path, directories: Sequence[Path], unread: Sequence[Path]
+) -> Iterator[str]:
     """The manifest must name every exercise exactly once and nothing else.
 
     A library-level rule rather than a per-exercise one, because no single
@@ -276,6 +291,13 @@ def _audit_curriculum(root: Path, directories: Sequence[Path]) -> Iterator[str]:
     looks deliberate — the new exercise appears at the end of the library and
     nothing anywhere says it was never placed. Phase 11 added fifty-one
     exercises; an unchecked manifest would have been wrong within a week.
+
+    `unread` are the directories among them that would not load. Each is on
+    disk, so naming one is not naming something absent; but one that is *not*
+    named is passed over rather than called unlisted, because it may be a
+    variant, which the manifest must not name (`_loaded`). It is not let off:
+    it fails `validate` on its own account, and is held to this rule on the
+    first run after it loads.
     """
     if not directories:
         return
@@ -293,7 +315,8 @@ def _audit_curriculum(root: Path, directories: Sequence[Path]) -> Iterator[str]:
     if repeated:
         yield f"{CURRICULUM_FILENAME}: lists twice: {', '.join(repeated)}"
 
-    missing = sorted(on_disk - set(named))
+    undecided = {directory.relative_to(root).as_posix() for directory in unread}
+    missing = sorted(on_disk - set(named) - undecided)
     if missing:
         yield f"{CURRICULUM_FILENAME}: does not list: {', '.join(missing)}"
 
