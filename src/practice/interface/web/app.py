@@ -106,6 +106,14 @@ def create_app(services: Services) -> FastAPI:
     templates = Jinja2Templates(directory=templates_root())
     templates.env.globals["static"] = STATIC_URL
     templates.env.globals["grades"] = tuple(Grade)
+    # A global rather than a context key, because the Start control that asks
+    # is one partial included from three pages -- the dashboard, Browse and a
+    # track -- each listing different exercises. Threading "the variants of
+    # every exercise on this page" through three routes would be three chances
+    # for one of them to forget, and a Start control with no version select is
+    # not an error anybody would see. The repository caches, so the lookups are
+    # dictionary reads.
+    templates.env.globals["variants_of"] = services.content.variants_of
     templates.env.filters["short_ref"] = short_ref
     templates.env.filters["commit_graph"] = render_graph
     templates.env.filters["activity_chart"] = render_activity

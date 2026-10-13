@@ -1,0 +1,30 @@
+{#
+  The prompt, and under it the constraints when the exercise states any.
+
+  A partial because the workbench draws it in two places -- inside the first
+  tab for a kata, and under a plain heading for a scenario or a drill -- and
+  two copies of a `pre` with a comment explaining it is one copy too many.
+
+  `pre`, not a markdown renderer. The prompt is authored as YAML block text
+  whose line breaks are the author's, so the one thing it needs is for its own
+  whitespace to survive. A markdown pass would add a dependency in order to
+  reflow text that is already shaped.
+#}
+<pre>{{ exercise.prompt | trim }}</pre>
+
+{#
+  A list rather than a last paragraph of the prompt, because a constraint is
+  looked up rather than read: "how long can the list be" is a question asked
+  halfway through choosing an approach, and the answer should be findable
+  without re-reading the story around it.
+#}
+{% if constraints %}
+  <section class="constraints">
+    <h3>Constraints</h3>
+    <ul>
+      {% for constraint in constraints %}
+        <li>{{ constraint }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}

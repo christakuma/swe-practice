@@ -1,0 +1,37 @@
+{#
+  A kata's worked examples: what to run, and the value it gives back.
+
+  **Input and output are both source**, shown exactly as authored. The input is
+  a snippet whose last line is an expression, and the output is the value of
+  that line -- which is why an in-place function's example ends by naming the
+  list it changed, and why a class's is a constructor, some calls and a
+  question. The sentence at the top says so once, because "Output" under a
+  three-line snippet is otherwise a puzzle.
+
+  **Every pair here was run.** `tests/content/test_katas.py` executes each
+  input against the reference solution and compares what comes back with the
+  output, so the page can say "checked" and mean it (ADR 0027).
+
+  The explanation is `pre-wrap` like the prompt, and for the same reason: a
+  tree is easier to read as a drawing than as nested constructors, and a
+  drawing only survives if its whitespace does.
+#}
+<p class="meta examples-key">
+  Each input is Python you could run against your solution; the output is the
+  value of its last line. Every pair is checked against the reference solution.
+</p>
+
+{% for example in examples %}
+  <article class="example">
+    <h3>Example {{ loop.index }}</h3>
+    <dl>
+      <dt>Input</dt>
+      <dd><pre>{{ example.input }}</pre></dd>
+      <dt>Output</dt>
+      <dd><pre>{{ example.output }}</pre></dd>
+    </dl>
+    {% if example.explanation %}
+      <p class="explanation">{{ example.explanation }}</p>
+    {% endif %}
+  </article>
+{% endfor %}

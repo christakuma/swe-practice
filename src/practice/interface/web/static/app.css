@@ -245,9 +245,9 @@ button[disabled] {
 
 /*
  * The prompt column is sized to the content, not to a round number: a kata
- * prompt is authored as block text with worked examples lined up in it, and the
- * widest of those (`two_sum([2, 7, 11, 15], 9)   ->  (0, 1)`) is what decides
- * how narrow this can get before the lesson stops lining up.
+ * prompt is authored as block text wrapped by hand at about 78 columns, and
+ * its examples are code. This is as narrow as the column gets before the
+ * prose re-wraps into ragged half-lines and every example needs a scrollbar.
  */
 .workbench {
   display: grid;
@@ -312,6 +312,197 @@ button[disabled] {
   /* Prose wraps, the examples keep their own line breaks and leading spaces.
      `pre` alone clips a paragraph off the right edge of the panel; `pre-wrap`
      is the one value that does both halves of what a prompt needs. */
+  white-space: pre-wrap;
+}
+
+/*
+ * The statement tabs: Prompt and Examples, for a kata. Two radio inputs, two
+ * labels and two panels, all siblings, so `:checked ~` can reach from the state
+ * to the thing it shows without a script (the template has the argument).
+ *
+ * The inputs are clipped rather than `display: none`. A hidden input leaves the
+ * tab order, and then the only way to the examples is a mouse; clipped, it
+ * still takes focus and the arrow keys still move between the two -- which is
+ * why the focus ring is drawn on the *label*, the only part of the control
+ * anyone can see.
+ */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.1rem;
+  /* The `h2` margin, so the tab labels sit on the same line as "Your
+     solution" in the panel beside them, as the heading they replace did. */
+  margin-top: 2rem;
+}
+
+.tabs > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tabs > label {
+  /* The same voice as the `h2` it replaces, so a kata's column and a
+     scenario's still start with the same word in the same weight. */
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  padding: 0 0 0.45rem;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.tabs > label:hover {
+  color: var(--ink);
+}
+
+.tabs > input:checked + label {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.tabs > input:focus-visible + label {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.tabs .count {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  margin-left: 0.15rem;
+  vertical-align: 0.1rem;
+}
+
+.tab-panel {
+  display: none;
+  flex: 0 0 100%;
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  /* Pulled up under the labels so the selected one's accent sits on the rule
+     rather than a pixel above it. */
+  margin-top: -1px;
+  padding-top: 0.9rem;
+}
+
+#tab-prompt:checked ~ #panel-prompt,
+#tab-examples:checked ~ #panel-examples {
+  display: block;
+}
+
+.tab-panel > pre:first-child {
+  margin-top: 0;
+}
+
+/* --- variants ----------------------------------------------------------- */
+
+.version-choice select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  max-width: 14rem;
+}
+
+.variant-note {
+  margin: 0 0 1rem;
+  color: var(--note);
+}
+
+.variant-note .chip {
+  color: var(--note);
+  border-color: var(--note);
+  margin-right: 0.35rem;
+}
+
+/* --- constraints and examples ------------------------------------------- */
+
+.constraints h3,
+.example h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+
+.constraints {
+  margin-top: 1rem;
+}
+
+.constraints ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.constraints li {
+  /* Mono, because most of a constraint is an inequality and the rest reads
+     fine in it; a list that switched face per line would look like two lists. */
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0.15rem 0;
+}
+
+.examples-key {
+  margin: 0 0 0.9rem;
+}
+
+.example + .example {
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.example dl {
+  display: grid;
+  /* The labels take the width of the longer word and the code takes the rest;
+     `minmax(0, 1fr)` is what lets a long call scroll inside its own box
+     instead of widening the column. */
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.4rem 0.7rem;
+  margin: 0;
+}
+
+.example dt {
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+  padding-top: 0.6rem;
+}
+
+.example dd {
+  margin: 0;
+}
+
+.example dd pre {
+  margin: 0;
+  /* Unlike the prompt, this is code: a wrapped line of Python is a different
+     line of Python, so it scrolls instead. */
+  white-space: pre;
+}
+
+.example .explanation {
+  margin: 0.6rem 0 0;
+  /* Mono and `pre-wrap`, like the prompt: an explanation may hold a drawing of
+     a tree, and a drawing in a proportional face is a pile of slashes. */
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-dim);
   white-space: pre-wrap;
 }
 

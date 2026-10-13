@@ -26,6 +26,33 @@
   {% if track_name %}<input type="hidden" name="track" value="{{ track_name }}">{% endif %}
   <button type="submit">Start</button>
   {#
+    The version to start, for an exercise that has variants (ADR 0028), and
+    nothing at all for the many that do not -- a select with one option in it
+    is a control that does nothing.
+
+    **Standard is first and is the default**, with an empty value: an
+    unselected field then sends what a form with no such field sends, so the
+    route reads both as the problem as written. "Surprise me" draws from every
+    version including that one, which is why it does not say "a variant".
+
+    The twist is the `title`, not the label. It is a sentence, the row is one
+    line, and the solver who wants to be surprised should be able to open the
+    list without reading every answer to "what is different".
+  #}
+  {% set variants = variants_of(exercise_id) %}
+  {% if variants %}
+    <label class="meta version-choice">
+      version
+      <select name="variant">
+        <option value="">Standard</option>
+        {% for variant in variants %}
+          <option value="{{ variant.id }}" title="{{ variant.variant.twist }}">{{ variant.title }}</option>
+        {% endfor %}
+        <option value="random">Surprise me</option>
+      </select>
+    </label>
+  {% endif %}
+  {#
     `value="1"` because an unchecked box sends nothing at all, which is what
     makes the route's default the practice mode without a third state to read.
   #}

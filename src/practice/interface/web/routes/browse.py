@@ -125,6 +125,7 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         exercise_id: Annotated[str, Form()],
         interview: Annotated[bool, Form()] = False,
         track: Annotated[str | None, Form()] = None,
+        variant: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Provision a workspace and send the browser to the workbench.
 
@@ -145,10 +146,17 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         attempt does not know which page it was started from, and the page it
         is shown on does (`interface/web/navigation.py`). A name the library
         does not declare is dropped, like an unknown filter value above.
+
+        **`variant` is the third optional field, and resolves before anything is
+        started.** Empty or absent is the standard version; a variant's id is
+        that variant; `random` is a draw among all of them (`ChooseVersion`).
+        What comes back is an exercise id, and from there this route does what
+        it always did -- an attempt at a variant is an attempt.
         """
         mode = AttemptMode.INTERVIEW if interview else AttemptMode.PRACTICE
         try:
-            started = services.start_attempt(ExerciseId(exercise_id), mode=mode)
+            version = services.choose_version(ExerciseId(exercise_id), variant)
+            started = services.start_attempt(version, mode=mode)
         except (ApplicationError, ValueError) as exc:
             return render_problem(
                 templates, request, title="Cannot start", detail=str(exc), status=404

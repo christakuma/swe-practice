@@ -72,7 +72,7 @@ from starlette.responses import HTMLResponse, Response
 from practice.application.errors import ApplicationError
 from practice.domain.attempt import ComplexityClaim
 from practice.domain.errors import AttemptStateError, DomainError
-from practice.domain.exercise import GitScenarioSpec, editable_source
+from practice.domain.exercise import GitScenarioSpec, KataSpec, editable_source
 from practice.domain.ids import AttemptId
 from practice.interface.web.errors import render_problem
 from practice.interface.web.navigation import known_track, next_context
@@ -135,6 +135,11 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         # for exactly as long as there were two kinds.
         editable = editable_source(spec)
         is_scenario = isinstance(spec, GitScenarioSpec)
+        # A third question, and the one place this module asks whether the
+        # exercise is a kata as such: examples and constraints are fields of a
+        # kata's spec and of no other (`KataSpec` says why). A drill is
+        # editable and has neither, so `editable` cannot stand in for this.
+        kata = spec if isinstance(spec, KataSpec) else None
 
         # **The clock is read here and not in `OpenWorkbench`**, which keeps
         # that use case's "no clock, this only reads" promise intact. How much
@@ -155,6 +160,20 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 "title": opened.exercise.title,
                 "workbench": opened,
                 "is_kata": editable is not None,
+                # Empty for a scenario and a drill, which is what tells the
+                # template to draw a heading rather than a tab bar with one
+                # tab in it.
+                "examples": kata.examples if kata else (),
+                # The exercise this one is a twist on, when it is one -- looked
+                # up here so the page can name it rather than print an id.
+                # `None` for a standard exercise, and for a variant whose base
+                # has since left the library, which still opens.
+                "variant_base": (
+                    services.content.get(opened.exercise.variant.of)
+                    if opened.exercise.variant is not None
+                    else None
+                ),
+                "constraints": kata.constraints if kata else (),
                 # The mode name CodeMirror knows this language by. From the spec
                 # rather than hardcoded, so a second language is a content change
                 # and a vendored mode file -- which is the whole claim of §15 Q3,

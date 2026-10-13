@@ -18,16 +18,59 @@
   {% if attempt.policy.is_interview %} · <span class="chip interview">interview</span>{% endif %}
 </p>
 
+{#
+  Said above both columns rather than inside the prompt, because it is about
+  the whole attempt: this is not the problem as its title's neighbours know it,
+  and the one sentence that says how is the first thing to read (ADR 0028).
+  From the exercise, so a reload and a resumed tab say it too.
+#}
+{% if exercise.variant %}
+  <p class="variant-note">
+    <span class="chip">variant</span>
+    {% if variant_base %}of {{ variant_base.title }} &mdash;{% endif %}
+    {{ exercise.variant.twist }}
+  </p>
+{% endif %}
+
 <div class="workbench{{ ' scenario' if not is_kata }}">
   <section class="panel prompt">
-    <h2>Prompt</h2>
     {#
-      `pre`, not a markdown renderer. The prompt is authored as YAML block text
-      with worked examples lined up inside it (see content/katas/two-sum), so the
-      one thing it needs is for its own whitespace to survive. A markdown pass
-      would add a dependency in order to reflow text that is already shaped.
+      **Two tabs for a kata, a heading for everything else.** A kata's examples
+      and constraints are fields on its spec (ADR 0027) rather than paragraphs
+      of the prompt, so they can be drawn somewhere of their own -- and the
+      examples want that, because they are the part of a problem you go back
+      to, and scrolling a prompt to find them again is the thing this replaces.
+      A git scenario and a SQL drill have neither, and a tab bar with one tab in
+      it is a control that does nothing: `examples` is empty for both and the
+      page is drawn the way it always was.
+
+      **Radio inputs and sibling selectors, not a script.** The state is which
+      of two panels is showing, which is exactly what a radio group holds, and
+      CSS can read it. A scripted version would be a fifth handler on a page
+      that already has four, would need the panel hidden before it ran, and
+      would lose its state to the first htmx swap that touched this column.
+      The inputs are hidden by clipping rather than `display: none`, so they
+      stay in the tab order and the arrow keys move between them.
     #}
-    <pre>{{ exercise.prompt }}</pre>
+    {% if examples %}
+      <div class="tabs">
+        <input type="radio" name="statement" id="tab-prompt" checked>
+        <label for="tab-prompt">Prompt</label>
+        <input type="radio" name="statement" id="tab-examples">
+        <label for="tab-examples">Examples <span class="count">{{ examples | length }}</span></label>
+
+        <div class="tab-panel" id="panel-prompt">
+          {% include "partials/statement.html" %}
+        </div>
+
+        <div class="tab-panel" id="panel-examples">
+          {% include "partials/examples.html" %}
+        </div>
+      </div>
+    {% else %}
+      <h2>Prompt</h2>
+      {% include "partials/statement.html" %}
+    {% endif %}
 
     {#
       **Nothing here had to learn about interview mode**, which is the clearest

@@ -36,6 +36,7 @@ from tests.fakes import (
     FakeEditorLauncher,
     FakeFileWatcher,
     FakeProvisioner,
+    FixedChooser,
     FixedScheduler,
     SequentialIdGenerator,
     a_drill,
@@ -97,6 +98,9 @@ class Wiring:
             scheduler if scheduler is not None else FixedScheduler()
         )
         self.ids = SequentialIdGenerator(start=0)
+        #: Chance, fixed: a "surprise me" start lands on the last version
+        #: offered, and a test can read back what the draw was offered.
+        self.chooser = FixedChooser()
         #: The editor the reveal endpoint drives. A fake, because the real one
         #: starts a GUI program -- and a web test that opened VS Code would be a
         #: web test nobody runs twice.
@@ -138,6 +142,7 @@ class Wiring:
             scheduler=self.scheduler,
             editor=self.editor,
             watcher=self.watcher,
+            chooser=self.chooser,
         )
 
 
