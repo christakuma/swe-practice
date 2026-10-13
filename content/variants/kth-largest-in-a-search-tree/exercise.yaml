@@ -15,8 +15,9 @@ prompt: |
   `k = 1` is the largest value.
 
   The tree is a valid BST with distinct values. As in the standard version,
-  **stop as soon as you have the answer**: the tests include a tree whose
-  smaller half is far too deep to walk.
+  **stop as soon as you have the answer**: the tests check that you did, and
+  one of them hangs a chain a hundred thousand nodes deep on the side a small
+  `k` never needs.
 
   The tests build trees with the `TreeNode` class in the stub.
 

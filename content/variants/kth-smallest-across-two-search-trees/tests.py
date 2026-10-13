@@ -18,6 +18,30 @@ def balanced(values: list[int]) -> TreeNode | None:
     )
 
 
+class Landmine(TreeNode):
+    """A node that refuses to be looked at.
+
+    The only way to check an *early exit* from the outside: a tree cannot tell
+    you how much of it was read, but a node that raises on access can. Planted
+    where a correct solution has no reason to go.
+    """
+
+    def __init__(self) -> None:
+        """Deliberately uninitialised -- every attribute access raises."""
+
+    @property
+    def value(self) -> int:
+        raise AssertionError("read a node the answer did not require")
+
+    @property
+    def left(self) -> TreeNode | None:
+        raise AssertionError("descended past the answer")
+
+    @property
+    def right(self) -> TreeNode | None:
+        raise AssertionError("descended past the answer")
+
+
 def test_merges_the_two_orders() -> None:
     """Returns the values of both trees in one ascending sequence."""
     first = TreeNode(2, TreeNode(1), TreeNode(4))
@@ -97,13 +121,45 @@ def test_leaves_both_trees_alone() -> None:
     assert (second.value, second.left.value, second.right) == (4, 2, None)
 
 
-def test_does_not_walk_branches_it_does_not_need() -> None:
-    """Answers small k without descending a branch 100,000 nodes deep.
+def test_stops_as_soon_as_it_has_the_answer() -> None:
+    """Does not read on through either tree once it has the kth value.
+
+    Each tree has a few small values on the left of its root, and a landmine
+    two nodes further along its ascending order than the root is. The six
+    smallest values are all in the small parts. Flattening both trees first
+    trips a landmine, whether the walk recurses or keeps a stack of its own.
+
+    The landmines stand well back on purpose: a merge may fairly look a
+    value or two ahead in each tree before it knows which comes next, and
+    that is not the mistake being tested for.
+    """
+
+    def guarded(root_value: int, small: list[int]) -> TreeNode:
+        beyond = TreeNode(root_value + 1, None, Landmine())
+        return TreeNode(root_value, balanced(small), beyond)
+
+    first = guarded(1000, [1, 4, 7])
+    second = guarded(2000, [2, 3, 9])
+
+    assert [kth_smallest(first, second, k) for k in range(1, 7)] == [
+        1,
+        2,
+        3,
+        4,
+        7,
+        9,
+    ]
+
+
+def test_answers_beside_branches_too_deep_to_recurse_down() -> None:
+    """Answers small k beside a branch 100,000 nodes deep in each tree.
 
     Each tree has a few small values on the left of its root and a chain of
     large values on the right. The six smallest values are all in the small
-    parts, so nothing on either chain needs visiting. A walk that collects
-    every value first recurses down a chain and runs out of stack.
+    parts, so nothing on either chain needs visiting. A recursive walk that
+    collects every value first runs out of stack going down a chain. That is
+    all this test can say: a walk that carries its own stack gets to the
+    bottom, and the landmines above are what catch it.
     """
 
     def with_a_deep_right(root_value: int, small: list[int]) -> TreeNode:

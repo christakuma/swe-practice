@@ -44,6 +44,31 @@ def last_shared(first: list[int], second: list[int]) -> int:
     return shared[-1]
 
 
+class Landmine(TreeNode):
+    """A node that refuses to be looked at.
+
+    The only way to check from the outside that a subtree was *not entered*: a
+    tree cannot tell you how much of it was read, but a node that raises on
+    access can. Planted on the side of a node that a walk guided by the
+    ordering has no reason to take.
+    """
+
+    def __init__(self) -> None:
+        """Deliberately uninitialised -- every attribute access raises."""
+
+    @property
+    def value(self) -> int:
+        raise AssertionError("read a node the answer did not require")
+
+    @property
+    def left(self) -> TreeNode | None:
+        raise AssertionError("entered a subtree the answer is not in")
+
+    @property
+    def right(self) -> TreeNode | None:
+        raise AssertionError("entered a subtree the answer is not in")
+
+
 def example() -> TreeNode:
     return grown((6, 2, 8, 0, 4, 7, 9, 3, 5))
 
@@ -83,11 +108,33 @@ def test_agrees_with_comparing_paths_for_every_small_tree() -> None:
 
 
 def test_does_not_enter_a_subtree_the_answer_is_not_in() -> None:
-    """Answers beside a chain 100,000 deep without walking it.
+    """Never reads a node on the side of the tree the values are not on.
+
+    Both values are on one side of the root, and the root's other child is a
+    landmine. A search of the whole tree has to look at it, whether it
+    recurses or keeps a stack of its own; a walk guided by the ordering never
+    goes that way.
+    """
+    right = TreeNode(800, TreeNode(700), TreeNode(900))
+    leaning_right = TreeNode(500, Landmine(), right)
+
+    assert lowest_common_ancestor(leaning_right, 700, 900) == 800
+    assert lowest_common_ancestor(leaning_right, 900, 500) == 500
+
+    left = TreeNode(200, TreeNode(100), TreeNode(300))
+    leaning_left = TreeNode(500, left, Landmine())
+
+    assert lowest_common_ancestor(leaning_left, 100, 300) == 200
+    assert lowest_common_ancestor(leaning_left, 500, 100) == 500
+
+
+def test_answers_beside_a_chain_too_deep_to_recurse_down() -> None:
+    """Answers beside a chain 100,000 deep.
 
     Both values are on the right of the root and the chain hangs on the
-    left. A search of the whole tree recurses down the chain and runs out of
-    stack; a walk guided by the ordering never goes that way.
+    left. A recursive search of the whole tree runs out of stack going down
+    it. That is all this test can say: a search that carries its own stack
+    gets to the bottom, and the landmine above is what catches it.
     """
     middle = 500_000
     chain = TreeNode(middle - 1)

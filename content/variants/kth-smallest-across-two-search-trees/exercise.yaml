@@ -21,8 +21,8 @@ prompt: |
   Either tree may be empty, though not both.
 
   **Stop as soon as you have the answer.** Flattening both trees and sorting is
-  correct and reads everything; the tests hang a very deep branch where a
-  small `k` never needs to go.
+  correct and reads everything; the tests check you did not, and hang a very
+  deep branch where a small `k` never needs to go.
 
   The tests build trees with the `TreeNode` class in the stub.
 

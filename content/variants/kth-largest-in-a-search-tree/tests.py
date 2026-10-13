@@ -16,6 +16,30 @@ def balanced(values: list[int]) -> TreeNode | None:
     )
 
 
+class Landmine(TreeNode):
+    """A node that refuses to be looked at.
+
+    The only way to check an *early exit* from the outside: a tree cannot tell
+    you how much of it was read, but a node that raises on access can. Planted
+    where a correct solution has no reason to go.
+    """
+
+    def __init__(self) -> None:
+        """Deliberately uninitialised -- every attribute access raises."""
+
+    @property
+    def value(self) -> int:
+        raise AssertionError("read a node the answer did not require")
+
+    @property
+    def left(self) -> TreeNode | None:
+        raise AssertionError("descended past the answer")
+
+    @property
+    def right(self) -> TreeNode | None:
+        raise AssertionError("descended past the answer")
+
+
 def example() -> TreeNode:
     return TreeNode(
         5, TreeNode(3, TreeNode(2), TreeNode(4)), TreeNode(7, None, TreeNode(9))
@@ -55,12 +79,27 @@ def test_agrees_with_sorting_at_every_size() -> None:
             assert kth_largest(tree, k) == values[-k], (size, k)
 
 
-def test_does_not_walk_a_deep_left_side_it_does_not_need() -> None:
+def test_stops_as_soon_as_it_has_the_answer() -> None:
+    """Does not read the smaller half of a tree the answer is not in.
+
+    The root's left subtree holds everything smaller than the root, so a k
+    that the right subtree and the root can satisfy gives no reason to touch
+    it. Collecting every value and indexing trips the landmine, whether the
+    walk recurses or keeps a stack of its own.
+    """
+    root = TreeNode(50, Landmine(), TreeNode(70, TreeNode(60), TreeNode(90)))
+
+    assert [kth_largest(root, k) for k in (1, 2, 3, 4)] == [90, 70, 60, 50]
+
+
+def test_answers_beside_a_left_side_too_deep_to_recurse_down() -> None:
     """Answers from the right of a tree whose left is a chain 100,000 deep.
 
     The three largest values are all in the small right subtree, so nothing
-    on the left needs visiting. A walk that collects every value first
-    recurses down the chain and runs out of stack.
+    on the left needs visiting. A recursive walk that collects every value
+    first runs out of stack going down the chain. That is all this test can
+    say: a walk that carries its own stack gets to the bottom, and the
+    landmine above is what catches it.
     """
     top = 1_000_000
     chain = TreeNode(top - 1)

@@ -20,8 +20,9 @@ prompt: |
   The standard version had to look everywhere, because nothing said where a
   value might be. Here the ordering does: every value in a node's left subtree
   is smaller than the node and every value in its right subtree is larger. Walk
-  straight to the answer. The tests include a tree with an enormous subtree that
-  the walk has no reason to enter.
+  straight to the answer. The tests check that nothing off that one path is
+  read, and one of them hangs an enormous subtree where the walk has no reason
+  to go.
 
   The tests build trees with the `TreeNode` class in the stub.
 
