@@ -47,18 +47,27 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         `Progress` deliberately carries attempts and not exercises -- an attempt
         whose exercise has left the library still counts, and a DTO that paired
         them would have had to drop it or invent one.
+
+        The listing is not the whole of what can be attempted: a variant is
+        never in it (ADR 0028), so the ones in the history are fetched by id.
+        Without that a twist is the one row on the page that prints a path
+        where every other row prints a name.
         """
+        summary = services.summarise_progress()
+        titles = {
+            exercise.id: exercise.title
+            for exercise in services.content.list_exercises()
+        }
+        for unlisted in {attempt.exercise_id for attempt in summary.attempts} - set(
+            titles
+        ):
+            found = services.content.get(unlisted)
+            if found is not None:
+                titles[unlisted] = found.title
         return templates.TemplateResponse(
             request=request,
             name="progress.html",
-            context={
-                "title": "Progress",
-                "progress": services.summarise_progress(),
-                "titles": {
-                    exercise.id: exercise.title
-                    for exercise in services.content.list_exercises()
-                },
-            },
+            context={"title": "Progress", "progress": summary, "titles": titles},
         )
 
     return router

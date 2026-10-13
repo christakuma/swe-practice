@@ -28,6 +28,7 @@ from practice.application.progress import (
     summarise,
 )
 from practice.domain.attempt import Attempt, AttemptPolicy, AttemptStatus
+from practice.domain.exercise import Variant
 from practice.domain.ids import AttemptId, ExerciseId, tag
 from practice.domain.review import CardState, ReviewCard
 from tests.fakes import a_kata, a_scenario
@@ -36,6 +37,7 @@ from tests.unit.application.helpers import (
     a_grade_review,
     a_passing_verdict,
     a_start_attempt,
+    a_submit_solution,
     a_summarise_progress,
     an_environment,
 )
@@ -440,6 +442,44 @@ class TestSummariseProgress:
         a_start_attempt(world)(KATA)
 
         assert a_summarise_progress(world)().total == 0
+
+    def test_an_attempt_at_a_variant_counts_towards_its_tags(self) -> None:
+        """A variant is never in the listing (ADR 0028), and the listing was
+        the only place tags were read from -- so a twist somebody failed three
+        times moved the totals and left the tag it was a failure at untouched.
+        """
+        world = an_environment()
+        twist = a_kata(
+            exercise_id="variants/two-sum-sorted",
+            tags=("two-pointers",),
+            variant=Variant(of=KATA, twist="The list is sorted."),
+        )
+        world.content.add(twist)
+        started = a_start_attempt(world)(twist.id)
+        a_submit_solution(world)(started.attempt.id, "def solve(): ...\n")
+
+        progress = a_summarise_progress(world)()
+
+        assert progress.total == 1
+        assert [(row.tag, row.attempted) for row in progress.tags] == [
+            (tag("two-pointers"), 1)
+        ]
+
+    def test_an_attempt_at_an_exercise_that_has_left_counts_without_tags(
+        self,
+    ) -> None:
+        """Looked for by id like a variant, and not found: it happened, so it
+        is in the totals, and nothing is left to say what it was practice at.
+        """
+        world = an_environment()
+        started = a_start_attempt(world)(KATA)
+        a_submit_solution(world)(started.attempt.id, "def solve(): ...\n")
+        world.content.forget(KATA)
+
+        progress = a_summarise_progress(world)()
+
+        assert progress.total == 1
+        assert progress.tags == ()
 
     def test_the_window_is_a_parameter_and_not_a_constant_read_inside(self) -> None:
         world = an_environment()

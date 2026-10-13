@@ -18,6 +18,15 @@ reads the fields it needs and ignores the rest.
 every attempt to its exercise's tags, and the alternative is one `content.get`
 per attempt, which is the shape that gets slower exactly as the history gets
 interesting.
+
+**Then the exercises the listing leaves out, one lookup each.** A variant is
+never listed (ADR 0028) and is attempted like anything else, so a library read
+through `list_exercises` alone had no tags for it: three failures at a twist
+moved the totals and the streak and left the tag they were failures *at*
+exactly where it was. `ReviewQueue` met the same gap and closes it the same
+way. It is one `get` per attempted exercise the listing did not hold, not per
+attempt -- bounded by the variants somebody has tried, which is the shape the
+paragraph above is avoiding and not the one this is.
 """
 
 from __future__ import annotations
@@ -56,11 +65,20 @@ class SummariseProgress:
         control is a query string and not a second use case. The default is the
         one the pages use.
         """
+        attempts = self.attempts.completed()
+        exercises = {
+            exercise.id: exercise for exercise in self.content.list_exercises()
+        }
+        attempted = {attempt.exercise_id for attempt in attempts}
+        for unlisted in attempted - exercises.keys():
+            found = self.content.get(unlisted)
+            # Still `None` for an exercise that has left the library, which
+            # `summarise` counts and cannot tag.
+            if found is not None:
+                exercises[unlisted] = found
         return summarise(
-            attempts=self.attempts.completed(),
-            exercises={
-                exercise.id: exercise for exercise in self.content.list_exercises()
-            },
+            attempts=attempts,
+            exercises=exercises,
             cards=self.reviews.cards(),
             today=self.clock.today(),
             window_days=window_days,

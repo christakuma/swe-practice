@@ -23,8 +23,10 @@ from practice.application.progress import (
     TagMastery,
     summarise,
 )
+from practice.domain.exercise import Variant
 from practice.domain.ids import ExerciseId, tag
 from practice.interface.web.charts import render_activity, render_mastery
+from tests.fakes import a_kata
 from tests.web.conftest import a_wiring, client_for
 
 if TYPE_CHECKING:
@@ -323,3 +325,25 @@ def test_the_summary_is_the_same_one_the_dashboard_reads() -> None:
     )
     assert f"<strong>{expected.streak_days} day</strong>" in dashboard
     assert f"<strong>{expected.streak_days} day</strong>" in progress
+
+
+def test_the_history_names_a_variant_as_it_names_anything_else(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """A variant is never in the listing the titles were read from (ADR 0028),
+    so it was the one row on the page that printed a path instead of a name.
+    """
+    twist = ExerciseId("variants/two-sum-sorted")
+    wiring.content.add(
+        a_kata(
+            exercise_id=twist.value,
+            title="Two Sum in a Sorted List",
+            variant=Variant(of=KATA, twist="The list is sorted."),
+        )
+    )
+    started = wiring.services.start_attempt(twist)
+    client.post(f"/api/attempt/{started.attempt.id}/submit", data={"source": SOLUTION})
+
+    body = client.get("/progress").text
+
+    assert "Two Sum in a Sorted List" in body
