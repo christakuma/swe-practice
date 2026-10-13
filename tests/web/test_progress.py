@@ -53,6 +53,7 @@ def a_progress(
         days=days,
         streak_days=0,
         scheduled=0,
+        titles={},
     )
 
 
@@ -330,8 +331,9 @@ def test_the_summary_is_the_same_one_the_dashboard_reads() -> None:
 def test_the_history_names_a_variant_as_it_names_anything_else(
     client: TestClient, wiring: Wiring
 ) -> None:
-    """A variant is never in the listing the titles were read from (ADR 0028),
-    so it was the one row on the page that printed a path instead of a name.
+    """A variant is never in the listing the titles were once read from (ADR
+    0028), so it was the one row on the page that printed a path instead of a
+    name. The names come with the summary now, which finds a variant by id.
     """
     twist = ExerciseId("variants/two-sum-sorted")
     wiring.content.add(

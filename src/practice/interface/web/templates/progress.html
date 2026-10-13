@@ -76,7 +76,7 @@
       {% for attempt in progress.attempts %}
         <li>
           <a href="/attempt/{{ attempt.id }}">
-            {{ titles.get(attempt.exercise_id, attempt.exercise_id) }}
+            {{ progress.titles.get(attempt.exercise_id, attempt.exercise_id) }}
           </a>
           <span class="outcome-chip {{ attempt.verdict.outcome.value }}">
             {{ attempt.verdict.outcome.value.replace('_', ' ') }}

@@ -464,12 +464,16 @@ class TestSummariseProgress:
         assert [(row.tag, row.attempted) for row in progress.tags] == [
             (tag("two-pointers"), 1)
         ]
+        # And it is named, by the same lookup: the page reads its titles from
+        # here rather than making the join a second time.
+        assert progress.titles == {twist.id: twist.title}
 
     def test_an_attempt_at_an_exercise_that_has_left_counts_without_tags(
         self,
     ) -> None:
         """Looked for by id like a variant, and not found: it happened, so it
-        is in the totals, and nothing is left to say what it was practice at.
+        is in the totals, and nothing is left to say what it was practice at
+        -- or what it was called, so it has no title and a page prints its id.
         """
         world = an_environment()
         started = a_start_attempt(world)(KATA)
@@ -480,6 +484,7 @@ class TestSummariseProgress:
 
         assert progress.total == 1
         assert progress.tags == ()
+        assert progress.titles == {}
 
     def test_the_window_is_a_parameter_and_not_a_constant_read_inside(self) -> None:
         world = an_environment()

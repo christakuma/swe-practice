@@ -42,32 +42,17 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
     def progress(request: Request) -> Response:
         """Synchronous, like every route here: `sqlite3` is blocking by design.
 
-        The library comes along so the history can name an exercise rather than
-        print its id. The join is made here rather than in the summary because
-        `Progress` deliberately carries attempts and not exercises -- an attempt
-        whose exercise has left the library still counts, and a DTO that paired
-        them would have had to drop it or invent one.
-
-        The listing is not the whole of what can be attempted: a variant is
-        never in it (ADR 0028), so the ones in the history are fetched by id.
-        Without that a twist is the one row on the page that prints a path
-        where every other row prints a name.
+        The history names an exercise rather than printing its id, and the
+        names come with the summary (`Progress.titles`). This route used to
+        join them itself, from the listing -- and then, because a variant is
+        never in the listing (ADR 0028), from a lookup per unlisted id, which
+        was `SummariseProgress`'s own lookup written out a second time. The
+        use case reads the library once and the page reads what it found.
         """
-        summary = services.summarise_progress()
-        titles = {
-            exercise.id: exercise.title
-            for exercise in services.content.list_exercises()
-        }
-        for unlisted in {attempt.exercise_id for attempt in summary.attempts} - set(
-            titles
-        ):
-            found = services.content.get(unlisted)
-            if found is not None:
-                titles[unlisted] = found.title
         return templates.TemplateResponse(
             request=request,
             name="progress.html",
-            context={"title": "Progress", "progress": summary, "titles": titles},
+            context={"title": "Progress", "progress": services.summarise_progress()},
         )
 
     return router

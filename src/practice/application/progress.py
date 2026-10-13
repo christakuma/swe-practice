@@ -156,6 +156,15 @@ class Progress:
     days: tuple[DayActivity, ...]
     streak_days: int
     scheduled: int
+    #: What to call each exercise in `attempts`, for the ones the library still
+    #: holds. **A name per id and not an exercise per attempt**: an attempt
+    #: whose exercise has left still counts, and pairing them would have meant
+    #: dropping it or inventing one -- so it is simply absent here and a page
+    #: falls back to the id. Here rather than joined by the page, because the
+    #: use case has already made the join the hard way (a variant is never in
+    #: the listing, ADR 0028), and a route that made it again was the second
+    #: copy of that lookup with a second chance to forget the variants.
+    titles: Mapping[ExerciseId, str]
 
     @property
     def total(self) -> int:
@@ -209,6 +218,11 @@ def summarise(
         days=_window(graded, today, window_days),
         streak_days=_streak({row.day for row in graded}, today),
         scheduled=len(cards),
+        titles={
+            row.exercise_id: exercises[row.exercise_id].title
+            for row in graded
+            if row.exercise_id in exercises
+        },
     )
 
 
