@@ -67,13 +67,15 @@ class FilesystemContentRepository:
         that this repository and any in-memory fake cannot disagree about what a
         filter means — the drift that stops a fake being evidence of anything.
         """
-        exercises = self._loaded()
+        # Variants are loaded and are not listed: they are reached through
+        # `variants_of` and `get`, and the curriculum does not place them.
+        exercises = [found for found in self._loaded().values() if not found.is_variant]
         if not exercises:
             # Whether an empty library is a problem is `practice validate`'s
             # call, and a manifest for nothing is not required to exist.
             return []
         order = self._curriculum().position
-        ordered = sorted(exercises.values(), key=lambda found: order(found.id))
+        ordered = sorted(exercises, key=lambda found: order(found.id))
         if criteria is None:
             return ordered
         return [exercise for exercise in ordered if criteria.matches(exercise)]
@@ -85,6 +87,17 @@ class FilesystemContentRepository:
         URL someone bookmarked, not a fault.
         """
         return self._loaded().get(exercise_id)
+
+    def variants_of(self, exercise_id: ExerciseId) -> Sequence[Exercise]:
+        """The variants of one exercise, by id so the order never shuffles."""
+        return sorted(
+            (
+                found
+                for found in self._loaded().values()
+                if found.variant is not None and found.variant.of == exercise_id
+            ),
+            key=lambda found: found.id,
+        )
 
     def list_tracks(self) -> Sequence[Track]:
         """Every track `tracks.yaml` declares, resolved against this library.

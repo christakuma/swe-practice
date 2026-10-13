@@ -128,6 +128,18 @@ class PackContentRepository:
         """The exercise, or `None` if this pack does not hold it."""
         return self._loaded().get(exercise_id)
 
+    def variants_of(self, exercise_id: ExerciseId) -> Sequence[Exercise]:
+        """Always empty: a pack carries the exercises its curriculum places.
+
+        A pack is built from a listing and read back through its manifest, and
+        a variant is in neither by design, so there is none in here to find.
+        Carrying them would be a change to the archive's format and to what
+        `install_pack` checks, and nothing has asked for a shared twist yet
+        (ADR 0028 records it as the thing left out).
+        """
+        del exercise_id
+        return ()
+
     def list_tracks(self) -> Sequence[Track]:
         """Every track the pack carries, resolved against the pack's own order.
 

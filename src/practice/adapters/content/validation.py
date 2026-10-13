@@ -184,14 +184,84 @@ def validate_library(root: Path) -> LibraryReport:
     if not directories and not problems:
         problems.append("holds no exercises")
 
-    problems.extend(_audit_curriculum(root, directories))
-    problems.extend(_audit_tracks(root, directories))
+    variants = _variants(directories)
+    placed = [directory for directory in directories if directory not in variants]
+    problems.extend(_audit_variants(root, directories, variants))
+    problems.extend(_audit_curriculum(root, placed))
+    problems.extend(_audit_tracks(root, placed))
 
     return LibraryReport(
         root=root,
         exercises=tuple(validate_exercise(directory) for directory in directories),
         problems=tuple(problems),
     )
+
+
+def _variants(directories: Sequence[Path]) -> dict[Path, Exercise]:
+    """The directories that hold a variant, with the exercise each one loads as.
+
+    A directory that will not load is in neither half: it is reported once, by
+    `validate_exercise`, and guessing here whether it *meant* to be a variant
+    would report it a second time for a problem it may not have.
+    """
+    found = {}
+    for directory in directories:
+        try:
+            exercise = load_exercise(directory)
+        except ContentError:
+            continue
+        if exercise.is_variant:
+            found[directory] = exercise
+    return found
+
+
+def _audit_variants(
+    root: Path, directories: Sequence[Path], variants: dict[Path, Exercise]
+) -> Iterator[str]:
+    """A variant must be a twist on a real, standard exercise of its own kind.
+
+    Three library-level rules, each a way for a variant to be unreachable or
+    absurd, and none of them something one `exercise.yaml` can know:
+
+    * **its base exists** -- a variant of nothing is offered under no exercise,
+      so it is on disk, graded by the suite, and never shown to anyone;
+    * **its base is not itself a variant** -- `variants_of` goes one level deep,
+      so a twist on a twist would be exactly as unreachable;
+    * **its base is the same kind** -- a version of a kata that opens a git
+      console is not a version of it.
+
+    The other library rule about variants is enforced by subtraction rather
+    than here: they are left out of what the curriculum and the tracks must
+    name, so a manifest that *does* name one fails as naming something that is
+    not there to be placed.
+    """
+    on_disk = {
+        directory.relative_to(root).as_posix(): directory for directory in directories
+    }
+    for directory, exercise in sorted(variants.items()):
+        if exercise.variant is None:  # pragma: no cover -- `_variants` filtered
+            continue
+        base_id = exercise.variant.of.value
+        located = f"{directory.relative_to(root).as_posix()}/{EXERCISE_FILENAME}"
+        base_directory = on_disk.get(base_id)
+        if base_directory is None:
+            yield f"{located}: is a variant of {base_id}, which is not in the library"
+            continue
+        if base_directory in variants:
+            yield (
+                f"{located}: is a variant of {base_id}, which is itself a variant; "
+                f"a twist is on a standard exercise"
+            )
+            continue
+        try:
+            base = load_exercise(base_directory)
+        except ContentError:
+            continue
+        if base.kind is not exercise.kind:
+            yield (
+                f"{located}: is a {exercise.kind.value} and a variant of {base_id}, "
+                f"which is a {base.kind.value}"
+            )
 
 
 def _audit_curriculum(root: Path, directories: Sequence[Path]) -> Iterator[str]:

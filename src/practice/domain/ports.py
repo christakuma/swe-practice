@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "AttemptRepository",
+    "Chooser",
     "Clock",
     "CommitInfo",
     "ContentRepository",
@@ -315,6 +316,21 @@ class ContentRepository(Protocol):
     ) -> Sequence[Exercise]: ...
 
     def get(self, exercise_id: ExerciseId) -> Exercise | None: ...
+
+    def variants_of(self, exercise_id: ExerciseId) -> Sequence[Exercise]:
+        """The twists on one exercise, in a stable order. Empty for most.
+
+        **The only way a variant is ever listed.** `list_exercises` leaves them
+        out -- of browsing, the curriculum, every track, the unseen half of the
+        review queue and every count of how big the library is -- because a
+        variant is offered *under* the problem it varies and never beside it
+        (ADR 0028). `get` still finds one by id, which is all an attempt, a
+        resumed workbench or a tutor has ever needed.
+
+        Empty for an id that is not in the library, and for a variant: a twist
+        on a twist is refused by `practice validate` rather than modelled.
+        """
+        ...
 
     def list_tracks(self) -> Sequence[Track]:
         """Every track the library declares, in the order it declares them.
@@ -748,3 +764,15 @@ class IdGenerator(Protocol):
     """Identity as a dependency, for the same reason as `Clock`: stable snapshots."""
 
     def new_attempt_id(self) -> AttemptId: ...
+
+
+class Chooser(Protocol):
+    """Chance as a dependency: one of several versions of an exercise, picked.
+
+    Narrow on purpose -- exercise ids, not a generic `T`. The one thing this
+    application leaves to chance is which version of a problem comes up when a
+    solver asks to be surprised (`ChooseVersion`), and a port shaped like
+    `random.choice` would be an invitation to find it a second job.
+    """
+
+    def choose(self, options: Sequence[ExerciseId]) -> ExerciseId: ...
