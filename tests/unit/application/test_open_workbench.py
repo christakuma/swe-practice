@@ -19,6 +19,7 @@ from practice.application.errors import (
 from practice.domain.exercise import KataSpec
 from practice.domain.ids import AttemptId, ExerciseId
 from tests.unit.application.helpers import (
+    a_mark_current_attempt,
     a_passing_verdict,
     a_start_attempt,
     a_submit_solution,
@@ -167,3 +168,18 @@ def test_loading_a_workbench_writes_nothing() -> None:
 
     assert len(workbench.attempt.events) == before
     assert workbench.attempt.status is started.attempt.status
+
+
+def test_loading_a_workbench_does_not_make_it_the_current_attempt() -> None:
+    """Not even that (ADR 0026). A page loaded is not a page looked at: a link
+    opened in a background tab would take the mark from the attempt on screen,
+    so the page reports coming to the front and `MarkCurrentAttempt` hears it.
+    """
+    world = an_environment()
+    older = a_start_attempt(world)(KATA)
+    newer = a_start_attempt(world)(SCENARIO)
+    a_mark_current_attempt(world)(newer.attempt.id)
+
+    an_open_workbench(world)(older.attempt.id)
+
+    assert world.attempts.current() == newer.attempt.id

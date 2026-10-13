@@ -7,6 +7,10 @@ ones that cross between them. "gc never deletes the workspace of an active attem
 is a statement about `CollectWorkspaces` and `StartAttempt` together, and splitting
 it across files would mean neither file contained it.
 
+The two that say which attempt is *current* are in the same group and not in
+this file: `test_current_attempt.py` has them, because every assertion about
+them is about the two together and none is about a workspace.
+
 The test that matters most is `test_gc_never_collects_the_workspace_of_an_active_
 attempt`. It is the phase's exit criterion, it is the reason `gc` refused to delete
 anything for three phases, and it is the one failure here that would destroy

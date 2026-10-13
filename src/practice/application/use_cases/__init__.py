@@ -5,7 +5,7 @@ call is made many times -- `StartAttempt(content=..., clock=...)` is built by th
 composition root and then invoked like a function by whichever adapter is
 driving. Functions would mean threading six ports through every call site.
 
-Twenty-two of them, in seven groups.
+Twenty-four of them, in seven groups.
 
 **Four about solving**, two per exercise kind. `StartAttempt` is shared:
 provisioning a workspace and building an `Attempt` is the same job whichever kind it
@@ -14,14 +14,22 @@ because a kata carries source to be saved into the event log and a scenario carr
 nothing -- the repository is already on disk and the log already holds every command
 that put it there.
 
-**Four about the lifecycle**, added in Phase 6 once an attempt could outlive the
-process that started it. `ListOpenAttempts`, `ResumeAttempt` and `AbandonAttempt`
-are the resume-or-abandon prompt PLAN.md 8.1 requires on startup -- an interrupted
-session is neither silently lost nor silently resurrected -- and
+**Six about the lifecycle**, four of them added in Phase 6 once an attempt could
+outlive the process that started it. `ListOpenAttempts`, `ResumeAttempt` and
+`AbandonAttempt` are the resume-or-abandon prompt PLAN.md 8.1 requires on startup
+-- an interrupted session is neither silently lost nor silently resurrected -- and
 `CollectWorkspaces` is `practice gc`, which could not delete anything until there
 was an attempt table to define an orphan against.
 
-Notice that none of the four is kind-specific. The lifecycle of an attempt is the
+`MarkCurrentAttempt` and `FindCurrentAttempt` are the other two, and arrived
+with the MCP server's first real use: several attempts open is the ordinary
+state, not the unusual one, and a tutor asked about "this" needs to know which.
+One writes which attempt is in front of the solver and is the *only* thing that
+does -- starting and resuming do not, because `practice solve` starts an attempt
+and `practice submit` resumes one, and neither is the solver turning to it. The
+other reads it back, and holds the whole rule for what "this" means (ADR 0026).
+
+Notice that none of the six is kind-specific. The lifecycle of an attempt is the
 same whether it is a kata or a git scenario, and the only use cases that have ever
 had to care about the difference are the ones that grade.
 
@@ -108,10 +116,12 @@ decision in the composition root about which of them owns the repositories.
 from practice.application.use_cases.abandon_attempt import AbandonAttempt
 from practice.application.use_cases.collect_workspaces import CollectWorkspaces
 from practice.application.use_cases.export_tutor_context import ExportTutorContext
+from practice.application.use_cases.find_current_attempt import FindCurrentAttempt
 from practice.application.use_cases.follow_tracks import FollowTracks
 from practice.application.use_cases.grade_review import GradeReview
 from practice.application.use_cases.inspect_repository import InspectRepository
 from practice.application.use_cases.list_open_attempts import ListOpenAttempts
+from practice.application.use_cases.mark_current_attempt import MarkCurrentAttempt
 from practice.application.use_cases.next_exercise import NextExercise
 from practice.application.use_cases.offer_review import OfferReview
 from practice.application.use_cases.open_workbench import OpenWorkbench
@@ -132,10 +142,12 @@ __all__ = [
     "AbandonAttempt",
     "CollectWorkspaces",
     "ExportTutorContext",
+    "FindCurrentAttempt",
     "FollowTracks",
     "GradeReview",
     "InspectRepository",
     "ListOpenAttempts",
+    "MarkCurrentAttempt",
     "NextExercise",
     "OfferReview",
     "OpenWorkbench",

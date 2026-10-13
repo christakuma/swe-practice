@@ -26,9 +26,11 @@ from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
     ExportTutorContext,
+    FindCurrentAttempt,
     GradeReview,
     InspectRepository,
     ListOpenAttempts,
+    MarkCurrentAttempt,
     OfferReview,
     OpenWorkbench,
     ReadAttemptFile,
@@ -76,8 +78,10 @@ __all__ = [
     "RecordingGrader",
     "World",
     "a_collect_workspaces",
+    "a_find_current_attempt",
     "a_grade_review",
     "a_list_open_attempts",
+    "a_mark_current_attempt",
     "a_passing_verdict",
     "a_read_attempt_file",
     "a_resume_attempt",
@@ -385,6 +389,16 @@ def a_list_open_attempts(world: World) -> ListOpenAttempts:
         attempts=world.attempts,
         provisioner=world.provisioner,
     )
+
+
+def a_mark_current_attempt(world: World) -> MarkCurrentAttempt:
+    """One port: it says which attempt and needs nothing that could open it."""
+    return MarkCurrentAttempt(attempts=world.attempts)
+
+
+def a_find_current_attempt(world: World) -> FindCurrentAttempt:
+    """The same one port as `a_mark_current_attempt`, read."""
+    return FindCurrentAttempt(attempts=world.attempts)
 
 
 def an_open_workbench(world: World) -> OpenWorkbench:

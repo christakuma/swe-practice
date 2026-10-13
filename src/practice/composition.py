@@ -88,10 +88,12 @@ from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
     ExportTutorContext,
+    FindCurrentAttempt,
     FollowTracks,
     GradeReview,
     InspectRepository,
     ListOpenAttempts,
+    MarkCurrentAttempt,
     NextExercise,
     OfferReview,
     OpenWorkbench,
@@ -258,6 +260,16 @@ class Services:
             attempts=self.attempts,
             provisioner=self.provisioner,
         )
+
+    @property
+    def mark_current_attempt(self) -> MarkCurrentAttempt:
+        """One port. It says which attempt, and needs nothing that could open it."""
+        return MarkCurrentAttempt(attempts=self.attempts)
+
+    @property
+    def find_current_attempt(self) -> FindCurrentAttempt:
+        """The same one port, read. What the MCP server asks instead of an id."""
+        return FindCurrentAttempt(attempts=self.attempts)
 
     @property
     def resume_attempt(self) -> ResumeAttempt:
