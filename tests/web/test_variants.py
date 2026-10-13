@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from practice.domain.attempt import AttemptMode
 from practice.domain.exercise import Variant
 from practice.domain.ids import ExerciseId
 from tests.fakes import a_kata
@@ -232,6 +233,49 @@ def test_a_variant_can_be_started_in_interview_mode(
     (attempt,) = varied.attempts.active()
     assert attempt.exercise_id == SORTED
     assert attempt.policy.is_interview
+
+
+def test_asking_for_an_interview_at_a_version_open_as_practice_is_refused(
+    client: TestClient, varied: Wiring
+) -> None:
+    """Resuming is right when it gives back what was asked for. Here it would
+    not: the box was ticked, the open attempt has hints and no clock, and an
+    attempt cannot change mode. The route used to resume it without reading
+    the box at all.
+    """
+    varied.services.start_attempt(SORTED)
+
+    response = client.post(
+        "/attempt",
+        data={"exercise_id": KATA.value, "variant": SORTED.value, "interview": "1"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 409
+    assert "already open as a practice attempt" in response.text
+    assert "Two Sum in a Sorted List" in response.text
+    (attempt,) = varied.attempts.active()
+    assert not attempt.policy.is_interview
+
+
+def test_an_interview_already_under_way_is_resumed_whatever_the_box_says(
+    client: TestClient, varied: Wiring
+) -> None:
+    """Unticked is the absence of a request, not a request for practice, so
+    the only direction refused is the one that would lose the conditions the
+    solver asked for."""
+    opened = varied.services.start_attempt(SORTED, mode=AttemptMode.INTERVIEW)
+
+    for form in ({}, {"interview": "1"}):
+        response = client.post(
+            "/attempt",
+            data={"exercise_id": KATA.value, "variant": SORTED.value, **form},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"] == f"/attempt/{opened.attempt.id}"
+    assert _started(varied) == [SORTED]
 
 
 # --- the workbench --------------------------------------------------------------

@@ -163,19 +163,47 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         for a version they do not list, so it is held here as well, where the
         version is finally known. For a standard exercise this is the page's
         rule a second time, which is what a stale tab needs.
+
+        **Unless resuming would quietly change what was asked for.** The
+        interview box is the one explicit request this form makes about
+        conditions -- unticked is the absence of one -- and an attempt's mode
+        is fixed when it starts (ADR 0020), so there is nothing to switch.
+        Ticking it for a version that is open as practice used to be a resume
+        like any other: `mode` was simply never read, and the solver landed in
+        a workbench with hints and no clock believing they were being timed.
+        That is refused, with the reason, as a 409. The other way round stays
+        a resume. Asking for nothing in particular and being handed back the
+        interview already under way is where the solver left off, not a
+        surprise.
         """
         mode = AttemptMode.INTERVIEW if interview else AttemptMode.PRACTICE
         try:
             version = services.choose_version(ExerciseId(exercise_id), variant)
             already_open = next(
                 (
-                    found.attempt
+                    found
                     for found in services.list_open_attempts()
                     if found.can_resume and found.attempt.exercise_id == version
                 ),
                 None,
             )
-            attempt = already_open or services.start_attempt(version, mode=mode).attempt
+            if already_open is None:
+                attempt = services.start_attempt(version, mode=mode).attempt
+            elif interview and not already_open.attempt.policy.is_interview:
+                return render_problem(
+                    templates,
+                    request,
+                    title="Cannot start",
+                    detail=(
+                        f"{already_open.label} is already open as a practice "
+                        f"attempt, and an attempt keeps the mode it was started "
+                        f"in. Finish or abandon that one to start it under "
+                        f"interview conditions."
+                    ),
+                    status=409,
+                )
+            else:
+                attempt = already_open.attempt
         except (ApplicationError, ValueError) as exc:
             return render_problem(
                 templates, request, title="Cannot start", detail=str(exc), status=404
