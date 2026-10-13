@@ -5605,9 +5605,23 @@ built it keeps its pane hidden, so visibility was simulated there and in node.
 The MSIX redirection Phase 20 recorded is still open and still decides whether
 an MCP client sees any of this.
 
-**Final numbers.** 5,236 passing and one skipped. 100% statement and branch
-coverage over a gated surface of **2,861 statements and 614 branches**, against
+**A second review, of the commits, found five more, and the first is the one a
+user would have met.** Nothing is marked on the day this arrives: an existing
+database has several attempts open and an empty table, and a tab open across
+the upgrade has no script in it. So the first question after upgrading gets the
+refusal the change exists to remove — and the README said that could only
+happen after abandoning an attempt. It is a cost rather than a bug, since no
+migration could have chosen for the solver, and it is now said where it will be
+read first. The others: the script's tests skipped without node *on the runner
+too*, on the strength of a sentence in the ADR that nothing held, so under `CI`
+they now fail instead; `practice attempts` said nothing when the current
+attempt was a finished one; `practice resume` marked before a check that can
+turn it away; and `FindCurrentAttempt` loaded the open attempts its three
+callers had each just listed, so it is handed them.
+
+**Final numbers.** 5,242 passing and one skipped. 100% statement and branch
+coverage over a gated surface of **2,862 statements and 616 branches**, against
 Phase 20's 2,823 and 604 — the delta is the two use cases and their wiring. Two
 new methods on one existing port, no new port, one migration. Twenty-four use
 cases where there were twenty-two. `practice validate` and `practice fixtures
---check` are unchanged. The gate took 6m28s, one run.
+--check` are unchanged. The gate took 6m11s, one run.

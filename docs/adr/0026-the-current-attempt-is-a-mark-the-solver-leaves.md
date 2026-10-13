@@ -88,8 +88,10 @@ state where there is honestly nothing to go on.
 3. **A test that needs node.** The script's behaviour is which events it hears
    and what it does on each, and the only way to check that is to run it, so
    `tests/web/test_in_front_script.py` does — and is skipped where node is not
-   installed. A skip is a machine that cannot check. CI has node; nothing in
-   this repository makes sure it stays that way.
+   installed. A skip is a machine that cannot check. Under `CI` it fails
+   instead, so a runner image that loses node turns the build red rather than
+   nine tests grey; the workflow does not install node itself, and relies on
+   the hosted images carrying it.
 4. **"Looked at last" is not "being asked about".** Somebody who glances at the
    other tab and then asks about the first is shown the other. The context
    names its exercise in its first heading, so it is visible rather than silent;
@@ -102,7 +104,13 @@ state where there is honestly nothing to go on.
    decides something — what may take the mark, what "this" means — so neither
    is a forwarder (§13), but the pair is most of a feature's worth of ceremony
    around one id.
-7. **A surface that forgets to mark is silent.** Putting the call in three
+7. **Nothing is marked on the day this arrives.** An existing database has
+   several attempts open and an empty table, and a tab that was open across the
+   upgrade has no script in it. So the first question after upgrading gets the
+   old refusal, from a feature whose whole point is that it does not. The
+   refusal names both ways out and the README says so first; no migration could
+   have chosen for the solver.
+8. **A surface that forgets to mark is silent.** Putting the call in three
    places rather than inside the use cases that start and resume is the trade
    the review below made, and the cost of it is that a fourth way to get in
    front of an attempt has to remember.
@@ -130,7 +138,7 @@ taken out by a review of the diff. Those two are loaders as well as acts:
 `practice submit` resumes one in order to grade it, so each took the mark from
 the attempt being worked on for one about to be closed. And an advisory write
 inside `StartAttempt` could fail a start whose attempt had already been saved.
-Cost 7 is what leaving them alone costs.
+Cost 8 is what leaving them alone costs.
 
 **Decide it from the open attempts alone** — the marked one if it is still
 open, otherwise the only one open. Built with the above and found by the same
@@ -180,7 +188,7 @@ glanced at. A finished attempt keeps the mark it had and cannot take a new one.
   expects not to need its id. Then a finished page should be able to take it,
   and the rule needed is the one the last alternative lacks.
 - **A fourth surface puts an attempt in front of somebody and forgets to
-  mark** (cost 7). Once is a bug; twice is the evidence that the call belongs
+  mark** (cost 8). Once is a bug; twice is the evidence that the call belongs
   somewhere all of them pass through.
 - **A second thing wants to know what is on screen.** One id in one table is a
   mark; two consumers with different ideas of "current" is a session, and

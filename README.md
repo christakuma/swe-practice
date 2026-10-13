@@ -474,8 +474,14 @@ its workbench tab to the front — so with two exercises in two tabs it is the t
 you looked at last. That is the one a tutor is shown when it does not say which,
 and an exercise left unfinished no longer turns every question into *which
 attempt?*. Submitting does not move it, so *what did I get wrong?* straight
-after is answered from the attempt you just finished, with its verdict. It only
-asks when you abandon the current one and more than one is still open
+after is answered from the attempt you just finished, with its verdict.
+
+It still asks when nothing says which: several attempts open and none of them
+marked. That is the state after you abandon the current one, and it is also
+**the first thing you will see after upgrading** — nothing was marked before the
+mark existed, and a workbench tab that was already open was drawn without the
+script that sets it. Reload the tab, or run `practice resume <id>`; `practice
+attempts` shows which attempt is current
 ([ADR 0026](docs/adr/0026-the-current-attempt-is-a-mark-the-solver-leaves.md)).
 
 **All three read, and there is no fourth.** Letting the tutor run a command is
