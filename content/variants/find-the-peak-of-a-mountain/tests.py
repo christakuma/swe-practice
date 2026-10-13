@@ -10,7 +10,16 @@ from solution import find_peak
 
 
 class Watched(list[int]):
-    """A list that counts how many of its values have been read."""
+    """A list that counts how many of its values have been read.
+
+    Subscripting and iteration are counted a value at a time. **The methods
+    that read the whole list are charged for the whole list**, because they
+    are where a count kept in `__getitem__` goes blind: `in`, `index`,
+    `count`, `copy`, `reversed`, `+` and `*` all walk every value inside the
+    interpreter and never call it. The first version of this class counted
+    only subscripts and iteration, and a linear scan written with `index` or
+    `copy` was graded as a search that had read nothing.
+    """
 
     reads = 0
 
@@ -24,6 +33,38 @@ class Watched(list[int]):
     def __iter__(self) -> Iterator[int]:
         for position in range(len(self)):
             yield self[position]
+
+    def __contains__(self, value: object) -> bool:
+        self.reads += len(self)
+        return super().__contains__(value)
+
+    def index(self, value: int, *bounds: int) -> int:  # type: ignore[override]
+        self.reads += len(self)
+        return super().index(value, *bounds)
+
+    def count(self, value: int) -> int:
+        self.reads += len(self)
+        return super().count(value)
+
+    def copy(self) -> list[int]:
+        self.reads += len(self)
+        return super().copy()
+
+    def __reversed__(self) -> Iterator[int]:
+        self.reads += len(self)
+        return super().__reversed__()
+
+    def __add__(self, other: list[int]) -> list[int]:  # type: ignore[override]
+        self.reads += len(self)
+        return super().__add__(other)
+
+    def __mul__(self, times: int) -> list[int]:  # type: ignore[override]
+        self.reads += len(self)
+        return super().__mul__(times)
+
+    def __rmul__(self, times: int) -> list[int]:  # type: ignore[override]
+        self.reads += len(self)
+        return super().__rmul__(times)
 
 
 def mountain(size: int, peak: int) -> list[int]:
