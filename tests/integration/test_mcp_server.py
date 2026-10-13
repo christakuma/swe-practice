@@ -452,7 +452,8 @@ def test_with_several_open_and_none_current_it_asks_rather_than_guessing(
     assert result.is_error
     text = text_of(result)
     assert "2 attempts are open and none of them is marked as current" in text
-    assert "Bringing one to the front in the practice app marks it." in text
+    assert "Bringing one to the front in the practice app marks it" in text
+    assert "`practice resume <id>`" in text
     assert str(first) in text
     assert str(second) in text
     assert "current," not in text_of(call(services, "list_attempts"))

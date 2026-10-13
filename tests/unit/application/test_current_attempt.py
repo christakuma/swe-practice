@@ -22,11 +22,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from practice.adapters.persistence import InMemoryAttemptRepository
 from practice.application.errors import AttemptNotFoundError
 from practice.domain.errors import AttemptStateError
 from practice.domain.ids import AttemptId, ExerciseId
 from tests.unit.application.helpers import (
     a_find_current_attempt,
+    a_list_open_attempts,
     a_mark_current_attempt,
     a_resume_attempt,
     a_start_attempt,
@@ -36,6 +38,9 @@ from tests.unit.application.helpers import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from practice.domain.attempt import Attempt
     from tests.unit.application.helpers import World
 
 KATA = ExerciseId("katas/two-sum")
@@ -53,11 +58,18 @@ def start(
     return attempt_id
 
 
+def current(world: World) -> AttemptId | None:
+    """The rule, called the way its three callers call it: handed the open
+    attempts they have just listed.
+    """
+    return a_find_current_attempt(world)(a_list_open_attempts(world)())
+
+
 # --- the rule ----------------------------------------------------------------
 
 
 def test_with_nothing_open_and_nothing_marked_there_is_no_current_attempt() -> None:
-    assert a_find_current_attempt(an_environment())() is None
+    assert current(an_environment()) is None
 
 
 def test_the_only_open_attempt_is_current_without_being_marked() -> None:
@@ -67,7 +79,7 @@ def test_the_only_open_attempt_is_current_without_being_marked() -> None:
     world = an_environment()
     only = start(world)
 
-    assert a_find_current_attempt(world)() == only
+    assert current(world) == only
 
 
 def test_several_open_and_none_marked_is_no_answer_rather_than_a_guess() -> None:
@@ -79,7 +91,7 @@ def test_several_open_and_none_marked_is_no_answer_rather_than_a_guess() -> None
     start(world)
     start(world, SCENARIO)
 
-    assert a_find_current_attempt(world)() is None
+    assert current(world) is None
 
 
 def test_the_marked_attempt_is_current_among_several() -> None:
@@ -90,18 +102,18 @@ def test_the_marked_attempt_is_current_among_several() -> None:
     older = start(world, mark=True)
     start(world, SCENARIO)
 
-    assert a_find_current_attempt(world)() == older
+    assert current(world) == older
 
 
 def test_marking_another_attempt_moves_it() -> None:
     world = an_environment()
     first = start(world, mark=True)
     second = start(world, SCENARIO, mark=True)
-    assert a_find_current_attempt(world)() == second
+    assert current(world) == second
 
     a_mark_current_attempt(world)(first)
 
-    assert a_find_current_attempt(world)() == first
+    assert current(world) == first
 
 
 def test_an_attempt_submitted_while_marked_is_still_the_current_one() -> None:
@@ -117,8 +129,8 @@ def test_an_attempt_submitted_while_marked_is_still_the_current_one() -> None:
 
     a_submit_solution(world)(worked, source="def two_sum(): ...")
 
-    assert a_find_current_attempt(world)() == worked
-    assert a_find_current_attempt(world)() != stale
+    assert current(world) == worked
+    assert current(world) != stale
 
 
 def test_a_submitted_attempt_stays_current_with_several_others_open() -> None:
@@ -129,7 +141,7 @@ def test_a_submitted_attempt_stays_current_with_several_others_open() -> None:
 
     a_submit_solution(world)(worked, source="def two_sum(): ...")
 
-    assert a_find_current_attempt(world)() == worked
+    assert current(world) == worked
 
 
 def test_turning_to_an_open_attempt_takes_the_mark_back_from_a_finished_one() -> None:
@@ -143,7 +155,7 @@ def test_turning_to_an_open_attempt_takes_the_mark_back_from_a_finished_one() ->
 
     a_mark_current_attempt(world)(other)
 
-    assert a_find_current_attempt(world)() == other
+    assert current(world) == other
 
 
 def test_an_abandoned_attempt_is_nobodys_current_one() -> None:
@@ -158,7 +170,7 @@ def test_an_abandoned_attempt_is_nobodys_current_one() -> None:
 
     an_abandon_attempt(world)(given_up)
 
-    assert a_find_current_attempt(world)() is None
+    assert current(world) is None
 
 
 def test_after_abandoning_the_marked_attempt_the_only_one_left_is_current() -> None:
@@ -168,7 +180,7 @@ def test_after_abandoning_the_marked_attempt_the_only_one_left_is_current() -> N
 
     an_abandon_attempt(world)(given_up)
 
-    assert a_find_current_attempt(world)() == left
+    assert current(world) == left
 
 
 def test_a_mark_whose_attempt_is_gone_is_read_as_no_mark() -> None:
@@ -180,7 +192,57 @@ def test_a_mark_whose_attempt_is_gone_is_read_as_no_mark() -> None:
     only = start(world)
     world.attempts.mark_current(MISSING)
 
-    assert a_find_current_attempt(world)() == only
+    assert current(world) == only
+
+
+class CountingAttempts(InMemoryAttemptRepository):
+    """The in-memory store, noting each time attempts are loaded from it."""
+
+    __slots__ = ("loads",)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.loads: list[str] = []
+
+    def get(self, attempt_id: AttemptId) -> Attempt | None:
+        self.loads.append("get")
+        return super().get(attempt_id)
+
+    def active(self) -> Sequence[Attempt]:
+        self.loads.append("active")
+        return super().active()
+
+
+def test_it_loads_no_attempt_when_the_marked_one_is_in_the_list_it_was_handed() -> None:
+    """The second review's last finding. Every caller has just listed the open
+    attempts, and the version that fetched its own loaded them again -- twice
+    over for a listing. Handed the list, the ordinary case reads one id.
+    """
+    world = an_environment()
+    world.attempts = CountingAttempts()
+    start(world, SCENARIO)
+    working_on = start(world, mark=True)
+    still_open = a_list_open_attempts(world)()
+    world.attempts.loads.clear()
+
+    assert a_find_current_attempt(world)(still_open) == working_on
+    assert world.attempts.loads == []
+
+
+def test_it_loads_one_attempt_when_the_mark_names_something_no_longer_open() -> None:
+    """The one read it cannot do without: whether the attempt that left the
+    list was submitted or abandoned is the whole of the rule at that point.
+    """
+    world = an_environment()
+    world.attempts = CountingAttempts()
+    start(world, SCENARIO)
+    worked = start(world, mark=True)
+    a_submit_solution(world)(worked, source="def two_sum(): ...")
+    still_open = a_list_open_attempts(world)()
+    world.attempts.loads.clear()
+
+    assert a_find_current_attempt(world)(still_open) == worked
+    assert world.attempts.loads == ["get"]
 
 
 # --- who may move the mark ---------------------------------------------------

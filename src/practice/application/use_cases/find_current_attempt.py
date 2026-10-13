@@ -30,6 +30,13 @@ caller's business and it already has `ListOpenAttempts` to say it with.
 cost every page that lists them a second read for a fact only two listings
 show, and could not express the case above at all: the attempt that is
 current may not be in the list.
+
+**It is handed the open attempts rather than loading them**, which is the
+other half of the same economy. All three callers -- the MCP server's resolver
+and its listing, and `practice attempts` -- hold that list already, to print or
+to refuse with, and the version that fetched its own read the table twice for
+each of them. So this reads one id, and one attempt only when the mark names
+something that is no longer open.
 """
 
 from __future__ import annotations
@@ -40,6 +47,9 @@ from typing import TYPE_CHECKING
 from practice.domain.attempt import AttemptStatus
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from practice.application.dto import OpenAttempt
     from practice.domain.ids import AttemptId
     from practice.domain.ports import AttemptRepository
 
@@ -52,16 +62,18 @@ class FindCurrentAttempt:
 
     attempts: AttemptRepository
 
-    def __call__(self) -> AttemptId | None:
+    def __call__(self, still_open: Sequence[OpenAttempt]) -> AttemptId | None:
+        """`still_open` is what `ListOpenAttempts` returned, a moment ago."""
         marked = self.attempts.current()
         if marked is not None:
+            if any(found.attempt.id == marked for found in still_open):
+                return marked
             attempt = self.attempts.get(marked)
             # A mark can outlive its row only if somebody deleted the row by
             # hand, and the honest reading of that is the same as no mark.
             if attempt is not None and attempt.status is not AttemptStatus.ABANDONED:
                 return marked
 
-        still_open = self.attempts.active()
         if len(still_open) == 1:
-            return still_open[0].id
+            return still_open[0].attempt.id
         return None

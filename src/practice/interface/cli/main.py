@@ -990,13 +990,28 @@ def attempts(
         return
 
     open_attempts = services.list_open_attempts()
+    current = services.find_current_attempt(open_attempts)
+    # The attempt a tutor is shown may be one just submitted, which is not in
+    # a list of what is open. Said rather than left as a listing with nothing
+    # labelled, which reads as "the tutor will ask" when it will not.
+    finished = (
+        f"{_INDENT}current: {current}, finished -- a tutor asked about "
+        f'"this" is shown its verdict'
+        if current is not None
+        and all(found.attempt.id != current for found in open_attempts)
+        else None
+    )
+
     if not open_attempts:
         typer.echo("No open attempts.")
+        if finished is not None:
+            typer.echo(finished)
         return
 
-    current = services.find_current_attempt()
     for found in open_attempts:
         _report_open_attempt(found, is_current=found.attempt.id == current)
+    if finished is not None:
+        typer.echo(finished)
     typer.echo("")
     typer.echo(
         f"{len(open_attempts)} open {_plural('attempt', len(open_attempts))}. "
@@ -1067,20 +1082,11 @@ def resume(
         database=db.resolve() if db is not None else None,
     )
     resumed = _load(services.resume_attempt, attempt)
-    # Picking a session back up is the solver saying which attempt they are on
-    # (ADR 0026). In this command and not in `ResumeAttempt`, which `submit`
-    # also loads through -- on its way to closing the attempt, not turning to it.
-    services.mark_current_attempt(resumed.attempt.id)
 
     typer.secho(f"{resumed.exercise.id}  {resumed.exercise.title}", bold=True)
     typer.echo(_describe_attempt(resumed.attempt, now=services.clock.now()))
 
-    if commands is None:
-        typer.echo("")
-        typer.echo(_next_step(resumed))
-        return
-
-    if not isinstance(resumed.exercise.spec, GitScenarioSpec):
+    if commands is not None and not isinstance(resumed.exercise.spec, GitScenarioSpec):
         typer.secho(
             f"{resumed.exercise.id} is a {resumed.exercise.kind.value} and has no "
             f"command console; submit a solution with "
@@ -1088,6 +1094,18 @@ def resume(
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=2)
+
+    # Picking a session back up is the solver saying which attempt they are on
+    # (ADR 0026). In this command and not in `ResumeAttempt`, which `submit`
+    # also loads through -- on its way to closing the attempt, not turning to
+    # it. And after the one refusal above, so a resume that was turned away
+    # does not move the mark on its way out.
+    services.mark_current_attempt(resumed.attempt.id)
+
+    if commands is None:
+        typer.echo("")
+        typer.echo(_next_step(resumed))
+        return
 
     typer.echo("")
     _replay(services, resumed.attempt.id, commands.read_text(encoding="utf-8"))
@@ -1981,7 +1999,9 @@ def _report_open_attempt(found: OpenAttempt, *, is_current: bool) -> None:
     workspace directory's name and nothing accepts it (PLAN.md §8.1).
 
     `(current)` is the attempt `practice mcp` hands a tutor that does not say
-    which, so it is on the only open attempt too -- marked or not.
+    which. So it is on the only open attempt even if nothing was marked, and
+    on none of them when the current attempt is one just finished -- which
+    `attempts` then says on a line of its own.
     """
     marker = _OK if found.can_resume else _NOTE
     colour = typer.colors.GREEN if found.can_resume else typer.colors.YELLOW

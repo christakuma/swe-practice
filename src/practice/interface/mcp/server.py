@@ -135,21 +135,27 @@ def build_server(services: Services) -> MCPServer:
         """
         if attempt_id is not None:
             return AttemptId.parse(attempt_id)
-        current = services.find_current_attempt()
+        # Read once and handed on: the rule needs the list to choose from and
+        # the refusal needs it to print.
+        attempts = services.list_open_attempts()
+        current = services.find_current_attempt(attempts)
         if current is not None:
             return current
-        attempts = services.list_open_attempts()
         if not attempts:
             raise ToolError(
                 "no attempt is open. Start an exercise in the practice app first; "
                 "for a post-mortem on a finished attempt, pass its id, which is "
                 "in the workbench URL."
             )
+        # Both ways out are named, because this is also what an existing
+        # database says the first time: several attempts open from before the
+        # mark existed, in tabs drawn without the script that sets it.
         listing = "\n".join(_describe(found, is_current=False) for found in attempts)
         raise ToolError(
             f"{len(attempts)} attempts are open and none of them is marked as "
             f"current, so say which one by passing attempt_id. Bringing one to "
-            f"the front in the practice app marks it.\n{listing}"
+            f"the front in the practice app marks it (reload a tab that was "
+            f"already open), and so does `practice resume <id>`.\n{listing}"
         )
 
     @server.tool(annotations=_READ_ONLY, structured_output=False)
@@ -161,7 +167,7 @@ def build_server(services: Services) -> MCPServer:
         refer to an exercise by name.
         """
         attempts = services.list_open_attempts()
-        current = services.find_current_attempt()
+        current = services.find_current_attempt(attempts)
         lines = [
             _describe(found, is_current=found.attempt.id == current)
             for found in attempts

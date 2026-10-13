@@ -318,6 +318,52 @@ def test_submitting_another_attempt_does_not_take_the_mark(
     assert f"{working_on}  Two Sum  (current)" in listing
 
 
+def test_a_resume_that_is_turned_away_does_not_take_the_mark(
+    storage: tuple[Path, Path], tmp_path: Path
+) -> None:
+    """`resume --commands` on a kata exits 2. It used to have marked the kata
+    by then, so one mistyped id moved a tutor to a different exercise.
+    """
+    working_on = start(storage, REVERT)
+    kata = start(storage, TWO_SUM)
+    run(storage, "resume", working_on)
+    commands = tmp_path / "more.cmds"
+    commands.write_text("git status\n", encoding="utf-8")
+
+    code, output = run(storage, "resume", kata, "--commands", str(commands))
+    _, listing = run(storage, "attempts")
+
+    assert code == 2, output
+    assert "has no command console" in output
+    assert f"{working_on}  Undo a commit" in listing
+    assert f"{kata}  Two Sum  (current)" not in listing
+    assert listing.count("(current)") == 1
+
+
+def test_attempts_says_so_when_the_current_attempt_is_a_finished_one(
+    storage: tuple[Path, Path], tmp_path: Path
+) -> None:
+    """An attempt just submitted is still the one a tutor is shown, and it is
+    not in a list of what is open. With nothing labelled and nothing said, the
+    listing read as though the tutor would ask.
+    """
+    stale = start(storage, TWO_SUM)
+    worked = start(storage, TWO_SUM)
+    mine = tmp_path / "mine.py"
+    mine.write_text(SOLVED, encoding="utf-8")
+    run(storage, "submit", worked, "--source", str(mine))
+
+    _, with_one_open = run(storage, "attempts")
+    run(storage, "abandon", stale)
+    _, with_none_open = run(storage, "attempts")
+
+    assert f"{stale}  Two Sum" in with_one_open
+    assert "(current)" not in with_one_open
+    assert f"current: {worked}, finished" in with_one_open
+    assert "No open attempts." in with_none_open
+    assert f"current: {worked}, finished" in with_none_open
+
+
 def test_solve_does_not_take_the_mark(storage: tuple[Path, Path]) -> None:
     """It starts an attempt and finishes it in the same breath, for an author
     checking a reference. Nobody turned to that attempt.
