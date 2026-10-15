@@ -1,5 +1,7 @@
 # swe-practice
 
+[![CI](https://github.com/christakuma/swe-practice/actions/workflows/ci.yml/badge.svg)](https://github.com/christakuma/swe-practice/actions/workflows/ci.yml)
+
 An offline practice environment for the two things entry-level engineers are
 actually tested on: **data-structure problem solving** and **operational
 competence with git**. It is a local web app with a terminal beside it — no
@@ -28,9 +30,15 @@ The demo is generated rather than recorded: `docs/demo/session.txt` is the
 captured output of that command and `docs/demo/render.py` draws it
 ([ADR 0016](docs/adr/0016-a-generated-demo-not-a-recorded-one.md)).
 
+The same scenario in the browser, two commands in: the prompt, a console over
+the real repository, and the repository's state beside it.
+
+![The web workbench for git/revert-a-pushed-commit: the prompt on the left, a command console with `git log` and `git show` output in the middle, and the repository's HEAD, branches, remote and commit history on the right.](docs/workbench.png)
+
 ## Contents
 
 - [What is in it](#what-is-in-it)
+- [How it was built](#how-it-was-built)
 - [Getting started](#getting-started)
 - [The web app](#the-web-app)
 - [The terminal](#the-terminal)
@@ -76,9 +84,65 @@ captured output of that command and `docs/demo/render.py` draws it
   somebody.
 
 This is v1.0.0 plus eight post-v1 additions.
-[docs/PLAN.md](docs/PLAN.md) is the full design and the phase-by-phase record of
-how it was built; [docs/adr/](docs/adr/) holds the twenty-five decisions with
-the alternatives that were rejected, which is usually the half worth reading.
+
+## How it was built
+
+**All of the code was written by an AI agent, Claude Code, and my job was to make
+that safe to rely on.** The commit trailers say so, and
+[CLAUDE.md](CLAUDE.md) is the working brief the agent read at the start of
+every session. What follows is how the work was checked, because an agent that
+writes quickly also writes plausible mistakes quickly, and a passing test suite
+written in the same session as the code is weaker evidence than it looks.
+
+- **A plan before code, and a spike before the plan.** The flagship scenario
+  was built and run by hand against real git before Phase 0, to find out whether
+  the design could express it. [docs/PLAN.md](docs/PLAN.md) then split the work
+  into twenty phases, 0 through 19, each with exit criteria. A phase closes with a commit
+  that names the test meeting each criterion. §16 records what each phase found
+  that the plan had wrong.
+- **Decisions are written down with the option that lost.** Twenty-eight
+  [ADRs](docs/adr/) record the expensive choices, so a later session cannot
+  quietly reverse one without arguing against the reasons on file.
+- **Rules are tests, not prose.** `tests/unit/test_architecture.py` parses
+  every module and fails the build if a dependency points the wrong way or if
+  anything outside one module starts a process. An agent that ignores a
+  convention gets a red build, not a review comment.
+- **A gate that does not depend on reading the diff.** CI runs lint, strict
+  mypy, about 8,700 tests, a library audit and a fixture-determinism check on
+  Linux and Windows. Coverage is required to be 90% on the domain and
+  application layers, and is 100%, statement and branch.
+- **Content is run, not read.** Every reference solution must pass its suite,
+  every stub must fail it, and every worked example is executed. Each test that
+  claims to catch a specific bug is run against that bug
+  ([ADR 0022](docs/adr/0022-counter-examples-are-run-against-the-bug-they-name.md)),
+  because in Phase 17 sixteen of the agent's tests and claims were wrong, and
+  six of them could not fail at all.
+- **Reviews look for what a green suite cannot.** After features landed, the
+  diffs were reviewed separately. One review found ten defects in a feature
+  that had already passed its whole suite and a mutation run, three of them
+  real bugs, because the tests had been written from the same picture as the
+  code. Another wrote twenty-five deliberately wrong answers to the variants,
+  answers the prompts say must fail, and nine passed until the suites were fixed.
+- **Every mistake becomes a rule.** The gotchas in CLAUDE.md are each a
+  mistake that happened once, so the next session starts from it rather than
+  repeating it.
+
+The finding worth taking from it: **the agent's errors were rarely in code that
+was obviously wrong.** They were in tests that could not fail and in claims no
+one had executed. Most of the safeguards above exist to catch exactly that.
+
+### Where to start reading
+
+The record is long, and PLAN.md is an archive rather than an introduction. In
+ten minutes:
+
+1. [docs/postmortem.md](docs/postmortem.md): what the bet bought and six things
+   that would be done differently.
+2. [ADR 0003](docs/adr/0003-grade-git-exercises-by-repo-state.md): the core idea.
+3. [ADR 0002](docs/adr/0002-ports-and-adapters-with-an-enforced-boundary.md) and
+   `tests/unit/test_architecture.py`: the boundary, and the test that holds it.
+4. [ADR 0022](docs/adr/0022-counter-examples-are-run-against-the-bug-they-name.md):
+   what went wrong with AI-written tests, and the rule that came out of it.
 
 ## Getting started
 
@@ -744,7 +808,7 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 - [docs/PLAN.md](docs/PLAN.md) — the design, the phase plan, and a revision log
   of what each phase actually found.
-- [docs/adr/](docs/adr/) — twenty-five decision records, each with the
+- [docs/adr/](docs/adr/) — twenty-eight decision records, each with the
   alternatives that lost.
 - [docs/postmortem.md](docs/postmortem.md) — written at v1.0.0: what the bet
   bought, six things that would be done differently, and what is still wrong.

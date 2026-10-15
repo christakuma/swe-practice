@@ -78,9 +78,12 @@ jobs:
       # `--dist loadfile`, not the default `load`: every test in a file goes to
       # one worker, which is what keeps the content suite's module-scoped
       # workspaces and memoised verdicts shared rather than rebuilt per worker.
-      # Plain `-n auto` is still correct, just slower (§16).
+      # Four workers, not `-n auto`: each worker spawns its own git, bash and
+      # pytest subprocesses, and on a busy runner `-n auto` oversubscribes the
+      # machine far enough to push a kata past the wall-clock limit the suite
+      # grades against. Four is repeatable; auto was not (CLAUDE.md, §11).
       - name: Tests
-        run: uv run pytest --cov --cov-report=term-missing -n auto --dist loadfile
+        run: uv run pytest --cov --cov-report=term-missing -n 4 --dist loadfile
 
       # Redundant with tests/content/, and kept anyway. PLAN.md §5.4 puts this
       # command in CI, and what it proves that the suite does not is that the
