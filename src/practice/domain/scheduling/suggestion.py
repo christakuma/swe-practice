@@ -15,7 +15,7 @@ want this rule unchanged, and putting it inside the scheduler would make a secon
 algorithm re-implement it. It is also not `application/` — "how well did that go"
 is a thing the product can be *right or wrong about*, which is the line §3 draws.
 
-**The rule is three penalties against a ceiling, and the ceiling is the point.**
+**The rule is penalties against a ceiling, and the ceiling is the point.**
 A pass never suggests `AGAIN`. `AGAIN` means *you did not know this*, and someone
 whose end state satisfied every required check did know it; grading craft and
 grading recall are different axes, and collapsing a passed-but-messy attempt into
@@ -44,11 +44,20 @@ the schedule panel's ease factor was under FSRS (§16). `hints_offered` is the
 missing denominator. It also makes honest a case that was always wrong and never
 visible: an exercise with no hints at all got the same credit, latent only
 because the content suite requires every shipped exercise to have some.
+
+**A fourth penalty since ADR 0029: failing first.** Before it a failed
+submission ended the attempt, so a pass was always a first-time pass and the
+three readings above were the whole story. Now a solver can fail twice and
+pass on the third try, and an attempt that reached the answer by being told
+what was wrong with the last one has not shown the same recall as one that
+got there unaided. One penalty however many failures, the rule hints already
+follow: the scale has three steps, and a count that could spend all of them
+would put a pass at `HARD` for persistence alone.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from typing import TYPE_CHECKING, Final
 
@@ -82,6 +91,12 @@ class GradeSuggestion:
     advisories: int
     hints_used: int
     overran: bool
+    failed_submissions: int = 0
+    """How many submissions failed before this one.
+
+    For a passed attempt, the tries it took; for a conceded one, all of them.
+    Defaulted for the reason `hints_offered` is.
+    """
     hints_offered: int = 0
     """How many hints this attempt could have revealed.
 
@@ -96,14 +111,21 @@ class GradeSuggestion:
 
     @property
     def penalties(self) -> int:
-        """How many of the three readings counted against a passing attempt.
+        """How many of the four readings counted against a passing attempt.
 
         Unchanged by `hints_offered`, deliberately. Revealing no hint is worth
         no penalty whether or not one was available, so the *grade* was always
         right — it was the explanation that was misleading, and explanations are
         the surface's business.
         """
-        return sum((self.advisories > 0, self.hints_used > 0, self.overran))
+        return sum(
+            (
+                self.advisories > 0,
+                self.hints_used > 0,
+                self.overran,
+                self.failed_submissions > 0,
+            )
+        )
 
     @property
     def is_clean(self) -> bool:
@@ -138,6 +160,7 @@ def suggest_grade(attempt: Attempt, exercise: Exercise) -> GradeSuggestion:
 
     advisories = len(verdict.advisories)
     hints_used = attempt.hints_revealed
+    failed_submissions = len(attempt.failed_submissions)
     # Against the author's own estimate, which is the only baseline the library
     # offers. Deliberately generous in one direction: being *fast* earns nothing
     # extra, because the fast paths through these exercises are often the ones
@@ -146,18 +169,23 @@ def suggest_grade(attempt: Attempt, exercise: Exercise) -> GradeSuggestion:
         minutes=exercise.estimated_minutes
     )
 
-    return GradeSuggestion(
-        grade=_grade(
-            passed=verdict.passed,
-            penalties=sum((advisories > 0, hints_used > 0, overran)),
-        ),
+    suggestion = GradeSuggestion(
+        grade=Grade.AGAIN,
         passed=verdict.passed,
         advisories=advisories,
         hints_used=hints_used,
         overran=overran,
+        failed_submissions=failed_submissions,
         # The *policy's* count, not the exercise's: an interview withheld them
         # and a mid-attempt edit cannot retroactively offer them (§4.3).
         hints_offered=attempt.policy.hint_count,
+    )
+    # Built once with a placeholder and graded from its own `penalties`, so the
+    # rule that counts them and the grade that spends them cannot disagree
+    # about which readings there are -- the fourth was added in one place.
+    return replace(
+        suggestion,
+        grade=_grade(passed=suggestion.passed, penalties=suggestion.penalties),
     )
 
 

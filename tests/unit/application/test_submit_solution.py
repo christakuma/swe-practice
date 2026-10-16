@@ -1,4 +1,4 @@
-"""Submitting a solution: save it, grade it, close the attempt, free the disk.
+"""Submitting a solution: save it, grade it, and on a pass close it and free the disk.
 
 The use case that touches every port, so most of this file is about *order* and
 about what happens when one step fails. Three of these tests pin decisions that
@@ -100,9 +100,13 @@ def test_the_workspace_is_disposed_on_a_successful_submission() -> None:
     assert world.provisioner.workspace_for(started.attempt.id).disposed
 
 
-def test_a_failing_verdict_still_completes_and_still_disposes() -> None:
-    """A wrong answer is a finished attempt, not an unfinished one. Keeping the
-    workspace would make a failed kata leak a directory every time.
+def test_a_failing_verdict_leaves_the_attempt_open_and_its_workspace() -> None:
+    """ADR 0029, and the test this file used to state the opposite of.
+
+    A wrong answer was a finished attempt until a solver pressed Submit again
+    and was told the attempt was completed. Now the failure is logged and the
+    attempt stays open -- and the workspace stays with it, because the next
+    submission is about to be graded in it.
     """
     world = an_environment(grader=RecordingGrader(a_failing_verdict()))
     started = a_start_attempt(world)(KATA)
@@ -110,8 +114,51 @@ def test_a_failing_verdict_still_completes_and_still_disposes() -> None:
     submission = a_submit_solution(world)(started.attempt.id, SOURCE)
 
     assert submission.outcome is Outcome.FAIL
-    assert not submission.passed
-    assert submission.attempt.status is AttemptStatus.COMPLETED
+    assert not submission.closed
+    assert submission.tries == 1
+    stored = world.attempts.get(started.attempt.id)
+    assert stored is not None
+    assert stored.status is AttemptStatus.ACTIVE
+    assert [event.verdict for event in stored.failed_submissions] == [
+        submission.verdict
+    ]
+    assert not world.provisioner.workspace_for(started.attempt.id).disposed
+
+
+def test_a_failed_attempt_takes_another_submission() -> None:
+    """The point of the change: the second press of Submit is graded, not refused.
+
+    Two submissions into one workspace, and the second one's source is what the
+    grader saw -- which is `latest_source` reading the last `SolutionSaved` of
+    two, rather than the only one.
+    """
+    world = an_environment(grader=RecordingGrader(a_failing_verdict()))
+    started = a_start_attempt(world)(KATA)
+    submit = a_submit_solution(world)
+
+    submit(started.attempt.id, "def two_sum(numbers, target):\n    return None\n")
+    second = submit(started.attempt.id, SOURCE)
+
+    assert second.tries == 2
+    assert not second.closed
+    grader = world.grader
+    assert isinstance(grader, RecordingGrader)
+    assert [source for source, _, _ in grader.calls][-1] == SOURCE
+
+
+def test_a_pass_after_a_failure_closes_and_disposes() -> None:
+    world = an_environment()
+    started = a_start_attempt(world)(KATA)
+    attempt = world.attempts.get(started.attempt.id)
+    assert attempt is not None
+    attempt.submit(a_failing_verdict(), at=world.clock.now())
+    world.attempts.save(attempt)
+
+    submission = a_submit_solution(world)(started.attempt.id, SOURCE)
+
+    assert submission.closed
+    assert submission.passed
+    assert submission.tries == 2
     assert world.provisioner.workspace_for(started.attempt.id).disposed
 
 

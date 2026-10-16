@@ -279,6 +279,18 @@ class PytestKataRunner:
         #: than the contention it avoids.
         self._lock = threading.Lock()
 
+    @property
+    def lock(self) -> threading.Lock:
+        """The lock every pass that writes `solution.py` must hold.
+
+        Public since ADR 0029, for exactly one other holder: the examples
+        runner writes the same file into the same directory, so it has to queue
+        behind a grading pass rather than beside it. Handing out the lock
+        rather than a second one is the whole point -- two locks over one file
+        are no lock.
+        """
+        return self._lock
+
     def run(self, workspace: Workspace, spec: KataSpec, source: str) -> KataRun:
         """Install the mechanism, write the source, run the suite, read the report.
 

@@ -251,6 +251,22 @@ Hints are revealed one at a time, and each reveal is recorded on the attempt
 alongside the commands — "passed, with three of four hints" is a different
 outcome from "passed", and that is the record the scheduler reads.
 
+### Run, submit, and try again
+
+The kata editor has two buttons, the split LeetCode and NeetCode make. **Run
+examples** runs the examples on the Examples tab against what is in the editor
+— each one with what it should give, what your code gave or raised, and what it
+printed — and records nothing. **Submit** grades the hidden suite.
+
+**A failed submission does not end the attempt**
+([ADR 0029](docs/adr/0029-a-failed-submission-is-logged-and-run-is-the-examples.md)).
+The verdict is logged, the editor or the repository stays as you left it, and
+the next Submit is the next try. A pass closes the attempt; so does **Stop and
+record the fail**, which keeps the failure as a result — it counts on the
+progress page and is offered for review — where abandoning would keep nothing.
+A pass that took more than one submission is suggested a step lower for review,
+and a tutor is shown each failure as you saw it.
+
 ### Your own editor
 
 A textarea is not where anyone wants to write a hash map. **Open in my editor**
@@ -359,6 +375,11 @@ uv run practice submit <id>
 
 Four processes, one repository, one event log and one budget — ten commands
 yesterday and five today is fifteen of twenty-five.
+
+A failed `submit` leaves the attempt open, so the fix is another `submit`.
+`practice try <id> --source FILE` runs a kata's examples without submitting, and
+`practice concede <id>` stops and records the last failure. `practice solve` is
+one-shot, so it concedes a failure itself.
 
 ```bash
 uv run practice attempts

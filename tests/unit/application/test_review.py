@@ -29,6 +29,7 @@ from tests.fakes import a_kata
 from tests.unit.application.helpers import (
     RecordingGrader,
     World,
+    a_concede_attempt,
     a_failing_verdict,
     a_grade_review,
     a_review_queue,
@@ -51,7 +52,11 @@ def a_graded_attempt(world: World) -> AttemptId:
     the save that makes it readable.
     """
     attempt_id = a_start_attempt(world)(KATA).attempt.id
-    a_submit_solution(world)(attempt_id, "def two_sum(...): ...")
+    submission = a_submit_solution(world)(attempt_id, "def two_sum(...): ...")
+    # A failure is only reviewable once it is over, which since ADR 0029 means
+    # conceded -- the way a solver who gave up would end it.
+    if not submission.closed:
+        a_concede_attempt(world)(attempt_id)
     return attempt_id
 
 

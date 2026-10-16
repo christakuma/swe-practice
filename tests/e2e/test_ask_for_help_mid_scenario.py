@@ -114,10 +114,23 @@ def test_each_bundle_is_the_attempt_at_the_moment_it_was_asked_for(
     assert FIRST_HINT in hinted
     assert LAST_HINT not in hinted
 
-    # 4. Submitted as it stands, which fails. The same request is now a
-    #    post-mortem: the verdict with its explanations, and the author's notes.
+    # 4. Submitted as it stands, which fails -- and leaves the attempt open
+    #    (ADR 0029). The bundle now carries the failure as the solver saw it,
+    #    and still withholds the author's notes, because nothing is over yet.
     graded = client.post(f"/api/attempt/{attempt_id}/submit-scenario")
     assert '<p class="outcome fail">' in graded.text
+    assert "The attempt is still open" in graded.text
+
+    retrying = ask(client, attempt_id)
+    assert "- Attempt: active, practice mode" in retrying
+    assert "- Submissions: 1 failed so far" in retrying
+    assert "**3.** Submitted, and it did not pass." in retrying
+    assert "- Failed: " in retrying
+    assert "## The author's notes" not in retrying
+
+    # 5. Conceded. The same request is now a post-mortem: the verdict with its
+    #    explanations, and the author's notes.
+    client.post(f"/api/attempt/{attempt_id}/concede")
 
     post_mortem = ask(client, attempt_id)
     assert "- Attempt: completed, practice mode" in post_mortem

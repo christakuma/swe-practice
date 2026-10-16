@@ -108,6 +108,7 @@
         {%- if s.advisories %}{% set _ = reasons.append('%d advisory on how you got there' % s.advisories) %}{% endif -%}
         {%- if s.hints_used %}{% set _ = reasons.append('%d hint%s revealed' % (s.hints_used, '' if s.hints_used == 1 else 's')) %}{% endif -%}
         {%- if s.overran %}{% set _ = reasons.append('over the ' ~ review.exercise.estimated_minutes ~ ' minute estimate') %}{% endif -%}
+        {%- if s.failed_submissions %}{% set _ = reasons.append('after %d failed submission%s' % (s.failed_submissions, '' if s.failed_submissions == 1 else 's')) %}{% endif -%}
         {{ ' ' }}{{ reasons | join(', ') }}
       {%- endif %}.
     </p>

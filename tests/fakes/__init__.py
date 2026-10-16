@@ -27,6 +27,7 @@ from tests.fakes.content import (
 )
 from tests.fakes.drill import FakeDrillQuery, a_result
 from tests.fakes.editor import FakeEditorLauncher
+from tests.fakes.examples import RecordingExampleRunner, a_trial
 from tests.fakes.ids import SequentialIdGenerator
 from tests.fakes.kata import StubKataRunner, a_record, a_run, a_timeout
 from tests.fakes.repo import (
@@ -54,6 +55,7 @@ __all__ = [
     "FakeWorkspace",
     "FixedChooser",
     "FixedScheduler",
+    "RecordingExampleRunner",
     "RepoBuilder",
     "RepoState",
     "Scheduled",
@@ -67,4 +69,5 @@ __all__ = [
     "a_run",
     "a_scenario",
     "a_timeout",
+    "a_trial",
 ]

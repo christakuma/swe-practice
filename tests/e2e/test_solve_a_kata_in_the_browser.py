@@ -10,8 +10,8 @@ sends because `SameOriginMiddleware` refuses anything that does not.
 workspace, and §9's rule is that anything assertable one layer down belongs one
 layer down: the route, the form parsing and the fragment are covered in
 `tests/web/test_submit.py` against a fake grader in milliseconds. What only this
-layer can show is that the pieces compose — browse, start, submit, grade, and a
-workspace that cleans itself up.
+layer can show is that the pieces compose — browse, start, run the examples,
+submit, fail, submit again, pass, and a workspace that cleans itself up.
 
 **The network claim is structural, not asserted here.** Nothing to disconnect:
 `tests/web/test_offline.py` proves no page or asset of ours names a remote host,
@@ -114,6 +114,13 @@ def test_a_kata_is_browsed_started_submitted_and_graded(
     submit_url = f"/api/attempt/{attempt_id}/submit"
     assert submit_url in workbench.text
 
+    # Run first: the examples on the page, against real Python, and nothing
+    # recorded -- the attempt is exactly as open afterwards as before (ADR 0029).
+    tried = client.post(f"/api/attempt/{attempt_id}/try", data={"source": WRONG})
+    assert tried.status_code == 200
+    assert "examples gave the expected output. Not submitted." in tried.text
+    assert 'class="check failed"' in tried.text
+
     near_miss = client.post(
         submit_url, data={"source": WRONG, "time": "O(n)", "space": "O(1)"}
     )
@@ -126,34 +133,33 @@ def test_a_kata_is_browsed_started_submitted_and_graded(
     assert 'class="check passed"' in near_miss.text
     assert 'class="check failed"' in near_miss.text
 
-    # A second attempt, because the first is finished: submission completes it
-    # and disposes of its workspace, which is §8.1's lifecycle and not something
-    # the web app gets to opt out of.
-    again = client.post(
-        "/attempt", data={"exercise_id": TWO_SUM}, follow_redirects=False
-    )
-    second_url = again.headers["location"]
-    second_id = second_url.removeprefix("/attempt/")
+    # A failure leaves the attempt open (ADR 0029), so the fix goes into the
+    # same one. Until then a failure completed the attempt, and this test had to
+    # start a second.
+    assert "Submission 1 did not pass. The attempt is still open" in near_miss.text
 
     passed = client.post(
-        f"/api/attempt/{second_id}/submit",
+        submit_url,
         data={"source": SOLVED, "time": "O(n)", "space": "O(n)"},
     )
     assert passed.status_code == 200
     assert '<p class="outcome pass">' in passed.text
-    assert "failed" not in passed.text
+    assert 'class="check failed"' not in passed.text
+    # And the schedule panel knows it took two.
+    assert "after 1 failed submission" in passed.text
     # Every check in the hidden suite reached the verdict, so a green page is a
     # suite that ran rather than a suite that collected nothing.
     assert passed.text.count('class="check passed"') >= 5
 
     # The page a reload gives is the verdict the submission gave, because both
     # render `partials/verdict.html` over the same stored attempt.
-    reloaded = client.get(second_url)
+    reloaded = client.get(workbench_url)
     assert reloaded.status_code == 200
     assert passed.text.strip() in reloaded.text
 
-    # Nothing left behind: both attempts disposed of their own workspace, and the
-    # attempt rows survive in a database that outlives the request.
+    # Nothing left behind: the pass disposed of the workspace both submissions
+    # were graded in, and the attempt row survives in a database that outlives
+    # the request.
     assert list((tmp_path / "ws").iterdir()) == []
     assert (tmp_path / "practice.db").is_file()
     assert "Nothing open" in client.get("/").text

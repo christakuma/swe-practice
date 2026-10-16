@@ -65,6 +65,7 @@ __all__ = [
     "ComplexityClaim",
     "HintRevealed",
     "SolutionSaved",
+    "SubmissionFailed",
 ]
 
 
@@ -174,7 +175,31 @@ class SolutionSaved:
     source: str
 
 
-type AttemptEvent = CommandRun | HintRevealed | SolutionSaved
+@dataclass(frozen=True, slots=True)
+class SubmissionFailed:
+    """A submission that was graded and did not pass. The attempt stays open.
+
+    **Kept in the log, with its whole verdict, rather than counted.** A failed
+    submission used to be the end of an attempt: `complete` took whatever
+    verdict came back, and the next press of Submit was told *attempt 4fcff95d
+    is completed*. What a solver wants from a failure is the next try, so a
+    failing verdict no longer closes anything (ADR 0029) -- but it is still
+    something the solver *did in the exercise*, which is the test Phase 8 set
+    for what belongs in this log. A count would answer "how many" and not
+    "what failed", and the grade suggestion and the tutor both want the second.
+    """
+
+    at: datetime
+    verdict: Verdict
+
+    def __post_init__(self) -> None:
+        if self.verdict.passed:
+            raise InvalidValueError(
+                "a passing verdict completes an attempt; it is not a failed submission"
+            )
+
+
+type AttemptEvent = CommandRun | HintRevealed | SolutionSaved | SubmissionFailed
 
 
 class AttemptMode(StrEnum):
@@ -553,6 +578,13 @@ class Attempt:
         return len(self.revealed_hints)
 
     @property
+    def failed_submissions(self) -> tuple[SubmissionFailed, ...]:
+        """Every submission that did not pass, oldest first."""
+        return tuple(
+            event for event in self._events if isinstance(event, SubmissionFailed)
+        )
+
+    @property
     def remaining_hints(self) -> int:
         return self._policy.hint_count - self.hints_revealed
 
@@ -630,13 +662,64 @@ class Attempt:
         self._require_active("declare complexity")
         self._declared_complexity = claim
 
+    def submit(self, verdict: Verdict, *, at: datetime) -> bool:
+        """Record a graded submission: a pass closes the attempt, a failure is logged.
+
+        Returns whether the attempt is now closed, which is the one thing every
+        caller does something different about: the workspace goes with it.
+
+        **The rule lives here rather than in the two submit use cases**, because
+        it is a rule about what a solver may do next -- submit again -- and this
+        class is the one place those are enforced. Written in each use case it
+        would be two copies of one `if`, and a third surface that called
+        `complete` directly would quietly bring back the dead end ADR 0029
+        removed.
+        """
+        if verdict.passed:
+            self.complete(verdict, at=at)
+            return True
+        self._require_active("submit")
+        self._require_forward(at)
+        self._events.append(SubmissionFailed(at=at, verdict=verdict))
+        return False
+
     def complete(self, verdict: Verdict, *, at: datetime) -> None:
-        """Submit: attach the verdict and close the attempt for good."""
+        """Attach the verdict and close the attempt for good.
+
+        Any verdict, a failing one included: `submit` only calls this for a pass,
+        and `concede` calls it with the last failure when the solver stops.
+        """
         self._require_active("complete")
         self._require_forward(at)
         self._verdict = verdict
         self._finished_at = at
         self._status = AttemptStatus.COMPLETED
+
+    def concede(self, *, at: datetime) -> Verdict:
+        """Stop trying: close the attempt on its most recent failed submission.
+
+        **Why this exists beside `abandon`.** Once a failure no longer completes
+        an attempt, the only ways out of a stuck one were a pass and `abandon` --
+        and an abandoned attempt has no verdict, so the progress page never
+        counts it and the scheduler is never offered it. A solver who gave up
+        after three failures would vanish from both, which is the opposite of
+        what spaced repetition needs to know. Conceding records the fail they
+        actually got.
+
+        Refused when nothing has failed yet, because there is no verdict to
+        close on, and grading a fresh one here would be a submission with a
+        different name.
+        """
+        self._require_active("concede")
+        failures = self.failed_submissions
+        if not failures:
+            raise AttemptStateError(
+                f"cannot concede: attempt {self._id} has no failed submission "
+                f"to finish on; submit it, or abandon it"
+            )
+        verdict = failures[-1].verdict
+        self.complete(verdict, at=at)
+        return verdict
 
     def abandon(self, *, at: datetime) -> None:
         """Give up without submitting, freeing the workspace for collection."""

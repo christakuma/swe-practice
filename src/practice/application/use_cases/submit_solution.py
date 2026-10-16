@@ -1,7 +1,14 @@
-"""Submit a kata: save the source, grade it, close the attempt, free the disk.
+"""Submit a kata: save the source, grade it, and close the attempt if it passed.
 
 The second half of the vertical slice, and the only use case that touches all
-six ports at once. Three decisions in it are worth stating.
+six ports at once. Four decisions in it are worth stating.
+
+**A failing verdict leaves the attempt open** (ADR 0029). Until then every
+submission completed the attempt, so one wrong answer was the end of it and the
+next press of Submit was told *attempt 4fcff95d is completed*. Now the verdict
+goes to `Attempt.submit`, which closes the attempt on a pass and logs the
+failure otherwise -- and the workspace is disposed only when the attempt
+actually closed, because the solver is about to submit into it again.
 
 **It re-attaches the workspace instead of being handed one.** The caller may be
 a different process from the one that started the attempt — a web request, a
@@ -10,7 +17,7 @@ the use case usable from exactly one place. `attach` reopens what is on disk
 without re-running the fixture, which is the resume half of PLAN.md §8.1; a
 caller that already holds the handle loses nothing by it.
 
-**The workspace is disposed only on success.** Not in a `finally`: if grading
+**The workspace is disposed only on a pass.** Not in a `finally`: if grading
 raises, the attempt is still `ACTIVE`, and §8.1 ties workspace lifetime to
 exactly that. Deleting it on the way out of a failed grading pass would destroy
 the one thing that could be inspected to find out why, and leave an active
@@ -110,10 +117,11 @@ class SubmitSolution:
             attempt.declare_complexity(complexity)
 
         verdict = grader.grade(exercise, workspace, attempt)
-        attempt.complete(verdict, at=self.clock.now())
+        closed = attempt.submit(verdict, at=self.clock.now())
         self.attempts.save(attempt)
 
-        # Only now, and only on this path: see the module docstring.
-        workspace.dispose()
+        # Only now, and only if that closed it: see the module docstring.
+        if closed:
+            workspace.dispose()
 
         return Submission(attempt=attempt, exercise=exercise, verdict=verdict)

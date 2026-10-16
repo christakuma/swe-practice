@@ -119,6 +119,7 @@ decision in the composition root about which of them owns the repositories.
 from practice.application.use_cases.abandon_attempt import AbandonAttempt
 from practice.application.use_cases.choose_version import RANDOM, ChooseVersion
 from practice.application.use_cases.collect_workspaces import CollectWorkspaces
+from practice.application.use_cases.concede_attempt import ConcedeAttempt
 from practice.application.use_cases.export_tutor_context import ExportTutorContext
 from practice.application.use_cases.find_current_attempt import FindCurrentAttempt
 from practice.application.use_cases.follow_tracks import FollowTracks
@@ -140,6 +141,7 @@ from practice.application.use_cases.start_attempt import StartAttempt
 from practice.application.use_cases.submit_scenario import SubmitScenario
 from practice.application.use_cases.submit_solution import SubmitSolution
 from practice.application.use_cases.summarise_progress import SummariseProgress
+from practice.application.use_cases.try_examples import TryExamples
 from practice.application.use_cases.watch_solution_file import WatchSolutionFile
 
 __all__ = [
@@ -147,6 +149,7 @@ __all__ = [
     "AbandonAttempt",
     "ChooseVersion",
     "CollectWorkspaces",
+    "ConcedeAttempt",
     "ExportTutorContext",
     "FindCurrentAttempt",
     "FollowTracks",
@@ -168,5 +171,6 @@ __all__ = [
     "SubmitScenario",
     "SubmitSolution",
     "SummariseProgress",
+    "TryExamples",
     "WatchSolutionFile",
 ]

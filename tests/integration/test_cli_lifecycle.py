@@ -623,6 +623,107 @@ def test_submitting_twice_is_refused(
     assert "completed" in output
 
 
+# --- trying again, conceding, and running the examples (ADR 0029) -----------
+
+WRONG = "def two_sum(numbers, target):\n    return (1, 0)\n"
+
+
+def test_a_failed_submit_leaves_the_attempt_open_and_takes_another(
+    storage: tuple[Path, Path], tmp_path: Path
+) -> None:
+    attempt_id = start(storage, TWO_SUM)
+    wrong = tmp_path / "wrong.py"
+    wrong.write_text(WRONG, encoding="utf-8")
+    right = tmp_path / "right.py"
+    right.write_text(SOLVED, encoding="utf-8")
+
+    code, output = run(storage, "submit", attempt_id, "--source", str(wrong))
+    assert code == 1, output
+    assert "still open" in output
+    assert f"practice concede {attempt_id}" in output
+
+    code, output = run(storage, "submit", attempt_id, "--source", str(right))
+    assert code == 0, output
+    assert "PASS" in output
+
+
+def test_concede_records_the_fail_and_closes_the_attempt(
+    storage: tuple[Path, Path],
+) -> None:
+    attempt_id = start(storage, REVERT)
+    run(storage, "submit", attempt_id)
+
+    code, output = run(storage, "concede", attempt_id)
+
+    assert code == 1, output
+    assert "conceded after 1 failed submission" in output
+    assert "FAIL" in output
+    code, output = run(storage, "attempts")
+    assert "No open attempts." in output
+
+
+def test_concede_refuses_an_attempt_that_has_not_failed(
+    storage: tuple[Path, Path],
+) -> None:
+    attempt_id = start(storage, REVERT)
+
+    code, output = run(storage, "concede", attempt_id)
+
+    assert code == 2, output
+    assert "no failed submission" in output
+
+
+def test_try_runs_the_examples_and_submits_nothing(
+    storage: tuple[Path, Path], tmp_path: Path
+) -> None:
+    attempt_id = start(storage, TWO_SUM)
+    mine = tmp_path / "mine.py"
+    mine.write_text(SOLVED, encoding="utf-8")
+
+    code, output = run(storage, "try", attempt_id, "--source", str(mine))
+
+    assert code == 0, output
+    assert "examples gave the expected output. Nothing was submitted." in output
+    # Still open, so the real submission is still to come.
+    code, output = run(storage, "submit", attempt_id, "--source", str(mine))
+    assert code == 0, output
+
+
+def test_try_exits_one_and_shows_both_values_when_an_example_is_wrong(
+    storage: tuple[Path, Path], tmp_path: Path
+) -> None:
+    attempt_id = start(storage, TWO_SUM)
+    wrong = tmp_path / "wrong.py"
+    wrong.write_text(WRONG, encoding="utf-8")
+
+    code, output = run(storage, "try", attempt_id, "--source", str(wrong))
+
+    assert code == 1, output
+    assert "expected (0, 1)" in output
+    assert "got (1, 0)" in output
+
+
+def test_try_refuses_a_scenario(storage: tuple[Path, Path], tmp_path: Path) -> None:
+    attempt_id = start(storage, REVERT)
+    mine = tmp_path / "mine.py"
+    mine.write_text(SOLVED, encoding="utf-8")
+
+    code, output = run(storage, "try", attempt_id, "--source", str(mine))
+
+    assert code == 2, output
+    assert "no examples to run" in output
+
+
+def test_a_failing_solve_leaves_nothing_open(storage: tuple[Path, Path]) -> None:
+    """`solve` is one-shot, so it concedes a failure on the spot rather than
+    stranding an open attempt and a workspace behind every failing run."""
+    code, output = run(storage, "solve", TWO_SUM, "--no-prompt")
+    assert code == 1, output
+
+    code, output = run(storage, "attempts")
+    assert "No open attempts." in output
+
+
 # --- abandon ---------------------------------------------------------------
 
 

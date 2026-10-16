@@ -20,7 +20,7 @@ import pytest
 from practice.domain.ids import ExerciseId
 from practice.domain.track import Track
 from tests.unit.application.helpers import RecordingGrader, a_failing_verdict
-from tests.web.conftest import a_wiring, client_for
+from tests.web.conftest import a_wiring, client_for, submit_to_the_end
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -64,9 +64,13 @@ def wiring() -> Wiring:
 
 
 def solve(client: TestClient, wiring: Wiring, exercise_id: ExerciseId = KATA) -> str:
-    """Start and submit through the app. The default grader passes everything."""
+    """Start and submit through the app, conceding a failure so it is finished.
+
+    The default grader passes everything; `failing`'s fails everything, and a
+    failure only finishes an attempt once it is conceded (ADR 0029).
+    """
     started = wiring.services.start_attempt(exercise_id)
-    client.post(f"/api/attempt/{started.attempt.id}/submit", data={"source": SOLUTION})
+    submit_to_the_end(client, wiring, started.attempt.id, {"source": SOLUTION})
     return str(started.attempt.id)
 
 
@@ -356,14 +360,19 @@ def test_a_failed_attempt_is_offered_a_retry_and_the_step_after(
 ) -> None:
     """Moving on is as likely as trying again, so both are there -- and Next is
     the step *after* the one that failed, not the same one handed back.
+
+    Once the failure is conceded, which is when the attempt is over: the track
+    is carried from the submit form through the failed fragment's own post.
     """
     client, wiring = failing
     started = wiring.services.start_attempt(KATA)
 
-    fragment = client.post(
-        f"/api/attempt/{started.attempt.id}/submit",
-        data={"source": SOLUTION, "track": "kata-first"},
-    ).text
+    fragment = submit_to_the_end(
+        client,
+        wiring,
+        started.attempt.id,
+        {"source": SOLUTION, "track": "kata-first"},
+    )
 
     assert "Next: Revert a pushed commit" in fragment
     assert "Try this one again" in fragment

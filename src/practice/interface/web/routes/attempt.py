@@ -44,11 +44,16 @@ model of what a check is. `partials/verdict.html` is the same file the page
 includes when it loads a finished attempt, which is what makes a reload show
 exactly what the submission showed.
 
-**It is a POST that completes the attempt, so it is not idempotent and does not
-pretend to be.** A second submission is refused by the aggregate — `Attempt` has
-guarded that since Phase 4 — and the refusal is rendered as a fragment into the
-same slot, because the person who double-clicked Submit is looking at that slot
-and nowhere else.
+**It is a POST that can complete the attempt, so it is not idempotent and does
+not pretend to be.** A pass completes it, and a second submission after that is
+refused by the aggregate — `Attempt` has guarded that since Phase 4 — with the
+refusal rendered as a fragment into the same slot, because the person who
+double-clicked Submit is looking at that slot and nowhere else. A *failure*
+leaves the attempt open since ADR 0029, so the second press is simply the next
+try, and which fragment comes back is `routes/submission.py`'s one decision.
+
+**The Run button is here too** (`try_examples`), beside the submission it is
+the preview of: the same body, a different use case, and nothing recorded.
 
 **The id in the URL is the full uuid.** That is the trade §11 named when it
 refused `find_by_prefix` on the `AttemptRepository` port: *"the web app, where the
@@ -79,6 +84,7 @@ from practice.interface.web.navigation import known_track, next_context
 from practice.interface.web.routes.console import COMMAND_URL, SCENARIO_SUBMIT_URL
 from practice.interface.web.routes.editor import EDITOR_URL, WATCH_URL
 from practice.interface.web.routes.review import REVIEW_URL
+from practice.interface.web.routes.submission import CONCEDE_URL, render_submission
 from practice.interface.web.routes.tutor import TUTOR_URL
 from practice.interface.web.vendor import mode_file
 
@@ -89,11 +95,14 @@ if TYPE_CHECKING:
 
     from practice.composition import Services
 
-__all__ = ["CURRENT_URL", "HINT_URL", "SUBMIT_URL", "build_router"]
+__all__ = ["CURRENT_URL", "HINT_URL", "SUBMIT_URL", "TRY_URL", "build_router"]
 
 #: Where the editor posts a solution. A template builds the attempt's own URL from
 #: this, so the route and the page cannot disagree about the path.
 SUBMIT_URL = "/api/attempt/{attempt_id}/submit"
+
+#: Where the editor's Run button posts. Records nothing; see `try_examples`.
+TRY_URL = "/api/attempt/{attempt_id}/try"
 
 #: Where the prompt panel asks for the next hint. No index in it, deliberately: an
 #: endpoint taking one is an endpoint a solver skips to the last hint with, and the
@@ -186,6 +195,17 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # `workbench.html` and `vendor.mode_file`.
                 "editor_mode_file": mode_file(editable.language if editable else None),
                 "submit_url": SUBMIT_URL.format(attempt_id=parsed),
+                "try_url": TRY_URL.format(attempt_id=parsed),
+                "concede_url": CONCEDE_URL.format(attempt_id=parsed),
+                # The last failed submission of an attempt that is still open,
+                # so a reload draws what the submission drew rather than an
+                # empty slot (ADR 0029). `None` until something has failed.
+                "last_failure": (
+                    opened.attempt.failed_submissions[-1].verdict
+                    if opened.is_active and opened.attempt.failed_submissions
+                    else None
+                ),
+                "tries": len(opened.attempt.failed_submissions),
                 # Both console endpoints, formatted here for the same reason the
                 # kata's is: the page builds every URL it posts to from the
                 # constant the route is declared with, so the two cannot drift.
@@ -280,23 +300,29 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 context={"detail": str(exc)},
             )
 
+        return render_submission(services, templates, request, submission, track)
+
+    @router.post(TRY_URL, response_class=HTMLResponse)
+    def try_examples(
+        request: Request, attempt_id: str, source: Annotated[str, Form()]
+    ) -> Response:
+        """Run the kata's examples against the editor's contents (ADR 0029).
+
+        A POST that records nothing, and a POST for the tutor endpoint's reason:
+        it carries the source, which lives only in the browser until it is
+        submitted. Blocking for the submit route's reason -- it starts a process
+        and waits up to the kata's time limit for it.
+        """
+        try:
+            trial = services.try_examples(AttemptId.parse(attempt_id), source)
+        except (ApplicationError, DomainError, ValueError) as exc:
+            return templates.TemplateResponse(
+                request=request,
+                name="partials/refusal.html",
+                context={"detail": str(exc)},
+            )
         return templates.TemplateResponse(
-            request=request,
-            name="partials/graded.html",
-            context={
-                "verdict": submission.verdict,
-                # Read back through the use case rather than assembled from the
-                # submission: the schedule block has to know whether a card
-                # already exists for this exercise, and a submission has never
-                # heard of one.
-                "review": services.offer_review(parsed),
-                "review_url": REVIEW_URL.format(attempt_id=parsed),
-                **next_context(
-                    services,
-                    submission.attempt.exercise_id,
-                    known_track(services, track),
-                ),
-            },
+            request=request, name="partials/trial.html", context={"trial": trial}
         )
 
     @router.post(CURRENT_URL)

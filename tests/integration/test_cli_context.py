@@ -125,6 +125,11 @@ def test_a_graded_attempt_becomes_a_post_mortem(storage: tuple[Path, Path]) -> N
     attempt_id = start(storage, REVERT)
     code, output, _ = run(storage, "submit", attempt_id)
     assert code == 1, output  # nothing was fixed, so it fails; that is the point
+    assert "still open" in output
+    # Still open after a failure (ADR 0029), so it is conceded to finish it.
+    code, output, _ = run(storage, "concede", attempt_id)
+    assert code == 1, output
+    assert "conceded after 1 failed submission" in output
 
     code, out, err = run(storage, "context", attempt_id)
 

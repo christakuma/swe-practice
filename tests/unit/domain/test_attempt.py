@@ -25,6 +25,7 @@ from practice.domain.attempt import (
     ComplexityClaim,
     HintRevealed,
     SolutionSaved,
+    SubmissionFailed,
 )
 from practice.domain.errors import (
     AttemptStateError,
@@ -481,6 +482,113 @@ class TestAbandon:
             attempt.abandon(at=at(11))
 
 
+class TestSubmit:
+    """ADR 0029: a pass closes the attempt, and a failure is logged and does not."""
+
+    def test_a_passing_submission_completes_the_attempt(self) -> None:
+        attempt = an_attempt()
+
+        closed = attempt.submit(a_verdict(), at=at(5))
+
+        assert closed
+        assert attempt.status is AttemptStatus.COMPLETED
+        assert attempt.failed_submissions == ()
+
+    def test_a_failing_submission_is_logged_and_leaves_the_attempt_open(self) -> None:
+        attempt = an_attempt()
+        failed = a_verdict(passed=False)
+
+        closed = attempt.submit(failed, at=at(5))
+
+        assert not closed
+        assert attempt.is_active
+        assert attempt.verdict is None
+        assert attempt.finished_at is None
+        assert attempt.failed_submissions == (
+            SubmissionFailed(at=at(5), verdict=failed),
+        )
+
+    def test_a_failed_attempt_can_be_submitted_again_and_pass(self) -> None:
+        attempt = an_attempt()
+        attempt.submit(a_verdict(passed=False), at=at(5))
+        attempt.submit(a_verdict(passed=False), at=at(7))
+
+        attempt.submit(a_verdict(), at=at(9))
+
+        assert attempt.status is AttemptStatus.COMPLETED
+        assert len(attempt.failed_submissions) == 2
+
+    def test_a_failure_still_counts_as_work_in_the_exercise(self) -> None:
+        """Commands keep going after a failure, against the same budget -- a retry
+        is more work in the same exercise, not a new one."""
+        attempt = an_attempt()
+        attempt.record_command(["git", "log"], OK, at=at(1))
+        attempt.submit(a_verdict(passed=False), at=at(2))
+
+        attempt.record_command(["git", "status"], OK, at=at(3))
+
+        assert attempt.command_count == 2
+        assert attempt.remaining_commands == 1
+
+    def test_a_finished_attempt_refuses_a_failing_submission(self) -> None:
+        attempt = an_attempt()
+        attempt.submit(a_verdict(), at=at(5))
+
+        with pytest.raises(AttemptStateError, match="cannot submit"):
+            attempt.submit(a_verdict(passed=False), at=at(6))
+
+    def test_a_failed_submission_cannot_go_back_in_time(self) -> None:
+        attempt = an_attempt()
+        attempt.record_command(["git", "log"], OK, at=at(5))
+
+        with pytest.raises(InvalidValueError, match="refusing to record"):
+            attempt.submit(a_verdict(passed=False), at=at(4))
+
+    def test_a_failed_submission_cannot_hold_a_passing_verdict(self) -> None:
+        """The event is the record of a failure, so a pass inside one would be a
+        log contradicting itself -- refused where it is built."""
+        with pytest.raises(InvalidValueError, match="completes an attempt"):
+            SubmissionFailed(at=at(1), verdict=a_verdict())
+
+
+class TestConcede:
+    def test_closes_the_attempt_on_its_most_recent_failure(self) -> None:
+        attempt = an_attempt()
+        first = a_verdict(passed=False)
+        last = Verdict(
+            (
+                CheckReport(
+                    check_id="other",
+                    label="other",
+                    severity=Severity.REQUIRED,
+                    passed=False,
+                ),
+            )
+        )
+        attempt.submit(first, at=at(2))
+        attempt.submit(last, at=at(4))
+
+        conceded = attempt.concede(at=at(6))
+
+        assert conceded is last
+        assert attempt.verdict is last
+        assert attempt.status is AttemptStatus.COMPLETED
+        assert attempt.finished_at == at(6)
+
+    def test_refuses_an_attempt_that_has_not_failed(self) -> None:
+        """No verdict to close on, and grading one here would be a submission."""
+        with pytest.raises(AttemptStateError, match="no failed submission"):
+            an_attempt().concede(at=at(1))
+
+    def test_refuses_a_finished_attempt(self) -> None:
+        attempt = an_attempt()
+        attempt.submit(a_verdict(passed=False), at=at(2))
+        attempt.concede(at=at(3))
+
+        with pytest.raises(AttemptStateError, match="cannot concede"):
+            attempt.concede(at=at(4))
+
+
 class TestTimestamps:
     def test_the_event_log_may_not_go_backwards(self) -> None:
         attempt = an_attempt()
@@ -554,11 +662,13 @@ class TestEventLog:
         attempt.reveal_next_hint(at=at(1))
         attempt.record_command(["git", "log"], OK, at=at(2))
         attempt.save_solution("x = 1", at=at(3))
+        attempt.submit(a_verdict(passed=False), at=at(4))
 
         assert [type(event).__name__ for event in attempt.events] == [
             "HintRevealed",
             "CommandRun",
             "SolutionSaved",
+            "SubmissionFailed",
         ]
 
     def test_a_command_run_needs_an_argv(self) -> None:
@@ -588,6 +698,7 @@ class TestRestore:
         original.reveal_next_hint(at=at(1))
         original.record_command(["git", "log"], OK, at=at(2))
         original.save_solution("x = 1", at=at(3))
+        original.submit(a_verdict(passed=False), at=at(3))
         original.declare_complexity(ComplexityClaim(time="O(n)", space="O(1)"))
         original.complete(a_verdict(), at=at(4))
 
@@ -614,6 +725,7 @@ class TestRestore:
         assert restored.declared_complexity == original.declared_complexity
         assert restored.command_count == 1
         assert restored.hints_revealed == 1
+        assert len(restored.failed_submissions) == 1
 
     def test_it_loads_a_log_the_current_policy_would_refuse(self) -> None:
         """The case that decides the design.

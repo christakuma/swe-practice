@@ -1,4 +1,4 @@
-"""Submit a git scenario: grade the repository as the solver left it, close the attempt.
+"""Submit a git scenario: grade the repository as it stands, and close it on a pass.
 
 The other half of the scenario slice, and deliberately a separate use case from
 `SubmitSolution` rather than a flag on it. They share a shape — attach, grade,
@@ -10,7 +10,13 @@ command that put it there.
 The three orderings `SubmitSolution` documents hold here for the same reasons, and
 one of them is load-bearing in a way it is not for a kata:
 
-**The workspace is disposed only on success, never in a `finally`.** If grading
+**A failing verdict leaves the attempt open, and the repository with it**
+(ADR 0029). For a scenario that is the difference the change was made for: the
+repository the solver spent twenty commands on is still there to fix, and the
+next submission grades it as it stands then. The commands keep counting against
+the same budget -- a retry is more work in the same exercise, not a new one.
+
+**The workspace is disposed only on a pass, never in a `finally`.** If grading
 raises, the attempt is still `ACTIVE`, and PLAN.md §8.1 ties workspace lifetime to
 exactly that. For a kata the cost of getting this wrong is a lost pytest run; for a
 scenario it is a repository the solver spent twenty commands building, and the only
@@ -98,10 +104,11 @@ class SubmitScenario:
             )
 
         verdict = grader.grade(exercise, workspace, attempt)
-        attempt.complete(verdict, at=self.clock.now())
+        closed = attempt.submit(verdict, at=self.clock.now())
         self.attempts.save(attempt)
 
-        # Only now, and only on this path: see the module docstring.
-        workspace.dispose()
+        # Only now, and only if that closed it: see the module docstring.
+        if closed:
+            workspace.dispose()
 
         return Submission(attempt=attempt, exercise=exercise, verdict=verdict)

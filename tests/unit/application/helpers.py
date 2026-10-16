@@ -25,6 +25,7 @@ from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
+    ConcedeAttempt,
     ExportTutorContext,
     FindCurrentAttempt,
     GradeReview,
@@ -43,6 +44,7 @@ from practice.application.use_cases import (
     SubmitScenario,
     SubmitSolution,
     SummariseProgress,
+    TryExamples,
     WatchSolutionFile,
 )
 from practice.domain.attempt import SolutionSaved
@@ -56,6 +58,7 @@ from tests.fakes import (
     FakeFileWatcher,
     FakeProvisioner,
     FixedScheduler,
+    RecordingExampleRunner,
     SequentialIdGenerator,
     a_kata,
     a_repo,
@@ -228,6 +231,8 @@ class World:
     #: shape it is about and the factory builds a query per call -- which is the
     #: property the real factory has and the reason it is a factory at all.
     repo: RepoBuilder = field(default_factory=a_repo)
+    #: The Run button's runner: a canned trial, and what it was sent.
+    examples: RecordingExampleRunner = field(default_factory=RecordingExampleRunner)
 
     @property
     def scenario_recorder(self) -> RecordingGrader:
@@ -371,6 +376,26 @@ def a_watch_solution_file(world: World) -> WatchSolutionFile:
         graders=world.graders,
         clock=world.clock,
         watcher=world.watcher,
+    )
+
+
+def a_concede_attempt(world: World) -> ConcedeAttempt:
+    """`an_abandon_attempt`'s ports: conceding grades nothing (ADR 0029)."""
+    return ConcedeAttempt(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        clock=world.clock,
+    )
+
+
+def a_try_examples(world: World) -> TryExamples:
+    """No clock and no graders: a run records nothing and grades nothing."""
+    return TryExamples(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        examples=world.examples,
     )
 
 

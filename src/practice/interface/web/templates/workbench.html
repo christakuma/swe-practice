@@ -118,6 +118,16 @@
                   rows="20">{{ workbench.editor_source or '' }}</textarea>
 
         <div class="editor-actions">
+          {#
+            Run before Submit, because it is the one to press first: it runs the
+            examples on the Examples tab against what is in the editor, and
+            records nothing (ADR 0029). Only where there are examples to run --
+            a drill has none, and a button that ran nothing would look like a
+            pass.
+          #}
+          {% if examples %}
+            <button type="button" id="run-examples" class="quiet">Run examples</button>
+          {% endif %}
           <button type="submit">Submit</button>
           {#
             Both axes or neither. `ComplexityClaim` refuses to hold one, because a
@@ -155,8 +165,17 @@
         </div>
       {% endif %}
 
-      {# Where the verdict fragment lands. Empty until something is submitted. #}
-      <div id="verdict"></div>
+      {#
+        Where the verdict fragment lands, and the Run button's results too.
+        Empty until something is submitted -- or, for an attempt that has
+        failed before and is still open, the last failure, so a reload shows
+        what the submission showed (ADR 0029).
+      #}
+      <div id="verdict">
+        {%- if last_failure %}
+          {% with verdict = last_failure %}{% include "partials/failed.html" %}{% endwith %}
+        {% endif -%}
+      </div>
 
     {% else %}
       {% include "partials/console.html" %}
@@ -212,8 +231,8 @@
 
       // Grading starts a pytest subprocess and can take a second or two, which
       // is long enough that a button with no in-flight state reads as a button
-      // that did nothing -- and the second click it invites is refused by the
-      // aggregate, so the reward for impatience would be an error message.
+      // that did nothing -- and the second click it invites would grade the
+      // same source twice, or be refused if the first one passed.
       // htmx's `hx-indicator` is for the attribute form; driven from JS, the
       // honest equivalent is to disable the control that must not be pressed
       // twice.
@@ -238,6 +257,26 @@
         button.textContent = label;
       });
     });
+
+    // The Run button, wired here for the reason the submission is: `editor` is
+    // the only thing that knows what is on screen. Same slot, same in-flight
+    // state -- a run starts a process too -- and nothing it returns is kept.
+    var runButton = document.getElementById("run-examples");
+    if (runButton !== null) {
+      runButton.addEventListener("click", function () {
+        var label = runButton.textContent;
+        runButton.disabled = true;
+        runButton.textContent = "Running…";
+        htmx.ajax("POST", {{ try_url | tojson }}, {
+          target: "#verdict",
+          swap: "innerHTML",
+          values: { source: window.practiceEditor.getValue() }
+        }).finally(function () {
+          runButton.disabled = false;
+          runButton.textContent = label;
+        });
+      });
+    }
 
     // Own-editor mode, wired here for the reason the submission is: the thing
     // that knows what is on screen is `editor`, not the textarea htmx would

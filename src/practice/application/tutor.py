@@ -45,7 +45,7 @@ import re
 from typing import TYPE_CHECKING, Final
 
 from practice.application.dto import short_ref
-from practice.domain.attempt import CommandRun
+from practice.domain.attempt import CommandRun, HintRevealed
 from practice.domain.exercise import ExerciseKind
 
 if TYPE_CHECKING:
@@ -53,7 +53,7 @@ if TYPE_CHECKING:
 
     from practice.application.dto import RepoView, TutorContext
     from practice.application.graph import GraphRow
-    from practice.domain.attempt import HintRevealed
+    from practice.domain.attempt import SubmissionFailed
     from practice.domain.ids import Sha
     from practice.domain.ports import WorktreeStatus
     from practice.domain.verdict import CheckReport, Verdict
@@ -177,7 +177,8 @@ def _fenced(text: str, language: str = "") -> str:
 def _summary(context: TutorContext) -> str:
     """The title and the handful of facts that frame everything under it."""
     commands = [event for event in context.events if isinstance(event, CommandRun)]
-    hints = len(context.events) - len(commands)
+    hints = sum(1 for event in context.events if isinstance(event, HintRevealed))
+    failures = len(context.events) - len(commands) - hints
     kind = context.kind.value.replace("_", " ")
     lines = [
         f"# {context.title}",
@@ -194,6 +195,10 @@ def _summary(context: TutorContext) -> str:
             f"Allowed: {allowed}"
         )
     lines.append(f"- Hints: {hints} revealed, {context.hints_left} not yet revealed")
+    # Only once there has been one: "0 failed submissions" on a fresh attempt
+    # reads as a record being kept, which is a strange first thing to be told.
+    if failures:
+        lines.append(f"- Submissions: {failures} failed so far")
     return "\n".join(lines)
 
 
@@ -207,11 +212,16 @@ def _history(context: TutorContext) -> str:
     if not context.events:
         return "Nothing yet."
     return "\n\n".join(
-        _command(number, event)
-        if isinstance(event, CommandRun)
-        else _hint(number, event)
-        for number, event in enumerate(context.events, start=1)
+        _event(number, event) for number, event in enumerate(context.events, start=1)
     )
+
+
+def _event(number: int, event: CommandRun | HintRevealed | SubmissionFailed) -> str:
+    if isinstance(event, CommandRun):
+        return _command(number, event)
+    if isinstance(event, HintRevealed):
+        return _hint(number, event)
+    return _submission(number, event)
 
 
 def _command(number: int, run: CommandRun) -> str:
@@ -229,6 +239,21 @@ def _command(number: int, run: CommandRun) -> str:
 
 def _hint(number: int, revealed: HintRevealed) -> str:
     return f"**{number}.** Revealed hint {revealed.index + 1}: {revealed.hint.text}"
+
+
+def _submission(number: int, failed: SubmissionFailed) -> str:
+    """A submission that failed, as the page showed it at the time (ADR 0029).
+
+    Inside the spoiler boundary rather than across it, which is worth saying
+    because `TutorContext` withholds the attempt's own verdict until it is
+    graded. That verdict is withheld because the solver has not seen it; this
+    one they have, under the editor, with every failing check's explanation --
+    and `_verdict` prints exactly what the page printed, so a tutor learns
+    nothing from it that the solver was not shown.
+    """
+    return (
+        f"**{number}.** Submitted, and it did not pass.\n\n{_verdict(failed.verdict)}"
+    )
 
 
 def _repo(repo: RepoView) -> str:
@@ -337,7 +362,9 @@ def _report(report: CheckReport) -> str:
 # --- json ------------------------------------------------------------------
 
 
-def _event_json(event: CommandRun | HintRevealed) -> dict[str, object]:
+def _event_json(
+    event: CommandRun | HintRevealed | SubmissionFailed,
+) -> dict[str, object]:
     if isinstance(event, CommandRun):
         return {
             "type": "command",
@@ -347,7 +374,9 @@ def _event_json(event: CommandRun | HintRevealed) -> dict[str, object]:
             "stderr": event.result.stderr,
             "truncated": event.result.truncated,
         }
-    return {"type": "hint", "number": event.index + 1, "text": event.hint.text}
+    if isinstance(event, HintRevealed):
+        return {"type": "hint", "number": event.index + 1, "text": event.hint.text}
+    return {"type": "submission", "verdict": _verdict_json(event.verdict)}
 
 
 def _repo_json(repo: RepoView) -> dict[str, object]:

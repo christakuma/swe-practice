@@ -53,8 +53,7 @@ from starlette.responses import HTMLResponse, Response
 from practice.application.errors import ApplicationError
 from practice.domain.errors import DomainError
 from practice.domain.ids import AttemptId
-from practice.interface.web.navigation import known_track, next_context
-from practice.interface.web.routes.review import REVIEW_URL
+from practice.interface.web.routes.submission import render_submission
 
 if TYPE_CHECKING:
     from fastapi.templating import Jinja2Templates
@@ -121,11 +120,12 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         one field it accepts is which track the attempt was started on, which is
         navigation and not an answer (`interface/web/navigation.py`).
 
-        The fragment is the same `partials/graded.html` the kata route returns
-        and the page includes for a finished attempt, which is what makes a
-        reload show what the submission showed -- the schedule control
-        included, since scheduling belongs to the attempt and not to the
-        exercise kind.
+        The fragment is whichever one `render_submission` picks, which is the
+        same choice the kata route makes and the page makes on a reload: the
+        finished block with its schedule control for a pass, and the failed
+        verdict with a way to stop for an attempt that is still open (ADR 0029).
+        Scheduling belongs to the attempt and not to the exercise kind, and so
+        does being allowed to try again.
         """
         try:
             parsed = AttemptId.parse(attempt_id)
@@ -140,20 +140,7 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 context={"detail": str(exc)},
             )
 
-        return templates.TemplateResponse(
-            request=request,
-            name="partials/graded.html",
-            context={
-                "verdict": submission.verdict,
-                "review": services.offer_review(parsed),
-                "review_url": REVIEW_URL.format(attempt_id=parsed),
-                **next_context(
-                    services,
-                    submission.attempt.exercise_id,
-                    known_track(services, track),
-                ),
-            },
-        )
+        return render_submission(services, templates, request, submission, track)
 
     return router
 

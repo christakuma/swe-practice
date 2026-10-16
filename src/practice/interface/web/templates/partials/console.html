@@ -68,21 +68,27 @@
 
 {#
   Submit is its own form and its own route, because it sends nothing: the thing
-  being graded is the repository on disk. `hx-confirm` because this is the only
-  irreversible control on the page — submission completes the attempt and disposes
-  of the workspace (PLAN.md §8.1), and the aggregate refuses a second one, so the
-  mis-click has no undo.
+  being graded is the repository on disk. `hx-confirm` because a pass is
+  irreversible -- it completes the attempt and disposes of the workspace
+  (PLAN.md §8.1). A failure is not, since ADR 0029: the attempt stays open and
+  the repository stays on disk, so the question names only the case that has
+  no undo.
 #}
 <form class="submit-scenario"
       hx-post="{{ scenario_submit_url }}"
       hx-target="#verdict"
       hx-swap="innerHTML"
       hx-disabled-elt="find button"
-      hx-confirm="Grade the repository as it stands now? This finishes the attempt.">
+      hx-confirm="Grade the repository as it stands now? A pass finishes the attempt.">
   {# The one thing this form does send: which track to offer the next step of. #}
   {% if track_name %}<input type="hidden" name="track" value="{{ track_name }}">{% endif %}
   <button type="submit">Submit for grading</button>
   <span class="meta">graded on the repository, not on what you typed</span>
 </form>
 
-<div id="verdict"></div>
+{# The last failure of an attempt still open, for the reason the kata's slot has it. #}
+<div id="verdict">
+  {%- if last_failure %}
+    {% with verdict = last_failure %}{% include "partials/failed.html" %}{% endwith %}
+  {% endif -%}
+</div>

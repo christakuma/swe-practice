@@ -25,6 +25,7 @@ from practice.domain.attempt import (
     CommandResult,
     CommandRun,
     HintRevealed,
+    SubmissionFailed,
 )
 from practice.domain.exercise import Difficulty, ExerciseKind, Hint
 from practice.domain.ids import ExerciseId
@@ -518,6 +519,68 @@ def test_the_json_keeps_the_two_kinds_of_event_apart() -> None:
             "truncated": False,
         },
         {"type": "hint", "number": 2, "text": "What does your teammate have?"},
+    ]
+
+
+def a_failed_submission() -> SubmissionFailed:
+    return SubmissionFailed(
+        at=AT,
+        verdict=Verdict(
+            (
+                CheckReport(
+                    check_id="kept",
+                    label="The bad commit is still in history",
+                    severity=Severity.REQUIRED,
+                    passed=True,
+                    explanation="The passing check's reason, which nobody was shown.",
+                ),
+                CheckReport(
+                    check_id="tree",
+                    label="The tree matches the commit before",
+                    severity=Severity.REQUIRED,
+                    passed=False,
+                    explanation="A revert restores the content.",
+                ),
+            )
+        ),
+    )
+
+
+def test_a_failed_submission_is_in_the_history_as_the_page_showed_it() -> None:
+    """ADR 0029. Inside the spoiler boundary because the solver saw it: the
+    failing check with its explanation, the passing one as a label only."""
+    context = replace(a_context(), events=(a_failed_submission(),))
+
+    rendered = render_markdown(context)
+
+    assert "**1.** Submitted, and it did not pass." in rendered
+    assert "Failed: The tree matches the commit before" in rendered
+    assert "A revert restores the content." in rendered
+    assert "Passed: The bad commit is still in history" in rendered
+    assert "nobody was shown" not in rendered
+
+
+def test_the_summary_counts_failed_submissions_only_once_there_is_one() -> None:
+    assert "Submissions:" not in render_markdown(a_context())
+
+    context = replace(a_context(), events=(a_failed_submission(),))
+
+    assert "- Submissions: 1 failed so far" in render_markdown(context)
+    assert "- Hints: 0 revealed" in render_markdown(context)
+
+
+def test_the_json_carries_a_failed_submission_as_its_own_kind() -> None:
+    context = replace(a_context(), events=(a_failed_submission(),))
+
+    events = as_json(context)["events"]
+    assert isinstance(events, list)
+    (event,) = events
+
+    assert event["type"] == "submission"
+    assert event["verdict"]["outcome"] == "fail"
+    assert [check["explanation"] for check in event["verdict"]["checks"]] == [
+        None,
+        "A revert restores the content.",
     ]
 
 

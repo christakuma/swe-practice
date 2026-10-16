@@ -472,6 +472,9 @@ def test_the_attempt_just_submitted_is_the_one_a_tutor_is_shown(
     worked = services.start_attempt(TWO_SUM).attempt.id
     services.mark_current_attempt(worked)
     services.submit_solution(worked, source="def two_sum(values, target): ...")
+    # A failure leaves the attempt open since ADR 0029; conceding is what
+    # finishes it, the way a solver who stopped there would.
+    services.concede_attempt(worked)
 
     text = text_of(call(services, "get_context"))
     listing = text_of(call(services, "list_attempts"))
@@ -532,6 +535,7 @@ def test_a_finished_attempt_is_a_post_mortem_by_id(tmp_path: Path) -> None:
     services = services_in(tmp_path)
     attempt = services.start_attempt(REVERT).attempt.id
     services.submit_scenario(attempt)
+    services.concede_attempt(attempt)
 
     result = call(services, "get_context", attempt_id=str(attempt))
 

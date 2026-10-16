@@ -50,6 +50,7 @@ an afternoon do not need one.
 | [0026](0026-the-current-attempt-is-a-mark-the-solver-leaves.md) | The current attempt is a mark the solver leaves, not something a tutor infers | accepted |
 | [0027](0027-examples-are-source-run-against-the-reference.md) | A kata's examples are source, and every one is run against the reference | accepted |
 | [0028](0028-a-variant-is-a-whole-exercise-offered-under-its-base.md) | A variant is a whole exercise, offered under the one it varies | accepted |
+| [0029](0029-a-failed-submission-is-logged-and-run-is-the-examples.md) | A failed submission is logged rather than final, and Run is the examples rather than the suite | accepted |
 
 0022 is the odd one in this set: the only record here about **how the content is
 authored** rather than how the code is arranged. It exists because Phase 17's

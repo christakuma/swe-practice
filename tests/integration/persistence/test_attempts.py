@@ -22,6 +22,7 @@ from uuid import UUID
 import pytest
 
 from practice.adapters.persistence.sqlite import Database, SqliteAttemptRepository
+from practice.adapters.persistence.sqlite.connection import load_migrations
 from practice.domain.attempt import (
     Attempt,
     AttemptMode,
@@ -593,3 +594,103 @@ def test_the_schema_refuses_a_mode_outside_the_vocabulary(database: Database) ->
             "VALUES ('a', 'katas/two-sum', 'active', '2026-10-02T09:00:00+00:00', "
             "0, '[]', '[]', 'exam', 600)"
         )
+
+
+# --- failed submissions: 0005, a table rebuilt under existing rows -----------
+
+
+def a_failing_verdict() -> Verdict:
+    return Verdict(
+        (
+            CheckReport(
+                check_id="content-restored",
+                label="The committed tree matches",
+                severity=Severity.REQUIRED,
+                passed=False,
+                explanation="A revert restores the content.",
+            ),
+        )
+    )
+
+
+def test_a_failed_submission_survives_the_real_database(
+    attempts: AttemptRepository,
+) -> None:
+    attempt = an_attempt()
+    attempt.record_command(["git", "log"], OK, at=at(1))
+    attempt.submit(a_failing_verdict(), at=at(2))
+    attempts.save(attempt)
+
+    loaded = attempts.get(attempt.id)
+
+    assert loaded is not None
+    assert loaded.is_active
+    assert loaded.events == attempt.events
+
+
+def test_0005_keeps_every_event_written_before_it(tmp_path: Path) -> None:
+    """SQLite cannot alter a CHECK, so 0005 copies `attempt_events` into a new
+    table and drops the old one. This is that copy, on a database that was
+    written by the schema before it: every event must come back, in order, and
+    a failed submission must be storable afterwards.
+    """
+    path = tmp_path / "practice.db"
+    before = load_migrations()[:4]
+    assert [migration.version for migration in before] == [1, 2, 3, 4]
+    attempt = an_attempt()
+    attempt.reveal_next_hint(at=at(1))
+    attempt.record_command(["git", "log"], OK, at=at(2))
+    SqliteAttemptRepository(Database(path, migrations=before)).save(attempt)
+
+    upgraded = SqliteAttemptRepository(Database(path))
+    loaded = upgraded.get(attempt.id)
+    assert loaded is not None
+    assert loaded.events == attempt.events
+
+    loaded.submit(a_failing_verdict(), at=at(3))
+    upgraded.save(loaded)
+    again = upgraded.get(attempt.id)
+    assert again is not None
+    assert len(again.failed_submissions) == 1
+
+
+def test_the_rebuilt_table_still_refuses_a_kind_nothing_reads(
+    database: Database,
+) -> None:
+    """The CHECK came back with the CREATE, widened by one word and no more."""
+    database.migrate()
+    with database.connect() as connection:
+        connection.execute(
+            "INSERT INTO attempts (id, exercise_id, status, started_at, "
+            "max_commands, allowed_commands, hints) VALUES ('a', 'katas/two-sum', "
+            "'active', '2026-10-02T09:00:00+00:00', 0, '[]', '[]')"
+        )
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="CHECK constraint failed"),
+        database.connect() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO attempt_events (attempt_id, position, at, kind, payload) "
+            "VALUES ('a', 0, '2026-10-02T09:00:00+00:00', 'telepathy', '{}')"
+        )
+
+
+def test_the_rebuilt_table_still_cascades_from_its_attempt(
+    database: Database,
+) -> None:
+    """And the foreign key came back with it: deleting an attempt takes its log."""
+    database.migrate()
+    with database.connect() as connection:
+        connection.execute(
+            "INSERT INTO attempts (id, exercise_id, status, started_at, "
+            "max_commands, allowed_commands, hints) VALUES ('a', 'katas/two-sum', "
+            "'active', '2026-10-02T09:00:00+00:00', 0, '[]', '[]')"
+        )
+        connection.execute(
+            "INSERT INTO attempt_events (attempt_id, position, at, kind, payload) "
+            "VALUES ('a', 0, '2026-10-02T09:00:00+00:00', 'submission', '{}')"
+        )
+        connection.execute("DELETE FROM attempts WHERE id = 'a'")
+        remaining = connection.execute("SELECT COUNT(*) FROM attempt_events")
+
+        assert remaining.fetchone()[0] == 0

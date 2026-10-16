@@ -1,0 +1,47 @@
+{#
+  What the Run button found: every example, run against the editor's contents.
+
+  **Not a verdict, and drawn so it cannot be mistaken for one** (ADR 0029). A
+  verdict is the hidden suite's judgement and ends in an outcome word; this is
+  the examples the solver can already read, and ends in nothing, because
+  nothing was decided. The sentence at the top says that it was not submitted,
+  since the slot it lands in is the one a verdict lands in.
+
+  Each example shows the input, the value the page expects, and what came back
+  -- or the exception's last line, which is the line that is about the solver's
+  code rather than the harness's. Printed output is shown under it: a `print`
+  is how most people find out what their loop is doing, and a Run button that
+  swallowed it would send them to the terminal to do it there.
+
+  The rows reuse the verdict's `.check` borders, green and red, because the
+  question each one answers is the same shape -- did this one match -- and a
+  third colour scheme would make the two panels look further apart than they
+  are.
+#}
+<div class="trial">
+  {% if trial.examples %}
+    <p class="verdict-summary">{{ trial.passed }} of {{ trial.examples | length }} examples gave the expected output. Not submitted.</p>
+  {% endif %}
+
+  {% if trial.problem %}
+    <p class="problem">{{ trial.problem }}</p>
+  {% endif %}
+
+  <ul class="checks">
+    {% for example in trial.examples %}
+      <li class="check {{ 'passed' if example.passed else 'failed' }}">
+        <span class="label">Example {{ loop.index }}</span>
+        <pre class="trial-input">{{ example.input }}</pre>
+        <span class="detail">expected {{ example.expected }}</span>
+        {% if example.error %}
+          <span class="detail">raised {{ example.error }}</span>
+        {% else %}
+          <span class="detail">got {{ example.actual }}</span>
+        {% endif %}
+        {% if example.stdout %}
+          <pre class="trial-stdout">{{ example.stdout }}</pre>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</div>

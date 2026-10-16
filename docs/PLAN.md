@@ -320,9 +320,20 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > The fourth migration, and the first for something that is not an attempt or a
 > card.
 >
+> **And a second change from using it: Run, and trying again.** A failed
+> submission used to finish the attempt, so the next press of Submit was told
+> *attempt 4fcff95d is completed* and a retry started over from the stub — or,
+> for a scenario, from a fresh repository. Now a failure is logged as an event
+> and the attempt stays open; a pass closes it, and so does *conceding*, which
+> keeps the failure as a result where abandoning would keep nothing. And a kata
+> has a **Run** button beside Submit, which runs the examples on the page
+> against the editor and records nothing
+> ([ADR 0029](adr/0029-a-failed-submission-is-logged-and-run-is-the-examples.md)).
+> The fifth migration, and the first that had to rebuild a table.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
 > · **Last phase:** 20 (tracks, and done-and-when), 2026-10-12 · **Last
-> change:** the current-attempt mark, 2026-10-12
+> change:** Run, and trying again after a failure, 2026-10-16
 
 ---
 
@@ -2798,6 +2809,7 @@ changed"* is worth more than any code sample.
 | [0026](adr/0026-the-current-attempt-is-a-mark-the-solver-leaves.md) | The current attempt is a mark the solver leaves, not something a tutor infers | accepted |
 | [0027](adr/0027-examples-are-source-run-against-the-reference.md) | A kata's examples are source, and every one is run against the reference | accepted |
 | [0028](adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md) | A variant is a whole exercise, offered under the one it varies | accepted |
+| [0029](adr/0029-a-failed-submission-is-logged-and-run-is-the-examples.md) | A failed submission is logged rather than final, and Run is the examples rather than the suite | accepted |
 
 ---
 
@@ -6086,3 +6098,80 @@ exercise per claim. 100% statement and branch coverage over 2,946 statements
 and 650 branches. `practice validate` still reports 277 exercises and
 `practice fixtures --check` is unchanged. The gate took 13m22s, one run,
 clean.
+
+**2026-10-16 — Run, and a failed submission that is not the end.** The
+request: *LeetCode and NeetCode let you try a solution before submitting it;
+and if you fail on submission you cannot immediately retry — "cannot submit:
+attempt 4fcff95d is completed". Log the fail and allow reattempts.* Both halves
+in [ADR 0029](adr/0029-a-failed-submission-is-logged-and-run-is-the-examples.md).
+
+**A failure is an event, and only a pass completes.** `Attempt.submit` takes
+the verdict, completes on a pass and appends a `SubmissionFailed` otherwise;
+both submit use cases call it and dispose of the workspace only when it says
+the attempt closed. The rule is the aggregate's rather than the use cases' for
+the reason `AttemptPolicy` is: a third surface calling `complete` directly
+would have brought the dead end back. Migration 0005 widens `attempt_events`'s
+`CHECK` by one word, which in SQLite means building a new table, copying the
+rows and renaming it — tested against a database written by 0004, and for the
+constraint and the cascade coming back with the `CREATE`.
+
+**The finding was the second exit.** Staying open on failure is a one-line
+change to each submit use case, and it was nearly the whole plan. It is wrong
+on its own: the only way out of a stuck attempt becomes `abandon`, which keeps
+no verdict, so a solver who failed three times and stopped would leave nothing
+on the progress page and nothing for the scheduler — the exercise spaced
+repetition most needs to bring back. `Attempt.concede` closes an open attempt
+on its last failed verdict and grades nothing; from there it is an ordinary
+completed failure, suggested `AGAIN`. Three readers assumed one verdict per
+attempt — progress, the suggestion, `OfferReview` — and concede is what lets
+all three stay as they were.
+
+**Run is the examples, not the suite.** Own-editor mode already grades the
+hidden suite on every save without recording anything, so a Run button over
+`WatchSolutionFile` was nearly free. With failures no longer final it would
+have made Submit a formality. Instead a harness is copied into the workspace
+like the pytest report plugin, runs each of the kata's examples against
+`solution.py` under `-I`, and reports the value, the exception's last line or
+what was printed. A new port, `ExampleRunner`, because only a kata has examples
+and a method on `Grader` would have been two refusals and one body. It shares
+the kata runner's lock, since both write `solution.py`.
+
+**The harness restates the content suite's comparison**, `repr` of the plain
+form with nodes walked by shape, in a file that cannot import it. A drift would
+show a correct linked list as a mismatch while the content suite stayed green.
+So five shipped references — a tuple, a linked list, a tree, a graph and a
+class — run through the harness in `tests/integration/kata/test_examples.py`,
+and all five passed on the first run. So did the stale-report test that
+`pytest_runner._install` has a paragraph about.
+
+**Four consequences, decided rather than discovered.** The suggestion gains a
+fourth penalty, one step for a pass that took more than one submission. The
+tutor context carries each failed submission with its verdict — inside ADR
+0023's boundary, because the solver was shown it — while the attempt's own
+verdict and the notes still wait for the end. `practice solve` concedes a
+failure itself, being one-shot. And a failed verdict is now feedback during an
+interview, where hints are withheld: accepted and written down as the place
+this pulls against ADR 0020.
+
+**What deviated.** Eleven existing tests stated the old rule, and each was
+changed to reach a finished failure by conceding, which is what a solver would
+now do; two e2e flows became the new loop end to end. `test_solve_a_kata_in_the
+_browser` had started a *second* attempt after its near miss, and the second
+`POST /attempt` resumed the first — open now — so the pass landed on the same
+attempt, with "after 1 failed submission" in the schedule panel. That was the
+feature working before the test knew about it.
+
+**Not done.** A SQL drill has no Run button: it has no examples, and the
+honest version is its result rows against the seed, which is a second
+`ExampleRunner` and a test of whether `Trial` is the right shape. Pass rate on
+the progress page now means *eventually passed*; first-try passes are in the
+log and nothing reports them.
+
+**Final numbers.** 8,760 passing and one skipped, where the last entry ended
+on 8,679: eighty-one new tests. 100% statement and branch coverage over 3,079
+statements and 682 branches. `practice validate` still reports 277 exercises
+and `practice fixtures --check` is unchanged. The gate took 28m24s, one run,
+clean -- twice the last entry's 13m22s, and one run is not a measurement on
+this machine; the Run harness adds eleven subprocesses to the integration suite
+and none to the content suite, which is the floor.
+

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
         AttemptMode,
         CommandRun,
         HintRevealed,
+        SubmissionFailed,
     )
     from practice.domain.exercise import Difficulty, Exercise, ExerciseKind, Hint
     from practice.domain.ids import ExerciseId, Sha
@@ -82,11 +83,33 @@ class StartedAttempt:
 
 @dataclass(frozen=True, slots=True)
 class Submission:
-    """A graded, completed attempt."""
+    """A graded submission, and the attempt as it stands after it.
+
+    Completed when the verdict passed, or when the solver conceded on a
+    failure; still open after a failure they mean to fix (ADR 0029). Callers
+    ask `closed` rather than `passed`, because the two stopped being the same
+    question when a conceded attempt became a closed failure.
+    """
 
     attempt: Attempt
     exercise: Exercise
     verdict: Verdict
+
+    @property
+    def closed(self) -> bool:
+        """Whether this ended the attempt. False means submit again."""
+        return not self.attempt.is_active
+
+    @property
+    def tries(self) -> int:
+        """Which submission this was, counting from one.
+
+        A failure is already in the log by the time anyone asks -- logged as a
+        submission that stayed open, or the one a concession closed on -- so it
+        counts itself. A pass is never logged as an event, so it is one more.
+        """
+        failures = len(self.attempt.failed_submissions)
+        return failures + 1 if self.passed else failures
 
     @property
     def outcome(self) -> Outcome:
@@ -423,6 +446,9 @@ class TutorContext:
 
     `events` excludes `SolutionSaved`. A kata's source is `source`, once, as it
     stands now; every intermediate snapshot would be the same file six times.
+    It *includes* each failed submission with its verdict (ADR 0029), which is
+    not the exception to the rule above it looks like: the solver was shown
+    that verdict when it failed, so it is on their side of the boundary.
 
     `repo` is `None` for anything but an open git scenario with its workspace
     still on disk — a kata has no repository, and submission disposes of a
@@ -439,7 +465,7 @@ class TutorContext:
     allowed_commands: tuple[str, ...]
     commands_left: int
     hints_left: int
-    events: tuple[CommandRun | HintRevealed, ...] = ()
+    events: tuple[CommandRun | HintRevealed | SubmissionFailed, ...] = ()
     repo: RepoView | None = None
     source: str | None = None
     language: str | None = None

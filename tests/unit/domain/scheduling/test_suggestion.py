@@ -69,6 +69,7 @@ def a_finished_attempt(
     minutes: int = 1,
     estimated_minutes: int = 20,
     mode: AttemptMode = AttemptMode.PRACTICE,
+    failures: int = 0,
 ) -> tuple[Attempt, Exercise]:
     """An attempt that has run `minutes` and been graded, with `hints` revealed.
 
@@ -83,6 +84,10 @@ def a_finished_attempt(
     attempt = an_attempt(exercise, mode=mode)
     for index in range(hints):
         attempt.reveal_next_hint(at=STARTED + timedelta(seconds=index))
+    for index in range(failures):
+        attempt.submit(
+            a_verdict(passed=False), at=STARTED + timedelta(seconds=30 + index)
+        )
     attempt.complete(
         a_verdict(passed=passed, advisory=advisory),
         at=STARTED + timedelta(minutes=minutes),
@@ -188,6 +193,51 @@ class TestTheCeiling:
         assert suggestion.penalties == 3
         assert suggestion.grade is Grade.HARD
         assert suggestion.is_clean is False
+
+    def test_all_four_stop_at_hard_too(self) -> None:
+        attempt, exercise = a_finished_attempt(
+            advisory=True, hints=1, minutes=90, estimated_minutes=20, failures=1
+        )
+
+        suggestion = suggest_grade(attempt, exercise)
+
+        assert suggestion.penalties == 4
+        assert suggestion.grade is Grade.HARD
+
+
+class TestFailingFirst:
+    """ADR 0029's fourth reading: a pass that took more than one submission."""
+
+    def test_a_pass_after_a_failure_costs_a_step(self) -> None:
+        attempt, exercise = a_finished_attempt(failures=1)
+
+        suggestion = suggest_grade(attempt, exercise)
+
+        assert suggestion.grade is Grade.GOOD
+        assert suggestion.failed_submissions == 1
+        assert suggestion.is_clean is False
+
+    def test_more_failures_cost_no_more_than_one_step(self) -> None:
+        """The rule hints follow: three steps on the scale, and a count that could
+        spend them all would put a pass at `HARD` for persistence alone."""
+        attempt, exercise = a_finished_attempt(failures=4)
+
+        suggestion = suggest_grade(attempt, exercise)
+
+        assert suggestion.grade is Grade.GOOD
+        assert suggestion.failed_submissions == 4
+
+    def test_a_conceded_attempt_is_again(self) -> None:
+        exercise = a_kata(estimated_minutes=20)
+        attempt = an_attempt(exercise)
+        attempt.submit(a_verdict(passed=False), at=STARTED + timedelta(minutes=1))
+        attempt.concede(at=STARTED + timedelta(minutes=2))
+
+        suggestion = suggest_grade(attempt, exercise)
+
+        assert suggestion.grade is Grade.AGAIN
+        assert suggestion.passed is False
+        assert suggestion.failed_submissions == 1
 
 
 class TestWhatItRefuses:

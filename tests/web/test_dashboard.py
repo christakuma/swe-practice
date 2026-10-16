@@ -19,7 +19,7 @@ from practice.domain.ids import ExerciseId
 from practice.interface.web.routes.dashboard import QUEUE_LIMIT
 from tests.fakes import a_kata
 from tests.unit.application.helpers import RecordingGrader, a_failing_verdict
-from tests.web.conftest import a_wiring, client_for
+from tests.web.conftest import a_wiring, client_for, submit_to_the_end
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -38,7 +38,7 @@ def solve_and_schedule(client: TestClient, wiring: Wiring, grade: str = "good") 
     with the review endpoint removed.
     """
     started = wiring.services.start_attempt(KATA)
-    client.post(f"/api/attempt/{started.attempt.id}/submit", data={"source": SOLUTION})
+    submit_to_the_end(client, wiring, started.attempt.id, {"source": SOLUTION})
     client.post(f"/api/attempt/{started.attempt.id}/review", data={"grade": grade})
 
 

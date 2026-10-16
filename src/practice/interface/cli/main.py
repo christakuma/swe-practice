@@ -169,6 +169,7 @@ __all__ = [
     "abandon",
     "app",
     "attempts",
+    "concede",
     "context",
     "fixtures",
     "gc",
@@ -179,6 +180,7 @@ __all__ = [
     "solve",
     "start",
     "submit",
+    "try_examples",
     "up",
     "validate",
 ]
@@ -1183,11 +1185,14 @@ def submit(
         ),
     ] = None,
 ) -> None:
-    """Grade an attempt that is already open, and close it.
+    """Grade an attempt that is already open, and close it if it passes.
 
     The other end of `resume`, and the same exit codes as `solve`: 0 on a pass
     including a pass with advisories, 1 when a required check fails, 2 when the
     attempt could not be graded at all.
+
+    **A failure leaves the attempt open** (ADR 0029): fix it and submit again,
+    or `practice concede` to stop and record the fail.
 
     A **git scenario** takes nothing — the repository is already on disk and the
     log already holds every command that put it there. A **kata** takes `--source`,
@@ -1245,6 +1250,14 @@ def submit(
     typer.echo("")
     _report_verdict(submission)
 
+    if not submission.closed:
+        again = "" if scenario else " --source FILE"
+        typer.echo("")
+        typer.echo(
+            f"Submission {submission.tries} did not pass, and the attempt is still "
+            f"open. Fix it and run `practice submit {resumed.attempt.id}{again}` "
+            f"again, or `practice concede {resumed.attempt.id}` to record the fail."
+        )
     if not submission.passed:
         raise typer.Exit(code=1)
 
@@ -1312,6 +1325,154 @@ def abandon(
     typer.secho(f"{_OK}abandoned {abandoned.attempt.id.short}  {label}")
     typer.echo(f"{_INDENT}{_describe_attempt(abandoned.attempt).strip()}")
     typer.echo(f"{_INDENT}workspace deleted; the attempt is kept in your history.")
+
+
+@app.command()
+def concede(
+    attempt: Annotated[
+        str,
+        typer.Argument(help="The attempt id, as `practice attempts` prints it."),
+    ],
+    content: Annotated[
+        Path | None,
+        typer.Option(
+            "--content-root",
+            envvar=CONTENT_ROOT_ENV,
+            help="The exercise library the attempt refers to.",
+        ),
+    ] = None,
+    workspaces: Annotated[
+        Path | None,
+        typer.Option(
+            "--workspace-root",
+            envvar=WORKSPACE_ROOT_ENV,
+            help="Where attempt workspaces live. Defaults to the user cache.",
+        ),
+    ] = None,
+    db: Annotated[
+        Path | None,
+        typer.Option(
+            "--database",
+            envvar=DATABASE_PATH_ENV,
+            help="The attempt database. Defaults to the user data directory.",
+        ),
+    ] = None,
+) -> None:
+    """Stop trying, and record the attempt as failed on its last submission.
+
+    For an attempt that has failed at least once and is still open (ADR 0029).
+    Unlike `abandon`, the fail is kept as a result: it counts on the progress
+    page and can be scheduled for review. Exits 1, because what it records is a
+    failure, and 2 when there is nothing to concede.
+    """
+    services = build_services(
+        content=content.resolve() if content is not None else None,
+        workspaces=workspaces.resolve() if workspaces is not None else None,
+        database=db.resolve() if db is not None else None,
+    )
+
+    try:
+        conceded = services.concede_attempt(_attempt_id(attempt))
+    except (ApplicationError, DomainError) as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
+
+    typer.secho(f"{conceded.exercise.id}  {conceded.exercise.title}", bold=True)
+    failures = _plural("failed submission", conceded.tries)
+    typer.echo(f"conceded after {conceded.tries} {failures}")
+    typer.echo("")
+    _report_verdict(conceded)
+    raise typer.Exit(code=1)
+
+
+@app.command("try")
+def try_examples(
+    attempt: Annotated[
+        str,
+        typer.Argument(help="The attempt id, as `practice attempts` prints it."),
+    ],
+    source: Annotated[
+        Path,
+        typer.Option(
+            "--source",
+            "-s",
+            help="The file holding your solution.",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ],
+    content: Annotated[
+        Path | None,
+        typer.Option(
+            "--content-root",
+            envvar=CONTENT_ROOT_ENV,
+            help="The exercise library the attempt refers to.",
+        ),
+    ] = None,
+    workspaces: Annotated[
+        Path | None,
+        typer.Option(
+            "--workspace-root",
+            envvar=WORKSPACE_ROOT_ENV,
+            help="Where attempt workspaces live. Defaults to the user cache.",
+        ),
+    ] = None,
+    db: Annotated[
+        Path | None,
+        typer.Option(
+            "--database",
+            envvar=DATABASE_PATH_ENV,
+            help="The attempt database. Defaults to the user data directory.",
+        ),
+    ] = None,
+) -> None:
+    """Run a kata's examples against your solution, without submitting it.
+
+    The examples are the ones the prompt shows; the hidden suite is not run and
+    nothing is recorded (ADR 0029). Exits 0 when every example gives the
+    expected output, 1 when one does not, 2 when they could not be run.
+    """
+    services = build_services(
+        content=content.resolve() if content is not None else None,
+        workspaces=workspaces.resolve() if workspaces is not None else None,
+        database=db.resolve() if db is not None else None,
+    )
+
+    try:
+        trial = services.try_examples(
+            _attempt_id(attempt), source.read_text(encoding="utf-8")
+        )
+    except (ApplicationError, DomainError, OSError) as exc:
+        typer.secho(f"cannot run the examples: {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=2) from exc
+
+    for number, example in enumerate(trial.examples, start=1):
+        if example.passed:
+            typer.secho(
+                f"{_OK}example {number}: {example.actual}", fg=typer.colors.GREEN
+            )
+        else:
+            typer.secho(f"{_BAD}example {number}", fg=typer.colors.RED)
+            typer.echo(f"{_INDENT}expected {example.expected}")
+            got = (
+                f"raised {example.error}" if example.error else f"got {example.actual}"
+            )
+            typer.echo(f"{_INDENT}{got}")
+        for line in example.stdout.rstrip().splitlines():
+            typer.echo(f"{_INDENT}| {line}")
+    if trial.problem:
+        typer.secho(trial.problem, fg=typer.colors.RED)
+
+    typer.echo("")
+    typer.echo(
+        f"{trial.passed} of {len(trial.examples)} examples gave the expected "
+        f"output. Nothing was submitted."
+    )
+    if not trial.ran:
+        raise typer.Exit(code=2)
+    if not trial.all_passed:
+        raise typer.Exit(code=1)
 
 
 @app.command()
@@ -1613,6 +1774,13 @@ def solve(
         # reports it.
         typer.secho(f"cannot grade this attempt: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=2) from exc
+
+    # One-shot, so a failure is conceded on the spot: `solve` grades *an*
+    # answer and has no next try to wait for. Leaving the attempt open, as a
+    # web or `practice submit` failure does (ADR 0029), would strand a workspace
+    # and an open attempt behind every failing run -- CI's included.
+    if not submission.closed:
+        submission = services.concede_attempt(submission.attempt.id)
 
     typer.echo("")
     typer.echo(f"graded {origin}")

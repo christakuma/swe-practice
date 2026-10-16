@@ -57,6 +57,7 @@ from practice.interface.web.routes import (
     editor,
     progress,
     review,
+    submission,
     tracks,
     tutor,
 )
@@ -133,7 +134,9 @@ def create_app(services: Services) -> FastAPI:
     # Beside the console, and for the same reason: the other half of the kata's
     # surface, whose endpoints live under the page `attempt` owns.
     app.include_router(editor.build_router(services, templates))
-    # Last, and after both: it is the endpoint under the fragment they return.
+    # After both: the endpoint under the fragment a failed submission returns.
+    app.include_router(submission.build_router(services, templates))
+    # Last, and after all three: it is the endpoint under the fragment they return.
     app.include_router(review.build_router(services, templates))
     # The one endpoint under the workbench that belongs to neither half of it
     # and changes nothing: the attempt, as text to paste into a chat.

@@ -28,6 +28,7 @@ from practice.adapters.persistence import (
 from practice.application.registry import GraderRegistry
 from practice.composition import Services
 from practice.domain.exercise import ExerciseKind
+from practice.domain.ids import AttemptId
 from practice.interface.web import create_app
 from tests.fakes import (
     BuilderRepoQueryFactory,
@@ -38,6 +39,7 @@ from tests.fakes import (
     FakeProvisioner,
     FixedChooser,
     FixedScheduler,
+    RecordingExampleRunner,
     SequentialIdGenerator,
     a_drill,
     a_kata,
@@ -108,6 +110,8 @@ class Wiring:
         #: Ctrl+S, scripted. A web test arranges the saves it wants and then
         #: drains the stream, rather than writing a file and waiting.
         self.watcher = FakeFileWatcher()
+        #: The Run button's runner: a canned trial, and the sources it was sent.
+        self.examples = RecordingExampleRunner()
         self.grader = grader
         #: The repository the state panel and the commit graph are drawn from. A
         #: *builder* rather than a built query, so a test can start an attempt and
@@ -142,6 +146,7 @@ class Wiring:
             scheduler=self.scheduler,
             editor=self.editor,
             watcher=self.watcher,
+            examples=self.examples,
             chooser=self.chooser,
         )
 
@@ -185,6 +190,25 @@ def client_for(wiring: Wiring) -> TestClient:
     return TestClient(
         create_app(wiring.services), base_url=ORIGIN, headers=BROWSER_HEADERS
     )
+
+
+def submit_to_the_end(
+    client: TestClient, wiring: Wiring, attempt_id: object, data: dict[str, str]
+) -> str:
+    """Submit a kata, and concede if that left it open. The fragment that ended it.
+
+    A failing submission stopped finishing an attempt in ADR 0029, so a test
+    that wants a *finished* failure -- for the schedule panel, the weak tags,
+    the Next block -- has to stop it the way a solver would. Through the app,
+    for the reason every helper here goes through it: what a page reads is what
+    the app wrote. The track is carried to the concede post, as the page does.
+    """
+    fragment = client.post(f"/api/attempt/{attempt_id}/submit", data=data).text
+    stored = wiring.attempts.get(AttemptId.parse(str(attempt_id)))
+    if stored is None or not stored.is_active:
+        return fragment
+    track = {"track": data["track"]} if "track" in data else {}
+    return client.post(f"/api/attempt/{attempt_id}/concede", data=track).text
 
 
 @pytest.fixture

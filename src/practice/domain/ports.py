@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from practice.domain.ids import AttemptId, ExerciseId, Sha
     from practice.domain.review import Grade, ReviewCard
     from practice.domain.track import Track
+    from practice.domain.trial import Trial
     from practice.domain.verdict import Verdict
 
 __all__ = [
@@ -41,6 +42,7 @@ __all__ = [
     "ContentRepository",
     "DrillQuery",
     "EditorLauncher",
+    "ExampleRunner",
     "FileWatcher",
     "Grader",
     "IdGenerator",
@@ -713,6 +715,28 @@ class Grader(Protocol):
     def grade(
         self, exercise: Exercise, workspace: Workspace, attempt: Attempt
     ) -> Verdict: ...
+
+
+class ExampleRunner(Protocol):
+    """Runs the examples a kata shows against a source, and grades nothing.
+
+    The "Run" button (ADR 0029). A port of its own rather than a second method
+    on `Grader`, because `Grader` is one implementation per exercise kind and
+    only a kata has examples: a method every scenario and drill grader had to
+    refuse would be the conflation Phase 14 spent five call sites undoing.
+
+    **A source, not an `Attempt`**, which is the opposite of `Grader.grade`
+    and for the reason `Grader` gives. A verdict is derived from something the
+    attempt remembers so it is replayable; a trial is about code that is on the
+    solver's screen and nowhere else, and is never stored. Handing it an
+    attempt would invite the in-memory `save_solution` dance `WatchSolutionFile`
+    needs, for a result that has no use for the log.
+
+    Two implementations: `KataExampleRunner`, which runs them in the sandbox
+    beside the hidden suite, and the test double the web suite drives.
+    """
+
+    def run(self, exercise: Exercise, workspace: Workspace, source: str) -> Trial: ...
 
 
 class Scheduler(Protocol):

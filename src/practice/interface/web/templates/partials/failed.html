@@ -1,0 +1,35 @@
+{#
+  A submission that did not pass, on an attempt that is still open (ADR 0029).
+
+  **The verdict, then the two ways on.** The first is to change something and
+  press Submit again, which needs no control here: the editor or the console is
+  still on the page above, and the workspace under it was kept. The second is
+  to stop, and *that* needs a button, because stopping is not abandoning --
+  conceding records this fail, so the progress page counts it and the schedule
+  control is offered for it. An abandoned attempt has neither.
+
+  `partials/verdict.html` is included rather than restated, for the reason it
+  gives about itself: a submission and a reload have to show one verdict the
+  same way, and this is the third place one is shown.
+
+  Returned by both submit routes and included by the page when it loads an open
+  attempt that has failed before, so a reload shows the last failure rather
+  than an empty slot that makes it look as though nothing was submitted.
+#}
+<p class="attempt-open">
+  Submission {{ tries }} did not pass. The attempt is still open: change what
+  failed and submit again.
+</p>
+
+{% include "partials/verdict.html" %}
+
+<form class="concede"
+      hx-post="{{ concede_url }}"
+      hx-target="#verdict"
+      hx-swap="innerHTML"
+      hx-disabled-elt="find button"
+      hx-confirm="Stop here and record this attempt as failed?">
+  {% if track_name %}<input type="hidden" name="track" value="{{ track_name }}">{% endif %}
+  <button type="submit" class="quiet">Stop and record the fail</button>
+  <span class="meta">closes the attempt, so it counts and can be scheduled</span>
+</form>

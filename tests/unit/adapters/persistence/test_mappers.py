@@ -105,8 +105,26 @@ def a_verdict() -> Verdict:
     )
 
 
+def a_failing_verdict() -> Verdict:
+    """A required check that failed, with every optional field set -- what a
+    failed submission carries in its payload (0005)."""
+    return Verdict(
+        (
+            CheckReport(
+                check_id="content-restored",
+                label="The committed tree matches",
+                severity=Severity.REQUIRED,
+                passed=False,
+                expected="tree of @c2",
+                actual="tree of @c3",
+                explanation="The revert has to leave c2's content.",
+            ),
+        )
+    )
+
+
 def a_finished_attempt() -> Attempt:
-    """Every field populated and all three kinds of event in the log."""
+    """Every field populated and all four kinds of event in the log."""
     attempt = Attempt(
         attempt_id=ATTEMPT_ID,
         exercise_id=EXERCISE_ID,
@@ -126,6 +144,7 @@ def a_finished_attempt() -> Attempt:
         at=at(2),
     )
     attempt.save_solution("def two_sum():\n    return ()\n", at=at(3))
+    attempt.submit(a_failing_verdict(), at=at(3))
     attempt.declare_complexity(ComplexityClaim(time="O(n)", space="O(n)"))
     attempt.complete(a_verdict(), at=at(4))
     return attempt
@@ -295,6 +314,16 @@ def test_a_revealed_hint_keeps_the_text_it_was_shown_as() -> None:
     assert getattr(revealed, "hint", None) == Hint("Read build.sh first.")
 
 
+def test_a_failed_submission_keeps_its_whole_verdict() -> None:
+    """The payload is the `verdict` column's shape, so every field a verdict
+    panel prints comes back -- including the explanation the solver was shown."""
+    restored = roundtrip(a_finished_attempt())
+
+    assert [event.verdict for event in restored.failed_submissions] == [
+        a_failing_verdict()
+    ]
+
+
 def test_the_verdict_keeps_its_order_and_its_optional_detail() -> None:
     restored = roundtrip(a_finished_attempt())
     assert restored.verdict is not None
@@ -342,8 +371,13 @@ def test_every_event_is_positioned_in_log_order() -> None:
     """
     rows = event_rows(a_finished_attempt())
 
-    assert [row["position"] for row in rows] == [0, 1, 2]
-    assert [row["kind"] for row in rows] == ["hint", "command", "solution"]
+    assert [row["position"] for row in rows] == [0, 1, 2, 3]
+    assert [row["kind"] for row in rows] == [
+        "hint",
+        "command",
+        "solution",
+        "submission",
+    ]
     assert {row["attempt_id"] for row in rows} == {str(ATTEMPT_ID)}
 
 

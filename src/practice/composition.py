@@ -72,7 +72,7 @@ from practice.adapters.clock import SystemClock
 from practice.adapters.content import FilesystemContentRepository
 from practice.adapters.git import GitRepoQuery, ScenarioGrader
 from practice.adapters.ids import Uuid4IdGenerator
-from practice.adapters.kata import KataGrader, PytestKataRunner
+from practice.adapters.kata import KataExampleRunner, KataGrader, PytestKataRunner
 from practice.adapters.persistence import (
     Database,
     SqliteAttemptRepository,
@@ -89,6 +89,7 @@ from practice.application.use_cases import (
     AbandonAttempt,
     ChooseVersion,
     CollectWorkspaces,
+    ConcedeAttempt,
     ExportTutorContext,
     FindCurrentAttempt,
     FollowTracks,
@@ -110,6 +111,7 @@ from practice.application.use_cases import (
     SubmitScenario,
     SubmitSolution,
     SummariseProgress,
+    TryExamples,
     WatchSolutionFile,
 )
 from practice.config import (
@@ -134,6 +136,7 @@ if TYPE_CHECKING:
         Clock,
         ContentRepository,
         EditorLauncher,
+        ExampleRunner,
         FileWatcher,
         Grader,
         IdGenerator,
@@ -207,6 +210,10 @@ class Services:
     scheduler: Scheduler
     editor: EditorLauncher
     watcher: FileWatcher
+    #: What the Run button runs. Required rather than defaulted like `chooser`,
+    #: because the real one has to share the kata grader's lock (ADR 0029), and
+    #: a default built here would be a second runner with a lock of its own.
+    examples: ExampleRunner
     #: The one port with a default, and the reason is who builds this object:
     #: a dozen test wirings construct `Services` by hand, and only the tests
     #: about a random start care which way chance falls. The default is the
@@ -264,6 +271,19 @@ class Services:
             provisioner=self.provisioner,
             graders=self.graders,
             clock=self.clock,
+        )
+
+    @property
+    def try_examples(self) -> TryExamples:
+        """No clock, no graders and no attempt writes: a run is a preview that
+        records nothing (ADR 0029). The example runner is the one port only it
+        holds.
+        """
+        return TryExamples(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            examples=self.examples,
         )
 
     # --- the lifecycle ----------------------------------------------------
@@ -400,6 +420,18 @@ class Services:
         )
 
     @property
+    def concede_attempt(self) -> ConcedeAttempt:
+        """`abandon_attempt`'s ports exactly, and no grader: conceding closes an
+        attempt on a verdict it already has, and grades nothing (ADR 0029).
+        """
+        return ConcedeAttempt(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            clock=self.clock,
+        )
+
+    @property
     def abandon_attempt(self) -> AbandonAttempt:
         return AbandonAttempt(
             content=self.content,
@@ -530,6 +562,9 @@ def build_services(  # noqa: PLR0913
     """
     library = content if content is not None else content_root()
     storage = Database(database if database is not None else database_path())
+    # One runner for the grader and the Run button, because one lock has to
+    # cover both: each writes `solution.py` into the same workspace.
+    kata_runner = PytestKataRunner()
     return Services(
         content=FilesystemContentRepository(library),
         attempts=(
@@ -541,17 +576,21 @@ def build_services(  # noqa: PLR0913
             workspace_root=workspaces if workspaces is not None else workspace_root(),
             clock=clock,
         ),
-        graders=build_graders(GitRepoQuery),
+        graders=build_graders(GitRepoQuery, kata_runner),
         clock=clock if clock is not None else SystemClock(),
         ids=Uuid4IdGenerator(),
         repo_query=GitRepoQuery,
         scheduler=scheduler if scheduler is not None else build_scheduler(),
         editor=SubprocessEditorLauncher(),
         watcher=WatchfilesFileWatcher(),
+        examples=KataExampleRunner(kata_runner),
     )
 
 
-def build_graders(query_for: RepoQueryFactory | None = None) -> GraderRegistry:
+def build_graders(
+    query_for: RepoQueryFactory | None = None,
+    kata_runner: PytestKataRunner | None = None,
+) -> GraderRegistry:
     """One grader per exercise kind, and as of Phase 14 that is all three.
 
     Each is constructed with its own collaborator rather than reaching for one:
@@ -568,9 +607,17 @@ def build_graders(query_for: RepoQueryFactory | None = None) -> GraderRegistry:
     failure `InspectRepository` exists to make impossible. `None` still means the
     grader's default, which is what keeps `build_graders()` usable from a test that
     has no opinion about it.
+
+    **`kata_runner` is passed in as of ADR 0029, for the same kind of reason.**
+    The Run button's examples runner writes the same file the kata grader does,
+    so the two must hold one lock, which means one runner -- and the place that
+    builds both is `build_services`. `None` builds a fresh one, for a caller
+    with no Run button to share it with.
     """
     graders: dict[ExerciseKind, Grader] = {
-        ExerciseKind.KATA: KataGrader(PytestKataRunner()),
+        ExerciseKind.KATA: KataGrader(
+            kata_runner if kata_runner is not None else PytestKataRunner()
+        ),
         ExerciseKind.GIT_SCENARIO: ScenarioGrader(query_for),
         # No collaborator, and that is the whole report on the third kind's cost
         # here. `KataGrader` takes a runner because a pytest subprocess has to be

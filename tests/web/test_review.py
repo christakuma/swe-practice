@@ -18,7 +18,12 @@ from practice.domain.ids import ExerciseId
 from practice.domain.review import Grade
 from practice.domain.scheduling import FsrsScheduler
 from tests.unit.application.helpers import RecordingGrader, a_failing_verdict
-from tests.web.conftest import a_wiring, client_for, recording_scheduler
+from tests.web.conftest import (
+    a_wiring,
+    client_for,
+    recording_scheduler,
+    submit_to_the_end,
+)
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -37,7 +42,7 @@ def review_url(attempt_id: object) -> str:
 def a_graded_attempt(client: TestClient, wiring: Wiring) -> str:
     """Start a kata and submit it through the app, so there is a card to move."""
     started = wiring.services.start_attempt(KATA)
-    client.post(f"/api/attempt/{started.attempt.id}/submit", data={"source": SOLUTION})
+    submit_to_the_end(client, wiring, started.attempt.id, {"source": SOLUTION})
     return str(started.attempt.id)
 
 

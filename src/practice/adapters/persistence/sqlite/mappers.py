@@ -40,6 +40,7 @@ from practice.domain.attempt import (
     ComplexityClaim,
     HintRevealed,
     SolutionSaved,
+    SubmissionFailed,
 )
 from practice.domain.exercise import Hint
 from practice.domain.ids import AttemptId, ExerciseId
@@ -63,12 +64,14 @@ __all__ = [
     "to_card",
 ]
 
-#: `attempt_events.kind`. Three literals rather than the event class names,
+#: `attempt_events.kind`. Literals rather than the event class names,
 #: because the stored value is schema — it is in a CHECK constraint — and
 #: renaming a dataclass must not require a migration.
 COMMAND: Final = "command"
 HINT: Final = "hint"
 SOLUTION: Final = "solution"
+#: The fourth, from 0005: a submission that failed and left the attempt open.
+SUBMISSION: Final = "submission"
 
 
 class RowError(ValueError):
@@ -153,6 +156,8 @@ def _kind_of(event: AttemptEvent) -> str:
             return HINT
         case SolutionSaved():
             return SOLUTION
+        case SubmissionFailed():
+            return SUBMISSION
 
 
 def _event_payload(event: AttemptEvent) -> dict[str, object]:
@@ -180,6 +185,10 @@ def _event_payload(event: AttemptEvent) -> dict[str, object]:
             return {"index": event.index, "text": event.hint.text}
         case SolutionSaved():
             return {"source": event.source}
+        case SubmissionFailed():
+            # The same shape the `verdict` column holds, nested under a key so
+            # the payload stays an object like every other kind's.
+            return {"verdict": _verdict_payload(event.verdict)}
 
 
 def _verdict_payload(verdict: Verdict) -> list[dict[str, object]]:
@@ -261,6 +270,10 @@ def _to_event(row: Mapping[str, object]) -> AttemptEvent:
         )
     if kind == SOLUTION:
         return SolutionSaved(at=at, source=_payload_text(payload, "source"))
+    if kind == SUBMISSION:
+        return SubmissionFailed(
+            at=at, verdict=_verdict_from(_present(payload, "verdict"))
+        )
     # Unreachable while the CHECK constraint holds, which is the point of having
     # it: a kind nothing handles can only arrive from a schema this file has not
     # been taught about, and guessing which event it meant would be worse.
@@ -268,7 +281,11 @@ def _to_event(row: Mapping[str, object]) -> AttemptEvent:
 
 
 def _to_verdict(raw: object) -> Verdict:
-    payload = _decode(raw, "verdict")
+    return _verdict_from(_decode(raw, "verdict"))
+
+
+def _verdict_from(payload: object) -> Verdict:
+    """A decoded verdict: the `verdict` column's, or a failed submission's."""
     if not isinstance(payload, list):
         raise RowError(f"verdict must be a JSON array, got {type(payload).__name__}")
     return Verdict(
