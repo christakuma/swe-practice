@@ -86,7 +86,7 @@ from practice.interface.web.routes.editor import EDITOR_URL, WATCH_URL
 from practice.interface.web.routes.review import REVIEW_URL
 from practice.interface.web.routes.submission import CONCEDE_URL, render_submission
 from practice.interface.web.routes.tutor import TUTOR_URL
-from practice.interface.web.vendor import mode_file
+from practice.interface.web.vendor import mode_files
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -192,8 +192,10 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 "editor_mode": editable.language if editable else None,
                 # The vendored file that *defines* that mode, from the manifest
                 # rather than built from the name here -- see the comment in
-                # `workbench.html` and `vendor.mode_file`.
-                "editor_mode_file": mode_file(editable.language if editable else None),
+                # `workbench.html` and `vendor.mode_files`.
+                "editor_mode_files": mode_files(
+                    editable.language if editable else None
+                ),
                 "submit_url": SUBMIT_URL.format(attempt_id=parsed),
                 "try_url": TRY_URL.format(attempt_id=parsed),
                 "concede_url": CONCEDE_URL.format(attempt_id=parsed),

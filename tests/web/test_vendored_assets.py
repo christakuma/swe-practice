@@ -51,9 +51,10 @@ def test_the_manifest_is_not_empty() -> None:
 
     A literal count rather than `> 0`, so adding an asset is a deliberate edit
     here. Five since Phase 14, which vendored CodeMirror's SQL mode for the
-    drill workbench.
+    drill workbench; eight since Phase 22, whose Dockerfile mode needs the
+    `simple` addon beside it and whose compose files want YAML.
     """
-    assert len(ASSETS) == 5
+    assert len(ASSETS) == 8
     assert all(asset.sha256 for asset in ASSETS)
 
 

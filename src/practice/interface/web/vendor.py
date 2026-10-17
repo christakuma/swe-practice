@@ -43,7 +43,7 @@ __all__ = [
     "VENDOR_DIRNAME",
     "VendoredAsset",
     "digest",
-    "mode_file",
+    "mode_files",
     "static_root",
     "verify",
 ]
@@ -131,31 +131,64 @@ ASSETS: Final[tuple[VendoredAsset, ...]] = (
         ),
         sha256="4c89a2e950b4c627d7ace5642495f815d5c3cf26302eeaaa92882636d5026af6",
     ),
+    # Phase 22: the fourth kind's two languages. The Dockerfile mode is built
+    # on CodeMirror's `simple` mode addon, so it is two files where every mode
+    # before it was one -- which is why `mode_files` returns a tuple.
+    VendoredAsset(
+        path=f"{VENDOR_DIRNAME}/codemirror-simple.min.js",
+        url=(
+            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
+            f"/addon/mode/simple.min.js"
+        ),
+        sha256="cc4e091d53fe943388368929cbd74d68e5bb3883695c177ee91347d03d0f8e1a",
+    ),
+    VendoredAsset(
+        path=f"{VENDOR_DIRNAME}/codemirror-dockerfile.min.js",
+        url=(
+            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
+            f"/mode/dockerfile/dockerfile.min.js"
+        ),
+        sha256="0e6d1f15568767ec4ae4f48e101f3065e86bc5cc29a6893853018e92d8eac967",
+    ),
+    VendoredAsset(
+        path=f"{VENDOR_DIRNAME}/codemirror-yaml.min.js",
+        url=(
+            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
+            f"/mode/yaml/yaml.min.js"
+        ),
+        sha256="502bed0f3a9db7ee6c3dfea6984eab3b0a4c474387621b06a04a3cff92a5c312",
+    ),
 )
 
-#: CodeMirror mode name to the vendored file that defines it.
+#: CodeMirror mode name to the vendored files that define it, in load order.
 #:
-#: The template reads this through `mode_file`, rather than interpolating the
+#: The template reads this through `mode_files`, rather than interpolating the
 #: mode name into a path itself. A missing entry is then a `None` the template
 #: can branch on, instead of a 404 on a script tag — and a mode whose file was
 #: never vendored degrades to a plain textarea *visibly*, in the one place that
 #: can tell the difference.
-_MODE_FILES: Final[Mapping[str, str]] = MappingProxyType(
+_MODE_FILES: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
     {
-        "python": f"{VENDOR_DIRNAME}/codemirror-python.min.js",
-        "sql": f"{VENDOR_DIRNAME}/codemirror-sql.min.js",
+        "python": (f"{VENDOR_DIRNAME}/codemirror-python.min.js",),
+        "sql": (f"{VENDOR_DIRNAME}/codemirror-sql.min.js",),
+        # The addon first: the mode file calls `defineSimpleMode` on load.
+        "dockerfile": (
+            f"{VENDOR_DIRNAME}/codemirror-simple.min.js",
+            f"{VENDOR_DIRNAME}/codemirror-dockerfile.min.js",
+        ),
+        "yaml": (f"{VENDOR_DIRNAME}/codemirror-yaml.min.js",),
     }
 )
 
 
-def mode_file(mode: str | None) -> str | None:
-    """The vendored file defining a CodeMirror mode, or `None` if there is none.
+def mode_files(mode: str | None) -> tuple[str, ...]:
+    """The vendored files defining a CodeMirror mode, or `()` if there are none.
 
-    `None` for `None` as well as for an unknown name, so a git scenario — which
+    `()` for `None` as well as for an unknown name, so a git scenario — which
     has no editor at all — takes the same branch as a language nobody vendored.
     The template renders no CodeMirror either way, which is correct for both.
     """
-    return _MODE_FILES.get(mode) if mode is not None else None
+    return _MODE_FILES.get(mode, ()) if mode is not None else ()
 
 
 def static_root() -> Path:

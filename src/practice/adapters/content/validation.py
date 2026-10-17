@@ -54,7 +54,7 @@ from practice.domain.checks import registry as checks
 from practice.domain.commands import parse_command_list
 from practice.domain.drills import registry as drills
 from practice.domain.errors import InvalidValueError
-from practice.domain.exercise import GitScenarioSpec, SqlDrillSpec
+from practice.domain.exercise import ContainerSpec, GitScenarioSpec, SqlDrillSpec
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence
@@ -496,6 +496,11 @@ def _audit_something_is_graded(exercise: Exercise) -> Iterator[str]:
     elif isinstance(spec, SqlDrillSpec):
         state = drills.STATE_ASSERTIONS
         craft = "sql_matches / query_plan_matches"
+    elif isinstance(spec, ContainerSpec):
+        # Every container assertion reads the parsed definition (the image,
+        # the process, a service) and none reads the solver's text, so there
+        # is no craft family for a required check to hide behind.
+        return
     else:
         # A kata's checks come out of its test suite rather than its spec, so
         # there is nothing declared here to audit. `tests/content/test_katas.py`
@@ -529,6 +534,9 @@ def _audit_referenced_files(directory: Path, exercise: Exercise) -> Iterator[str
     for name in exercise.spec.referenced_files:
         if not (directory / name).is_file():
             yield f"{name}: named by the spec but not on disk"
+    spec = exercise.spec
+    if isinstance(spec, ContainerSpec) and not (directory / spec.context).is_dir():
+        yield f"{spec.context}/: the build context is not a directory on disk"
 
 
 def _audit_command_lists(directory: Path, spec: GitScenarioSpec) -> Iterator[str]:

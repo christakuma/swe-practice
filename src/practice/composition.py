@@ -69,6 +69,7 @@ from typing import TYPE_CHECKING
 
 from practice.adapters.chance import RandomChooser
 from practice.adapters.clock import SystemClock
+from practice.adapters.container import ContainerGrader
 from practice.adapters.content import FilesystemContentRepository
 from practice.adapters.git import GitRepoQuery, ScenarioGrader
 from practice.adapters.ids import Uuid4IdGenerator
@@ -627,5 +628,8 @@ def build_graders(
         # nothing else reads its database, so there is nothing to inject and a
         # protocol here would be the abstraction §13 says to delete.
         ExerciseKind.SQL_DRILL: SqlDrillGrader(),
+        # The fourth kind needs nothing injected either: it parses text and
+        # never runs a process (ADR 0030).
+        ExerciseKind.CONTAINER: ContainerGrader(),
     }
     return GraderRegistry(graders=graders)

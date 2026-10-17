@@ -53,7 +53,12 @@ from practice.adapters.sandbox.workspace import (
     WorkspaceLayout,
     WorkspacePathError,
 )
-from practice.domain.exercise import GitScenarioSpec, KataSpec, SqlDrillSpec
+from practice.domain.exercise import (
+    ContainerSpec,
+    GitScenarioSpec,
+    KataSpec,
+    SqlDrillSpec,
+)
 from practice.domain.ids import AttemptId, ExerciseId
 from practice.domain.ports import WorkspaceSummary
 
@@ -192,8 +197,10 @@ class SubprocessSandboxProvisioner:
             run_fixture(layout, environment=self._environment(layout))
         elif isinstance(spec, KataSpec):
             self._install_kata_files(layout, directory=directory, spec=spec)
-        else:
+        elif isinstance(spec, SqlDrillSpec):
             self._install_drill_files(layout, directory=directory, spec=spec)
+        else:
+            self._install_container_files(layout, directory=directory, spec=spec)
 
         return self._workspace(layout, policy=CommandPolicy.for_exercise(exercise))
 
@@ -335,6 +342,20 @@ class SubprocessSandboxProvisioner:
         """
         for name in (spec.stub, spec.tests):
             shutil.copyfile(directory / name, layout.repo / name)
+
+    def _install_container_files(
+        self, layout: WorkspaceLayout, *, directory: Path, spec: ContainerSpec
+    ) -> None:
+        """Copy the build context in whole, then the editable file beside it.
+
+        The workspace *is* the build context, so `docker build .` and `docker
+        compose up` work in it unchanged and the solver can watch the symptom
+        happen. The reference and counter-examples stay in the content
+        directory, the answer key staying outside the exam as it does for
+        every kind.
+        """
+        shutil.copytree(directory / spec.context, layout.repo, dirs_exist_ok=True)
+        shutil.copyfile(directory / spec.stub, layout.repo / spec.stub)
 
     def _install_drill_files(
         self, layout: WorkspaceLayout, *, directory: Path, spec: SqlDrillSpec

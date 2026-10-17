@@ -272,7 +272,7 @@ def _scheduler(name: str) -> Step:
 
 
 def _by_kind(counts: Mapping[ExerciseKind, int]) -> str:
-    """`24 git scenarios, 30 katas, 8 SQL drills`, in enum order.
+    """`24 git scenarios, 83 katas, 8 SQL drills, 6 Docker exercises`.
 
     **This line used to be computed by subtraction** --
     `scenarios = len(exercises) - katas` -- which was correct for exactly as
@@ -283,9 +283,17 @@ def _by_kind(counts: Mapping[ExerciseKind, int]) -> str:
     it: the arithmetic is valid, it is the *claim* that stopped being true.
 
     Kinds with no exercises are left out rather than printed as zero. The
-    library this ships with has all three, so the only reader of that branch is
+    library this ships with has all four, so the only reader of that branch is
     someone pointing `--content-root` at a library of their own, and
     `0 SQL drills` is noise in the first line a stranger reads.
+
+    **Phase 22 nearly repeated the defect above.** The loop walked `names`, so a
+    kind missing from it was skipped rather than refused: the six Docker
+    exercises would have been in the total and absent from the breakdown,
+    which is the same claim-that-stopped-being-true. It walks the enum now, in
+    the order `names` gives, so a fifth kind with no name here is a
+    `ValueError` on the first run of the launcher's tests rather than a line
+    that no longer adds up.
 
     ASCII only and `_plural`, for the reasons the caller gives.
     """
@@ -293,10 +301,11 @@ def _by_kind(counts: Mapping[ExerciseKind, int]) -> str:
         ExerciseKind.GIT_SCENARIO: "git scenario",
         ExerciseKind.KATA: "kata",
         ExerciseKind.SQL_DRILL: "SQL drill",
+        ExerciseKind.CONTAINER: "Docker exercise",
     }
     parts = [
         f"{counts[kind]} {_plural(names[kind], counts[kind])}"
-        for kind in names
+        for kind in sorted(ExerciseKind, key=list(names).index)
         if counts.get(kind)
     ]
     return ", ".join(parts)

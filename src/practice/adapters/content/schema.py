@@ -62,10 +62,12 @@ from pydantic import (
 )
 
 from practice.domain.checks import registry
+from practice.domain.containers import registry as containers
 from practice.domain.drills import registry as drills
 from practice.domain.exercise import (
     CheckSpec,
     ComplexityExpectation,
+    ContainerSpec,
     CounterExample,
     Difficulty,
     Example,
@@ -92,6 +94,9 @@ __all__ = [
     "SCHEMA_VERSION",
     "CheckModel",
     "ComplexityModel",
+    "ContainerCheckModel",
+    "ContainerFile",
+    "ContainerSpecModel",
     "CounterExampleModel",
     "DrillCheckModel",
     "ExampleModel",
@@ -239,7 +244,7 @@ class CheckModel(_CheckModel):
 
     @classmethod
     def _other_family(cls, value: str) -> str | None:
-        return drills.misplaced_in_scenario(value)
+        return drills.misplaced_in_scenario(value) or _container_family(value)
 
 
 class DrillCheckModel(_CheckModel):
@@ -255,7 +260,32 @@ class DrillCheckModel(_CheckModel):
 
     @classmethod
     def _other_family(cls, value: str) -> str | None:
-        return drills.other_family(value)
+        return drills.other_family(value) or _container_family(value)
+
+
+class ContainerCheckModel(_CheckModel):
+    """One entry in a container exercise's `checks:`: the `BuildQuery` vocabulary."""
+
+    @classmethod
+    def _is_registered(cls, value: str) -> bool:
+        return containers.is_registered(value)
+
+    @classmethod
+    def _suggest(cls, value: str) -> tuple[str, ...]:
+        return containers.suggest(value)
+
+    @classmethod
+    def _other_family(cls, value: str) -> str | None:
+        return containers.family_of(value)
+
+
+def _container_family(value: str) -> str | None:
+    """`'container'` if a git or drill block named a container assertion.
+
+    The two older models ask their own registry first, so this is only the
+    newest family's half of the fact, added where the other two already look.
+    """
+    return "container" if containers.is_registered(value) else None
 
 
 class CounterExampleModel(_Model):
@@ -462,6 +492,32 @@ class SqlDrillSpecModel(_SpecModel):
         )
 
 
+class ContainerSpecModel(_SpecModel):
+    """The `container:` block.
+
+    No `allowed_commands`, for the drill's reason: there is no console. `stub`
+    is checked by the domain to be `Dockerfile` or `compose.yaml`, and
+    `context` is a directory beside the exercise rather than a file.
+    """
+
+    context: _Text
+    stub: _Text
+    reference: _Text
+    checks: tuple[ContainerCheckModel, ...]
+    counter_examples: tuple[CounterExampleModel, ...] = ()
+
+    def to_domain(self) -> ContainerSpec:
+        return ContainerSpec(
+            context=self.context,
+            stub=self.stub,
+            reference=self.reference,
+            checks=tuple(check.domain for check in self.checks),
+            counter_examples=tuple(
+                example.to_domain() for example in self.counter_examples
+            ),
+        )
+
+
 # --- the file itself -------------------------------------------------------
 
 
@@ -587,11 +643,25 @@ class SqlDrillFile(_ExerciseFileBase):
         return self.drill
 
 
-type ExerciseFile = KataFile | GitScenarioFile | SqlDrillFile
+class ContainerFile(_ExerciseFileBase):
+    """`kind: container`, Phase 22."""
+
+    kind: Literal[ExerciseKind.CONTAINER]
+    container: ContainerSpecModel
+
+    @property
+    def spec_model(self) -> ContainerSpecModel:
+        return self.container
+
+
+type ExerciseFile = KataFile | GitScenarioFile | SqlDrillFile | ContainerFile
 
 #: The single entry point for parsing. A `TypeAdapter` over the tagged union
 #: rather than a wrapper model, so what an author sees is the discriminator's
 #: own error rather than one nested a level deeper than the file it describes.
 EXERCISE_FILE: TypeAdapter[ExerciseFile] = TypeAdapter(
-    Annotated[KataFile | GitScenarioFile | SqlDrillFile, Field(discriminator="kind")]
+    Annotated[
+        KataFile | GitScenarioFile | SqlDrillFile | ContainerFile,
+        Field(discriminator="kind"),
+    ]
 )
