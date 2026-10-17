@@ -36,6 +36,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "AttemptRepository",
+    "BuildQuery",
     "Chooser",
     "Clock",
     "CommitInfo",
@@ -46,6 +47,7 @@ __all__ = [
     "FileWatcher",
     "Grader",
     "IdGenerator",
+    "Instruction",
     "RepoQuery",
     "RepoQueryFactory",
     "ResultSet",
@@ -53,6 +55,7 @@ __all__ = [
     "SandboxProvisioner",
     "Scalar",
     "Scheduler",
+    "Stage",
     "Workspace",
     "WorkspaceSummary",
     "WorktreeStatus",
@@ -280,6 +283,124 @@ class DrillQuery(Protocol):
 
         Advisory by convention, like `command_used`. A required check over the
         text of an answer would be the string matching ADR 0003 rejected.
+        """
+        ...
+
+
+# --- the BuildQuery vocabulary --------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Instruction:
+    """One Dockerfile instruction, after continuations are joined and flags split.
+
+    `form` is a fact about the instruction rather than a formatting detail, which
+    is why it is a field and not something an assertion re-derives from the
+    text. `CMD ["python", "app.py"]` and `CMD python app.py` start different
+    processes: the second is `/bin/sh -c "python app.py"`, and the shell is PID
+    1. Half the container track is about that difference, so it has to survive
+    parsing.
+
+    `args` is the argument vector for the exec form and a one-element tuple
+    holding the whole line for the shell form. `flags` holds the `--name=value`
+    options Docker reads before the arguments (`--from`, `--chown`, `--mount`),
+    in order, because `RUN --mount=type=secret` and `RUN --mount=type=cache` are
+    both `mount` and a mapping would keep one of them.
+    """
+
+    keyword: str
+    form: str
+    args: tuple[str, ...]
+    flags: tuple[tuple[str, str], ...] = ()
+    line: int = 0
+
+    @property
+    def text(self) -> str:
+        """The instruction as one line, for pattern matching and for reports."""
+        flags = " ".join(f"--{name}={value}" for name, value in self.flags)
+        body = " ".join(self.args)
+        return " ".join(part for part in (self.keyword, flags, body) if part)
+
+
+@dataclass(frozen=True, slots=True)
+class Stage:
+    """One `FROM` and everything after it, up to the next `FROM`.
+
+    `base` is the image reference with build arguments already substituted,
+    because `FROM python:${PY}-slim` names an image only after `ARG PY=3.12`
+    is applied, and the lesson about pinning is about the image rather than the
+    spelling. `name` is the `AS` alias, or `None`.
+    """
+
+    base: str
+    name: str | None
+    instructions: tuple[Instruction, ...]
+
+
+class BuildQuery(Protocol):
+    """Read-only interrogation of a container definition. `DrillQuery`'s counterpart.
+
+    The fourth kind's port (ADR 0030). What a Docker exercise grades is the
+    *definition*: the Dockerfile and compose file as Docker would read them,
+    rather than an image a daemon built. That is the price of staying offline
+    on both CI platforms, and the methods below are chosen so that what it can
+    see is what Docker would do, not what the solver typed. `effective_process`
+    composes `ENTRYPOINT` and `CMD` the way the engine does, `path_in_image`
+    applies `.dockerignore`, and `service` hands back compose's long form
+    whichever spelling the file used. Every assertion in `domain/containers/` is
+    a pure function of one of these.
+
+    `error` is how a definition says it could not be read, reported and not
+    raised, the same choice `DrillQuery.error` makes and for the same reason:
+    a parse error is the most ordinary thing a solver produces.
+    """
+
+    def error(self) -> str | None:
+        """Why the definition could not be read, or `None` if it could."""
+        ...
+
+    def stages(self) -> tuple[Stage, ...]:
+        """Every build stage in file order. The last one is the image that ships."""
+        ...
+
+    def effective_process(self) -> tuple[str, ...]:
+        """The argument vector PID 1 is started with, or `()` if there is none.
+
+        Composed the way Docker composes it. An exec-form `ENTRYPOINT` is followed
+        by the exec-form `CMD`; a shell form becomes `/bin/sh -c <line>` and
+        throws a `CMD` away. Both are inherited from the stage an image is built
+        `FROM` when that is another stage in the same file. An image whose base
+        is external has a process this file cannot see, so the answer is the
+        empty tuple rather than a guess.
+        """
+        ...
+
+    def final_user(self) -> str:
+        """Who the shipped image runs as: the last `USER`, or `root` by default."""
+        ...
+
+    def path_in_image(self, path: str) -> bool:
+        """Whether a build-context file ends up in a layer of the shipped image.
+
+        Follows `COPY` and `ADD` sources in the final stage and every stage it
+        inherits from, excludes what `.dockerignore` removes from the context, and
+        ignores every later `RUN rm`. The last part is the lesson: a layer is
+        immutable once written, and deleting a file in a later one only hides it.
+        """
+        ...
+
+    def services(self) -> frozenset[str]:
+        """Every service the compose file declares."""
+        ...
+
+    def service(self, name: str) -> Mapping[str, object] | None:
+        """One compose service in long form, or `None` if it is not declared.
+
+        `environment` is always a mapping, `depends_on` always maps a service to
+        `{condition: ...}`, and the short `ports` syntax becomes a list of
+        mappings. An assertion over this does not have to know which spelling the
+        author or the solver preferred, and that is what keeps it an assertion
+        about the end state.
         """
         ...
 

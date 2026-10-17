@@ -17,10 +17,12 @@ adapters' behaviour wherever it is observable — `attach` returning `None`,
 makes its tests prove nothing.
 """
 
+from tests.fakes.build import FakeBuildQuery
 from tests.fakes.chance import FixedChooser
 from tests.fakes.clock import FakeClock
 from tests.fakes.content import (
     FakeContentRepository,
+    a_container,
     a_drill,
     a_kata,
     a_scenario,
@@ -45,6 +47,7 @@ from tests.fakes.watcher import FakeFileWatcher
 __all__ = [
     "BuilderRepoQueryFactory",
     "Commit",
+    "FakeBuildQuery",
     "FakeClock",
     "FakeContentRepository",
     "FakeDrillQuery",
@@ -61,6 +64,7 @@ __all__ = [
     "Scheduled",
     "SequentialIdGenerator",
     "StubKataRunner",
+    "a_container",
     "a_drill",
     "a_kata",
     "a_record",

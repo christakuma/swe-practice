@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from practice.domain.exercise import (
     CheckSpec,
     ComplexityExpectation,
+    ContainerSpec,
     Difficulty,
     Example,
     Exercise,
@@ -38,7 +39,13 @@ if TYPE_CHECKING:
     from practice.domain.exercise import ExerciseFilter
     from practice.domain.track import Track
 
-__all__ = ["FakeContentRepository", "a_drill", "a_kata", "a_scenario"]
+__all__ = [
+    "FakeContentRepository",
+    "a_container",
+    "a_drill",
+    "a_kata",
+    "a_scenario",
+]
 
 
 def a_kata(
@@ -156,6 +163,47 @@ def a_drill(
                     # would get an authoring error where it expected a grade.
                     params={"rows": (("alice", 2), ("bob", 0), ("carol", 1))},
                     explanation="A customer with no orders still has a row.",
+                ),
+            ),
+        ),
+    )
+
+
+def a_container(
+    *,
+    exercise_id: str = "docker/connection-reset-from-the-host",
+    stub: str = "Dockerfile",
+    checks: tuple[CheckSpec, ...] = (),
+) -> Exercise:
+    """A container exercise, named and shaped like the real ones.
+
+    `checks` defaults to one required `command_matches` with real params, for
+    the reason `a_drill` gives: a default check with no `with:` would grade as
+    a misconfigured exercise rather than as an answer.
+    """
+    return Exercise(
+        id=ExerciseId(exercise_id),
+        kind=ExerciseKind.CONTAINER,
+        title="It runs, the port is published, and nothing answers",
+        prompt="Fix the Dockerfile so the published port reaches the app.",
+        difficulty=Difficulty.EASY,
+        tags=(tag("docker"),),
+        estimated_minutes=12,
+        hints=(Hint("Where is gunicorn listening?"),),
+        notes="A container's localhost is its own.",
+        spec=ContainerSpec(
+            context="context",
+            stub=stub,
+            reference="solution.Dockerfile",
+            checks=checks
+            or (
+                CheckSpec(
+                    id="listens-everywhere",
+                    label="gunicorn listens on every interface.",
+                    severity=Severity.REQUIRED,
+                    assertion="command_matches",
+                    params={"pattern": r"0\.0\.0\.0:8000"},
+                    explanation="127.0.0.1 is the container's own loopback.",
                 ),
             ),
         ),

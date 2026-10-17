@@ -46,8 +46,10 @@ if TYPE_CHECKING:
     from practice.domain.ids import ExerciseId, Tag
 
 __all__ = [
+    "CONTAINER_FILES",
     "CheckSpec",
     "ComplexityExpectation",
+    "ContainerSpec",
     "CounterExample",
     "Difficulty",
     "EditableSource",
@@ -70,6 +72,12 @@ __all__ = [
 _CHECK_ID: Final = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _ASSERTION_NAME: Final = re.compile(r"^[a-z][a-z0-9_]*$")
 
+#: The files a container exercise may hand the solver, and the editor mode for
+#: each. Two, because each is the name Docker looks for without being told.
+CONTAINER_FILES: Final[Mapping[str, str]] = MappingProxyType(
+    {"Dockerfile": "dockerfile", "compose.yaml": "yaml"}
+)
+
 
 class ExerciseKind(StrEnum):
     """Values match the `kind:` field in `exercise.yaml` and the persisted form."""
@@ -77,6 +85,7 @@ class ExerciseKind(StrEnum):
     KATA = "kata"
     GIT_SCENARIO = "git_scenario"
     SQL_DRILL = "sql_drill"
+    CONTAINER = "container"
 
 
 class Difficulty(StrEnum):
@@ -574,7 +583,93 @@ class SqlDrillSpec:
         raise InvalidValueError(f"no such check: {check_id!r}")
 
 
-type ExerciseSpec = KataSpec | GitScenarioSpec | SqlDrillSpec
+@dataclass(frozen=True, slots=True)
+class ContainerSpec:
+    """A small project, one container definition to fix, and the checks it must pass.
+
+    The fourth kind (Phase 22, ADR 0030), and the one PLAN.md had turned down
+    three times because a real container cannot be built offline on both CI
+    platforms. **What is graded is the definition, not an image**: the
+    Dockerfile or compose file as Docker would read it, through a `BuildQuery`
+    that composes the process, applies `.dockerignore` and normalises compose's
+    spellings. The solver can still `docker build` in the workspace, and is
+    encouraged to; the verdict never needs a daemon.
+
+    **One editable file, named what Docker expects.** `stub` is literally
+    `Dockerfile` or `compose.yaml`, because the workspace is meant to be a
+    directory `docker build .` works in, and a `stub.Dockerfile` would make
+    every solver pass `-f`. This is the decision that kept the kind a clause in
+    `editable_source` rather than a rework of the one-source attempt. Every
+    exercise in the first batch can be fixed in one file, and ADR 0030 says what
+    would change that.
+
+    **`context` is a directory, copied whole**, where every other kind names
+    files. A container exercise is a project: an app, its requirements, a
+    `.env` that should not ship, a `.dockerignore` that is part of the answer
+    only when it is read. A list of bare names could not hold a package
+    directory, and `path_in_image` has to see the same tree Docker's build
+    context would. It is still a bare name itself, so it resolves beside the
+    exercise like everything else.
+    """
+
+    context: str
+    stub: str
+    reference: str
+    checks: tuple[CheckSpec, ...]
+    counter_examples: tuple[CounterExample, ...] = ()
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("context", self.context),
+            ("stub", self.stub),
+            ("reference", self.reference),
+        ):
+            if not value.strip():
+                raise InvalidValueError(f"a container exercise needs a {name}")
+            validate_filename(value, field=name, subject="a container exercise")
+        if self.stub not in CONTAINER_FILES:
+            raise InvalidValueError(
+                f"a container exercise edits one of {sorted(CONTAINER_FILES)}, "
+                f"not {self.stub!r}; the workspace has to be somewhere "
+                f"`docker build .` or `docker compose up` works unchanged"
+            )
+        validate_checks(self.checks, self.counter_examples, subject="container")
+
+    @property
+    def kind(self) -> ExerciseKind:
+        return ExerciseKind.CONTAINER
+
+    @property
+    def language(self) -> str:
+        """The editor mode, which follows from the file rather than being declared."""
+        return CONTAINER_FILES[self.stub]
+
+    @property
+    def required_checks(self) -> tuple[CheckSpec, ...]:
+        return tuple(check for check in self.checks if check.is_required)
+
+    @property
+    def check_ids(self) -> frozenset[str]:
+        return frozenset(check.id for check in self.checks)
+
+    @property
+    def referenced_files(self) -> tuple[str, ...]:
+        """Every sibling file this spec names. `context` is a directory, so not here."""
+        return (self.stub, self.reference, *self.counter_example_files)
+
+    @property
+    def counter_example_files(self) -> tuple[str, ...]:
+        return tuple(example.file for example in self.counter_examples)
+
+    def check(self, check_id: str) -> CheckSpec:
+        """Look a check up by id, for the counter-example replay in CI."""
+        for candidate in self.checks:
+            if candidate.id == check_id:
+                return candidate
+        raise InvalidValueError(f"no such check: {check_id!r}")
+
+
+type ExerciseSpec = KataSpec | GitScenarioSpec | SqlDrillSpec | ContainerSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -634,6 +729,10 @@ def editable_source(spec: ExerciseSpec) -> EditableSource | None:
     if isinstance(spec, SqlDrillSpec):
         return EditableSource(
             filename=spec.stub, language="sql", reference=spec.reference
+        )
+    if isinstance(spec, ContainerSpec):
+        return EditableSource(
+            filename=spec.stub, language=spec.language, reference=spec.reference
         )
     return None
 
