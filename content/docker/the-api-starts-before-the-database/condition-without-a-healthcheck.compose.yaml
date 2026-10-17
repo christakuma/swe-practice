@@ -1,0 +1,18 @@
+# Counter-example: compose refuses this -- nothing tells it when db is healthy.
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://orders:orders@db:5432/orders
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders

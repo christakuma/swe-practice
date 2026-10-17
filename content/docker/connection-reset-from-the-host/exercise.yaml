@@ -1,0 +1,109 @@
+schema_version: 1
+id: docker/connection-reset-from-the-host
+kind: container
+title: It runs, the port is published, and nothing answers
+difficulty: easy
+tags: [docker, dockerfile, networking]
+estimated_minutes: 12
+
+prompt: |
+  **Ticket OPS-2291** — *orders-api unreachable in local Docker*
+
+  > Built the image from this directory and ran it the way the README says.
+  > The container is up and the port is published, but every request from my
+  > machine comes back empty. Exec-ing into the container and asking from
+  > there works fine, so the app isn't broken?
+
+  ```
+  $ docker run -d --name orders-api -p 8000:8000 orders-api
+  $ docker ps
+  IMAGE        STATUS         PORTS                                         NAMES
+  orders-api   Up 4 seconds   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp   orders-api
+
+  $ curl -sS localhost:8000
+  curl: (52) Empty reply from server
+
+  $ docker logs orders-api
+  [INFO] Starting gunicorn 23.0.0
+  [INFO] Listening at: http://127.0.0.1:8000 (1)
+  [INFO] Using worker: sync
+  [INFO] Booting worker with pid: 7
+
+  $ docker exec orders-api python -c "import urllib.request; \
+      print(urllib.request.urlopen('http://localhost:8000/').read().decode())"
+  {"service": "orders", "version": "dev"}
+  ```
+
+  Fix the `Dockerfile` so the published port reaches the app. The `docker
+  run` command in the ticket is what everyone uses, so it stays as it is.
+  Pass the bind address on gunicorn's command line.
+
+  Every line of the ticket is real output, captured from this directory's
+  `Dockerfile` — build it and watch it happen.
+
+hints:
+  - "Read the logs line by line. `Listening at: http://127.0.0.1:8000` says
+     *where* gunicorn is listening, and the request from inside the container
+     proves the app works. So the question is where the ticket's request
+     arrives, and whether that is the same place."
+  - "Inside a container, `127.0.0.1` is the container's own loopback
+     interface, not your machine's. `-p 8000:8000` forwards traffic to the
+     container's *network* interface, an address like `172.17.0.2`. Nothing
+     is listening there, so the connection is closed with no reply."
+  - "`EXPOSE 8000` is already in the file and was never the problem: it is
+     documentation, and changes nothing about where a process listens.
+     The fix is gunicorn's `--bind` flag."
+  - "`CMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"app:app\"]` — `0.0.0.0`
+     means every interface the container has, which includes the one the
+     published port arrives on."
+
+container:
+  context: context
+  stub: Dockerfile
+  reference: solution.Dockerfile
+
+  counter_examples:
+    - file: wrong-port.Dockerfile
+      expect_failures: [listens-where-the-port-arrives]
+    - file: loopback-spelled-out.Dockerfile
+      expect_failures: [listens-where-the-port-arrives]
+    - file: shell-form-fix.Dockerfile
+      expect_failures: [pid1-is-not-a-shell]
+
+  checks:
+    - id: listens-where-the-port-arrives
+      label: gunicorn listens on every interface, on port 8000
+      severity: required
+      assert: command_matches
+      with: {pattern: '(--bind[= ]|-b ?)(0\.0\.0\.0|\[::\])?:8000\b'}
+      explanation: |
+        A container has its own network namespace, so its own loopback.
+        Docker's port publishing delivers traffic to the container's network
+        interface, and a server bound to `127.0.0.1` never sees it. The
+        connection is accepted at the edge and has nowhere to go, which is the
+        empty reply. Binding `0.0.0.0` (or `[::]`, or just `:8000`, which
+        gunicorn reads the same way) listens on every interface. The port
+        stays 8000 because the ticket's `-p 8000:8000` maps to it.
+
+    - id: still-gunicorn-serving-the-app
+      label: The container still starts gunicorn serving app:app
+      severity: required
+      assert: command_matches
+      with: {pattern: 'gunicorn\b.*\bapp:app\b'}
+      explanation: |
+        The fix is a flag, not a different server. Swapping gunicorn out for
+        something else would change the problem rather than solve it.
+
+    - id: pid1-is-not-a-shell
+      label: gunicorn is still PID 1, not a shell
+      severity: required
+      assert: pid1_matches
+      not: true
+      with: {pattern: '(^|/)(ba|da)?sh$'}
+      explanation: |
+        The stub had this right, and the easy way to add a flag loses it.
+        Rewriting the JSON array as the plain form, `CMD gunicorn --bind
+        0.0.0.0:8000 app:app`, does fix the reset, and it runs gunicorn
+        under `/bin/sh -c`. The shell becomes PID 1, and `docker stop` now
+        waits ten seconds and kills gunicorn instead of letting it finish its
+        requests. One bug fixed, another introduced.

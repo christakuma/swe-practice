@@ -171,6 +171,12 @@ ignore = [
 # exactly the place a solver looks when a check fails. Phase 11 added it, once
 # the library had thirty katas rather than one whose answers were all tuples.
 "content/**/tests.py" = ["S101", "PLR2004"]
+# The services inside a Docker exercise's build context. Linted for the
+# kata reason, with two rules that would contradict the lesson: a container
+# logs by printing to stdout, which is what `docker logs` reads (`T20`), and
+# binding every interface is what three of the six exercises teach (`S104`).
+"content/docker/**" = ["T20", "S104"]
+"content/docker/**/tests/*.py" = ["S101", "PLR2004"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]
@@ -217,6 +223,7 @@ markers = [
     "content: parametrized over every exercise on disk (tests/content)",
     "web: FastAPI TestClient and fragment assertions (tests/web)",
     "e2e: one exercise driven end to end through the CLI (tests/e2e)",
+    "docker: real Docker daemon; skipped unless PRACTICE_DOCKER_TESTS=1 (tests/docker)",
 ]
 
 # --- coverage --------------------------------------------------------------

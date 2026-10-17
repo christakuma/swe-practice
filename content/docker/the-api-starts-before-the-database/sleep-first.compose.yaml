@@ -1,0 +1,18 @@
+# Counter-example: guess how long Postgres takes, and hope.
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://orders:orders@db:5432/orders
+    depends_on:
+      - db
+    command: ["sh", "-c", "sleep 10 && exec python -u app.py"]
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders

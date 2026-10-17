@@ -1,0 +1,166 @@
+schema_version: 1
+id: docker/dockerize-a-python-web-service
+kind: container
+title: Write the Dockerfile for a small web service
+difficulty: easy
+tags: [docker, dockerfile, layer-caching, signals]
+estimated_minutes: 20
+
+prompt: |
+  The orders service is a single WSGI app in `app.py`, served by
+  gunicorn — `requirements.txt` pins it. Today it runs
+  on one engineer's laptop with `pip install -r requirements.txt && gunicorn
+  app:app`. Write the `Dockerfile` that lets anyone run it with:
+
+  ```
+  docker build -t orders .
+  docker run --rm -p 8000:8000 orders
+  ```
+
+  and then reach it at `http://localhost:8000`. The team has three requirements
+  beyond "it works", each from a past incident:
+
+  1. **Builds are repeatable.** Start from a pinned, slim Python 3 image —
+     `python:3.12-slim` is fine — not from a tag that moves.
+  2. **Rebuilds are fast.** Changing a line of `app.py` must not reinstall
+     every dependency. Only a change to `requirements.txt` should.
+  3. **`docker stop` stops it cleanly**, rather than waiting ten seconds and
+     killing it.
+
+  Serve it with gunicorn on port 8000, passing the bind address on gunicorn's
+  command line. A `.dockerignore` is already in place.
+
+  You have Docker installed: build and run what you write. The grader reads the
+  Dockerfile rather than an image, so it never needs a daemon, but watching the
+  container start is the fastest way to find out what is wrong.
+
+hints:
+  - "Start with three lines and grow: `FROM python:3.12-slim`, `WORKDIR /app`,
+     and a `COPY`. Build after each change — `docker build` prints a numbered
+     step per instruction, and the word `CACHED` beside the ones it reused."
+  - "Docker reuses a cached layer until something that layer depends on
+     changes, and every layer after a changed one is rebuilt. `COPY . .` depends
+     on every file in the context, so if it comes before `pip install`, editing
+     `app.py` reinstalls everything. Copy `requirements.txt` on its own first,
+     install, *then* copy the rest."
+  - "Run your image and try `curl localhost:8000`. If the container logs say
+     `Listening at: http://127.0.0.1:8000`, gunicorn is listening on the
+     container's own loopback, which a published port never reaches. Bind to
+     every interface: `--bind 0.0.0.0:8000`."
+  - "Write `CMD` as a JSON array — `CMD [\"gunicorn\", \"--bind\",
+     \"0.0.0.0:8000\", \"app:app\"]`. The plain form `CMD gunicorn ...` runs
+     the command *through `/bin/sh`*, which becomes PID 1 and does not pass
+     `docker stop`'s SIGTERM on to gunicorn."
+
+container:
+  context: context
+  stub: Dockerfile
+  reference: solution.Dockerfile
+
+  counter_examples:
+    - file: copy-everything-first.Dockerfile
+      expect_failures: [install-before-source]
+    - file: latest-base.Dockerfile
+      expect_failures: [pinned-slim-base]
+    - file: shell-form-cmd.Dockerfile
+      expect_failures: [pid1-is-not-a-shell]
+    - file: default-bind.Dockerfile
+      expect_failures: [serves-every-interface]
+
+  checks:
+    - id: pinned-slim-base
+      label: Built from a pinned, slim Python 3 image
+      severity: required
+      assert: base_image_matches
+      with: {pattern: '^python:3\.\d+(\.\d+)?-slim(-[a-z]+)?$'}
+      explanation: |
+        `python:latest` and `python:3` are moving targets: the same Dockerfile
+        builds a different image the day a new release is tagged, which is how
+        "it worked on Friday" happens. A version in the tag pins the
+        interpreter; `-slim` drops the compilers and docs the full image
+        carries, which you are not using and would otherwise ship. Pinning to
+        a digest (`python:3.12-slim@sha256:...`) is stricter still, and this
+        check accepts it.
+
+    - id: requirements-before-install
+      label: requirements.txt is in the image before pip reads it
+      severity: required
+      assert: ordered_before
+      with:
+        first: '^(COPY|ADD) (--\S+ )*(\S+ )*(requirements\.txt|\.)( \S+)+$'
+        then: '^RUN .*pip install'
+      explanation: |
+        `pip install -r requirements.txt` reads a file, and a build has only
+        the files it has copied in. Either `COPY requirements.txt .` or
+        `COPY . .` puts it there; one of them has to come first.
+
+    - id: install-before-source
+      label: Dependencies install before the source is copied
+      severity: required
+      assert: ordered_before
+      with:
+        first: '^RUN .*pip install'
+        then: '^(COPY|ADD) (--\S+ )*(\S+ )*(\.|app\.py)( \S+)+$'
+      explanation: |
+        The layer cache is the reason. Docker reuses a layer until something it
+        depends on changes, and everything after a changed layer is rebuilt.
+        `COPY . .` changes whenever any file does, so a `pip install` after it
+        runs again on every edit to `app.py`. Copying the requirements alone,
+        installing, and only then copying the source means an ordinary code
+        change rebuilds one cheap layer.
+
+    - id: app-in-image
+      label: The app itself is in the image
+      severity: required
+      assert: path_in_image
+      with: {path: app.py}
+      explanation: |
+        The image has to contain the thing it runs. This is the check that
+        stops a Dockerfile which installs gunicorn and nothing else from
+        passing.
+
+    - id: serves-every-interface
+      label: gunicorn listens on every interface, on port 8000
+      severity: required
+      assert: command_matches
+      with: {pattern: 'gunicorn\b.*(--bind[= ]|-b ?)(0\.0\.0\.0|\[::\])?:8000\b'}
+      explanation: |
+        gunicorn binds `127.0.0.1:8000` unless told otherwise. On a laptop that
+        is the right default. Inside a container, `127.0.0.1` is the
+        *container's* loopback, and `-p 8000:8000` delivers traffic to the
+        container's network interface instead, so nothing answers. `0.0.0.0`
+        means every interface the container has.
+
+    - id: pid1-is-not-a-shell
+      label: gunicorn is PID 1, not a shell
+      severity: required
+      assert: pid1_matches
+      not: true
+      with: {pattern: '(^|/)(ba|da)?sh$'}
+      explanation: |
+        `docker stop` sends SIGTERM to PID 1 and waits ten seconds before
+        sending SIGKILL. The shell form of `CMD` makes PID 1 `/bin/sh -c
+        "gunicorn ..."`, and a shell running as PID 1 neither handles SIGTERM
+        nor forwards it: gunicorn never hears it, and is killed mid-request
+        ten seconds later. The JSON-array form runs gunicorn directly.
+
+    - id: not-root
+      label: The service does not run as root
+      severity: advisory
+      assert: runs_as
+      not: true
+      with: {pattern: '^(root|0)(:|$)'}
+      explanation: |
+        Nothing about this service needs root, and a process that is root
+        inside a container is one bug away from being root on files it can
+        reach. `RUN useradd ... app` then `USER app` costs two lines.
+
+    - id: no-pip-cache
+      label: pip's download cache is not baked into the image
+      severity: advisory
+      assert: instruction_matches
+      with: {pattern: '^RUN .*pip install .*--no-cache-dir'}
+      explanation: |
+        pip keeps every wheel it downloads under `~/.cache/pip`, and in a
+        `RUN` layer that cache ships with the image and is never used again.
+        `--no-cache-dir` keeps it out.

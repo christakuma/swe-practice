@@ -1,0 +1,16 @@
+# Each service is its own container with its own loopback. Compose puts
+# them on one network where every service is reachable by its name.
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://orders:orders@db:5432/orders
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders

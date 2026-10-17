@@ -111,6 +111,7 @@ _MARKER_BY_DIRECTORY = {
     "content": "content",
     "web": "web",
     "e2e": "e2e",
+    "docker": "docker",
 }
 
 

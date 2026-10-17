@@ -1,0 +1,15 @@
+# Counter-example: 127.0.0.1 is localhost by another name.
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://orders:orders@127.0.0.1:5432/orders
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders

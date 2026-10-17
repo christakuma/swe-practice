@@ -1,0 +1,18 @@
+# Counter-example: out through the host and back in -- it works on Docker
+# Desktop, and it publishes the database to the whole machine to do it.
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://orders:orders@host.docker.internal:5432/orders
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders
+    ports:
+      - "5432:5432"

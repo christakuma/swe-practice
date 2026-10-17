@@ -1,0 +1,7 @@
+# What a build never needs. Kept out of the context, so `COPY . .` cannot
+# pick it up and a change to it cannot invalidate a cached layer.
+.git
+.venv/
+__pycache__/
+*.pyc
+tests/

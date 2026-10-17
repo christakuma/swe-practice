@@ -1,0 +1,109 @@
+schema_version: 1
+id: docker/the-api-starts-before-the-database
+kind: container
+title: depends_on is set, and the API still starts too early
+difficulty: medium
+tags: [docker, compose, healthchecks]
+estimated_minutes: 15
+
+prompt: |
+  **Ticket DEV-81** — *orders API dies on a cold `compose up`*
+
+  > On a fresh `docker compose up` the API exits straight away saying it
+  > can't connect to the database. Run `up` again and it's fine. We already
+  > have `depends_on: [db]`, so compose *should* be waiting for Postgres.
+
+  ```
+  $ docker compose up -d
+  $ docker compose ps -a
+  SERVICE   STATUS
+  api       Exited (1) 8 seconds ago
+  db        Up 8 seconds
+
+  $ docker compose logs api
+  api-1  | FATAL: could not connect to the database at db:5432
+
+  $ curl -sS localhost:8000/health
+  curl: (7) Failed to connect to localhost port 8000 after 2210 ms: Could not connect to server
+  ```
+
+  The API connects once at startup and fails loudly if it cannot, which is
+  the team's rule and stays. Fix `compose.yaml` so the API starts only once
+  Postgres is ready for connections.
+
+  Every line above is real, from `docker compose up` in this directory with
+  a cold database. `docker compose down -v` gets you a cold one again.
+
+hints:
+  - "`db` is `Up` and the API still failed, so compose did wait for something.
+     Read compose's documentation of `depends_on` carefully: started is not
+     the same as ready."
+  - "Short-form `depends_on` waits for the database *container* to start.
+     Postgres then spends a few seconds initialising before it accepts
+     connections, and the API, a Python script, starts far faster than that."
+  - "Compose can wait for *healthy* instead of started, but it needs to be
+     told what healthy means for `db`: a `healthcheck` whose `test` succeeds
+     only when Postgres accepts connections. The image ships `pg_isready` for
+     exactly that."
+  - "On `api`: `depends_on: {db: {condition: service_healthy}}`. On `db`: a
+     `healthcheck` with `test: [\"CMD\", \"pg_isready\", \"-h\", \"127.0.0.1\",
+     \"-U\", \"orders\", \"-d\", \"orders\"]` and a short `interval`."
+
+container:
+  context: context
+  stub: compose.yaml
+  reference: solution.compose.yaml
+
+  counter_examples:
+    - file: condition-without-a-healthcheck.compose.yaml
+      expect_failures: [db-says-when-it-is-ready, readiness-over-tcp]
+    - file: healthcheck-nobody-waits-for.compose.yaml
+      expect_failures: [api-waits-for-healthy]
+    - file: restart-until-it-works.compose.yaml
+      expect_failures: [api-waits-for-healthy, db-says-when-it-is-ready, readiness-over-tcp]
+    - file: sleep-first.compose.yaml
+      expect_failures: [api-waits-for-healthy, db-says-when-it-is-ready, readiness-over-tcp]
+
+  checks:
+    - id: api-waits-for-healthy
+      label: The API waits for db to be healthy, not just started
+      severity: required
+      assert: service_value
+      with:
+        service: api
+        key: depends_on.db.condition
+        pattern: '^service_healthy$'
+      explanation: |
+        `depends_on: [db]` is shorthand for `condition: service_started`:
+        compose starts `db`'s container, then `api`'s, and does not care what
+        Postgres is doing inside it. `service_healthy` makes compose wait until
+        `db`'s healthcheck passes. That is the only condition that means "ready
+        for connections".
+
+    - id: db-says-when-it-is-ready
+      label: db has a healthcheck that asks Postgres
+      severity: required
+      assert: service_value
+      with: {service: db, key: healthcheck.test, pattern: '\b(pg_isready|psql)\b'}
+      explanation: |
+        `service_healthy` waits for a healthcheck, and the `postgres` image
+        does not declare one. Without it compose refuses to start the project
+        at all ("has no healthcheck configured"). `pg_isready` exits 0 once
+        the server is accepting connections, which is the readiness the API
+        needs.
+
+    - id: readiness-over-tcp
+      label: The healthcheck connects the way the API does, over TCP
+      severity: advisory
+      assert: service_value
+      with:
+        service: db
+        key: healthcheck.test
+        pattern: '(-h|--host)[= ]?(localhost|127\.0\.0\.1)\b'
+      explanation: |
+        Bare `pg_isready` talks to Postgres over its Unix socket. On a cold
+        start, the image's entrypoint runs a temporary server to apply init
+        scripts with `listen_addresses=''`, socket only. A socket check can
+        therefore report ready while TCP, which the API uses, still refuses.
+        `-h 127.0.0.1` asks over TCP, and that answer is only yes once the
+        real server is up.

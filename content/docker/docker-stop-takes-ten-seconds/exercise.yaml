@@ -1,0 +1,101 @@
+schema_version: 1
+id: docker/docker-stop-takes-ten-seconds
+kind: container
+title: Every deploy waits ten seconds, then kills the worker
+difficulty: medium
+tags: [docker, dockerfile, signals]
+estimated_minutes: 15
+
+prompt: |
+  **Ticket OPS-2340** — *invoice-worker: deploys slow, batches half-written*
+
+  > Every rollout stalls for ten seconds on the invoice worker, and finance
+  > found two invoice batches that were half-written at deploy time. The worker
+  > has a SIGTERM handler that finishes the batch in hand and exits — it logs
+  > "worker stopped cleanly" when it does. We have never seen that line in
+  > production.
+
+  ```
+  $ docker run -d --name invoice-worker invoice-worker
+  $ time docker stop invoice-worker
+  invoice-worker
+  real    0m10.4s
+
+  $ docker logs invoice-worker
+  worker started
+  processing invoice batch 1
+  ...
+  processing invoice batch 14
+
+  $ docker ps -a
+  IMAGE            COMMAND                  STATUS
+  invoice-worker   "/bin/sh -c 'python …"   Exited (137) Less than a second ago
+  ```
+
+  `worker.py` is correct, and the team wants it left alone. Fix the
+  `Dockerfile` so that `docker stop` reaches the handler: the container should
+  stop in about a second, exit 0, and log "worker stopped cleanly".
+
+  Every line above came from building this directory's `Dockerfile`. Run it
+  and time `docker stop` yourself.
+
+hints:
+  - "Two numbers in the ticket matter. Ten seconds is `docker stop`'s default
+     grace period: it sends SIGTERM, waits ten seconds, then sends SIGKILL.
+     Exit code 137 is 128 + 9, and 9 is SIGKILL. So the SIGTERM achieved
+     nothing, and the process was killed."
+  - "`docker stop` signals PID 1 only. Look at the COMMAND column:
+     `/bin/sh -c 'python …'`. Which process is PID 1?"
+  - "A process running as PID 1 gets no default signal handling from the
+     kernel, so it ignores SIGTERM unless it has installed a handler. The
+     shell has not, and it does not forward signals to its child either.
+     Python *has* a handler, and never receives the signal."
+  - "Write `CMD` as a JSON array — `CMD [\"python\", \"-u\", \"worker.py\"]`.
+     The exec form starts python directly, as PID 1, with no shell in between."
+
+container:
+  context: context
+  stub: Dockerfile
+  reference: solution.Dockerfile
+
+  counter_examples:
+    - file: sh-dash-c.Dockerfile
+      expect_failures: [pid1-is-the-worker]
+    - file: stopsignal-sigkill.Dockerfile
+      expect_failures: [pid1-is-the-worker, asked-to-stop-not-killed]
+
+  checks:
+    - id: pid1-is-the-worker
+      label: PID 1 is the worker, not a shell
+      severity: required
+      assert: pid1_matches
+      not: true
+      with: {pattern: '(^|/)(ba|da)?sh$'}
+      explanation: |
+        `docker stop` sends SIGTERM to PID 1 and nobody else. With the shell
+        form of `CMD`, PID 1 is `/bin/sh` (dash, on this image), which ignores
+        the signal as PID 1 and does not pass it on, so the worker's handler
+        never runs. Writing `["sh", "-c", "python ..."]` puts the brackets
+        back and keeps the shell. `CMD exec python -u worker.py` would pass,
+        because `exec` makes the shell replace itself with python.
+
+    - id: runs-the-worker
+      label: The container still runs worker.py
+      severity: required
+      assert: command_matches
+      with: {pattern: '\bworker\.py\b'}
+      explanation: |
+        The fix is how the worker is started, not what is started.
+
+    - id: asked-to-stop-not-killed
+      label: The stop signal is one the worker can handle
+      severity: required
+      assert: instruction_matches
+      not: true
+      with: {pattern: '^STOPSIGNAL\s+(SIG)?(KILL|9)\b'}
+      explanation: |
+        `STOPSIGNAL SIGKILL` makes `docker stop` instant, and it does that by
+        killing the worker. SIGKILL cannot be caught, so the handler that
+        finishes the batch never runs. That is exactly the half-written batch
+        finance found, now on every deploy instead of some. Fast is not the
+        requirement. Clean is.

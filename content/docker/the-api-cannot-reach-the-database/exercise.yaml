@@ -1,0 +1,105 @@
+schema_version: 1
+id: docker/the-api-cannot-reach-the-database
+kind: container
+title: The database is up and the API cannot find it
+difficulty: easy
+tags: [docker, compose, networking]
+estimated_minutes: 12
+
+prompt: |
+  **Ticket DEV-77** — *local stack: orders API never connects*
+
+  > Fresh clone, `docker compose up`. Postgres starts fine, but the API
+  > spends its whole thirty-second retry budget on "connection refused" and
+  > `/health` never answers. The URL is copied from my laptop setup, where it
+  > works — Postgres really is on localhost:5432 there.
+
+  ```
+  $ docker compose up -d
+  $ docker compose ps -a
+  SERVICE   STATUS
+  api       Up 8 seconds
+  db        Up 8 seconds
+
+  $ docker compose logs api
+  api-1  | database localhost:5432 refused the connection (attempt 4/30)
+  api-1  | database localhost:5432 refused the connection (attempt 5/30)
+  api-1  | database localhost:5432 refused the connection (attempt 6/30)
+
+  $ curl -sS localhost:8000/health
+  curl: (52) Empty reply from server
+  ```
+
+  Fix `compose.yaml` so the API reaches the database the way services in a
+  compose project are meant to reach each other. The API's code and its
+  `Dockerfile` (under `api/`) are fine.
+
+  This is real output from this directory: `docker compose up` it and watch.
+
+hints:
+  - "The ticket's last sentence is the clue. On the laptop, the API and
+     Postgres are processes on one machine, sharing one `localhost`. Under
+     compose, each service is its own container. Whose `localhost` is the API
+     connecting to now?"
+  - "Every container has its own loopback interface. `localhost` inside the
+     `api` container is the `api` container, and nothing listens on 5432 there."
+  - "Compose puts every service in a project on one network and gives each a
+     DNS name: the service's own name. From the `api` container, the database
+     is the host called `db`."
+  - "`DATABASE_URL: postgres://orders:orders@db:5432/orders`"
+
+container:
+  context: context
+  stub: compose.yaml
+  reference: solution.compose.yaml
+
+  counter_examples:
+    - file: loopback-by-number.compose.yaml
+      expect_failures: [reaches-db-by-service-name]
+    - file: via-the-host.compose.yaml
+      expect_failures: [reaches-db-by-service-name, database-stays-private]
+    - file: host-networking.compose.yaml
+      expect_failures: [reaches-db-by-service-name, keeps-its-own-network]
+
+  checks:
+    - id: reaches-db-by-service-name
+      label: DATABASE_URL names the db service
+      severity: required
+      assert: service_value
+      with:
+        service: api
+        key: environment.DATABASE_URL
+        pattern: '@db(:5432)?/'
+      explanation: |
+        Compose creates a network per project and registers each service's
+        name in its DNS, so `db` resolves to the database container from any
+        other container in the project. `localhost` and `127.0.0.1` resolve to
+        the container asking, which is the API itself.
+
+    - id: keeps-its-own-network
+      label: The API is not moved onto the host's network
+      severity: required
+      assert: service_value
+      not: true
+      with: {service: api, key: network_mode, pattern: '.'}
+      explanation: |
+        `network_mode: host` makes the API's `localhost` the host's, which
+        sounds like a fix and is not one. The database is not published on the
+        host, so nothing is listening there either. `ports:` stops applying,
+        and on Docker Desktop "the host" is a Linux VM rather than your
+        machine. It removes the isolation compose is providing, to avoid
+        learning one hostname.
+
+    - id: database-stays-private
+      label: The database port is not published
+      severity: required
+      assert: service_value
+      not: true
+      with: {service: db, key: ports, pattern: '.'}
+      explanation: |
+        `host.docker.internal:5432` with `ports: ["5432:5432"]` on `db` does
+        connect on Docker Desktop: out of the API container, onto your machine,
+        and back into the database's. The honesty tier confirms it works. It
+        also publishes Postgres with a guessable password to every interface
+        of your machine, and it fails on a Linux host where that name does not
+        resolve by default. The service name needs neither.

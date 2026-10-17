@@ -231,3 +231,19 @@ tracks:
       - sql/cancel-an-order-without-deleting-it
       - sql/delete-only-the-empty-carts
       - sql/a-view-the-report-can-reuse
+
+  # Every container exercise: the one in `start-here`, then the `docker`
+  # section in its own order.
+  - name: docker
+    title: Docker
+    summary: >-
+      Write a Dockerfile, then diagnose containers from their symptoms: a
+      port that answers nothing, a stop that takes ten seconds, a deleted
+      secret that shipped, and two compose stacks that cannot connect.
+    exercises:
+      - docker/dockerize-a-python-web-service
+      - docker/connection-reset-from-the-host
+      - docker/the-api-cannot-reach-the-database
+      - docker/docker-stop-takes-ten-seconds
+      - docker/the-secret-still-in-the-image
+      - docker/the-api-starts-before-the-database

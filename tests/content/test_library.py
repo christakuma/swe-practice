@@ -467,9 +467,9 @@ def test_the_first_screen_of_the_curriculum_offers_every_kind() -> None:
     first screen having no room for it, which is the decision that should be
     forced rather than discovered.
 
-    It is also now tight: `QUEUE_LIMIT` is six and `start-here` is exactly six
-    long, two of each kind. There is no slack left, which is the point of
-    stating it.
+    It is also tight: `QUEUE_LIMIT` is six and `start-here` is exactly six
+    long. Phase 22's fourth kind is what this was waiting for, and it
+    failed here first; `curriculum.yaml` records which kind gave up a row.
     """
     curriculum = load_curriculum(CONTENT_ROOT)
     repository = FilesystemContentRepository(CONTENT_ROOT)
@@ -557,10 +557,16 @@ def _ids_of_kind(kind: ExerciseKind) -> set[str]:
 
 
 def test_the_library_offers_the_tracks_it_says_it_does() -> None:
-    """Four, in this order -- and the order is load-bearing, because the first
+    """Five, in this order -- and the order is load-bearing, because the first
     track is the one the Next button follows when nothing has said which.
     """
-    assert list(_tracks()) == ["everything", "blind-75", "git-scenarios", "sql-drills"]
+    assert list(_tracks()) == [
+        "everything",
+        "blind-75",
+        "git-scenarios",
+        "sql-drills",
+        "docker",
+    ]
 
 
 def test_the_default_track_is_the_whole_library_in_curriculum_order() -> None:
@@ -591,12 +597,13 @@ def test_the_blind_75_is_the_seventy_five() -> None:
     [
         ("git-scenarios", ExerciseKind.GIT_SCENARIO),
         ("sql-drills", ExerciseKind.SQL_DRILL),
+        ("docker", ExerciseKind.CONTAINER),
     ],
 )
 def test_a_track_named_for_a_kind_misses_nothing_of_that_kind(
     track: str, kind: ExerciseKind
 ) -> None:
-    """These two are explicit lists, so an exercise added to the curriculum and
+    """These three are explicit lists, so an exercise added to the curriculum and
     forgotten here would validate -- the track would simply never offer it.
     `practice validate` cannot know a list was meant to be exhaustive; this
     can, because it knows what the track is called.

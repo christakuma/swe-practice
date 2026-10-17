@@ -1,0 +1,17 @@
+# Counter-example: put the API on the host's network so localhost is the
+# host's -- where no database is listening, and the ports stop applying.
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://orders:orders@localhost:5432/orders
+    network_mode: host
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders

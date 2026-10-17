@@ -1,0 +1,125 @@
+schema_version: 1
+id: docker/the-secret-still-in-the-image
+kind: container
+title: The key we deleted is still in the image
+difficulty: medium
+tags: [docker, dockerfile, secrets, layers]
+estimated_minutes: 15
+
+prompt: |
+  **Ticket SEC-118** — *registry scan: credential in checkout:1.4*
+
+  > The registry's scanner flagged `checkout:1.4` for a payments key. The
+  > Dockerfile deletes `.env` right after copying it, and the running
+  > container really doesn't have the file — I checked. Is the scanner wrong?
+
+  ```
+  $ docker run --rm checkout:1.4 ls -a /app
+  .
+  ..
+  Dockerfile
+  README.md
+  app.py
+  pricing.py
+  tests
+
+  $ docker save checkout:1.4 -o checkout.tar
+  $ # ...unpack each layer and search it, as the scanner does:
+  blobs/sha256/342e7451...  app/.env
+      # Local development only. Never commit, never ship.
+      PAYMENTS_API_KEY=pk_fake_8c1f0e7a_not_a_real_key
+  ```
+
+  The scanner is right. Fix the `Dockerfile` so the key is in no layer of the
+  image and the service still runs. The service reads `PAYMENTS_API_KEY`
+  from its environment at run time — locally with `docker run --env-file .env`,
+  in production from the orchestrator's secret store — so the image never
+  needs it.
+
+  You can only change the `Dockerfile` in this exercise. The notes cover
+  `.dockerignore`, which belongs alongside the fix in a real repository.
+
+hints:
+  - "An image is a stack of read-only layers, one per instruction that
+     changes files. `COPY . .` writes a layer containing `.env`. `RUN rm .env`
+     writes a *new* layer that records the file as deleted. The first layer is
+     unchanged, and it ships."
+  - "So nothing that runs after the `COPY` can help. The file must never be
+     copied into the image at all."
+  - "`app.py` imports `pricing`, and that is the whole of the service. Copy
+     those two by name instead of copying the directory."
+  - "Do not hand the key to the build instead. An `ARG` or `ENV` holding it is
+     recorded in the image's config, where `docker history` and `docker
+     inspect` show it to anyone who can pull the image."
+
+container:
+  context: context
+  stub: Dockerfile
+  reference: solution.Dockerfile
+
+  counter_examples:
+    - file: copy-only-the-entrypoint.Dockerfile
+      expect_failures: [the-app-can-import-pricing]
+    - file: key-as-a-build-argument.Dockerfile
+      expect_failures: [no-key-in-the-image-config]
+
+  checks:
+    - id: no-env-file-in-any-layer
+      label: .env is in no layer of the image
+      severity: required
+      assert: path_in_image
+      not: true
+      with: {path: .env}
+      explanation: |
+        Layers are additive and immutable. A file written by one instruction
+        stays in that layer even when a later instruction deletes it: the
+        delete is a "whiteout" marker in the next layer, which hides the file
+        from the running container and from nothing else. `docker save`, a
+        registry scanner, or anyone who pulls the image and unpacks it can
+        read the original. Only a file that was never copied is gone.
+
+    - id: the-app-is-in-the-image
+      label: app.py is in the image
+      severity: required
+      assert: path_in_image
+      with: {path: app.py}
+      explanation: |
+        An image that holds no secret because it holds nothing at all has not
+        fixed anything.
+
+    - id: the-app-can-import-pricing
+      label: pricing.py, which app.py imports, is in the image
+      severity: required
+      assert: path_in_image
+      with: {path: pricing.py}
+      explanation: |
+        Naming files instead of copying the directory means naming *all* of
+        them. Copy only `app.py` and the container starts, then exits with
+        `ModuleNotFoundError: No module named 'pricing'`.
+
+    - id: no-key-in-the-image-config
+      label: No ARG or ENV carries a credential into the image
+      severity: required
+      assert: instruction_matches
+      not: true
+      with: {pattern: '^(ARG|ENV) .*(KEY|SECRET|TOKEN|PASSWORD)'}
+      explanation: |
+        Moving the key from a file into `ARG PAYMENTS_API_KEY` plus `ENV
+        PAYMENTS_API_KEY=$PAYMENTS_API_KEY` swaps one leak for another: `ENV`
+        values are written into the image config, which `docker inspect`
+        prints, and build arguments used in a layer appear in `docker
+        history`. A secret belongs to the running container, not the image.
+        Pass it at `docker run` time, or for a secret the *build* needs (a
+        private package index), use `RUN --mount=type=secret`.
+
+    - id: no-rm-theatre
+      label: No RUN pretends to delete the key
+      severity: advisory
+      assert: instruction_matches
+      not: true
+      with: {pattern: '^RUN .*\brm\b.*\.env'}
+      explanation: |
+        With the copy fixed, a leftover `RUN rm -f .env` does nothing. It is
+        also the next reader's evidence that the copy still happens and the
+        delete protects against it, which is the belief that caused this
+        ticket. Delete the line.

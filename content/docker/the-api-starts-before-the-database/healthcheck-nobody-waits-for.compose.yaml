@@ -1,0 +1,25 @@
+# Counter-example: db reports healthy, and the API starts without asking.
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://orders:orders@db:5432/orders
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders
+    healthcheck:
+      # Over TCP, as the API connects. During first-boot initialisation the
+      # image runs a temporary server on the Unix socket only, so a socket
+      # check can report ready while TCP still refuses.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "orders", "-d", "orders"]
+      interval: 2s
+      timeout: 3s
+      retries: 15

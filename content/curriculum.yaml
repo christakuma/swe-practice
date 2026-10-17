@@ -6,8 +6,8 @@
 #
 # Tracks here are pedagogical and finer than the three directories on disk. An
 # exercise id is exactly <track>/<slug> and the loader enforces two path
-# segments, so `git/`, `katas/` and `sql/` are all the filesystem can express;
-# the twenty-one runs below are a second grouping over the same files, and
+# segments, so `git/`, `katas/`, `sql/` and `docker/` are all the filesystem can express;
+# the twenty-two runs below are a second grouping over the same files, and
 # nothing is moved to express them.
 #
 # Within a track the order is difficulty and dependency: an exercise should only
@@ -52,6 +52,12 @@ tracks:
   # for two of each, and no slack at all. A fourth kind would force a decision
   # here rather than an append -- which is the right place for that decision to
   # be forced.
+  #
+  # Phase 22 forced it. SQL gave up its second row, because `one-row-per-
+  # customer` can open `sql-reading` without moving in the SQL track's order,
+  # and the first Docker exercise took it. Git and katas keep two each: they
+  # are most of the library, and Two Sum on the dashboard is what the e2e
+  # suite asks for. A fifth kind would have to take a git or kata row.
   - name: start-here
     title: "Start here: one of each, nothing clever"
     exercises:
@@ -60,7 +66,7 @@ tracks:
       - sql/newest-customers-first
       - git/amend-the-last-commit
       - katas/valid-parentheses
-      - sql/one-row-per-customer
+      - docker/dockerize-a-python-web-service
 
   # `is-it-an-anagram` arrived with the Blind 75 fill-in and was first filed
   # under `strings-and-windows`, two sections later -- which put the
@@ -142,6 +148,7 @@ tracks:
   - name: sql-reading
     title: "SQL: asking the right question"
     exercises:
+      - sql/one-row-per-customer
       - sql/the-two-biggest-spenders
       - sql/the-null-that-broke-the-report
       - sql/use-the-index-you-were-given
@@ -420,3 +427,22 @@ tracks:
     exercises:
       - git/find-the-commit-that-removed-a-line
       - git/find-the-first-bad-commit-with-bisect
+
+  # Phase 22 (ADR 0030). Last, because the other kinds were already interleaved
+  # and a seventh non-kata section changes no kata gap. The Dockerfile you
+  # write from scratch is in `start-here`; these are the five that diagnose.
+  #
+  # The two easy ones first, and as a pair: a container's localhost is its
+  # own, seen from outside (a published port reaches nothing) and then from
+  # inside (a compose service cannot find its database). The three medium
+  # ones follow -- PID 1, layers, readiness -- and every track's first three
+  # steps have to be gentle (`test_every_track_opens_gently`), which this
+  # order is and the Dockerfile-then-compose order was not.
+  - name: docker
+    title: "Docker: building images and fixing containers"
+    exercises:
+      - docker/connection-reset-from-the-host
+      - docker/the-api-cannot-reach-the-database
+      - docker/docker-stop-takes-ten-seconds
+      - docker/the-secret-still-in-the-image
+      - docker/the-api-starts-before-the-database

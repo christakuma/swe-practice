@@ -70,6 +70,10 @@ tmp/
 .env
 .env.*
 !.env.example
+# Except the one in a Docker exercise's build context, which *is* the exercise:
+# `the-secret-still-in-the-image` is about a `.env` that ships, and without it
+# on a fresh clone the stub would leak nothing and pass. Its key is fake.
+!content/docker/*/context/.env
 *.pem
 *.key
 
