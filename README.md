@@ -42,6 +42,7 @@ the real repository, and the repository's state beside it.
 - [Getting started](#getting-started)
 - [The web app](#the-web-app)
 - [The terminal](#the-terminal)
+- [Docker exercises](#docker-exercises)
 - [Tracks, and what you have done](#tracks-and-what-you-have-done)
 - [What to practise today](#what-to-practise-today)
 - [Interview conditions](#interview-conditions)
@@ -55,8 +56,8 @@ the real repository, and the repository's state beside it.
 
 ## What is in it
 
-- **115 exercises, every one of them graded**: 24 git scenarios, 83 Python
-  katas and 8 SQL drills, in one hand-ordered curriculum.
+- **121 exercises, every one of them graded**: 24 git scenarios, 83 Python
+  katas, 8 SQL drills and 6 Docker exercises, in one hand-ordered curriculum.
 - **Problem statements you can check**: every kata lists its constraints and
   has an Examples tab of inputs and outputs, each one run against the
   reference solution.
@@ -65,9 +66,9 @@ the real repository, and the repository's state beside it.
   circle. Every kata has one and seventy-nine have two — 162 in all. Pick one, or
   ask to be surprised.
 - **Tracks you can follow**: the whole library, the Blind 75, every git
-  scenario, every SQL drill. Each list says which steps you have passed and
+  scenario, every SQL drill, every Docker exercise. Each list says which steps you have passed and
   when, and a finished attempt has a **Next** button for the step after it.
-- **A web workbench**: an editor for katas and drills, and for git scenarios a
+- **A web workbench**: an editor for katas, drills and Dockerfiles, and for git scenarios a
   command console over the real repository with a live commit graph beside it.
 - **A terminal that is not a fallback**: the CLI is a second adapter over the
   same use cases, so an attempt started in the browser can be finished from a
@@ -161,7 +162,7 @@ your browser on `http://127.0.0.1:8765`:
 
 ```
   ok   git         /usr/bin/git
-  ok   library     115 exercises (24 git scenarios, 83 katas, 8 SQL drills) in ~/swe-practice/content
+  ok   library     121 exercises (24 git scenarios, 83 katas, 8 SQL drills, 6 Docker exercises) in ~/swe-practice/content
   ok   workspaces  ~/.cache/swe-practice/ws
   ok   database    ~/.local/share/swe-practice/practice.db (created v2)
   ok   scheduler   sm2 (Sm2Scheduler())
@@ -397,17 +398,49 @@ Attempts and review cards live in one SQLite file under the user *data*
 directory, not the cache — a workspace is rebuildable from a fixture and a
 history is not ([ADR 0006](docs/adr/0006-sqlite-without-an-orm.md)).
 
+## Docker exercises
+
+Six exercises about containers. You write one Dockerfile from scratch, then
+diagnose five broken setups from a ticket. Each ticket is real output captured
+from the broken files in that exercise's directory:
+
+| Exercise | What the ticket shows | What it teaches |
+|---|---|---|
+| Write the Dockerfile for a small web service | (a blank Dockerfile) | pinning, layer caching, exec-form `CMD`, binding `0.0.0.0` |
+| It runs, the port is published, and nothing answers | `curl: (52) Empty reply from server` | a container's `localhost` is its own |
+| Every deploy waits ten seconds, then kills the worker | `Exited (137)` after a ten-second `docker stop` | PID 1, signals, and why the shell form loses SIGTERM |
+| The key we deleted is still in the image | a scanner finds `.env` in a layer | layers are immutable; `RUN rm` only hides a file |
+| The database is up and the API cannot find it | `refused the connection` to `localhost:5432` | compose services reach each other by name |
+| depends_on is set, and the API still starts too early | `Exited (1)` while `db` is `Up` | started is not ready: healthchecks and `service_healthy` |
+
+The workspace is a real build context, so `docker build .` and `docker compose
+up` work in it and you can watch the symptom happen. **The grade never needs
+Docker**: it parses your Dockerfile or `compose.yaml` and checks what Docker
+would do with it. That covers which process becomes PID 1, which files land in
+which layer, and what a compose service resolves to after compose's own
+normalisation, so equivalent spellings pass and the same bug in different
+words fails
+([ADR 0030](docs/adr/0030-docker-exercises-graded-statically-one-editable-file.md)).
+
+Whether each ticket is *true* is a separate claim, checked by an opt-in suite
+that builds every stub, reference and wrong answer on a real daemon:
+
+```bash
+PRACTICE_DOCKER_TESTS=1 uv run pytest -q --no-cov -n0 tests/docker
+```
+
 ## Tracks, and what you have done
 
 A **track** is a named route through the library: a first exercise, a next one
-and an end. Four ship.
+and an end. Five ship.
 
 | Track | Steps | Order |
 |---|---|---|
-| The whole library | 115 | The curriculum's: git, katas and SQL interleaved |
+| The whole library | 121 | The curriculum's: git, katas, SQL and Docker interleaved |
 | The Blind 75 | 75 | By technique, each on-ramp pulled to where it is needed |
 | Git scenarios | 24 | Local work first, shared history last |
 | SQL drills | 8 | Read, read carefully, then write |
+| Docker | 6 | Write one Dockerfile, then the two networking tickets, then PID 1, layers and readiness |
 
 Start one from `/tracks` and every finished attempt offers the step after it:
 
@@ -779,14 +812,14 @@ src/practice/
 │   └── mcp/         a read-only MCP server on stdio: the third, and an optional extra
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
-content/           115 exercises as declarative data
-├── curriculum.yaml the one order, in twenty-one sections; validate holds it to covering them all
+content/           121 exercises as declarative data
+├── curriculum.yaml the one order, in twenty-two sections; validate holds it to covering them all
 ├── tracks.yaml    the routes you can follow; validate holds their order to the curriculum's
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform
 tools/             the one module that opens a socket, deliberately outside the wheel
 docs/adr/          architecture decision records
 docs/demo/         the captured session, and the script that draws docs/demo.svg
-tests/             unit · integration · content · web · e2e
+tests/             unit · integration · content · web · e2e · docker (opt-in)
 ```
 
 `tools/vendor_assets.py` downloads the pinned assets and is **not** part of the

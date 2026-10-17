@@ -331,9 +331,21 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > ([ADR 0029](adr/0029-a-failed-submission-is-logged-and-run-is-the-examples.md)).
 > The fifth migration, and the first that had to rebuild a table.
 >
+> **Phase 22 is a fourth exercise kind: Docker.** Six exercises, one
+> Dockerfile written from scratch and five tickets diagnosed from their
+> symptoms, **graded without a daemon**. The grader parses the Dockerfile
+> or `compose.yaml` and asserts on what Docker would do with it: which
+> process is PID 1, which files land in which layer, and what a service
+> resolves to
+> ([ADR 0030](adr/0030-docker-exercises-graded-statically-one-editable-file.md)).
+> ADR 0019's prediction held, as one clause in `editable_source`. Every
+> ticket is real captured output, and an opt-in suite rebuilds each one on
+> a real daemon, which found that dash, unlike bash, does not exec a lone
+> `sh -c` command.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 20 (tracks, and done-and-when), 2026-10-12 · **Last
-> change:** Run, and trying again after a failure, 2026-10-16
+> · **Last phase:** 22 (Docker exercises, graded statically), 2026-10-17
+> · **Last change:** Run, and trying again after a failure, 2026-10-16
 
 ---
 
@@ -2770,6 +2782,26 @@ the second is written in the first one's format
 | A variant is not its base listed twice | `tests/content/test_variants.py::test_its_base_solution_does_not_pass_it` |
 | A variant comes due for review once attempted and is never offered unprompted | `tests/unit/application/test_review.py::TestReviewQueueAndVariants` |
 
+### Phase 22 — Docker exercises, graded on the definition · **1 session**
+
+**Goal:** practise DevOps as this library practises everything else: a
+real artifact with a real problem in it, graded on its end state. Write a
+Dockerfile, and diagnose broken containers from their symptoms, without
+the grade ever needing a Docker daemon
+([ADR 0030](adr/0030-docker-exercises-graded-statically-one-editable-file.md)).
+
+| Exit criterion | Met by |
+|---|---|
+| A fourth kind is one clause in `editable_source`, as ADR 0019 predicted | `tests/unit/test_composition.py::test_every_exercise_kind_has_a_grader`, and mypy naming only the provisioner when the union grew |
+| Eight assertions, pure, at 100% branch coverage, each named by a shipped exercise | `tests/unit/domain/containers/`, `tests/content/test_containers.py::test_every_container_assertion_is_used_by_some_exercise` |
+| The three vocabularies are disjoint, and the schema names the family of a misplaced assertion | `tests/unit/domain/containers/test_registry.py` |
+| The parser and the layer model agree with Docker on every measured case | `tests/integration/container/` |
+| The fake and the real `BuildQuery` report identically | `tests/integration/container/test_conformance.py` |
+| Every reference passes clean, every stub fails, every counter-example fails exactly what it declares | `tests/content/test_containers.py` |
+| Every ticket's symptom is real, on a real daemon | `tests/docker/` (opt-in, `PRACTICE_DOCKER_TESTS=1`) |
+| The first screen still offers every kind, and the Docker track opens gently | `tests/content/test_library.py` |
+| Dockerfile and YAML highlighting, vendored and hash-pinned | `tests/web/test_vendored_assets.py` |
+
 ---
 
 ## 12. Architecture decision records
@@ -2810,6 +2842,7 @@ changed"* is worth more than any code sample.
 | [0027](adr/0027-examples-are-source-run-against-the-reference.md) | A kata's examples are source, and every one is run against the reference | accepted |
 | [0028](adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md) | A variant is a whole exercise, offered under the one it varies | accepted |
 | [0029](adr/0029-a-failed-submission-is-logged-and-run-is-the-examples.md) | A failed submission is logged rather than final, and Run is the examples rather than the suite | accepted |
+| [0030](adr/0030-docker-exercises-graded-statically-one-editable-file.md) | Docker exercises are graded on the definition, one editable file each | accepted |
 
 ---
 
@@ -6175,3 +6208,74 @@ clean -- twice the last entry's 13m22s, and one run is not a measurement on
 this machine; the Run harness adds eleven subprocesses to the integration suite
 and none to the content suite, which is the floor.
 
+**2026-10-17 — Phase 22: Docker exercises, graded on the definition.** A user
+asked to practise DevOps: dockerising an app, and finding what is wrong with a
+container. The project had refused Docker three times because a container
+cannot be built offline on both CI platforms, and that reason survives intact.
+What it rules out is running Docker *in the grade*. Docker reads a Dockerfile
+and a compose file into an image config and a service model before it builds
+anything, and those are end states this project can read without a daemon
+([ADR 0030](adr/0030-docker-exercises-graded-statically-one-editable-file.md)).
+
+**ADR 0019's prediction held.** A file-based fourth kind is one clause in
+`editable_source`. Growing the `ExerciseSpec` union made mypy name exactly one
+other site, the provisioner, which needed a branch whatever the kind. The
+workbench, own-editor mode, `practice solve`, the tutor export and the MCP
+server took the kind unchanged. The two places that did need an edit were both
+places nothing type-checks. The vendored editor modes became a tuple, because
+CodeMirror's Dockerfile mode is built on an addon; ADR 0019 found the SQL
+mode hard-coded in the same template. The launcher's one-line summary walked a
+dict of kind names, so it would have counted six Docker exercises in the total
+and left them out of the breakdown, the claim-that-stopped-being-true its own
+docstring describes from Phase 14. It walks the enum now.
+
+**Four places where the grader would have failed a correct answer**, each found
+by writing out an answer the prompt does not rule out: `CMD exec python w.py`
+(the shell replaces itself), bash's exec of the last command in an `&&` list,
+a builder stage that deletes `.env` before a `COPY --from` (which copies a
+filesystem, not layers), and a `CMD` set before an `ENTRYPOINT` in the same
+stage (which BuildKit keeps). Then a fifth, a real build bug: `COPY *.py`
+matched `pkg/models.py`, because Python's `fnmatch` lets `*` cross a slash and
+Docker's matcher does not. That one was caught by the integration suite, and
+`COPY` and `.dockerignore` now share one matcher.
+
+**Every ticket is real output, and the plan's one doubtful claim was wrong in
+the useful direction.** The plan flagged that a shell-form `CMD` might not lose
+SIGTERM at all, if the image's shell execs a lone command. Measured on
+`python:3.12-slim`: `/bin/sh` is dash 0.5.12, dash does not, and python runs as
+PID 7 under it. So the exercise reproduces, and its notes say why "it works on
+my image" is a statement about a shell. The new opt-in tier, `tests/docker/`,
+builds every stub, reference and counter-example on a real daemon: thirty
+claims, from `curl: (52) Empty reply from server` to the key in a saved
+image's layer. Its own first run failed once, on a cache-hit test whose edit
+was not unique, because BuildKit keys its cache on content, so the same edit
+from an earlier run was a hit for the wrong reason.
+
+**What deviated.** Ten assertions were planned and eight shipped; `stage_count`
+and `service_mount` wait for a multi-stage exercise and a volume exercise.
+Three things only the fast tier could see: the first screen of the curriculum
+had no row for a fourth kind, which `start-here` had been documented as waiting
+for, and SQL gave up its second row; the Docker track opened on a medium
+exercise, so the two `localhost` tickets now come first as a pair; and the
+repository's `.gitignore` excluded the `.env` that one exercise is about,
+which on a fresh clone would have made its stub pass. The content's own
+Python is linted like a kata's, with `T20` and `S104` exempt under
+`content/docker/` because printing is how a container logs and binding every
+interface is the lesson.
+
+**The gate caught one of mine that nothing else could have.** The honesty
+tier's `conftest.py` skipped its tests with a `pytest_collection_modifyitems`
+hook, and a collection hook in a conftest is not scoped to its directory:
+pytest hands it every item in the session. With the variable unset, which is
+how CI runs, all 9,039 tests were skipped, and the run failed only because
+coverage fell to 45%. A suite that skips itself reports nothing red. The hook
+now skips only items under its own directory. The gate also found the eight
+`ContainerSpec` lines that only valid specs had reached, and
+`tests/unit/domain/test_container_spec.py` covers its refusals.
+
+**Final numbers.** 9,020 passing and 31 skipped, where the last entry ended on
+8,760: 260 new tests, and the skips are the thirty opt-in Docker claims plus
+the one there was before. 100% statement and branch coverage over 3,321
+statements and 750 branches. `practice validate` reports 283 exercises, six more
+than 277, and `practice fixtures --check` is unchanged. The honesty tier passed
+30 of 30 on Docker Desktop 28.3.3 in 5m13s. The gate took 11m37s, one run.
