@@ -108,8 +108,16 @@ def evaluate(spec: CheckSpec, query: BuildQuery) -> CheckReport:
 
     if spec.negated:
         result = result.negate()
+    # **Nothing passes over a definition that could not be read.** Every
+    # assertion fails on one, and negation would have turned each `not: true`
+    # into a pass: a typo'd Dockerfile showed `.env is in no layer` in green.
+    # A check that read nothing has ruled nothing out.
+    readable = query.error() is None
     return CheckReport.from_spec(
-        spec, passed=result.passed, expected=result.expected, actual=result.actual
+        spec,
+        passed=result.passed and readable,
+        expected=result.expected,
+        actual=result.actual,
     )
 
 

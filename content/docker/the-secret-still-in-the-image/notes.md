@@ -79,7 +79,7 @@ COPY --from=build /app /app
 
 `COPY --from` copies the builder's *filesystem*, after the delete, rather than
 its layers, so the final image never holds `.env`. The grader models this and
-accepts it, and the honesty tier confirms it against a real build. The builder's
+accepts it, and a real build agrees. The builder's
 layers still exist in the build cache on the machine that built it, which is
 one more reason the explicit copy is the simpler answer.
 

@@ -30,6 +30,7 @@ from practice.interface.web.vendor import (
     VENDOR_DIRNAME,
     VendoredAsset,
     digest,
+    mode_files,
     static_root,
     verify,
 )
@@ -151,3 +152,22 @@ def test_each_asset_is_checked_out_with_unix_line_endings(
     payload = asset.location(static_root()).read_bytes()
 
     assert b"\r\n" not in payload
+
+
+def test_a_mode_nobody_vendored_is_an_empty_tuple_not_none() -> None:
+    """`()` for both, which the template tests for truth.
+
+    The manifest's comment still said `None` after `mode_files` began returning
+    a tuple; a template written to that comment would test `is not none`, take
+    the branch on `()`, and load CodeMirror with no mode at all.
+    """
+    assert mode_files(None) == ()
+    assert mode_files("cobol") == ()
+
+
+def test_the_dockerfile_mode_loads_its_addon_first() -> None:
+    files = mode_files("dockerfile")
+    assert [name.rsplit("/", 1)[-1] for name in files] == [
+        "codemirror-simple.min.js",
+        "codemirror-dockerfile.min.js",
+    ]

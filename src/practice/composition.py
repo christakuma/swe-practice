@@ -577,7 +577,7 @@ def build_services(  # noqa: PLR0913
             workspace_root=workspaces if workspaces is not None else workspace_root(),
             clock=clock,
         ),
-        graders=build_graders(GitRepoQuery, kata_runner),
+        graders=build_graders(GitRepoQuery, kata_runner, library),
         clock=clock if clock is not None else SystemClock(),
         ids=Uuid4IdGenerator(),
         repo_query=GitRepoQuery,
@@ -591,8 +591,9 @@ def build_services(  # noqa: PLR0913
 def build_graders(
     query_for: RepoQueryFactory | None = None,
     kata_runner: PytestKataRunner | None = None,
+    library: Path | None = None,
 ) -> GraderRegistry:
-    """One grader per exercise kind, and as of Phase 14 that is all three.
+    """One grader per exercise kind, and as of Phase 22 that is all four.
 
     Each is constructed with its own collaborator rather than reaching for one:
     `KataGrader` takes the pytest runner, `ScenarioGrader` takes the `RepoQuery`
@@ -614,6 +615,11 @@ def build_graders(
     so the two must hold one lock, which means one runner -- and the place that
     builds both is `build_services`. `None` builds a fresh one, for a caller
     with no Run button to share it with.
+
+    **`library` is passed in as of Phase 22**, because the container grader
+    reads its build context from the content library rather than from the
+    workspace the solver can change, and `build_services` is what knows which
+    library is in use. `None` means the configured one.
     """
     graders: dict[ExerciseKind, Grader] = {
         ExerciseKind.KATA: KataGrader(
@@ -628,8 +634,10 @@ def build_graders(
         # nothing else reads its database, so there is nothing to inject and a
         # protocol here would be the abstraction §13 says to delete.
         ExerciseKind.SQL_DRILL: SqlDrillGrader(),
-        # The fourth kind needs nothing injected either: it parses text and
-        # never runs a process (ADR 0030).
-        ExerciseKind.CONTAINER: ContainerGrader(),
+        # The fourth kind runs no process (ADR 0030), and takes the library
+        # only so the build context is the shipped one, not the workspace's.
+        ExerciseKind.CONTAINER: ContainerGrader(
+            library if library is not None else content_root()
+        ),
     }
     return GraderRegistry(graders=graders)

@@ -36,7 +36,7 @@ db:
 `service_healthy` needs `db` to have a healthcheck, and the `postgres` image
 does not ship one. Without it, `docker compose up` refuses to start the
 project ("dependency failed to start: container ... has no healthcheck
-configured"). The honesty tier checks exactly that refusal.
+configured"), which you can see for yourself by trying it.
 
 ## Why `-h 127.0.0.1`
 

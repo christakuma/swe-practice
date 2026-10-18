@@ -4,14 +4,17 @@ Satisfies `practice.domain.ports.Grader` for `ExerciseKind.CONTAINER`, and makes
 the same three decisions the drill grader does, for the same reasons:
 
 * **`definition-parsed` is a synthesised required check, and it comes first.**
-  A Dockerfile with an unknown instruction produces no stages, so every
-  declared check fails, and *eight failures* for one typo tells the solver they
-  are wrong in eight ways. The declared checks still run and are still
-  reported, against whatever could be read.
+  A Dockerfile with an unknown instruction produces no stages, so there is
+  nothing for a declared check to read, and *eight failures* for one typo tells
+  the solver they are wrong in eight ways. The declared checks are still
+  reported, each as failed for want of a definition, and a negated one is not
+  allowed to pass on nothing (`registry.evaluate`).
 * **The editable file comes from the attempt's log**, through `latest_source`,
-  and the rest of the build context from the workspace. A verdict is derived
-  from something persisted, and the context is what was provisioned, so an
-  exercise edited mid-attempt cannot change the rules underneath a solver.
+  and the rest of the build context from the content library, never from the
+  workspace. The workspace is the solver's to change, and the first version
+  read the context from it: deleting `.env` there, or adding a `.dockerignore`
+  that names it, passed the secrets exercise with the stub untouched. The one
+  file the solver may change is the one the attempt remembers.
 * **No daemon, ever** (ADR 0030). Nothing here builds or runs an image, which
   is why this module needs neither `subprocess` nor the sandbox's command
   policy: it reads files and parses them.
@@ -28,6 +31,8 @@ from practice.domain.exercise import ContainerSpec
 from practice.domain.verdict import CheckReport, Severity, Verdict
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from practice.domain.attempt import Attempt
     from practice.domain.exercise import Exercise
     from practice.domain.ports import BuildQuery, Workspace
@@ -51,14 +56,28 @@ class ContainerGraderError(Exception):
 
 
 class ContainerGrader:
-    """Satisfies `practice.domain.ports.Grader` for `ExerciseKind.CONTAINER`."""
+    """Satisfies `practice.domain.ports.Grader` for `ExerciseKind.CONTAINER`.
 
-    __slots__ = ()
+    Takes the content root because the build context is the library's, not
+    the workspace's: see the module docstring for the attempt that proved it.
+    """
+
+    __slots__ = ("_content_root",)
+
+    def __init__(self, content_root: Path) -> None:
+        self._content_root = content_root
 
     def grade(
-        self, exercise: Exercise, workspace: Workspace, attempt: Attempt
+        self,
+        exercise: Exercise,
+        workspace: Workspace,  # noqa: ARG002 - the port's; unread on purpose
+        attempt: Attempt,
     ) -> Verdict:
-        """Read the context, overlay the saved answer, and evaluate every check."""
+        """Read the shipped context, overlay the saved answer, evaluate every check.
+
+        `workspace` is unread, deliberately: everything a verdict depends on is
+        either the library's or the attempt's.
+        """
         spec = exercise.spec
         if not isinstance(spec, ContainerSpec):
             raise ContainerGraderError(
@@ -71,8 +90,7 @@ class ContainerGrader:
                 f"attempt {attempt.id.short} has saved no answer, so there is "
                 f"nothing to grade"
             )
-        # The stub sits at the root of the build context, so its directory is it.
-        root = workspace.resolve(spec.stub).parent
+        root = self._content_root / exercise.id.value / spec.context
         query = ParsedBuildQuery(
             context=context_files(root), editable=spec.stub, source=source
         )
@@ -111,8 +129,8 @@ def definition_report(query: BuildQuery) -> CheckReport:
             None
             if error is None
             else (
-                "The checks below ran anyway, against whatever could be read "
-                "before the error."
+                "The checks below could not read anything either, so each is "
+                "reported as failed until this one passes."
             )
         ),
     )

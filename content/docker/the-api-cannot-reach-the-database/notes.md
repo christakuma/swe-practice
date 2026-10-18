@@ -42,8 +42,8 @@ only about reaching a container *from the host*.
   and `ports:` stops working for that service.
 - **`host.docker.internal` plus publishing 5432** works on Docker Desktop:
   out through the host and back in. It exposes the database to your whole
-  machine and relies on a name Linux hosts do not provide by default. The
-  honesty tier confirms both that it connects and why that is not the point.
+  machine and relies on a name Linux hosts do not provide by default. It
+  really does connect, which is why it is tempting, and why it is not the point.
 
 ## Debugging this class of problem
 

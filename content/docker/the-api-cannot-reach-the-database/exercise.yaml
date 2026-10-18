@@ -99,7 +99,7 @@ container:
       explanation: |
         `host.docker.internal:5432` with `ports: ["5432:5432"]` on `db` does
         connect on Docker Desktop: out of the API container, onto your machine,
-        and back into the database's. The honesty tier confirms it works. It
+        and back into the database's. It does work, on a real daemon. It
         also publishes Postgres with a guessable password to every interface
         of your machine, and it fails on a Linux host where that name does not
         resolve by default. The service name needs neither.

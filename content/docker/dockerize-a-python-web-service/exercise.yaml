@@ -87,7 +87,7 @@ container:
       severity: required
       assert: ordered_before
       with:
-        first: '^(COPY|ADD) (--\S+ )*(\S+ )*(requirements\.txt|\.)( \S+)+$'
+        first: '^(COPY|ADD) (--\S+ )*(\S+ )*(requirements\.txt|\./?)( \S+)+$'
         then: '^RUN .*pip install'
       explanation: |
         `pip install -r requirements.txt` reads a file, and a build has only
@@ -100,12 +100,12 @@ container:
       assert: ordered_before
       with:
         first: '^RUN .*pip install'
-        then: '^(COPY|ADD) (--\S+ )*(\S+ )*(\.|app\.py)( \S+)+$'
+        then: '^(COPY|ADD) (--\S+ )*(\S+ )*(\./?|app\.py|\*\.py)( \S+)+$'
       explanation: |
         The layer cache is the reason. Docker reuses a layer until something it
         depends on changes, and everything after a changed layer is rebuilt.
-        `COPY . .` changes whenever any file does, so a `pip install` after it
-        runs again on every edit to `app.py`. Copying the requirements alone,
+        `COPY . .` (or `COPY *.py ./`) changes whenever a source file does, so
+        a `pip install` after it runs again on every edit to `app.py`. Copying the requirements alone,
         installing, and only then copying the source means an ordinary code
         change rebuilds one cheap layer.
 

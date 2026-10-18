@@ -163,8 +163,9 @@ ASSETS: Final[tuple[VendoredAsset, ...]] = (
 #: CodeMirror mode name to the vendored files that define it, in load order.
 #:
 #: The template reads this through `mode_files`, rather than interpolating the
-#: mode name into a path itself. A missing entry is then a `None` the template
-#: can branch on, instead of a 404 on a script tag — and a mode whose file was
+#: mode name into a path itself. A missing entry is then an empty tuple, falsy,
+#: which the template can branch on instead of a 404 on a script tag — so test
+#: it for truth, not for `none` — and a mode whose file was
 #: never vendored degrades to a plain textarea *visibly*, in the one place that
 #: can tell the difference.
 _MODE_FILES: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(

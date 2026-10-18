@@ -39,7 +39,7 @@ from practice.adapters.container.dockerignore import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, Sequence
+    from collections.abc import Collection, Iterable, Mapping, Sequence
     from pathlib import Path
 
     from practice.domain.ports import Instruction, Stage
@@ -143,6 +143,7 @@ class _Held:
     layers: frozenset[Landing]
     visible: frozenset[Landing]
     workdir: str
+    directories: frozenset[str]
 
 
 def _landings(stages: Sequence[Stage], files: Sequence[str]) -> list[_Held]:
@@ -154,22 +155,29 @@ def _landings(stages: Sequence[Stage], files: Sequence[str]) -> list[_Held]:
         layers = set(inherited.layers) if inherited else set()
         visible = set(inherited.visible) if inherited else set()
         workdir = inherited.workdir if inherited else "/"
+        directories = set(inherited.directories) if inherited else {"/"}
         for instruction in stage.instructions:
             added: set[Landing] = set()
             if instruction.keyword == "WORKDIR" and instruction.args:
                 workdir = posixpath.normpath(
                     posixpath.join(workdir, instruction.args[0])
                 )
+                directories |= _parents_and_self(workdir)
             elif instruction.keyword in {"COPY", "ADD"} and instruction.args[1:]:
                 source_stage = dict(instruction.flags).get("from")
                 if source_stage is None:
-                    added = _from_context(instruction, files, workdir)
+                    added = _from_context(instruction, files, workdir, directories)
                 else:
                     origin = stage_index(stages[:index], source_stage)
                     if origin is not None:
                         added = _from_stage(
-                            instruction, results[origin].visible, workdir
+                            instruction,
+                            results[origin].visible,
+                            workdir,
+                            directories,
                         )
+                for _, spot in added:
+                    directories |= _parents_and_self(posixpath.dirname(spot))
             elif instruction.keyword == "RUN" and instruction.form == "shell":
                 removed = _removed(instruction.args[0], workdir)
                 visible = {
@@ -178,9 +186,38 @@ def _landings(stages: Sequence[Stage], files: Sequence[str]) -> list[_Held]:
             layers |= added
             visible |= added
         results.append(
-            _Held(layers=frozenset(layers), visible=frozenset(visible), workdir=workdir)
+            _Held(
+                layers=frozenset(layers),
+                visible=frozenset(visible),
+                workdir=workdir,
+                directories=frozenset(directories),
+            )
         )
     return results
+
+
+def _parents_and_self(directory: str) -> set[str]:
+    """`/app/src` and every directory above it, which all exist once it does."""
+    found = {"/"}
+    while directory not in {"", "/"}:
+        found.add(directory)
+        directory = posixpath.dirname(directory)
+    return found
+
+
+def _into_directory(
+    dest: str, target: str, directories: Collection[str], *, many: bool
+) -> bool:
+    """Whether a `COPY` puts its sources *inside* `dest` rather than *at* it.
+
+    Docker's rule, all three halves of it: a trailing slash, more than one
+    source, or a destination that already exists as a directory. The last is
+    the one `COPY app.py .` relies on, because `.` is the `WORKDIR`. The first
+    version knew only the first two, landed the file at `/app` rather than
+    `/app/app.py`, and so lost track of it: a later `COPY --from=build
+    /app/.env` then copied a secret the query said was not there.
+    """
+    return dest.endswith("/") or many or target in directories
 
 
 def _removed(line: str, workdir: str) -> tuple[str, ...]:
@@ -210,11 +247,14 @@ def _under(spot: str, removed: Sequence[str]) -> bool:
 
 
 def _from_context(
-    instruction: Instruction, files: Sequence[str], workdir: str
+    instruction: Instruction,
+    files: Sequence[str],
+    workdir: str,
+    directories: Collection[str],
 ) -> set[Landing]:
     *sources, dest = instruction.args
     target = posixpath.normpath(posixpath.join(workdir, dest))
-    into_directory = dest.endswith("/") or len(sources) > 1
+    into_directory = _into_directory(dest, target, directories, many=len(sources) > 1)
     landed: set[Landing] = set()
     for raw in sources:
         source = normalise_path(raw)
@@ -241,20 +281,26 @@ def _from_context(
 
 
 def _from_stage(
-    instruction: Instruction, held: Iterable[Landing], workdir: str
+    instruction: Instruction,
+    held: Iterable[Landing],
+    workdir: str,
+    directories: Collection[str],
 ) -> set[Landing]:
     *sources, dest = instruction.args
     target = posixpath.normpath(posixpath.join(workdir, dest))
+    into_directory = _into_directory(dest, target, directories, many=len(sources) > 1)
     landed: set[Landing] = set()
     for raw in sources:
-        source = posixpath.join("/", raw).rstrip("/") or "/"
+        # Relative to the other stage's root, and normalised as every landing
+        # is: unnormalised, `./app` and `.` matched nothing and copied nothing.
+        source = posixpath.normpath(posixpath.join("/", raw))
         for origin, spot in held:
             if spot == source:
                 name = posixpath.basename(spot)
                 landed.add(
                     (
                         origin,
-                        posixpath.join(target, name) if dest.endswith("/") else target,
+                        posixpath.join(target, name) if into_directory else target,
                     )
                 )
             elif source == "/" or spot.startswith(source + "/"):

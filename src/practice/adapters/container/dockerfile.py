@@ -306,11 +306,12 @@ def _logical_lines(text: str) -> list[tuple[int, str]]:
     began = 0
     for index in range(start, len(raw)):
         stripped = raw[index].strip()
-        if stripped.startswith("#"):
+        # A blank line is skipped inside a continuation as well as between
+        # instructions: Docker warns about one and keeps joining, and ending the
+        # instruction there made its next line an "unknown instruction".
+        if stripped.startswith("#") or not stripped:
             continue
         if not pending:
-            if not stripped:
-                continue
             began = index + 1
         body = raw[index].rstrip()
         if body.endswith(escape):
@@ -329,7 +330,10 @@ def _logical_lines(text: str) -> list[tuple[int, str]]:
 
 
 def _instruction(number: int, line: str) -> Instruction:
-    head, _, rest = line.partition(" ")
+    # Any whitespace separates the keyword, as it does for Docker: a tab after
+    # `RUN` is legal, and `partition(" ")` read it as part of the keyword.
+    head, *tail = line.split(maxsplit=1)
+    rest = tail[0] if tail else ""
     keyword = head.upper()
     if keyword not in KEYWORDS:
         raise DockerfileError(f"line {number}: unknown instruction {head!r}")

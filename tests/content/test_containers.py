@@ -166,3 +166,45 @@ def test_the_context_does_not_hold_the_editable_file(directory: Path) -> None:
     """The stub is copied in beside the context; a second copy would shadow it."""
     spec = spec_of(directory)
     assert not (directory / spec.context / spec.stub).exists()
+
+
+@pytest.mark.parametrize(
+    "copy_the_source",
+    ["COPY *.py ./", "COPY ./ ./", "COPY app.py ./", "COPY --chown=app:app . ."],
+)
+def test_the_dockerfile_exercise_accepts_other_ways_to_copy_the_source(
+    copy_the_source: str,
+) -> None:
+    """The prompt rules out copying the source before installing, not a spelling.
+
+    `install-before-source` once recognised only `.` and `app.py`, so `COPY
+    *.py ./` after a correct `pip install` failed a required check.
+    """
+    directory = CONTENT_ROOT / "docker" / "dockerize-a-python-web-service"
+    spec = spec_of(directory)
+    reference = (directory / spec.reference).read_text(encoding="utf-8")
+    assert "COPY . .\n" in reference
+    answer = reference.replace("COPY . .\n", f"{copy_the_source}\n")
+    verdict = grade_query(
+        spec,
+        ParsedBuildQuery(
+            context=context_files(directory / spec.context),
+            editable=spec.stub,
+            source=answer,
+        ),
+    )
+    assert verdict.passed, _describe(verdict)
+
+
+@pytest.mark.parametrize("directory", EXERCISES, ids=IDS)
+def test_nothing_a_solver_reads_names_the_test_suite(directory: Path) -> None:
+    """*The honesty tier* is this repository's name for `tests/docker`.
+
+    It reached a check explanation and three sets of notes, where a solver
+    has no way to know what it means.
+    """
+    readable = (directory / "exercise.yaml").read_text(encoding="utf-8")
+    notes = directory / "notes.md"
+    if notes.exists():
+        readable += notes.read_text(encoding="utf-8")
+    assert "honesty tier" not in readable.lower()

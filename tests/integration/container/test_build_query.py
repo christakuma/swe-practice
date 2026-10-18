@@ -21,7 +21,9 @@ from practice.adapters.container import (
     context_files,
 )
 from practice.domain.attempt import Attempt, AttemptPolicy
+from practice.domain.exercise import CheckSpec
 from practice.domain.ids import AttemptId
+from practice.domain.verdict import Severity
 from tests.fakes import FakeClock, FakeWorkspace, a_container, a_drill
 
 if TYPE_CHECKING:
@@ -105,6 +107,38 @@ class TestPathInImage:
         assert built.path_in_image("app.py")
         assert not built.path_in_image(".env")
 
+    def test_one_file_copied_to_the_workdir_is_followed_out_of_a_builder(
+        self,
+    ) -> None:
+        """`COPY .env .` puts the file *in* `/app`, because `.` is a directory.
+
+        The first version landed it *at* `/app`, so copying `/app/.env` out of
+        the builder found nothing, and a negated check passed a leaking image.
+        """
+        dockerfile = (
+            "FROM x AS build\nWORKDIR /app\nCOPY .env .\n"
+            "FROM y\nCOPY --from=build /app/.env /app/.env\n"
+        )
+        assert query(dockerfile).path_in_image(".env")
+
+    def test_rm_follows_one_file_copied_to_the_workdir(self) -> None:
+        dockerfile = (
+            "FROM x AS build\nWORKDIR /app\nCOPY app.py .\nCOPY .env .\n"
+            "RUN rm .env\nFROM y\nCOPY --from=build /app /app\n"
+        )
+        built = query(dockerfile)
+        assert not built.path_in_image(".env")
+        assert built.path_in_image("app.py")
+
+    @pytest.mark.parametrize("source", [".", "./", "./app", "/app/", "app"])
+    def test_a_from_source_is_normalised(self, source: str) -> None:
+        """Unnormalised, `.` and `./app` matched no landing and copied nothing."""
+        dockerfile = (
+            "FROM x AS build\nWORKDIR /app\nCOPY . .\n"
+            f"FROM y\nCOPY --from=build {source} /srv/\n"
+        )
+        assert query(dockerfile).path_in_image("app.py")
+
     def test_rm_of_a_directory_removes_what_is_under_it(self) -> None:
         dockerfile = (
             "FROM x AS build\nWORKDIR /app\nCOPY . .\nRUN rm -rf docs && rm .env\n"
@@ -169,26 +203,71 @@ def attempt_for(exercise: Exercise, source: str | None) -> Attempt:
     return attempt
 
 
+def a_library(root: Path, exercise: Exercise, files: dict[str, str]) -> Path:
+    """`files` as the shipped build context of `exercise`, under `root`."""
+    context = root / exercise.id.value / "context"
+    for name, text in files.items():
+        (context / name).parent.mkdir(parents=True, exist_ok=True)
+        (context / name).write_text(text, encoding="utf-8")
+    return root
+
+
 class TestTheGrader:
-    def test_grades_the_saved_answer_over_the_workspace_context(
+    def test_grades_the_saved_answer_over_the_shipped_context(
         self, tmp_path: Path
     ) -> None:
-        (tmp_path / "app.py").write_text("", encoding="utf-8")
-        # What is on disk is the provisioned stub; the attempt's answer wins.
-        (tmp_path / "Dockerfile").write_text('FROM x\nCMD ["gunicorn"]\n', "utf-8")
         exercise = a_container()
+        library = a_library(tmp_path / "content", exercise, {"app.py": ""})
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        # What is on disk is the provisioned stub; the attempt's answer wins.
+        (workspace / "Dockerfile").write_text('FROM x\nCMD ["gunicorn"]\n', "utf-8")
         answer = 'FROM x\nCMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]\n'
-        verdict = ContainerGrader().grade(
-            exercise, FakeWorkspace(repo=tmp_path), attempt_for(exercise, answer)
+        verdict = ContainerGrader(library).grade(
+            exercise, FakeWorkspace(repo=workspace), attempt_for(exercise, answer)
         )
         assert verdict.passed
         assert verdict.reports[0].check_id == DEFINITION_CHECK_ID
+
+    def test_editing_the_workspace_context_changes_nothing(
+        self, tmp_path: Path
+    ) -> None:
+        """The first version read the context from the workspace.
+
+        Deleting `.env` there, or adding a `.dockerignore` naming it, passed
+        the secrets exercise with the stub untouched.
+        """
+        exercise = a_container(
+            checks=(
+                CheckSpec(
+                    id="no-env",
+                    label=".env is in no layer.",
+                    severity=Severity.REQUIRED,
+                    assertion="path_in_image",
+                    params={"path": ".env"},
+                    negated=True,
+                    explanation="Layers are immutable.",
+                ),
+            )
+        )
+        library = a_library(
+            tmp_path / "content", exercise, {".env": "KEY=1", "app.py": ""}
+        )
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        (workspace / "app.py").write_text("", encoding="utf-8")
+        (workspace / ".dockerignore").write_text(".env\n", encoding="utf-8")
+        stub = "FROM x\nWORKDIR /app\nCOPY . .\nRUN rm -f .env\n"
+        verdict = ContainerGrader(library).grade(
+            exercise, FakeWorkspace(repo=workspace), attempt_for(exercise, stub)
+        )
+        assert not verdict.passed
 
     def test_a_parse_error_is_one_failure_with_the_parsers_sentence(
         self, tmp_path: Path
     ) -> None:
         exercise = a_container()
-        verdict = ContainerGrader().grade(
+        verdict = ContainerGrader(tmp_path).grade(
             exercise,
             FakeWorkspace(repo=tmp_path),
             attempt_for(exercise, "FROM x\nCOPPY . .\n"),
@@ -202,13 +281,13 @@ class TestTheGrader:
     def test_another_kind_is_refused(self, tmp_path: Path) -> None:
         exercise = a_drill()
         with pytest.raises(ContainerGraderError, match="sql_drill"):
-            ContainerGrader().grade(
+            ContainerGrader(tmp_path).grade(
                 exercise, FakeWorkspace(repo=tmp_path), attempt_for(exercise, "x")
             )
 
     def test_an_attempt_with_no_answer_is_refused(self, tmp_path: Path) -> None:
         exercise = a_container()
         with pytest.raises(ContainerGraderError, match="saved no answer"):
-            ContainerGrader().grade(
+            ContainerGrader(tmp_path).grade(
                 exercise, FakeWorkspace(repo=tmp_path), attempt_for(exercise, None)
             )

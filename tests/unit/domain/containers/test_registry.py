@@ -21,6 +21,26 @@ def test_a_bad_pattern_is_a_failing_report() -> None:
     assert not report.passed
 
 
+def test_a_negated_check_does_not_pass_on_an_unreadable_definition() -> None:
+    """Every assertion fails on nothing, and `not:` used to make that a pass.
+
+    A typo'd Dockerfile showed `.env is in no layer` in green beside the failed
+    `definition-parsed`. A check that read nothing has ruled nothing out.
+    """
+    broken = FakeBuildQuery(error="line 2: unknown instruction 'COPPY'")
+    cases: list[tuple[str, dict[str, str]]] = [
+        ("path_in_image", {"path": ".env"}),
+        ("pid1_matches", {"pattern": "sh$"}),
+        ("runs_as", {"pattern": "^root$"}),
+        ("instruction_matches", {"pattern": "^STOPSIGNAL"}),
+        ("service_value", {"service": "api", "key": "network_mode", "pattern": "."}),
+    ]
+    for assertion, params in cases:
+        report = run(assertion, broken, negated=True, **params)
+        assert not report.passed, assertion
+        assert (report.expected or "").startswith("not ")
+
+
 def test_the_label_is_the_authors() -> None:
     assert run("runs_as", FakeBuildQuery(), pattern="root").label == (
         "The label the author wrote."

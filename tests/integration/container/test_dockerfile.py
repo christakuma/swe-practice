@@ -35,6 +35,22 @@ class TestReadingInstructions:
         assert run.args == ("apt-get update && apt-get install -y curl",)
         assert run.line == 2
 
+    def test_a_blank_line_inside_a_continuation_does_not_end_it(self) -> None:
+        """Docker warns and keeps joining; ending the RUN made `&&` a keyword."""
+        [stage] = parse(
+            "FROM python:3.12-slim\n"
+            "RUN apt-get update \\\n"
+            "\n"
+            "    && apt-get install -y curl\n"
+        )
+        [run] = stage.instructions
+        assert run.args == ("apt-get update && apt-get install -y curl",)
+
+    def test_a_tab_separates_the_keyword(self) -> None:
+        [stage] = parse("FROM python:3.12-slim\nRUN\tpip install x\n")
+        [run] = stage.instructions
+        assert (run.keyword, run.args) == ("RUN", ("pip install x",))
+
     def test_the_escape_directive_is_honoured(self) -> None:
         [stage] = parse("# escape=`\nFROM python:3.12-slim\nRUN echo a `\n  b\n")
         assert stage.instructions[0].args == ("echo a b",)
