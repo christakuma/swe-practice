@@ -1,0 +1,109 @@
+schema_version: 1
+id: docker/node-modules-vanished
+kind: container
+title: node_modules is in the image, and the app cannot find it
+difficulty: medium
+tags: [docker, compose, volumes]
+estimated_minutes: 15
+
+prompt: |
+  **Ticket DEV-140** — *status board: `Cannot find module` in dev only*
+
+  > I added a bind mount to the dev compose file so edits show up without a
+  > rebuild, and now the status board won't start. The image is fine — I
+  > ran it on its own and the modules are right there. Inside the compose
+  > container they're gone.
+
+  ```
+  $ docker compose up -d
+  $ docker compose ps
+  SERVICE   STATUS         PORTS
+  web       Up 5 seconds   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+
+  $ curl -sS localhost:3000/
+  curl: (52) Empty reply from server
+
+  $ docker compose logs web
+  web-1  | Error: Cannot find module 'polka'
+  web-1  | Require stack:
+  web-1  | - /app/server.js
+  ...
+  web-1  | Failed running 'server.js'. Waiting for file changes before restarting...
+
+  $ docker run --rm status-board-web ls /app/node_modules
+  @arr
+  @polka
+  matchit
+  polka
+  trouter
+
+  $ docker compose exec web ls /app/node_modules
+  ls: /app/node_modules: No such file or directory
+  ```
+
+  Fix `compose.yaml` so the service starts with the dependencies the image
+  installed. Keep the project mounted at `/app`: that is how an edit reaches
+  the running container without a rebuild, and the team wants it.
+
+  Every line above is real, from `docker compose up` in this directory.
+  The `...` stands for Node's stack trace.
+
+hints:
+  - "The image and the container disagree about `/app`. A bind mount does
+     not merge with what the image has at that path: it *replaces* it, and
+     the container sees the host's directory."
+  - "Look at the host's directory. `npm ci` ran at build time, inside the
+     image, so the host has a `package.json` and no `node_modules`."
+  - "A second, more specific mount wins inside the first. What you need at
+     `/app/node_modules` is something that holds the *image's* copy rather
+     than the host's."
+  - "A volume, named or anonymous, starts empty, and Docker copies the
+     image's files at that path into it the first time it is mounted. Add
+     `- /app/node_modules` under `volumes:`."
+
+container:
+  context: context
+  stub: compose.yaml
+  reference: solution.compose.yaml
+
+  counter_examples:
+    # Both: with no bind there is nothing to keep the modules out of, and the
+    # second failure is the fix that the prompt's mount still needs.
+    - file: drop-the-bind-mount.compose.yaml
+      expect_failures: [the-project-is-still-mounted, node-modules-come-from-the-image]
+    - file: bind-node-modules-too.compose.yaml
+      expect_failures: [node-modules-come-from-the-image]
+    - file: install-on-start.compose.yaml
+      expect_failures: [node-modules-come-from-the-image]
+
+  checks:
+    - id: node-modules-come-from-the-image
+      label: A volume at /app/node_modules keeps the image's dependencies
+      severity: required
+      assert: service_mount
+      with: {service: web, target: /app/node_modules, type: volume}
+      explanation: |
+        The bind mount puts the host's directory at `/app`, and the host
+        never ran `npm ci`. A volume mounted at `/app/node_modules` sits
+        inside the bind and wins there, and an empty volume is filled from
+        the image's files at that path the first time it is mounted. An
+        anonymous one (`- /app/node_modules`) is the usual spelling; a named
+        one works too once it is declared under a top-level `volumes:`. A
+        *bind* of `./node_modules` is the same path and the opposite effect:
+        it shows the host's directory, which Docker creates empty.
+
+        Running `npm install` when the container starts also gets it
+        running, by downloading every dependency again on each start and
+        writing them into your checkout, where the Linux builds of native
+        modules do not belong.
+
+    - id: the-project-is-still-mounted
+      label: The project is still bind-mounted at /app
+      severity: required
+      assert: service_mount
+      with: {service: web, target: /app, type: bind}
+      explanation: |
+        Removing the mount makes the error go away by making the container
+        run the image as it was built, which is the code from the last
+        `docker compose build`. An edit then needs a rebuild to show up,
+        and live code was the reason the mount was added.

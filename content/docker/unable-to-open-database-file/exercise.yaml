@@ -1,0 +1,113 @@
+schema_version: 1
+id: docker/unable-to-open-database-file
+kind: container
+title: It worked until it stopped running as root
+difficulty: medium
+tags: [docker, dockerfile, security, permissions]
+estimated_minutes: 15
+
+prompt: |
+  **Ticket SEC-140** — *uploads 2.3 will not start*
+
+  > Security review asked every service to stop running as root, so 2.3
+  > adds a user and a `USER` line and nothing else. 2.2 has been running
+  > for a year. 2.3 exits the moment it starts, and the database file it
+  > says it cannot open is one it creates itself.
+
+  ```
+  $ docker run -d -p 8000:8000 --name uploads uploads:2.3
+  $ docker ps -a
+  IMAGE         STATUS
+  uploads:2.3   Exited (1) 2 seconds ago
+
+  $ docker logs uploads
+  Traceback (most recent call last):
+    File "/app/app.py", line 23, in <module>
+      LEDGER = open_ledger()
+               ^^^^^^^^^^^^^
+    File "/app/app.py", line 17, in open_ledger
+      ledger = sqlite3.connect(DATA / "ledger.db")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  sqlite3.OperationalError: unable to open database file
+
+  $ docker run --rm uploads:2.3 id
+  uid=1000(app) gid=1000(app) groups=1000(app)
+  ```
+
+  Fix the `Dockerfile` so the service starts and keeps its ledger in
+  `/app/data`, and still does not run as root. The ledger has to survive
+  as a file the service can write; nobody else needs to write it.
+
+  Every line above is real, from building this directory's `Dockerfile`.
+
+hints:
+  - "SQLite says *unable to open* for a file it may not create, which
+     usually means the directory, not the file. `docker run --rm
+     uploads:2.3 ls -ld /app/data` shows who owns it."
+  - "Every instruction before `USER` runs as root, so everything it creates
+     is root's: `WORKDIR`, `COPY` and the `mkdir`. `USER` changes who runs
+     what comes *after* it, including the service. It changes nothing that
+     already exists."
+  - "Give the directory to `app` while you are still root: create the user,
+     then `chown app:app /app/data`, all before `USER app`. Running the
+     `chown` after `USER app` is not allowed, and the build stops."
+  - "`COPY --chown=app:app . .` gives `app` the files it copies and not
+     `/app` itself, which `WORKDIR` made as root before the user existed."
+
+container:
+  context: context
+  stub: Dockerfile
+  reference: solution.Dockerfile
+
+  counter_examples:
+    - file: drop-the-user.Dockerfile
+      expect_failures: [runs-as-non-root]
+    - file: copy-with-chown.Dockerfile
+      expect_failures: [the-service-can-write-its-data]
+    - file: chown-after-user.Dockerfile
+      expect_failures: [the-service-can-write-its-data]
+    - file: world-writable.Dockerfile
+      expect_failures: [only-the-service-can-write-its-data]
+
+  checks:
+    - id: the-service-can-write-its-data
+      label: The user the image runs as can write /app/data
+      severity: required
+      assert: path_writable
+      with: {path: /app/data}
+      explanation: |
+        A process can create a file only in a directory it can write. The
+        service runs as `app`, and `/app/data` was made by a `RUN mkdir`
+        before `USER`, so it is `root:root` with mode 755: everyone may read
+        it and only root may write it. SQLite reports that as *unable to open
+        database file*. `chown app:app /app/data`, run as root before `USER
+        app`, gives it to the service. So does making the directory after
+        `USER app` (`WORKDIR /app/data` does), or letting the app create it in
+        an `/app` that `app` owns.
+
+    - id: runs-as-non-root
+      label: The image does not run as root
+      severity: required
+      assert: runs_as
+      not: true
+      with: {pattern: '^(root|0)(:|$)'}
+      explanation: |
+        Taking `USER app` out makes the service start, because root may
+        write anywhere, and it puts back the thing the security review asked
+        to remove. A process that breaks out of a root container is root on
+        a kernel it shares with the host. The fix is to give the non-root
+        user what it needs, not to give up on the user.
+
+    - id: only-the-service-can-write-its-data
+      label: Not every account can write /app/data
+      severity: advisory
+      assert: path_writable
+      not: true
+      with: {path: /app/data, by: nobody}
+      explanation: |
+        `chmod 777 /app/data` starts the service too, by letting every
+        account in the image write the ledger, including `nobody`, which
+        stands in here for whatever else ends up running in the container.
+        The service needs the directory to be its own, and `chown` says
+        exactly that. A group that includes the service (`chmod 775` with
+        `chgrp`) works as well.

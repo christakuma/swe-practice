@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    command: ["node", "--watch", "server.js"]
+    ports:
+      - "3000:3000"
+    volumes:
+      # The project, live from the host, so an edit needs no rebuild.
+      - .:/app
+      # A volume over the one directory the host does not have. Docker fills
+      # it from the image the first time it is mounted, so the modules
+      # `npm ci` installed at build time show through the bind mount.
+      - /app/node_modules

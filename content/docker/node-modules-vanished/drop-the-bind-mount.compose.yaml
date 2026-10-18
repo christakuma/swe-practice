@@ -1,0 +1,8 @@
+# Counter-example: it starts, because the image is used as built. Every edit
+# now needs `docker compose up --build`, which is what the mount was for.
+services:
+  web:
+    build: .
+    command: ["node", "--watch", "server.js"]
+    ports:
+      - "3000:3000"

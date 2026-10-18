@@ -1,0 +1,11 @@
+# Counter-example: a mount at the right path, of the wrong kind. A bind shows
+# the host's node_modules, and the host has none.
+services:
+  web:
+    build: .
+    command: ["node", "--watch", "server.js"]
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - ./node_modules:/app/node_modules

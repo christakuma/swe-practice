@@ -438,6 +438,15 @@ tracks:
   # ones follow -- PID 1, layers, readiness -- and every track's first three
   # steps have to be gentle (`test_every_track_opens_gently`), which this
   # order is and the Dockerfile-then-compose order was not.
+  #
+  # Phase 23's two each sit after the exercise they lean on. The multi-stage
+  # build follows the secret in a layer, because "deleting it does not help"
+  # is that exercise's lesson applied to size. The volume follows the compose
+  # pair, because it assumes a reader who has already met a service.
+  #
+  # Phase 24's non-root exercise closes the Dockerfile half. It leans on the
+  # first exercise's `USER` line, and on the secret's lesson that what an
+  # earlier instruction wrote stays as it was written.
   - name: docker
     title: "Docker: building images and fixing containers"
     exercises:
@@ -445,4 +454,7 @@ tracks:
       - docker/the-api-cannot-reach-the-database
       - docker/docker-stop-takes-ten-seconds
       - docker/the-secret-still-in-the-image
+      - docker/the-image-ships-its-compiler
+      - docker/unable-to-open-database-file
       - docker/the-api-starts-before-the-database
+      - docker/node-modules-vanished

@@ -239,11 +239,16 @@ tracks:
     summary: >-
       Write a Dockerfile, then diagnose containers from their symptoms: a
       port that answers nothing, a stop that takes ten seconds, a deleted
-      secret that shipped, and two compose stacks that cannot connect.
+      secret that shipped, an image that ships its compiler, a service that
+      cannot write once it stops running as root, two compose stacks that
+      cannot connect, and dependencies a mount hid.
     exercises:
       - docker/dockerize-a-python-web-service
       - docker/connection-reset-from-the-host
       - docker/the-api-cannot-reach-the-database
       - docker/docker-stop-takes-ten-seconds
       - docker/the-secret-still-in-the-image
+      - docker/the-image-ships-its-compiler
+      - docker/unable-to-open-database-file
       - docker/the-api-starts-before-the-database
+      - docker/node-modules-vanished

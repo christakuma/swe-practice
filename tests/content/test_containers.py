@@ -144,13 +144,13 @@ def test_every_exercise_has_a_counter_example(directory: Path) -> None:
 # --- the library as a whole ------------------------------------------------
 
 
-def test_there_are_six_container_exercises() -> None:
-    """A literal count, so a seventh is a deliberate edit rather than a surprise."""
-    assert len(EXERCISES) == 6
+def test_there_are_nine_container_exercises() -> None:
+    """A literal count, so a ninth is a deliberate edit rather than a surprise."""
+    assert len(EXERCISES) == 9
 
 
 def test_every_container_assertion_is_used_by_some_exercise() -> None:
-    """§13's rule, held over the eight: an assertion nothing names should go."""
+    """§13's rule, held over the eleven: an assertion nothing names should go."""
     used = {
         check.assertion
         for directory in EXERCISES

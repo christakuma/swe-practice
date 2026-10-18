@@ -1,0 +1,145 @@
+schema_version: 1
+id: docker/the-image-ships-its-compiler
+kind: container
+title: A 7.5 MB program in a 1.34 GB image
+difficulty: medium
+tags: [docker, dockerfile, multi-stage, layers]
+estimated_minutes: 15
+
+prompt: |
+  **Ticket PLAT-212** — *shortlink: every deploy pulls 1.34 GB*
+
+  > The registry bill went up again, and the biggest repository by far is
+  > `shortlink`, a link shortener with no dependencies outside Go's standard
+  > library. Every node pulls the whole image on every deploy. How is a
+  > program this small an image this big?
+
+  ```
+  $ docker images shortlink
+  REPOSITORY   TAG       IMAGE ID       CREATED         SIZE
+  shortlink    1.0       9e4de49c7fa8   3 seconds ago   1.34GB
+
+  $ docker run --rm shortlink:1.0 ls -lh /usr/local/bin/shortlink
+  -rwxr-xr-x 1 root root 7.5M Oct 17 20:12 /usr/local/bin/shortlink
+
+  $ docker run --rm shortlink:1.0 go version
+  go version go1.23.12 linux/amd64
+
+  $ docker run --rm shortlink:1.0 ls /src
+  Dockerfile
+  go.mod
+  main.go
+  server.go
+  store.go
+  store_test.go
+  ```
+
+  Fix the `Dockerfile` so the image holds the program and not what built
+  it. Two things stay as they are: CI builds the image from source with
+  `docker build .` on runners that have no Go installed, and
+  `docker run -p 8080:8080 shortlink` with no arguments starts the server.
+
+  Every line above is real, from building this directory's `Dockerfile`.
+
+hints:
+  - "The image is everything its `FROM` brings plus every layer after it.
+     `golang:1.23` is a whole build machine, compiler and all, and the
+     program needs none of it to *run*."
+  - "Deleting the toolchain after the build will not help, for the reason
+     the secrets exercise gave: the layers that brought it are still
+     underneath, and a deletion only hides them."
+  - "A Dockerfile can have more than one `FROM`. Each starts a new stage, and
+     only the last one ships. `COPY --from=<stage>` takes files out of an
+     earlier stage without taking its layers."
+  - "Name the first stage (`FROM golang:1.23 AS build`), build there, then
+     start the final stage `FROM scratch`, copy the one binary in, and give
+     it an exec-form `ENTRYPOINT`. `CGO_ENABLED=0` is what makes a binary
+     that can run on an image with nothing else in it."
+
+container:
+  context: context
+  stub: Dockerfile
+  reference: solution.Dockerfile
+
+  counter_examples:
+    - file: delete-the-toolchain.Dockerfile
+      expect_failures:
+        - builds-in-its-own-stage
+        - no-toolchain-in-the-image
+        - no-source-in-the-image
+        - nothing-but-the-program
+    - file: nothing-to-run.Dockerfile
+      expect_failures: [starts-the-program]
+    - file: shell-form-on-scratch.Dockerfile
+      expect_failures: [starts-the-program]
+    - file: copy-the-build-directory.Dockerfile
+      expect_failures: [no-source-in-the-image]
+    - file: binary-from-the-host.Dockerfile
+      expect_failures: [builds-in-its-own-stage]
+
+  checks:
+    - id: builds-in-its-own-stage
+      label: The program is built in a stage that does not ship
+      severity: required
+      assert: stage_count
+      with: {at_least: 2}
+      explanation: |
+        Only the last stage of a Dockerfile becomes the image. A stage before
+        it can hold the compiler, the source and the module cache, build the
+        program, and hand over just the result with `COPY --from`. That is
+        how the build stays `docker build .` on a runner with no Go installed
+        while the image holds none of it. Copying in a binary built on
+        somebody's laptop is small too, and builds only where that file
+        happens to exist: `"/shortlink": not found` on every other machine.
+
+    - id: no-toolchain-in-the-image
+      label: The image is not built from the Go toolchain
+      severity: required
+      assert: base_image_matches
+      not: true
+      with: {pattern: '(^|/)golang(:|@|$)'}
+      explanation: |
+        `golang:1.23` is 1.23 GB before the first instruction runs: the Go
+        toolchain (269 MB of it) on a Debian system with gcc, git and the
+        rest of a build machine. Whatever later instructions do, an image
+        built `FROM` it ships every byte. `RUN rm -rf /usr/local/go` writes
+        a deletion on top, and the image is still 1.24 GB.
+
+    - id: no-source-in-the-image
+      label: The source tree does not reach the image
+      severity: required
+      assert: path_in_image
+      not: true
+      with: {path: main.go}
+      explanation: |
+        The source is not needed to run a compiled program, and shipping it
+        hands the code to anyone who can pull the image. `COPY --from=build
+        /src /app` takes the builder's whole working directory, binary and
+        source together. Build the binary somewhere of its own
+        (`-o /out/shortlink`) and copy that one file.
+
+    - id: starts-the-program
+      label: The container starts the program, not a shell
+      severity: required
+      assert: pid1_matches
+      with: {pattern: '^(?!(.*/)?(ba|da)?sh$)'}
+      explanation: |
+        `scratch` is empty: no `CMD` of its own to fall back on, and no
+        shell. A final stage with no `ENTRYPOINT` or `CMD` builds and then
+        refuses to run (`no command specified`). A shell-form `CMD
+        /shortlink` is run as `/bin/sh -c /shortlink`, and there is no
+        `/bin/sh` to run it with (`exec: "/bin/sh": stat /bin/sh: no such
+        file or directory`). Use the exec form: `ENTRYPOINT ["/shortlink"]`.
+
+    - id: nothing-but-the-program
+      label: The final stage starts from scratch or a distroless image
+      severity: advisory
+      assert: base_image_matches
+      with: {pattern: '^(scratch$|gcr\.io/distroless/)'}
+      explanation: |
+        A static Go binary needs nothing from its image: no C library, no
+        shell, no package manager. `scratch` gives it exactly that, and
+        `gcr.io/distroless/static-debian12` (6 MB) adds CA certificates, time
+        zones and a `/etc/passwd` with a `nonroot` user, and still no shell. `alpine` or `debian:bookworm-slim` work too, and
+        bring a shell and a package manager that are there for an attacker
+        as much as for you.

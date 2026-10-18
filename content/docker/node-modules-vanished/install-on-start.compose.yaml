@@ -1,0 +1,10 @@
+# Counter-example: install again every time the container starts. It works,
+# from the network, into the host's checkout.
+services:
+  web:
+    build: .
+    command: sh -c "npm install && node --watch server.js"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app

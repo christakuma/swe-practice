@@ -155,21 +155,21 @@ class Container:
         return docker("exec", self.id, "python", "-c", script, check=False).strip()
 
 
-def run(tag: str, *args: str) -> Container:
-    """Start a container detached, publishing 8000 on a free loopback port."""
+def run(tag: str, *args: str, port: int = 8000) -> Container:
+    """Start a container detached, publishing `port` on a free loopback port."""
     container_id = docker(
-        "run", "-d", "--label", LABEL, "-p", "127.0.0.1::8000", *args, tag
+        "run", "-d", "--label", LABEL, "-p", f"127.0.0.1::{port}", *args, tag
     ).strip()
     return Container(id=container_id)
 
 
-def host_get(port: int, *, attempts: int = 20) -> str:
-    """`GET /` from the host, as the ticket's `curl` did: a status, or the error."""
+def host_get(port: int, *, attempts: int = 20, path: str = "/") -> str:
+    """`GET path` from the host, as a ticket's `curl` did: a status, or the error."""
     last = ""
     for _ in range(attempts):
         try:
             with urllib.request.urlopen(
-                f"http://127.0.0.1:{port}/", timeout=5
+                f"http://127.0.0.1:{port}{path}", timeout=5
             ) as response:
                 return str(response.status)
         except (urllib.error.URLError, ConnectionError, OSError) as exc:

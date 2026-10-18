@@ -1,0 +1,14 @@
+{
+  "name": "status-board",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The team's status page: which services are up, as one HTML page.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "polka": "0.5.2"
+  }
+}
