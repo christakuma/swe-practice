@@ -343,8 +343,28 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > a real daemon, which found that dash, unlike bash, does not exec a lone
 > `sh -c` command.
 >
+> **Phase 23 is the next two Docker tickets, and the two assertions Phase 22
+> deferred came back with them**, as §13 asks: `stage_count` for a 1.34 GB Go
+> image that ships its compiler, and `service_mount` for a bind mount that
+> hid `node_modules`. Eight Docker exercises and ten assertions. Writing out
+> the answers neither prompt rules out is now a test rather than a habit
+> (`tests/content/test_container_answers.py`), and measuring compose found
+> one rule the grader had to copy: a named volume nobody declared is a file
+> compose refuses, so it is a parse failure here too, not a pass.
+>
+> **Phase 24 is the ticket Phase 23 could not grade**: a service that
+> cannot write its data once it stops running as root. The layer model now
+> knows who owns each directory and which uid and groups the container runs
+> with, and the eleventh assertion, `path_writable`, reads it
+> ([ADR 0031](adr/0031-ownership-is-modelled-from-the-definition-not-grepped.md)).
+> Text could not grade it: measured on BuildKit, `WORKDIR` after `USER`
+> makes a directory the user's, and `COPY --chown` leaves the directory it
+> copies into to root. Nine Docker exercises, and nine right answers the
+> prompt leaves open, each run on a daemon.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 22 (Docker exercises, graded statically), 2026-10-17
+> · **Last phase:** 24 (permission denied as non-root, and ownership in the
+> layer model), 2026-10-17
 > · **Last change:** Run, and trying again after a failure, 2026-10-16
 
 ---
@@ -2802,6 +2822,45 @@ the grade ever needing a Docker daemon
 | The first screen still offers every kind, and the Docker track opens gently | `tests/content/test_library.py` |
 | Dockerfile and YAML highlighting, vendored and hash-pinned | `tests/web/test_vendored_assets.py` |
 
+### Phase 23 — Two more Docker tickets, and the two deferred assertions · **1 session**
+
+**Goal:** the multi-stage build and the bind-mount-over-dependencies bug,
+the two Docker lessons Phase 22 had no exercise for, with `stage_count` and
+`service_mount` arriving only because each now has an exercise that names it
+(§13). A third ticket, *permission denied as non-root*, was planned as
+optional and not written: §16 has why.
+
+| Exit criterion | Met by |
+|---|---|
+| `stage_count` and `service_mount`, pure, at 100% branch coverage | `tests/unit/domain/containers/test_image.py::TestStageCount`, `test_compose.py::TestServiceMount` |
+| Every assertion is named by a shipped exercise, now ten of ten | `tests/content/test_containers.py::test_every_container_assertion_is_used_by_some_exercise` |
+| Short volume syntax normalises to the shape `docker compose config` prints, and what compose refuses is refused | `tests/integration/container/test_dockerignore_and_compose.py` |
+| The fake and the real `BuildQuery` agree on both new assertions | `tests/integration/container/test_conformance.py` |
+| Every reference passes clean, every stub fails, every counter-example fails exactly what it declares | `tests/content/test_containers.py` |
+| No answer the prompt leaves open is failed | `tests/content/test_container_answers.py` |
+| Every ticket, counter-example and accepted answer behaves as claimed on a real daemon | `tests/docker/test_the_image_ships_its_compiler.py`, `tests/docker/test_node_modules_vanished.py` (opt-in) |
+| The Docker track still opens gently | `tests/content/test_library.py::test_every_track_opens_gently` |
+
+### Phase 24 — Permission denied as non-root, and ownership in the layer model · **1 session**
+
+**Goal:** the ticket Phase 23 left, graded on its end state. A service that
+writes `/app/data` has to be able to, as the user the image runs as, and
+that is a question about owners, modes and uids rather than about which
+instructions the file contains
+([ADR 0031](adr/0031-ownership-is-modelled-from-the-definition-not-grepped.md)).
+
+| Exit criterion | Met by |
+|---|---|
+| `path_writable` and the kernel's rule under it, pure, at 100% branch coverage | `tests/unit/domain/containers/test_ownership.py` |
+| Every assertion is named by a shipped exercise, now eleven of eleven | `tests/content/test_containers.py::test_every_container_assertion_is_used_by_some_exercise` |
+| The layer model agrees with BuildKit on every measured ownership rule, and with Debian on every measured allocation | `tests/integration/container/test_filesystem.py` |
+| A command the build would refuse stops it, and one the grader cannot read is said, not guessed | `tests/integration/container/test_filesystem.py::TestRunAsAnotherUser`, `::TestRun::test_a_command_substitution_is_a_note` |
+| The fake and the real `BuildQuery` agree on ownership | `tests/integration/container/test_conformance.py::test_ownership_reads_the_same_through_both` |
+| Every reference passes clean, every stub fails, every counter-example fails exactly what it declares | `tests/content/test_containers.py` |
+| No answer the prompt leaves open is failed | `tests/content/test_container_answers.py` |
+| The ticket, every counter-example's symptom and every accepted answer behave as claimed on a real daemon | `tests/docker/test_unable_to_open_database_file.py` (opt-in) |
+| The Docker track still opens gently | `tests/content/test_library.py::test_every_track_opens_gently` |
+
 ---
 
 ## 12. Architecture decision records
@@ -2843,6 +2902,7 @@ changed"* is worth more than any code sample.
 | [0028](adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md) | A variant is a whole exercise, offered under the one it varies | accepted |
 | [0029](adr/0029-a-failed-submission-is-logged-and-run-is-the-examples.md) | A failed submission is logged rather than final, and Run is the examples rather than the suite | accepted |
 | [0030](adr/0030-docker-exercises-graded-statically-one-editable-file.md) | Docker exercises are graded on the definition, one editable file each | accepted |
+| [0031](adr/0031-ownership-is-modelled-from-the-definition-not-grepped.md) | Who owns a path is modelled from the definition, not grepped for | accepted |
 
 ---
 
@@ -6279,3 +6339,128 @@ the one there was before. 100% statement and branch coverage over 3,321
 statements and 750 branches. `practice validate` reports 283 exercises, six more
 than 277, and `practice fixtures --check` is unchanged. The honesty tier passed
 30 of 30 on Docker Desktop 28.3.3 in 5m13s. The gate took 11m37s, one run.
+
+**2026-10-17 — Phase 23: two more Docker tickets, and the two deferred
+assertions.** Phase 22 cut `stage_count` and `service_mount` from the plan's
+ten because no exercise wanted them, and §13 says an assertion arrives with
+the exercise that does. This phase wrote both exercises and the two came
+back: *a 7.5 MB program in a 1.34 GB image*, a Go link shortener built and
+shipped on `golang:1.23`, and *node_modules is in the image, and the app
+cannot find it*, a compose bind mount of `.:/app` hiding the dependencies
+`npm ci` installed. Ten assertions, each named by a shipped exercise.
+
+**Every number in both tickets was measured, and two written before measuring
+were wrong.** The plan called it *the 1.4 GB image*; it is 1.34 GB as `docker
+images` prints it. `golang:1.23` is 1.23 GB of that before the first
+instruction, and only 269 MB of the base is Go, which corrected a first draft
+of the explanation that called the size "nearly all a compiler". Deleting the toolchain in the build's own `RUN` brings it to 1.24
+GB, saving only the build cache that never reached a layer. The reference on
+`scratch` is 12.4 MB. Under the containerd image store `docker image
+inspect`'s `.Size` says 325 MB for the stub, which is the compressed content,
+so the honesty tier reads sizes from `docker images` as the ticket does.
+The notes' `CGO_ENABLED=0` claim, the one the grader cannot see, was run too:
+without it the binary names `/lib64/ld-linux-x86-64.so.2` and dies on
+`scratch` with `exec /shortlink: no such file or directory`.
+
+**Measuring compose rather than reading its specification set two rules for
+the normaliser.** `docker compose config` silently drops a volume mode it
+does not know, so the normaliser does too rather than refusing a file
+compose runs. And it refuses a named volume missing from the top-level
+`volumes:`, which is the most natural way to write the named-volume fix; a
+normaliser that accepted it would have passed a stack that never starts. It
+is a parse failure here now, and the honesty tier confirms compose's words.
+One more measured rule went into the notes: compose keeps a service's
+anonymous volumes across `--force-recreate`, so after a dependency changes
+the container still sees the old modules until `-V`.
+
+**Writing out the answers the prompts leave open is now a test, not a
+habit.** Phase 22 found four places it would have failed a correct answer by
+doing this by hand. `tests/content/test_container_answers.py` holds nine:
+distroless and alpine final stages, a stage by number, a module-download
+stage, a cross-compiling `--platform` build, the stub's own path and `CMD`
+on `scratch`, and three spellings of the volume. None failed, which is the
+finding: the model already admitted every one. The honesty tier builds the
+same nine and serves a request from each.
+
+**What deviated.** The optional third ticket, *permission denied as
+non-root*, was not written. Measured on BuildKit, `WORKDIR /app/data` after
+`USER app` creates the directory owned by `app`, so every assertion that
+could grade the fix today, a `chown` before `USER` or a `--chown`, would fail
+that correct answer. Grading it honestly needs ownership in the layer
+model, a port method for one exercise, and ADR 0030's revisit list now says
+so. Dropping the bind mount fails both of the volume exercise's checks
+rather than one: with nothing mounted there is nothing to keep the modules
+out of, and the second failure names the fix the prompt's mount still
+needs. The honesty tier's first run failed once, on its own test: the
+`golang` base holds two hundred files called `main.go`, so "the source is in
+a layer" became membership rather than equality. The rest of the claims
+held first time.
+
+**Final numbers.** 9,093 passing and 55 skipped, where the last entry ended on
+9,020 and 31: 73 new tests in the gate, and 24 new opt-in Docker claims among
+the skips. 100% statement and branch coverage over 3,354 statements and 760
+branches. `practice validate` reports 285 exercises, two more than 283, and
+`practice fixtures --check` is unchanged. The honesty tier passed 54 of 54 on
+Docker Desktop 28.3.3 in 6m39s. The gate took 12m11s, one run.
+
+**2026-10-17 — Phase 24: permission denied as non-root, and ownership in
+the layer model.** The ticket Phase 23 planned and did not write: *it worked
+until it stopped running as root*, an uploads service whose SQLite ledger
+lives in `/app/data`. The stub makes the directory with a root `RUN mkdir`,
+then adds `USER app`, and the container exits with `sqlite3.OperationalError:
+unable to open database file`. The ticket is real captured output, and the
+app was rewritten to `pathlib` (ruff lints content) and the ticket captured
+again rather than edited.
+
+**The grader learned ownership instead of the exercise learning to grep**
+([ADR 0031](adr/0031-ownership-is-modelled-from-the-definition-not-grepped.md)).
+`BuildQuery` gained `account` and `path_access`, answered in uids and gids
+because the kernel compares numbers. `adapters/container/filesystem.py` walks
+the stages through `WORKDIR`, `COPY --chown/--chmod/--from` and the account
+and file commands a `RUN` runs directly. `path_writable`, the eleventh
+assertion, decides with `may`, the kernel's rule, which the adapter also uses
+to tell when a `mkdir` as `app` would stop the build.
+
+**Every rule was measured on BuildKit first, and four were not what the
+documentation suggests.** `WORKDIR` and `COPY --chown` both create *missing*
+parents owned by the user and leave existing ones to root. That makes
+`COPY --chown=app:app . .` into a root `WORKDIR` the exercise's best wrong
+answer: every file is `app`'s and `/app` is not. `COPY --from` keeps the
+source's owner where a context `COPY` ignores `USER`. `--chmod` reaches the
+directories `COPY` creates, under the 022 umask. And `WORKDIR` under `USER
+4242` makes `4242:4242`, while the same user *runs* with group 0. The uid
+allocators differ by tool (`useradd` takes the highest id plus one, `adduser`
+the first free one), and both were measured in one `RUN` and copied.
+
+**A command the build would refuse stops the model, and one it cannot read
+is said aloud.** `chown` after `USER app` is `Operation not permitted` on a
+real daemon, so it sets `stopped` and `path_writable` fails with that
+sentence. Continuing past it would let a later line pass a build that never
+finishes. `chown $(id -u app)` and `chmod g=u` are not applied, and become
+notes that a failing verdict quotes, so a solver can tell *my answer is
+wrong* from *the grader cannot read this*.
+
+**What deviated.** A self-review after the first gate started found two
+defects and the gate was stopped to fix them. `COPY --from` of a path the
+model never saw, such as a builder's `dist/`, was recorded as a file, which
+would have failed `COPY --from=build --chown=app /src/dist /app` with `app`
+unable to create anything inside it. Measured, BuildKit makes `/app`
+`app:app`, and `app` can `mkdir` in it. An unseen source is now a directory.
+And `under("/")` matched nothing below the root, so `rm -rf /` deleted the
+root node and `chown -R x /` changed only `/`. Three of the first
+integration expectations were wrong rather than the model, and each was
+corrected against a measurement rather than against the code: a directory
+copied `--from` lands in a root-owned target, and its files keep their
+numeric owner, which the final stage labels by its own `/etc/group`.
+
+**Final numbers.** 9,230 passing and 71 skipped, where the last entry ended
+on 9,093 and 55: 137 new tests in the gate, and 16 new opt-in Docker claims
+among the skips. 100% statement and branch coverage over 3,429 statements
+and 782 branches. `practice validate` reports 286 exercises, one more than
+285, and `practice fixtures --check` is unchanged. The new honesty-tier file
+passed 16 of 16 on Docker Desktop 28.3.3 in 70s: the ticket, every
+counter-example's symptom, the notes' named-volume claim, and nine right
+answers each storing an upload as non-root. The rest of the tier was not
+re-run, because nothing it builds changed. The gate took 23m44s, one run,
+started straight after a usage-limit pause, and CLAUDE.md's warning that one
+run is not a measurement applies to it.

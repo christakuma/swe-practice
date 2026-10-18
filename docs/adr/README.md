@@ -52,6 +52,7 @@ an afternoon do not need one.
 | [0028](0028-a-variant-is-a-whole-exercise-offered-under-its-base.md) | A variant is a whole exercise, offered under the one it varies | accepted |
 | [0029](0029-a-failed-submission-is-logged-and-run-is-the-examples.md) | A failed submission is logged rather than final, and Run is the examples rather than the suite | accepted |
 | [0030](0030-docker-exercises-graded-statically-one-editable-file.md) | Docker exercises are graded on the definition, one editable file each | accepted |
+| [0031](0031-ownership-is-modelled-from-the-definition-not-grepped.md) | Who owns a path is modelled from the definition, not grepped for | accepted |
 
 0022 is the odd one in this set: the only record here about **how the content is
 authored** rather than how the code is arranged. It exists because Phase 17's

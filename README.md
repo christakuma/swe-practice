@@ -56,8 +56,8 @@ the real repository, and the repository's state beside it.
 
 ## What is in it
 
-- **121 exercises, every one of them graded**: 24 git scenarios, 83 Python
-  katas, 8 SQL drills and 6 Docker exercises, in one hand-ordered curriculum.
+- **124 exercises, every one of them graded**: 24 git scenarios, 83 Python
+  katas, 8 SQL drills and 9 Docker exercises, in one hand-ordered curriculum.
 - **Problem statements you can check**: every kata lists its constraints and
   has an Examples tab of inputs and outputs, each one run against the
   reference solution.
@@ -162,7 +162,7 @@ your browser on `http://127.0.0.1:8765`:
 
 ```
   ok   git         /usr/bin/git
-  ok   library     121 exercises (24 git scenarios, 83 katas, 8 SQL drills, 6 Docker exercises) in ~/swe-practice/content
+  ok   library     124 exercises (24 git scenarios, 83 katas, 8 SQL drills, 9 Docker exercises) in ~/swe-practice/content
   ok   workspaces  ~/.cache/swe-practice/ws
   ok   database    ~/.local/share/swe-practice/practice.db (created v2)
   ok   scheduler   sm2 (Sm2Scheduler())
@@ -400,8 +400,8 @@ history is not ([ADR 0006](docs/adr/0006-sqlite-without-an-orm.md)).
 
 ## Docker exercises
 
-Six exercises about containers. You write one Dockerfile from scratch, then
-diagnose five broken setups from a ticket. Each ticket is real output captured
+Nine exercises about containers. You write one Dockerfile from scratch, then
+diagnose eight broken setups from a ticket. Each ticket is real output captured
 from the broken files in that exercise's directory:
 
 | Exercise | What the ticket shows | What it teaches |
@@ -410,17 +410,21 @@ from the broken files in that exercise's directory:
 | It runs, the port is published, and nothing answers | `curl: (52) Empty reply from server` | a container's `localhost` is its own |
 | Every deploy waits ten seconds, then kills the worker | `Exited (137)` after a ten-second `docker stop` | PID 1, signals, and why the shell form loses SIGTERM |
 | The key we deleted is still in the image | a scanner finds `.env` in a layer | layers are immutable; `RUN rm` only hides a file |
+| A 7.5 MB program in a 1.34 GB image | `go version` and the source tree, inside the shipped image | multi-stage builds, `COPY --from`, what `scratch` lacks |
+| It worked until it stopped running as root | `sqlite3.OperationalError: unable to open database file` | `USER` changes who runs, not who owns; `chown` before `USER` |
 | The database is up and the API cannot find it | `refused the connection` to `localhost:5432` | compose services reach each other by name |
 | depends_on is set, and the API still starts too early | `Exited (1)` while `db` is `Up` | started is not ready: healthchecks and `service_healthy` |
+| node_modules is in the image, and the app cannot find it | `Cannot find module 'polka'` under a bind mount | a mount replaces a directory; a volume is filled from the image |
 
 The workspace is a real build context, so `docker build .` and `docker compose
 up` work in it and you can watch the symptom happen. **The grade never needs
 Docker**: it parses your Dockerfile or `compose.yaml` and checks what Docker
 would do with it. That covers which process becomes PID 1, which files land in
-which layer, and what a compose service resolves to after compose's own
-normalisation, so equivalent spellings pass and the same bug in different
-words fails
-([ADR 0030](docs/adr/0030-docker-exercises-graded-statically-one-editable-file.md)).
+which layer, who owns each directory and so who may write it, and what a
+compose service resolves to after compose's own normalisation, so equivalent
+spellings pass and the same bug in different words fails
+([ADR 0030](docs/adr/0030-docker-exercises-graded-statically-one-editable-file.md),
+[ADR 0031](docs/adr/0031-ownership-is-modelled-from-the-definition-not-grepped.md)).
 
 Whether each ticket is *true* is a separate claim, checked by an opt-in suite
 that builds every stub, reference and wrong answer on a real daemon:
@@ -436,11 +440,11 @@ and an end. Five ship.
 
 | Track | Steps | Order |
 |---|---|---|
-| The whole library | 121 | The curriculum's: git, katas, SQL and Docker interleaved |
+| The whole library | 124 | The curriculum's: git, katas, SQL and Docker interleaved |
 | The Blind 75 | 75 | By technique, each on-ramp pulled to where it is needed |
 | Git scenarios | 24 | Local work first, shared history last |
 | SQL drills | 8 | Read, read carefully, then write |
-| Docker | 6 | Write one Dockerfile, then the two networking tickets, then PID 1, layers and readiness |
+| Docker | 9 | Write one Dockerfile, then the two networking tickets, then PID 1, layers, image size, permissions, readiness and mounts |
 
 Start one from `/tracks` and every finished attempt offers the step after it:
 
@@ -812,7 +816,7 @@ src/practice/
 │   └── mcp/         a read-only MCP server on stdio: the third, and an optional extra
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
-content/           121 exercises as declarative data
+content/           124 exercises as declarative data
 ├── curriculum.yaml the one order, in twenty-two sections; validate holds it to covering them all
 ├── tracks.yaml    the routes you can follow; validate holds their order to the curriculum's
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform

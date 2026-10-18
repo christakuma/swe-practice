@@ -148,11 +148,48 @@ rule is that an assertion arrives with the exercise that wants it.
 - **An exercise needs two editable files.** That is the trigger for the
   per-kind capability record ADR 0019 anticipated, and it is a change to
   `SolutionSaved` and the workbench, not to this kind.
-- **An exercise is built on an image with its own `ENTRYPOINT`** (`node`,
-  `nginx`). The query would need the base's config handed to it, a small
-  manifest of known bases, rather than the current assumption.
+- **An exercise grades the process of an image built on one with its own
+  `ENTRYPOINT`** (`node`, `nginx`, a distroless `:debug` tag). The query
+  would need the base's config handed to it, a small manifest of known
+  bases, rather than the current assumption. Phase 23 did not need one: its
+  Dockerfile exercise ships on `scratch`, which has no config at all, and its
+  `node` image is built by a compose exercise that grades no process. The
+  one answer it leaves open on such a base, a `:debug` distroless final
+  stage, is a lie the grader would tell, and nobody reaches for a debug
+  image to make an image smaller.
 - **CI gains a Linux job with a Docker daemon.** The honesty tier could then
   run there on every content change, which would turn "every ticket is real"
   from a claim checked by hand into one checked by the build.
-- **The multi-stage or volume exercises are written.** `stage_count` and
-  `service_mount` come back with them.
+- ~~**An exercise needs to know who owns a path.**~~ Done in Phase 24, in
+  [ADR 0031](0031-ownership-is-modelled-from-the-definition-not-grepped.md).
+  *Permission denied as non-root* was planned for Phase 23 and not written,
+  because the only assertions that could grade it read the text. Measured on
+  BuildKit, `WORKDIR /app/data` *after* `USER app` creates the directory
+  owned by `app`, so a check for `chown` before `USER` fails a correct
+  answer, and one for `--chown` passes a wrong one. The layer model now
+  tracks ownership, and `path_writable` reads it.
+- ~~**The multi-stage or volume exercises are written.**~~ Done in Phase 23,
+  and `stage_count` and `service_mount` came back with them. See below.
+
+## Phase 23: the two deferred assertions
+
+`stage_count {equals|at_least|at_most}` counts the stages a Dockerfile
+declares, and is written to be paired: BuildKit skips a stage nothing
+depends on, so a count alone passes an unused builder above a fat final
+stage. Its exercise also asserts that the final stage is not `golang` and
+that `main.go` is in no layer, and those see that file for what it is.
+
+`service_mount {service, target, type}` finds one entry in a service's
+`volumes` by where it is mounted. The **type is required**, because the
+exercise's wrong answer is the right path with the wrong type: a bind of
+`./node_modules` shows the host's empty directory, and a volume at the same
+target is filled from the image.
+
+It needed the compose normaliser to learn the short volume syntax, and
+**every rule was measured against `docker compose config`** rather than read
+from the specification. Two were surprising. Compose silently drops a mode
+it does not know (`./a:/a:bogus` is accepted), so the normaliser does too
+rather than refusing a file compose runs. And a named volume missing from
+the top-level `volumes:` is refused (*refers to undefined volume*), which is
+the obvious way to write the named-volume fix; a grader that normalised it
+would pass a stack that never starts, so it is a parse failure here too.
