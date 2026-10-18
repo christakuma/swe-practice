@@ -1,4 +1,4 @@
-"""The container check engine: eight pure assertions over a `BuildQuery`.
+"""The container check engine: eleven pure assertions over a `BuildQuery`.
 
 The fourth exercise kind's grading vocabulary (Phase 22, ADR 0030), and a
 sibling of `domain/checks/` and `domain/drills/` rather than an extension of
@@ -10,10 +10,12 @@ either. What each package grades, which is the thing to understand first:
   meaning the Dockerfile and compose file as Docker would read them, not the
   text a solver typed and not an image a daemon built.
 
-Two families, by what each reads:
+Three families, by what each reads:
 
-* `image.py`: the build and the process it ends in. Seven assertions.
-* `compose.py`: one service in compose's long form. One assertion.
+* `image.py`: the build and the process it ends in. Eight assertions.
+* `ownership.py`: who may write where in that image. One assertion, and
+  the kernel's permission rule it and the adapter share.
+* `compose.py`: one service in compose's long form. Two assertions.
 """
 
 from practice.domain.containers.evaluation import ContainerContext, ContainerFunction

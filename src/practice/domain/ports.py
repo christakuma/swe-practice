@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from practice.domain.verdict import Verdict
 
 __all__ = [
+    "Account",
     "AttemptRepository",
     "BuildQuery",
     "Chooser",
@@ -48,6 +49,8 @@ __all__ = [
     "Grader",
     "IdGenerator",
     "Instruction",
+    "PathAccess",
+    "PathEntry",
     "RepoQuery",
     "RepoQueryFactory",
     "ResultSet",
@@ -337,6 +340,64 @@ class Stage:
     instructions: tuple[Instruction, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class Account:
+    """Who a process runs as: a uid and every gid the kernel checks it against.
+
+    **Numbers, not names**, because the kernel compares numbers: `chown 10001`
+    and `USER app` are the same owner when `useradd -u 10001 app` made them so,
+    and a model that compared names would fail that answer. `name` is only for
+    reports. `gids` is the primary group and the supplementary ones together,
+    which is what `docker run` hands the process for `USER app` and not for
+    `USER app:app`, which runs with that one group alone (measured, Phase 24).
+    """
+
+    name: str
+    uid: int
+    gids: frozenset[int]
+
+
+@dataclass(frozen=True, slots=True)
+class PathEntry:
+    """One path in the shipped image's filesystem: who owns it, and its mode.
+
+    `owner` is `user:group` as `ls -l` would print it, for reports. `line` is
+    the instruction that last created or changed it, or 0 when the base image
+    supplied it, so a verdict can point at the line responsible.
+    """
+
+    path: str
+    uid: int
+    gid: int
+    mode: int
+    directory: bool
+    owner: str
+    line: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class PathAccess:
+    """Every directory on the way to a path, and what the reader could not follow.
+
+    `chain` runs from `/` down to the path itself or, when the image does not
+    have it (`exists` is false), to its deepest ancestor that it does have.
+    Opening a file needs search permission on every directory above it, and
+    creating one needs write permission on the directory it is created in, so
+    this is everything the kernel consults and nothing more.
+
+    `notes` are sentences about `RUN` lines that might change the answer and
+    could not be read, such as a `chown` whose arguments come from a command
+    substitution. `stopped` is the first command that would fail the build,
+    such as a `chown` run by a user who may not, and a build that stops ships
+    no image for anyone to write to.
+    """
+
+    chain: tuple[PathEntry, ...]
+    exists: bool
+    notes: tuple[str, ...] = ()
+    stopped: str | None = None
+
+
 class BuildQuery(Protocol):
     """Read-only interrogation of a container definition. `DrillQuery`'s counterpart.
 
@@ -389,6 +450,28 @@ class BuildQuery(Protocol):
         """
         ...
 
+    def account(self, user: str | None = None) -> Account | None:
+        """The account a `USER` value runs as in the shipped image, or `None`.
+
+        `None` (the argument) asks about the image's own final `USER`. `None`
+        (the answer) is a name the image's `/etc/passwd` does not have, which
+        `docker run` refuses outright: *unable to find user ghost: no matching
+        entries in passwd file*. A number with no entry is not refused; it runs
+        with group 0, which is how an image built for an arbitrary uid works.
+        """
+        ...
+
+    def path_access(self, path: str) -> PathAccess:
+        """Who owns each directory on the way to `path` in the shipped image.
+
+        Follows `WORKDIR` (created owned by the `USER` in force), `COPY
+        --chown` and `--chmod` (which create missing parents the same way),
+        `COPY --from` (which keeps the source's owner), and the `mkdir`,
+        `install -d`, `chown`, `chgrp`, `chmod`, `rm` and account commands
+        that a shell-form `RUN` runs directly. What a script does is not seen.
+        """
+        ...
+
     def services(self) -> frozenset[str]:
         """Every service the compose file declares."""
         ...
@@ -397,10 +480,11 @@ class BuildQuery(Protocol):
         """One compose service in long form, or `None` if it is not declared.
 
         `environment` is always a mapping, `depends_on` always maps a service to
-        `{condition: ...}`, and the short `ports` syntax becomes a list of
-        mappings. An assertion over this does not have to know which spelling the
-        author or the solver preferred, and that is what keeps it an assertion
-        about the end state.
+        `{condition: ...}`, and the short `ports` and `volumes` syntaxes become
+        lists of mappings, each volume with a `type`, a `target` and, unless it
+        is anonymous, a `source`. An assertion over this does not have to know
+        which spelling the author or the solver preferred, and that is what
+        keeps it an assertion about the end state.
         """
         ...
 

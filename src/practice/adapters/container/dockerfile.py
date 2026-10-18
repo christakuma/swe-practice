@@ -28,9 +28,11 @@ rules of their own, and an instruction it does not know. Both are reported as
 
 **One assumption, stated where it is made**: an image built `FROM` something
 outside this file is taken to have no `ENTRYPOINT`, `CMD` or `USER` of its own
-that matters. That holds for the `python` images every exercise uses. It is
-false for images like `node`, whose entrypoint is a script, and an exercise
-built on one would need the base's config handed in.
+that matters. That holds for the `python` images, and for `scratch`, which
+has no config at all. It is false for images like `node`, whose entrypoint
+is a script: the one exercise built on `node` is a compose exercise that
+grades no process, and a Dockerfile exercise built on one would need the
+base's config handed in.
 """
 
 from __future__ import annotations
@@ -49,10 +51,12 @@ if TYPE_CHECKING:
 __all__ = [
     "DockerfileError",
     "Lineage",
+    "assignments",
     "compose_process",
     "lineage",
     "parse",
     "stage_index",
+    "substitute",
 ]
 
 #: Every instruction the builder accepts. `ONBUILD` and `MAINTAINER` are legal
@@ -114,7 +118,7 @@ def parse(text: str) -> tuple[Stage, ...]:
                     f"line {number}: the first instruction must be FROM (only "
                     f"ARG may come before it), not {instruction.keyword}"
                 )
-            global_args.update(_assignments(instruction))
+            global_args.update(assignments(instruction))
             continue
         current.instructions.append(instruction)
 
@@ -165,9 +169,9 @@ def lineage(stages: Sequence[Stage], index: int = -1) -> Lineage:
             case "SHELL" if instruction.form == "exec" and instruction.args:
                 shell = instruction.args
             case "USER" if instruction.args:
-                user = _substitute(instruction.args[0], variables)
+                user = substitute(instruction.args[0], variables)
             case "ARG" | "ENV":
-                variables.update(_assignments(instruction))
+                variables.update(assignments(instruction))
             case _:
                 pass
     return Lineage(entrypoint=entrypoint, cmd=cmd, shell=shell, user=user)
@@ -273,7 +277,7 @@ def _from(instruction: Instruction, global_args: Mapping[str, str]) -> _Building
                 f"line {instruction.line}: FROM takes an image and an optional "
                 f"`AS name`, not {' '.join(tokens)!r}"
             )
-    base = _substitute(tokens[0], global_args)
+    base = substitute(tokens[0], global_args)
     if not base:
         raise DockerfileError(
             f"line {instruction.line}: FROM {tokens[0]} names no image once its "
@@ -392,7 +396,7 @@ def _json_array(text: str) -> tuple[str, ...] | None:
     return tuple(value)
 
 
-def _assignments(instruction: Instruction) -> dict[str, str]:
+def assignments(instruction: Instruction) -> dict[str, str]:
     """`ARG NAME=default`, `ENV KEY=value ...` and the legacy `ENV KEY value`."""
     text = " ".join(instruction.args)
     try:
@@ -408,7 +412,7 @@ def _assignments(instruction: Instruction) -> dict[str, str]:
     return values
 
 
-def _substitute(text: str, variables: Mapping[str, str]) -> str:
+def substitute(text: str, variables: Mapping[str, str]) -> str:
     """`$VAR`, `${VAR}`, `${VAR:-default}` and `${VAR:+word}`, as Docker reads them."""
 
     def replace(match: re.Match[str]) -> str:

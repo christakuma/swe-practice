@@ -14,6 +14,10 @@ it. A builder stage that runs `COPY . .` holds `.env`. A final stage that runs
 through `/app` can the query tell those apart rather than failing the right
 answer. A `COPY --from=` an image outside this file copies nothing from the
 context, so it adds nothing here.
+
+**Who owns those paths is `filesystem.py`'s question** (Phase 24), and it is
+asked over the same parsed stages rather than a second parse, so the two can
+never disagree about what the Dockerfile says.
 """
 
 from __future__ import annotations
@@ -32,24 +36,24 @@ from practice.adapters.container.dockerfile import (
     parse,
     stage_index,
 )
-from practice.adapters.container.dockerignore import (
-    IgnoreRules,
-    glob_matcher,
-    normalise_path,
+from practice.adapters.container.dockerignore import IgnoreRules, normalise_path
+from practice.adapters.container.filesystem import (
+    Filesystem,
+    context_landings,
+    filesystems,
+    into_directory,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping, Sequence
     from pathlib import Path
 
-    from practice.domain.ports import Instruction, Stage
+    from practice.domain.ports import Account, Instruction, PathAccess, Stage
 
 __all__ = ["ParsedBuildQuery", "context_files"]
 
 DOCKERFILE: Final = "Dockerfile"
 COMPOSE_FILE: Final = "compose.yaml"
-_GLOB: Final = frozenset("*?[")
-
 #: A context file and where in a stage's filesystem it ended up.
 type Landing = tuple[str, str]
 
@@ -57,7 +61,7 @@ type Landing = tuple[str, str]
 class ParsedBuildQuery:
     """Satisfies `practice.domain.ports.BuildQuery` over a directory on disk."""
 
-    __slots__ = ("_compose", "_error", "_files", "_stages")
+    __slots__ = ("_compose", "_error", "_files", "_filesystem", "_stages")
 
     def __init__(
         self,
@@ -85,6 +89,11 @@ class ParsedBuildQuery:
                 self._compose = parse_compose(files[COMPOSE_FILE])
         except (DockerfileError, ComposeError) as exc:
             self._error = str(exc)
+        self._filesystem = (
+            filesystems(self._stages, self._files)[-1]
+            if self._stages
+            else Filesystem.base("scratch")
+        )
 
     def error(self) -> str | None:
         return self._error
@@ -104,6 +113,12 @@ class ParsedBuildQuery:
         wanted = normalise_path(path)
         shipped = _landings(self._stages, self._files)[-1].layers
         return any(source == wanted for source, _ in shipped)
+
+    def account(self, user: str | None = None) -> Account | None:
+        return self._filesystem.account(user)
+
+    def path_access(self, path: str) -> PathAccess:
+        return self._filesystem.access(path)
 
     def services(self) -> frozenset[str]:
         return frozenset(self._compose)
@@ -166,7 +181,9 @@ def _landings(stages: Sequence[Stage], files: Sequence[str]) -> list[_Held]:
             elif instruction.keyword in {"COPY", "ADD"} and instruction.args[1:]:
                 source_stage = dict(instruction.flags).get("from")
                 if source_stage is None:
-                    added = _from_context(instruction, files, workdir, directories)
+                    added = context_landings(
+                        instruction, files, workdir, directories.__contains__
+                    )
                 else:
                     origin = stage_index(stages[:index], source_stage)
                     if origin is not None:
@@ -205,21 +222,6 @@ def _parents_and_self(directory: str) -> set[str]:
     return found
 
 
-def _into_directory(
-    dest: str, target: str, directories: Collection[str], *, many: bool
-) -> bool:
-    """Whether a `COPY` puts its sources *inside* `dest` rather than *at* it.
-
-    Docker's rule, all three halves of it: a trailing slash, more than one
-    source, or a destination that already exists as a directory. The last is
-    the one `COPY app.py .` relies on, because `.` is the `WORKDIR`. The first
-    version knew only the first two, landed the file at `/app` rather than
-    `/app/app.py`, and so lost track of it: a later `COPY --from=build
-    /app/.env` then copied a secret the query said was not there.
-    """
-    return dest.endswith("/") or many or target in directories
-
-
 def _removed(line: str, workdir: str) -> tuple[str, ...]:
     """The paths an `rm` in a shell-form `RUN` deletes, resolved against `WORKDIR`.
 
@@ -246,40 +248,6 @@ def _under(spot: str, removed: Sequence[str]) -> bool:
     return any(spot == target or spot.startswith(target + "/") for target in removed)
 
 
-def _from_context(
-    instruction: Instruction,
-    files: Sequence[str],
-    workdir: str,
-    directories: Collection[str],
-) -> set[Landing]:
-    *sources, dest = instruction.args
-    target = posixpath.normpath(posixpath.join(workdir, dest))
-    into_directory = _into_directory(dest, target, directories, many=len(sources) > 1)
-    landed: set[Landing] = set()
-    for raw in sources:
-        source = normalise_path(raw)
-        source = "" if source == "." else source
-        # Docker's matcher, not `fnmatch`: `*` stops at a slash, so `*.py` copies
-        # the top-level modules and not `pkg/models.py`. `fnmatch` lets `*`
-        # cross directories, and the first version of this reported files in
-        # the image that a real build leaves out.
-        glob = glob_matcher(source) if _GLOB & set(source) else None
-        for path in files:
-            if not source:
-                landed.add((path, posixpath.join(target, path)))
-            elif path == source or (glob is not None and glob.fullmatch(path)):
-                name = posixpath.basename(path)
-                spot = (
-                    posixpath.join(target, name)
-                    if into_directory or glob is not None
-                    else target
-                )
-                landed.add((path, spot))
-            elif path.startswith(source + "/"):
-                landed.add((path, posixpath.join(target, path[len(source) + 1 :])))
-    return landed
-
-
 def _from_stage(
     instruction: Instruction,
     held: Iterable[Landing],
@@ -288,7 +256,9 @@ def _from_stage(
 ) -> set[Landing]:
     *sources, dest = instruction.args
     target = posixpath.normpath(posixpath.join(workdir, dest))
-    into_directory = _into_directory(dest, target, directories, many=len(sources) > 1)
+    inside = into_directory(
+        dest, target, many=len(sources) > 1, is_directory=directories.__contains__
+    )
     landed: set[Landing] = set()
     for raw in sources:
         # Relative to the other stage's root, and normalised as every landing
@@ -300,7 +270,7 @@ def _from_stage(
                 landed.add(
                     (
                         origin,
-                        posixpath.join(target, name) if into_directory else target,
+                        posixpath.join(target, name) if inside else target,
                     )
                 )
             elif source == "/" or spot.startswith(source + "/"):

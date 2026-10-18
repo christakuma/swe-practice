@@ -8,10 +8,13 @@ construction. The shared pieces, `CheckSpec`, `Params`, `matcher`,
 `suggest_from` and the dispatcher's three jobs, are imported rather than
 copied.
 
-**Eight assertions, each named by a shipped exercise**, which
-`tests/content/test_containers.py` holds. The plan had ten. `stage_count` and
-`service_mount` were cut because the first batch has no multi-stage or
-volume exercise, and they arrive with the exercises that want them.
+**Eleven assertions, each named by a shipped exercise**, which
+`tests/content/test_containers.py` holds. The plan had ten and Phase 22
+shipped eight: `stage_count` and `service_mount` were cut because its batch
+had no multi-stage or volume exercise. Phase 23 wrote both exercises and the
+two came back with them, which is §13's rule run in the direction it is
+rarely run. Phase 24's `path_writable` arrived with the exercise that could
+not be graded without it, and with the two port methods it reads.
 
 `family_of` knows all three vocabularies, which only this module can: it is
 the newest family, so importing the other two is the dependency running the
@@ -26,7 +29,7 @@ from typing import TYPE_CHECKING, Final
 
 from practice.domain.checks import registry as git_registry
 from practice.domain.checks.evaluation import CheckSpecError, Params
-from practice.domain.containers import compose, image
+from practice.domain.containers import compose, image, ownership
 from practice.domain.containers.evaluation import ContainerContext
 from practice.domain.drills import registry as drill_registry
 from practice.domain.verdict import CheckReport
@@ -56,16 +59,23 @@ _IMAGE: Final[Mapping[str, ContainerFunction]] = {
     "path_in_image": image.path_in_image,
     "pid1_matches": image.pid1_matches,
     "runs_as": image.runs_as,
+    "stage_count": image.stage_count,
+}
+
+#: Who may write where in the image the definition builds.
+_OWNERSHIP: Final[Mapping[str, ContainerFunction]] = {
+    "path_writable": ownership.path_writable,
 }
 
 #: What a compose file declares about a service, in long form.
 _COMPOSE: Final[Mapping[str, ContainerFunction]] = {
+    "service_mount": compose.service_mount,
     "service_value": compose.service_value,
 }
 
 #: Name to function: the whole container vocabulary.
 CONTAINER_CHECKS: Final[Mapping[str, ContainerFunction]] = MappingProxyType(
-    {**_IMAGE, **_COMPOSE}
+    {**_IMAGE, **_OWNERSHIP, **_COMPOSE}
 )
 
 #: Every legal value of an `assert:` key inside a `container:` block.

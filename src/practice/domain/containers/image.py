@@ -1,4 +1,4 @@
-"""What the image is built from, how, and what it runs. Seven of the eight assertions.
+"""What the image is built from, how, and what it runs. Eight of the eleven assertions.
 
 Every one reads what Docker *does* with a Dockerfile rather than what the file
 says, and that is the line between this module and a linter. `pid1_matches`
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from practice.domain.checks.evaluation import CheckResult, matcher
+from practice.domain.checks.evaluation import CheckResult, compare, matcher
 from practice.domain.containers.evaluation import NO_DEFINITION, quote, stage_of
 
 if TYPE_CHECKING:
@@ -32,6 +32,7 @@ __all__ = [
     "path_in_image",
     "pid1_matches",
     "runs_as",
+    "stage_count",
 ]
 
 
@@ -52,6 +53,34 @@ def base_image_matches(context: ContainerContext) -> CheckResult:
         passed=pattern.search(stage.base) is not None,
         expected=expected,
         actual=f"FROM {stage.base}",
+    )
+
+
+def stage_count(context: ContainerContext) -> CheckResult:
+    """`stage_count {equals|at_least|at_most}` — how many build stages there are.
+
+    The multi-stage lesson, and a count for the reason the drill counts are:
+    `at_least: 2` admits a third stage that only downloads modules, which is a
+    refinement rather than a mistake, and naming one exact layout would fail
+    it. **Weak on its own, and written to be paired.** BuildKit skips a stage
+    nothing depends on, so an unused builder above one fat stage makes two
+    stages and still ships the compiler. The exercise that wants this asserts
+    on the final stage's base and on the source tree as well, and those see
+    that file for what it is.
+    """
+    operator, wanted = context.params.comparison()
+    expected = f"{operator.replace('_', ' ')} {wanted} build stage(s)"
+    stages = context.query.stages()
+    if not stages:
+        return CheckResult(passed=False, expected=expected, actual=_missing(context))
+    declared = ", ".join(
+        f"FROM {stage.base}" + (f" AS {stage.name}" if stage.name else "")
+        for stage in stages
+    )
+    return CheckResult(
+        passed=compare(operator, len(stages), wanted),
+        expected=expected,
+        actual=f"{len(stages)} stage(s): {quote(declared)}",
     )
 
 

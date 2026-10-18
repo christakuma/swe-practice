@@ -1,4 +1,4 @@
-"""The seven assertions over what an image is built from and what it runs.
+"""The eight assertions over what an image is built from and what it runs.
 
 The case worth reading first is `TestPid1Matches::test_sh_dash_c_in_brackets
 _is_still_a_shell`: the exec form with a shell in it is the counter-example a
@@ -206,6 +206,42 @@ class TestPathInImage:
     def test_no_definition_fails(self) -> None:
         report = run("path_in_image", FakeBuildQuery(error="bad"), path=".env")
         assert report.actual == "<no definition could be read>"
+
+
+class TestStageCount:
+    SCRATCH = a_stage("scratch", exec_form("ENTRYPOINT", "/shortlink"))
+
+    def test_a_builder_and_a_final_stage_pass_at_least_two(self) -> None:
+        image = FakeBuildQuery(stages=[BUILDER, self.SCRATCH])
+        report = run("stage_count", image, at_least=2)
+        assert report.passed
+        assert report.expected == "at least 2 build stage(s)"
+        assert report.actual == "2 stage(s): FROM golang:1.23 AS build, FROM scratch"
+
+    def test_one_stage_fails(self) -> None:
+        report = run("stage_count", FakeBuildQuery(stages=[GOOD]), at_least=2)
+        assert not report.passed
+        assert report.actual == "1 stage(s): FROM python:3.12-slim"
+
+    def test_equals_and_at_most_compare_as_the_drill_counts_do(self) -> None:
+        image = FakeBuildQuery(stages=[BUILDER, BUILDER, self.SCRATCH])
+        assert run("stage_count", image, equals=3).passed
+        assert not run("stage_count", image, at_most=2).passed
+
+    def test_no_stage_fails(self) -> None:
+        report = run("stage_count", FakeBuildQuery(), at_least=1)
+        assert report.actual == "<the file has no FROM>"
+
+    def test_no_definition_says_so(self) -> None:
+        report = run("stage_count", FakeBuildQuery(error="bad"), at_least=1)
+        assert report.actual == "<no definition could be read>"
+
+    def test_two_comparisons_are_a_misconfigured_exercise(self) -> None:
+        image = FakeBuildQuery(stages=[GOOD])
+        report = run("stage_count", image, at_least=1, at_most=2)
+        assert not report.passed
+        assert report.actual is not None
+        assert "misconfigured" in report.actual
 
 
 def test_a_long_instruction_is_quoted_short() -> None:
