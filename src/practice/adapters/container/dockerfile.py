@@ -120,6 +120,13 @@ def parse(text: str) -> tuple[Stage, ...]:
                 )
             global_args.update(assignments(instruction))
             continue
+        if instruction.keyword in {"ARG", "ENV"}:
+            # Read once here, for the error and not the values: three walks
+            # read these later (`lineage`, the layer model, the ownership
+            # model), and an unclosed quote raised from the first of them --
+            # in `ParsedBuildQuery`'s constructor -- rather than reaching
+            # `error()` as the syntax error the builder also refuses.
+            assignments(instruction)
         current.instructions.append(instruction)
 
     if current is None:

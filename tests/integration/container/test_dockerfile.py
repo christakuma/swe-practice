@@ -101,6 +101,10 @@ class TestRefusals:
             ("ARG BASE\nFROM ${BASE}\n", "names no image"),
             ("FROM x y z\n", "FROM takes an image"),
             ("# escape=x\nFROM x\n", "escape directive"),
+            # Inside a stage as well as before the first: it once surfaced
+            # only when a later walk read the value, from a constructor.
+            ('FROM x\nENV A="x\n', "line 2: No closing quotation"),
+            ("FROM x\nARG B='y\n", "line 2: No closing quotation"),
         ],
     )
     def test_a_file_the_builder_would_refuse(self, text: str, message: str) -> None:

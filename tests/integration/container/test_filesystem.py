@@ -588,6 +588,30 @@ class TestThePort:
         assert not access.exists
         assert [entry.path for entry in access.chain] == ["/", "/app"]
 
+    def test_an_unclosed_quote_is_the_definition_s_error_not_a_crash(self) -> None:
+        """Raised from `ParsedBuildQuery`'s constructor, it took the whole
+        grading pass down instead of failing every check with the reason."""
+        q = query('ENV A="x\nRUN useradd app\n')
+        assert q.error() == "line 2: No closing quotation"
+        assert q.stages() == ()
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "USER \N{SUPERSCRIPT TWO}\n",
+            "RUN useradd -u \N{SUPERSCRIPT TWO} app\n",
+            "RUN mkdir /d && chown 1:\N{SUPERSCRIPT TWO} /d\n",
+            f"USER {'1' * 5000}\n",
+        ],
+    )
+    def test_an_id_int_would_refuse_is_not_a_crash(self, body: str) -> None:
+        """`str.isdigit` is true of all four and `int` raised on each, from
+        the constructor. `USER` with one is a user the image does not have."""
+        q = query(body)
+        if body.startswith("USER"):
+            assert q.account() is None
+        assert q.error() is None
+
     def test_a_definition_with_no_stages_reads_as_scratch(self) -> None:
         q = ParsedBuildQuery(
             context={}, editable="compose.yaml", source="services: {}\n"

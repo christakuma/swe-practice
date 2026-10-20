@@ -125,6 +125,7 @@ _ASSIGNMENT: Final = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*")
 #: The target is in the word, or -- when nothing follows the operator, `>&`
 #: included -- the next word.
 _REDIRECT: Final = re.compile(r"^(?:\d*|&)(?:>>?|<)&?(.*)$")
+_ID: Final = re.compile(r"[0-9]{1,10}")
 _SYMBOLIC: Final = re.compile(r"^([ugoa]*)([-+=])([rwxXst]*)$")
 _CLASS_BITS: Final = {"u": 0o4700, "g": 0o2070, "o": 0o1007, "a": 0o7777}
 _PERM_BITS: Final = {"r": 0o444, "w": 0o222, "x": 0o111, "s": 0o6000, "t": 0o1000}
@@ -190,7 +191,8 @@ class _Accounts:
         """
         name, _, group = spec.partition(":")
         user = self._user(name)
-        if user is None and not name.isdigit():
+        uid = user.uid if user is not None else _number(name)
+        if uid is None:
             return None
         if group:
             gid = self.gid(group)
@@ -202,7 +204,6 @@ class _Accounts:
             gids = frozenset({gid, *user.groups})
         else:
             gid, gids = 0, frozenset({0})
-        uid = user.uid if user is not None else int(name)
         return Account(name=name, uid=uid, gids=gids), gid
 
     def owner(self, spec: str, *, same_number: bool) -> tuple[int, int] | None:
@@ -218,9 +219,10 @@ class _Accounts:
         uid = gid = -1
         if name:
             user = self._user(name)
-            if user is None and not name.isdigit():
+            number = user.uid if user is not None else _number(name)
+            if number is None:
                 return None
-            uid = user.uid if user is not None else int(name)
+            uid = number
             if (colon and not group) or (not colon and same_number):
                 gid = user.gid if user is not None else uid
         if group:
@@ -233,7 +235,7 @@ class _Accounts:
     def gid(self, group: str) -> int | None:
         if group in self.groups:
             return self.groups[group]
-        return int(group) if group.isdigit() else None
+        return _number(group)
 
     def label(self, uid: int, gid: int) -> str:
         user = next((n for n, u in self.users.items() if u.uid == uid), str(uid))
@@ -243,8 +245,9 @@ class _Accounts:
     def _user(self, name: str) -> _User | None:
         if name in self.users:
             return self.users[name]
-        if name.isdigit():
-            return next((u for u in self.users.values() if u.uid == int(name)), None)
+        uid = _number(name)
+        if uid is not None:
+            return next((u for u in self.users.values() if u.uid == uid), None)
         return None
 
     def add_user(  # noqa: PLR0913 - one account's six facts, read once
@@ -1081,7 +1084,14 @@ def _split(groups: str | None) -> list[str]:
 
 
 def _number(text: str | None) -> int | None:
-    return int(text) if text is not None and text.isdigit() else None
+    """A uid or gid as written: ASCII digits, at most ten, which is 2**32.
+
+    Not `str.isdigit`, which is true of `²` and of a five-thousand-digit
+    string, and `int` raises on both. This runs in `ParsedBuildQuery`'s
+    constructor, so `USER ²` was a crash in grading rather than a user the
+    image does not have.
+    """
+    return int(text) if text is not None and _ID.fullmatch(text) else None
 
 
 def _octal(text: str) -> int | None:
