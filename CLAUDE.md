@@ -257,6 +257,18 @@ A phase ends with a `docs:` commit that:
   sorts into and needs no line anywhere; a *third* shard needs `SHARDS`
   raised and a third file, and the second shard's last test fails until both
   are done. The suite now has three long kata files side by side.
+- **A quiz's two sheets are generated, not typed**
+  ([ADR 0032](docs/adr/0032-a-quiz-grades-a-choice-and-a-fix-grades-code.md)).
+  `answers.md` and `solution.md` must equal `render_sheet(parse_sheet(...))`,
+  so write them with `render_sheet(exercise.title, spec.questions, answers)`:
+  blank `Answer()`s plus the fix's starting code for the stub, the key plus the
+  reference fix for the solution. Two traps the first eight fell into. The
+  right option was the strictly longest in 21 of 28 questions, because the
+  careful sentence is the one written for the answer you believe; trim it to a
+  claim and put the argument in its `why`, and `test_quizzes.py` checks both
+  ends now. And a prose `context:` is a folded scalar (`>-`): a literal block
+  keeps its line breaks, and the form's narrow column wraps them again. Dumps
+  and tables stay `|`, and one that mixes both is `>2-` with the dump indented.
 - **A new exercise may also need a line in `content/tracks.yaml`**, and nothing
   but a content test will say so. The git and SQL tracks are explicit lists
   that are meant to be exhaustive; `practice validate` cannot know that, so

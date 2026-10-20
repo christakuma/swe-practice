@@ -43,6 +43,7 @@ the real repository, and the repository's state beside it.
 - [The web app](#the-web-app)
 - [The terminal](#the-terminal)
 - [Docker exercises](#docker-exercises)
+- [Systems quizzes](#systems-quizzes)
 - [Tracks, and what you have done](#tracks-and-what-you-have-done)
 - [What to practise today](#what-to-practise-today)
 - [Interview conditions](#interview-conditions)
@@ -56,8 +57,9 @@ the real repository, and the repository's state beside it.
 
 ## What is in it
 
-- **124 exercises, every one of them graded**: 24 git scenarios, 83 Python
-  katas, 8 SQL drills and 9 Docker exercises, in one hand-ordered curriculum.
+- **132 exercises, every one of them graded**: 24 git scenarios, 83 Python
+  katas, 8 SQL drills, 9 Docker exercises and 8 systems quizzes, in one
+  hand-ordered curriculum.
 - **Problem statements you can check**: every kata lists its constraints and
   has an Examples tab of inputs and outputs, each one run against the
   reference solution.
@@ -66,10 +68,11 @@ the real repository, and the repository's state beside it.
   circle. Every kata has one and seventy-nine have two — 162 in all. Pick one, or
   ask to be surprised.
 - **Tracks you can follow**: the whole library, the Blind 75, every git
-  scenario, every SQL drill, every Docker exercise. Each list says which steps you have passed and
+  scenario, every SQL drill, every Docker exercise, every systems quiz. Each list says which steps you have passed and
   when, and a finished attempt has a **Next** button for the step after it.
-- **A web workbench**: an editor for katas, drills and Dockerfiles, and for git scenarios a
-  command console over the real repository with a live commit graph beside it.
+- **A web workbench**: an editor for katas, drills and Dockerfiles, a form for
+  quizzes, and for git scenarios a command console over the real repository with
+  a live commit graph beside it.
 - **A terminal that is not a fallback**: the CLI is a second adapter over the
   same use cases, so an attempt started in the browser can be finished from a
   shell.
@@ -162,7 +165,7 @@ your browser on `http://127.0.0.1:8765`:
 
 ```
   ok   git         /usr/bin/git
-  ok   library     124 exercises (24 git scenarios, 83 katas, 8 SQL drills, 9 Docker exercises) in ~/swe-practice/content
+  ok   library     132 exercises (24 git scenarios, 83 katas, 8 SQL drills, 9 Docker exercises, 8 systems quizzes) in ~/swe-practice/content
   ok   workspaces  ~/.cache/swe-practice/ws
   ok   database    ~/.local/share/swe-practice/practice.db (created v2)
   ok   scheduler   sm2 (Sm2Scheduler())
@@ -433,18 +436,56 @@ that builds every stub, reference and wrong answer on a real daemon:
 PRACTICE_DOCKER_TESTS=1 uv run pytest -q --no-cov -n0 tests/docker
 ```
 
+## Systems quizzes
+
+Eight incidents to diagnose: the engineering that is not a data structure or a
+tool. Each is a ticket with its evidence, a lock dump, a trace, a Postgres
+error or a dashboard, and four or five questions that walk from what happened
+to why, to the fix, to how you would catch it next time. Every question
+carries the context it needs, and every incident states its constraints:
+thread counts, timeouts, what the team will not give up.
+
+| Incident | What you are shown | What it teaches |
+|---|---|---|
+| The order page takes four seconds for big orders ★ | a trace with 250 identical product queries | N+1 queries, batching under a limit, why not concurrency or a cache |
+| The average is fine, and checkout still misses its SLO | mean, p50, p99 and max for an hour | reading percentiles, fan-out tails, Little's law, the cliff at capacity |
+| Customers are charged twice when the card provider is slow | the app's log and the API's, side by side | a timeout is not a failure; idempotency keys, and where they live |
+| Transfers hang under load ★ | a lock dump of two workers waiting on each other | lock ordering, the four deadlock conditions, catching it deterministically |
+| Postgres says "deadlock detected" every night at two | the server's deadlock report | row locks deadlock like mutexes; what 40P01 means and how to retry |
+| The recommendations widget took down the product page | busy threads and 503s per instance | timeouts from measurements, circuit breakers, half-open, fallbacks |
+| A column rename broke the site for the length of a deploy | the old version's `column does not exist` | expand and contract, batched backfills, `lock_timeout` |
+| A five-second network blip became a forty-minute outage ★ | the database's query rate through the incident | retry amplification, metastable failure, backoff with jitter, budgets |
+
+The answers are **choices, never prose**: one option, every option that
+applies (the exact set), a line of a snippet, or steps in order. That is what
+makes a quiz gradable at all, because a choice from a closed set has an
+answer and a paragraph does not
+([ADR 0032](docs/adr/0032-a-quiz-grades-a-choice-and-a-fix-grades-code.md)).
+The three marked ★ end with **a small fix to write**, graded
+by hidden tests on what the code does: a lock order, a batched lookup, a retry
+policy. A wrong answer is told why the option it chose is wrong and never which
+one is right, and the attempt stays open for another try. Once it is over, the
+page shows every answer and why.
+
+You answer in the browser, or in `answers.md` from the terminal:
+
+```bash
+practice start systems/transfers-hang-under-load
+```
+
 ## Tracks, and what you have done
 
 A **track** is a named route through the library: a first exercise, a next one
-and an end. Five ship.
+and an end. Six ship.
 
 | Track | Steps | Order |
 |---|---|---|
-| The whole library | 124 | The curriculum's: git, katas, SQL and Docker interleaved |
+| The whole library | 132 | The curriculum's: every kind interleaved |
 | The Blind 75 | 75 | By technique, each on-ramp pulled to where it is needed |
 | Git scenarios | 24 | Local work first, shared history last |
 | SQL drills | 8 | Read, read carefully, then write |
 | Docker | 9 | Write one Dockerfile, then the two networking tickets, then PID 1, layers, image size, permissions, readiness and mounts |
+| Systems | 8 | The three easy incidents, then the deadlocks, the dead dependency and the rename, and the retry storm last |
 
 Start one from `/tracks` and every finished attempt offers the step after it:
 
@@ -816,8 +857,8 @@ src/practice/
 │   └── mcp/         a read-only MCP server on stdio: the third, and an optional extra
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
-content/           124 exercises as declarative data
-├── curriculum.yaml the one order, in twenty-two sections; validate holds it to covering them all
+content/           132 exercises as declarative data
+├── curriculum.yaml the one order, in twenty-three sections; validate holds it to covering them all
 ├── tracks.yaml    the routes you can follow; validate holds their order to the curriculum's
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform
 tools/             the one module that opens a socket, deliberately outside the wheel

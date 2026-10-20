@@ -5,8 +5,8 @@ actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
 > **Status:** **v1.0.0, seven stretch items taken — Phases 13 through 19 — and
-> Phases 20 and 21, the changes that came from a user.**
-> Phase 21 is the newest: every kata now states its constraints and shows
+> Phases 20 to 25, the changes that came from a user.**
+> In Phase 21 every kata came to state its constraints and show
 > examples that are *run against its reference*
 > ([ADR 0027](adr/0027-examples-are-source-run-against-the-reference.md)), on a
 > tab of their own; and a problem can carry **variants** — the interviewer's
@@ -362,9 +362,25 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > copies into to root. Nine Docker exercises, and nine right answers the
 > prompt leaves open, each run on a daemon.
 >
+> **Phase 25 is a fifth kind, and the first whose answer is not an
+> artifact: systems quizzes.** Eight incidents (two deadlocks, an N+1
+> page, latency percentiles, a retry storm, a dead dependency, a double
+> charge and a rename that broke a rolling deploy), each a ticket with its
+> evidence and four or five questions that carry their own context. The
+> user asked for a quiz rather than code, with a moment to fix something
+> small, and that had to argue with ADR 0003 rather than inherit it: **a
+> choice from a closed set has an oracle, prose does not**, so every answer
+> is a choice, a line, an order or code, and three incidents end in a fix
+> graded by a hidden suite
+> ([ADR 0032](adr/0032-a-quiz-grades-a-choice-and-a-fix-grades-code.md)).
+> A failure says why the chosen option is wrong and never which is right.
+> The content suite now checks that a question cannot give itself away, and
+> the first draft failed it: the right option was the longest in 21 of 28
+> questions.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 24 (permission denied as non-root, and ownership in the
-> layer model), 2026-10-17
+> · **Last phase:** 25 (systems quizzes: incidents you diagnose, and the
+> occasional fix), 2026-10-19
 > · **Last change:** Run, and trying again after a failure, 2026-10-16
 
 ---
@@ -2861,6 +2877,78 @@ instructions the file contains
 | The ticket, every counter-example's symptom and every accepted answer behave as claimed on a real daemon | `tests/docker/test_unable_to_open_database_file.py` (opt-in) |
 | The Docker track still opens gently | `tests/content/test_library.py::test_every_track_opens_gently` |
 
+### Phase 25 — Systems quizzes: incidents you diagnose, and the occasional fix · **1 session**
+
+**Goal:** practise the engineering that is not a data structure or a tool:
+deadlocks, a slow page, a retry storm, a double charge, a rename that broke a
+rolling deploy. A user asked for it **as a quiz rather than as code**, with a
+moment here and there to fix something small in a file. That is the first
+kind whose answer is not an artifact, so it is the first that has to argue
+with ADR 0003 rather than inherit it.
+
+**The argument.** ADR 0003 refuses to grade *the answer text*, because free
+text has no oracle: `git reset` can be right or ruinous depending on what it
+is reset to. A choice from a closed set is not free text. It has exactly one
+right answer, decided when the question was written, and grading it is a set
+comparison. So a quiz is admissible on one condition, which is the whole
+design: **every answer is a choice, a line, an order or code**, and nothing
+is ever typed as prose. The fix question is where the core bet comes back:
+its answer is code, and the code is graded by a hidden suite on what it
+does.
+
+**Shape.**
+
+- A fifth kind, `quiz`, in `content/systems/`. An exercise is one incident:
+  a ticket with its evidence (a lock dump, a trace, a Postgres error, a
+  graph's numbers), the system's constraints, and four or five questions
+  that go from what happened to why, to the fix, to how it is caught next
+  time. **Every question carries its own context**: a question that needs a
+  snippet, a number or a rule has it in front of it, not three screens up.
+- Five formats: `single`, `multiple` (the exact set, so guessing is not a
+  strategy), `line` (a numbered snippet; pick the line), `order` and `fix`.
+- **The answer sheet is the one editable file**, `answers.md`, a Markdown
+  file the web form writes and a solver at a terminal edits by hand. So the
+  kind is one clause in `editable_source`, and `practice submit --source`,
+  the tutor export and the MCP server take it unchanged. The key lives in
+  `exercise.yaml` and never reaches the workspace.
+- **The sheet is parsed in the domain, with no YAML library**, because the
+  grading of a choice is correctness-critical and belongs under the coverage
+  gate. Markdown rather than YAML for the reason a solver edits it: a fenced
+  code block is how anyone already writes code inside prose.
+- A **fix question's answer is a fenced block under its heading**. The
+  grader writes it as `solution.py` beside the question's hidden tests and
+  runs them through the kata runner, one check per test, with ids
+  `<question>/<test>`. Its counter-examples are code files, each run
+  against the suite and required to fail exactly the tests it names (ADR
+  0022).
+- **What a failure shows.** A wrong choice shows why *the option you chose*
+  is wrong, not which one is right; a pass shows every explanation. A failed
+  submission is a logged try (ADR 0029), so the review grade still sees how
+  many it took.
+- **Option order is shuffled per attempt** on the page, and an `order`
+  question is authored scrambled, so neither the form nor the plain-text
+  statement gives an order away.
+
+**Scope.** Eight incidents: two deadlocks (threads and Postgres), an N+1
+page, latency percentiles and Little's law, a retry storm, a dead dependency
+and a circuit breaker, a double charge and idempotency keys, and a column
+rename under a rolling deploy. Three have a fix question: the lock order,
+the batched page and the retry policy. The other twelve sketched with the
+user (the cache stampede, the outbox, keyset pagination…) are Phase 26.
+
+| Exit criterion | Met by |
+|---|---|
+| A fifth kind is one clause in `editable_source` | `tests/unit/domain/test_quiz_spec.py::test_it_is_a_quiz_edited_as_markdown`, `tests/unit/test_composition.py::test_every_exercise_kind_has_a_grader` |
+| The answer sheet round-trips, and a malformed one is a sentence, not a traceback | `tests/unit/domain/quiz/test_sheet.py` |
+| Choice grading is pure, at 100% branch coverage | `tests/unit/domain/quiz/`, and the coverage gate |
+| A fix question runs its suite through the kata runner | `tests/unit/adapters/quiz/test_grader.py`, `tests/content/test_quizzes.py` |
+| The reference sheet passes, the stub fails every question, every fix counter-example fails exactly what it declares | `tests/content/test_quizzes.py` |
+| No question gives its answer away: every option explained, ids neutral, the right answer not reliably the longest or shortest, an `order` authored out of order | `tests/content/test_quizzes.py`, and `Option`'s own invariant for the explanations |
+| Every question carries its own context, and every incident its constraints | `tests/content/test_quizzes.py::test_every_question_carries_its_context`, `::test_every_quiz_states_its_constraints_hints_and_notes` |
+| The workbench draws a quiz as a form, and its post grades it | `tests/web/test_quiz.py` |
+| A tutor sees the key once the quiz is graded, and not before | `tests/content/test_tutor_context.py` |
+| The systems track opens gently, and the first screen still offers every kind | `tests/content/test_library.py::test_every_track_opens_gently`, `::test_the_first_screen_of_the_curriculum_offers_every_kind` |
+
 ---
 
 ## 12. Architecture decision records
@@ -2903,6 +2991,7 @@ changed"* is worth more than any code sample.
 | [0029](adr/0029-a-failed-submission-is-logged-and-run-is-the-examples.md) | A failed submission is logged rather than final, and Run is the examples rather than the suite | accepted |
 | [0030](adr/0030-docker-exercises-graded-statically-one-editable-file.md) | Docker exercises are graded on the definition, one editable file each | accepted |
 | [0031](adr/0031-ownership-is-modelled-from-the-definition-not-grepped.md) | Who owns a path is modelled from the definition, not grepped for | accepted |
+| [0032](adr/0032-a-quiz-grades-a-choice-and-a-fix-grades-code.md) | A quiz grades a choice from a closed set, and a fix question grades code | accepted |
 
 ---
 
@@ -6464,3 +6553,82 @@ answers each storing an upload as non-root. The rest of the tier was not
 re-run, because nothing it builds changed. The gate took 23m44s, one run,
 started straight after a usage-limit pause, and CLAUDE.md's warning that one
 run is not a measurement applies to it.
+
+**2026-10-19 — Phase 25: systems quizzes, and the first kind whose answer is
+not an artifact.** A user asked for general engineering questions:
+deadlocks, a service that is too slow, "stuff that deals more with
+architecture". The first plan was a simulation kind, a service file to fix
+under a deterministic harness, and it kept ADR 0003 whole. The user turned it
+down: they wanted a quiz, with a moment here and there to fix something
+small. So the phase had to argue with the core bet rather than inherit it,
+and the argument is ADR 0032's: **a choice from a closed set has an oracle,
+and prose does not.** Every answer is a choice, a line, an order or code, and
+a fix question's code is graded by a hidden suite on what it does.
+
+**One change from the plan shown to the user, made before any code.** The
+fix step was to be a separate exercise offered after the quiz, the way a
+variant is offered under its base. Reading how variants are wired showed it
+would need a second relation beside `variant`, a second unlisted kind of
+exercise and a second way to reach one. A question whose answer is code needs
+none of that: it is one more set of reports in one verdict, through the kata
+runner the kata grader already holds. The user was told before work began.
+
+**The answer sheet is the editable file, so the kind is one clause in
+`editable_source`**, ADR 0019's prediction holding for the third time. The
+form writes `answers.md`; a terminal edits it and `practice submit --source`
+grades it. The sheet is Markdown parsed by hand in the domain, because the
+verdict is a set comparison that belongs under the coverage gate and a fix's
+code reads naturally in a fence and badly in a YAML block scalar.
+
+**Writing the content found three things a test now holds.**
+
+- **The right answer was the longest in 21 of 28 single-choice questions.**
+  The content suite's rule against it was written before the content, and the
+  first draft failed it on its first run. It is the tell every quiz author
+  leaves: the qualified, careful sentence is the one written for the answer
+  you believe in. Fifteen right answers were trimmed to a claim, with their
+  argument left in their `why`; the library ends at 6 longest and 4
+  shortest, and the rule checks both ends because trimming is how the
+  opposite tell gets made.
+- **An option id contained `answer`.** `answer-created`, a wrong option. The
+  giveaway-word rule caught it; it is `created-at-once` now.
+- **The content suite caught a counter-example declaration that was
+  incomplete.** `retry-everything.py` fails two tests, not the one written
+  down, and the second (*an error after a retry is not retried either*) is
+  exactly its bug seen from another angle. ADR 0022 working as designed.
+
+**And two things only a browser could show.** The numbered snippet of a
+`line` question ran past the panel's right edge, because code does not wrap;
+it scrolls inside its question now. And prose context authored as a literal
+block kept its hard line breaks, which the form's narrow column then wrapped
+again, so every sentence came out ragged. Twenty-seven prose contexts became
+folded scalars, and four that mix a dump with a paragraph use an indentation
+indicator so the dump is kept verbatim. Both were found by driving the real
+app against a scratch database, submitting a wrong answer and then a right
+one, and reading what came back.
+
+**What deviated.** The first screen had to give a row up, as Phase 22 wrote
+down it would: git's `amend-the-last-commit` moved to the head of
+`git-foundations`, and the N+1 quiz took its place. The tutor content suite
+failed every quiz on its first run, correctly: a finished quiz shows every
+explanation, and the export did not carry them until `_notes` added the key.
+And the launcher would have printed `8 systems quizs` on its first line:
+`_plural` appended an `s`, which had been right for four kinds. Each kind
+has its two names now, and a test walks the enum.
+
+**What was checked by running it, not reading it.** Every fix suite was run
+against the stub, the reference, each declared counter-example, and answers
+the prompt leaves open: `sorted(..., key=id)` passes the lock-order suite,
+because it is still a global order, and try-lock-and-back-off fails it,
+because the prompt asks for an order. The terminal path was run end to end
+against a scratch database: `practice start` prints every question with its
+context and numbered lines, and a half-wrong sheet submitted with `--source`
+fails with the chosen option's reason and leaves the attempt open.
+
+**Final numbers.** 9,530 passing and 71 skipped in the gate, where the last
+entry ended on 9,230 and 71: 300 new tests, and one more (the launcher's
+kind names) written while the gate ran and run on its own afterwards. 100%
+statement and branch coverage over 3,825 statements and 958 branches.
+`practice validate` reports 294 exercises, eight more than 286, and
+`practice fixtures --check` is unchanged. The gate took 11m48s, one run, and
+CLAUDE.md's warning that one run is not a measurement applies to it.
