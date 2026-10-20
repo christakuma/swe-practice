@@ -1,0 +1,258 @@
+schema_version: 1
+id: systems/the-nightly-job-ran-twice
+kind: quiz
+title: The nightly invoice job ran twice
+difficulty: hard
+tags: [distributed-systems, locking, idempotency]
+estimated_minutes: 25
+
+prompt: |
+  **Incident INC-140** — *all 9,840 customers invoiced twice for October*
+
+  > The invoice job runs at 02:00 on two hosts, so that one host being down
+  > does not skip a month, and again at 02:10 on billing-2 since a missed
+  > run in the summer. Only one run is meant to do the work: each takes a
+  > lock in Redis first, and a run that cannot get it exits. Last night two
+  > runs sent invoices.
+
+  How each run takes the lock:
+
+  ```
+  SET lock:invoices <hostname> NX PX 600000      # only if absent; expires in 10 min
+  ```
+
+  From the two hosts:
+
+  ```
+  02:00:00.012  billing-1  lock acquired
+  02:00:00.019  billing-2  lock held by billing-1, exiting
+  02:00:00.400  billing-1  sending invoices 1-9840
+  02:03:12.881  billing-1  [vm] paused by hypervisor (host maintenance), 3,112 sent
+  02:10:00.008  billing-2  lock acquired
+  02:10:00.300  billing-2  sending invoices 1-9840
+  02:14:40.103  billing-1  [vm] resumed
+  02:14:40.150  billing-1  sending invoices 3113-9840
+  ```
+
+hints:
+  - "When did billing-1's lock expire, and where was billing-1 at that moment?"
+  - "Could billing-1 have noticed that it no longer held the lock? What would it have had to do, and when?"
+  - "What if the thing receiving the writes could tell an old lock holder from a new one?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "The job sends each invoice by writing a row to `invoices` in Postgres; a mailer sends whatever rows appear."
+    - "A virtual machine can be paused for minutes with no warning, and a process can stop for seconds in garbage collection. Neither notices it was stopped."
+    - "The job must still run, once, if either host is down at 02:00."
+    - "Redis is a single instance. Its clock and the hosts' clocks are kept in sync to within a second."
+  questions:
+    - id: why-both-ran
+      format: single
+      label: How both hosts came to hold the lock
+      context: |
+        02:00:00  billing-1 acquires lock:invoices, expiring in 10 minutes
+        02:03:12  billing-1 is paused by the hypervisor
+        02:10:00  billing-2 acquires lock:invoices
+        02:14:40  billing-1 resumes and carries on sending
+      prompt: Why were both hosts sending invoices after 02:14?
+      options:
+        - id: redis-lost-the-key
+          text: Redis lost the key in a restart, and billing-2 took a lock that was still held.
+          why: >-
+            Nothing in the logs says Redis restarted, and nothing had to: the
+            key was set to expire at 02:10:00, and billing-2 acquired it at
+            02:10:00.008.
+        - id: lease-expired-while-paused
+          text: >-
+            The lock expired during billing-1's pause, and billing-1 never
+            knew.
+          why: >-
+            The time-to-live made the lock a lease: it ran out at 02:10, during
+            the pause, and Redis correctly gave it to billing-2. billing-1 had
+            checked nothing since 02:00, so it resumed mid-loop and kept
+            writing. A pause is invisible to the paused process.
+        - id: clock-skew
+          text: >-
+            billing-2's clock ran ahead, so it saw the lock as expired before
+            Redis did.
+          why: >-
+            The expiry is enforced by Redis on its own clock, and `SET NX` only
+            succeeds if Redis has no key. billing-2's clock is not consulted.
+        - id: nx-not-atomic
+          text: >-
+            `SET NX PX` is two operations, and both hosts got in between them.
+          why: >-
+            `SET` with `NX` and `PX` is one atomic command. At 02:00 the second
+            host was correctly refused.
+      answer: lease-expired-while-paused
+
+    - id: a-longer-ttl
+      format: single
+      label: Whether a longer time-to-live fixes it
+      context: >-
+        One proposal: raise the TTL to two hours, since the job never takes more
+        than forty minutes. Another: keep ten minutes, and have the job renew
+        the lock every minute while it works.
+      prompt: Do either of these make it impossible for two hosts to send at once?
+      options:
+        - id: two-hours-is-enough
+          text: Yes, two hours. No pause has ever come close to that.
+          why: >-
+            The bound moves; it does not go away. A long enough pause still
+            outlives the lease. And a two-hour lease held by a host that
+            crashed blocks the job for two hours, against the requirement that
+            it run if a host is down.
+        - id: renewing-is-enough
+          text: Yes, renewing every minute, because a live job keeps its lease.
+          why: >-
+            Renewal runs in the process that is paused. During the pause nothing
+            renews, the lease expires on schedule, and the process resumes
+            exactly as before: mid-write, believing it holds a lock.
+        - id: neither
+          text: >-
+            Neither; a pause can outlast any lease the holder keeps.
+          why: >-
+            Whatever the holder checks, it checks at one moment and writes at a
+            later one, and a pause can fall between the two. Both proposals
+            shrink the odds. Only something on the receiving side of the write
+            can refuse a holder whose lease has passed.
+        - id: both-together
+          text: >-
+            Only both together: the long TTL covers pauses and renewal covers
+            long jobs.
+          why: >-
+            Two mitigations that each fail under a long pause still fail under a
+            long pause. Together they shrink the window, and it is still there.
+      answer: neither
+
+    - id: fencing-in-order
+      format: order
+      label: What a fencing token does with the same pause
+      context: >-
+        Now each acquisition of the lock also returns a number that goes up by
+        one every time the lock is granted: a fencing token. Every write to
+        `invoices` carries the writer's token, and Postgres refuses a write
+        whose token is lower than the highest it has already accepted.
+      prompt: Put what happens in order, from 02:00 to the moment billing-1 is stopped.
+      options:
+        - id: two-writes-34
+          text: billing-2 writes its invoices with token 34, and they are accepted.
+          why: >-
+            34 is the highest token yet, so its writes go through, and 34 is
+            now the bar.
+        - id: one-acquires-33
+          text: billing-1 acquires the lock and is given token 33.
+          why: >-
+            First, because nothing happens until someone holds the lock.
+        - id: one-refused
+          text: billing-1 resumes and writes with token 33, and the write is refused.
+          why: >-
+            33 is lower than 34, so Postgres knows a newer holder exists and
+            rejects it. billing-1 learns it lost the lock from the refusal,
+            which is the one place it cannot miss it.
+        - id: lease-expires
+          text: The lease expires while billing-1 is paused.
+          why: >-
+            After the pause begins and before billing-2 can acquire it; this is
+            the same expiry as last night.
+        - id: two-acquires-34
+          text: billing-2 acquires the lock and is given token 34.
+          why: Only after the lease has expired, and the token is one higher.
+        - id: one-paused
+          text: billing-1 writes with token 33, and is then paused.
+          why: >-
+            Its early writes are legitimate: 33 is the highest token anyone has
+            seen.
+      answer: [one-acquires-33, one-paused, lease-expires, two-acquires-34, two-writes-34, one-refused]
+
+    - id: who-checks-the-token
+      format: single
+      label: Where the token has to be checked
+      context: >-
+        A teammate suggests the job itself compare its token with the current
+        one in Redis before every write, and stop if it has been superseded.
+        That needs no change to the database.
+      prompt: Why must the token be checked by the database, not by the job?
+      options:
+        - id: redis-too-slow
+          text: Because a round trip to Redis per write would make the job too slow.
+          why: >-
+            It would cost a few thousand round trips, which the job could
+            afford. The objection is not speed: a check in the job can pass and
+            still be wrong a moment later.
+        - id: redis-untrusted
+          text: Because Redis cannot be trusted to report the current token.
+          why: >-
+            Redis granted the lock and the token in the first place; it is the
+            authority on both. What cannot be trusted is that the answer is
+            still true by the time the job writes.
+        - id: either-works
+          text: >-
+            It need not be: both places work, and the job is simpler to change.
+          why: >-
+            Only one of them closes the window. A check in the job narrows it
+            to the time between the check and the write, and a pause can fall
+            exactly there.
+        - id: check-then-write
+          text: >-
+            Because the job can be paused between its check and its write.
+          why: >-
+            A check in the job is check-then-act again: it passes, the VM
+            pauses, the lease moves on, and the write lands anyway. The
+            database sees the token and the write in one step, so there is no
+            gap to pause in.
+      answer: check-then-write
+
+    - id: harmless-twice
+      format: multiple
+      label: What makes a second run harmless, lock or no lock
+      context: >-
+        Leases and tokens decide who should run. A second line of defence is
+        to make running twice do no harm. `invoices` has columns `customer_id`,
+        `period` (such as `2026-10`), `amount` and `created_at`.
+      prompt: Which of these make a second run send no second invoice? Choose every one that does.
+      options:
+        - id: unique-customer-period
+          text: >-
+            A unique constraint on `(customer_id, period)`, with the job's
+            insert doing nothing on conflict.
+          why: >-
+            The database refuses the second invoice for the same customer and
+            month, however many runs overlap and in whatever order. "Exactly
+            one invoice per customer per month" is now a property of the data,
+            not of the scheduling.
+        - id: check-before-insert
+          text: >-
+            Before inserting, `SELECT` whether the customer already has an
+            invoice for the period, and skip them if so.
+          why: >-
+            Check-then-act once more. Two overlapping runs both see no invoice
+            and both insert. It only helps when the runs do not overlap.
+        - id: mailer-keyed
+          text: >-
+            Have the mailer send with an idempotency key of
+            `invoice:<customer_id>:<period>`, which the email provider
+            deduplicates.
+          why: >-
+            The provider refuses the second send with the same key, so two rows
+            for one customer and month become one email. It protects the
+            customer's inbox; the unique constraint is still what keeps the
+            ledger right.
+        - id: smaller-batches
+          text: >-
+            Send in smaller batches, so the job finishes well inside the
+            ten-minute lease.
+          why: >-
+            A pause is not the job's work taking long. A two-minute job paused
+            for eleven minutes outlives the lease all the same.
+        - id: one-run-only
+          text: >-
+            Remove the 02:10 run on billing-2, so the job is only ever started
+            at 02:00.
+          why: >-
+            Last night's second run would not have started, and a second run
+            would be no more harmless than before: the next manual rerun after
+            a failure sends everything again.
+      answer: [unique-customer-period, mailer-keyed]

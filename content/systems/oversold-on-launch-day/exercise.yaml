@@ -1,0 +1,252 @@
+schema_version: 1
+id: systems/oversold-on-launch-day
+kind: quiz
+title: Oversold on launch day
+difficulty: medium
+tags: [concurrency, race-conditions, distributed-systems]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket SHOP-1207** — *launch sneaker oversold: 512 orders for 500 pairs*
+
+  > The limited release went live at 10:00 and sold out in 41 seconds. The
+  > warehouse has 500 pairs and we confirmed 512 orders. Twelve customers have
+  > to be told their order is cancelled. After the last launch oversold by
+  > three, someone wrapped `reserve` in a lock. This one was worse.
+
+  From the two replicas of the inventory service, at the same millisecond:
+
+  ```
+  10:00:41.207  inventory-a  reserve sku=sneaker-41 qty=1  read stock=1 version=4812
+  10:00:41.207  inventory-b  reserve sku=sneaker-41 qty=1  read stock=1 version=4812
+  10:00:41.209  inventory-a  reserve sku=sneaker-41 qty=1  wrote stock=0
+  10:00:41.210  inventory-b  reserve sku=sneaker-41 qty=1  wrote stock=0
+  ```
+
+hints:
+  - "Both replicas read the same stock and the same version. What did each one decide from what it read?"
+  - "The lock is a `threading.Lock`. Who else has to take it for it to stop anything?"
+  - "The store offers a write that only happens if the version is still the one you read. What should happen when it does not?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "The inventory service runs as two replicas behind a round-robin load balancer, each handling requests on several threads."
+    - "Stock lives in a key-value store with a version per key. It has no transactions, but offers a write that succeeds only if the key's version is unchanged."
+    - "A launch item has a few hundred units and sells out in under a minute, so many buyers reserve the same key at the same moment."
+    - "A customer may never be told their order is confirmed and then that it is not."
+  questions:
+    - id: the-stale-write
+      format: line
+      label: The line that writes from a stale read
+      context: |
+        10:00:41.207  inventory-a  read stock=1 version=4812
+        10:00:41.207  inventory-b  read stock=1 version=4812
+        10:00:41.209  inventory-a  wrote stock=0
+        10:00:41.210  inventory-b  wrote stock=0
+      prompt: >-
+        Both replicas ran this code. Which line wrote a value worked out from a
+        read that the other replica had already made out of date?
+      snippet: |
+        import threading
+
+        _lock = threading.Lock()
+
+
+        def reserve(store, sku, quantity):
+            with _lock:
+                item = store.get(sku)
+                if item.stock < quantity:
+                    raise SoldOut(sku)
+                store.put(sku, item.stock - quantity)
+                return item.stock - quantity
+      snippet_language: python
+      answer: 11
+      explanation: >-
+        Line 11 writes `item.stock - quantity`, a number computed from the read
+        on line 8. Between that read and this write, the other replica sold the
+        same pair and wrote 0, and line 11 writes 0 over it: a lost update. The
+        check on line 9 was true when it ran, which is what makes the bug hard
+        to see. The decision and the write are two steps, and nothing ties the
+        write to the state the decision was made on.
+
+    - id: why-the-lock-did-not-help
+      format: single
+      label: Why the lock made no difference
+      context: >-
+        `_lock` is a `threading.Lock` created when the module is imported. Two
+        replicas of the service run, each its own process on its own machine,
+        and the load balancer sends requests to both.
+      prompt: Why did wrapping `reserve` in `_lock` not stop the oversell?
+      options:
+        - id: lock-per-process
+          text: "Each replica has its own lock, and neither knows about the other's."
+          why: >-
+            A `threading.Lock` lives in one process's memory. It stops two
+            threads of inventory-a from interleaving, and does nothing about
+            inventory-b, which takes its own lock at the same moment. Exclusion
+            between processes has to live where both can see it: in the store.
+        - id: lock-released-early
+          text: >-
+            The `with` block releases the lock before `store.put` has finished
+            writing.
+          why: >-
+            `store.put` is inside the block, so the lock is held until it
+            returns. The write completes under the lock; the trouble is whose
+            lock it is.
+        - id: python-gil
+          text: >-
+            The GIL already serialises Python threads, so the lock added nothing
+            that was not there.
+          why: >-
+            The GIL lets the interpreter switch threads between bytecodes, so it
+            does not make a read and a write atomic together. And it is per
+            process too, so it says nothing about the other replica.
+        - id: needs-rlock
+          text: >-
+            It should be an `RLock`, because `reserve` can be called again from
+            inside itself.
+          why: >-
+            `reserve` does not call itself, and an `RLock` differs only in
+            letting the thread that holds it take it again. It is still one
+            process's lock.
+      answer: lock-per-process
+
+    - id: never-oversell
+      format: multiple
+      label: Single statements that cannot oversell
+      context: >-
+        Suppose stock were in a Postgres table instead, `items(sku, stock)`,
+        at the default isolation level, READ COMMITTED. Each option is what one
+        reservation runs; the application then confirms the order only if the
+        reservation reports success.
+      prompt: Which of these can never sell more than the stock? Choose every one that cannot.
+      options:
+        - id: conditional-decrement
+          text: >-
+            `UPDATE items SET stock = stock - $2 WHERE sku = $1 AND stock >= $2`,
+            and succeed only if it updated one row.
+          why: >-
+            The check and the write are one statement, so Postgres locks the
+            row, re-reads its current stock, and applies the condition to that.
+            A second buyer waits for the first to commit, then sees the new
+            stock, and updates no row if it is too low.
+        - id: select-for-update
+          text: >-
+            In one transaction, `SELECT stock ... FOR UPDATE`, check it, then
+            `UPDATE items SET stock = $new`, and commit.
+          why: >-
+            `FOR UPDATE` locks the row at the read, so a second buyer's read
+            waits until the first commits and then reads what it wrote. The
+            read-decide-write window is closed by a lock the database holds,
+            visible to every replica.
+        - id: check-constraint
+          text: >-
+            `UPDATE items SET stock = stock - $2 WHERE sku = $1`, with a `CHECK
+            (stock >= 0)` constraint on the table.
+          why: >-
+            The decrement reads the current row, as above, and a result below
+            zero violates the constraint, so the statement fails and nothing is
+            sold. The error is the "sold out" answer.
+        - id: read-then-set
+          text: >-
+            In one transaction, `SELECT stock`, check it, then `UPDATE items SET
+            stock = $new`, and commit.
+          why: >-
+            A transaction at READ COMMITTED does not lock what a plain SELECT
+            read. Two buyers both read 1, both decide, and both set 0: the same
+            lost update as the ticket, inside a transaction.
+        - id: read-then-set-twice
+          text: >-
+            Run the SELECT and the UPDATE of the option before twice in a row,
+            and confirm only if both runs agree.
+          why: >-
+            Two racy reads that agree with each other are still racy: the other
+            buyer can write after the second read just as after the first.
+      answer: [conditional-decrement, select-for-update, check-constraint]
+
+    - id: the-hot-key
+      format: single
+      label: What compare-and-set costs on one hot item
+      context: >-
+        With a version check, a write fails if anyone wrote the key since it
+        was read, and the reservation reads again and retries. In the first
+        second of the launch, 3,000 reservations arrive for the one key, each
+        taking about 4 ms from read to write.
+      prompt: What happens to compare-and-set under that load?
+      options:
+        - id: oversells-under-load
+          text: It oversells again once enough buyers race at once.
+          why: >-
+            A write with a stale version always fails, however many race, so it
+            cannot oversell. The cost of losing is a retry, not a wrong answer.
+        - id: deadlocks
+          text: >-
+            The retries deadlock with each other once two buyers wait on the
+            same version.
+          why: >-
+            Nothing waits: a compare-and-set holds no lock between the read and
+            the write, so there is no cycle of waiting to form. It fails and
+            returns.
+        - id: version-overflow
+          text: >-
+            The version number overflows after a few thousand writes and starts
+            again from zero.
+          why: >-
+            Even a 32-bit counter takes four billion writes to wrap round. A few
+            thousand are nowhere near it.
+        - id: most-attempts-lose
+          text: Most attempts lose and retry, so work grows faster than sales.
+          why: >-
+            Only one of the buyers who read a given version can win; every other
+            write fails and goes round again. With many buyers per 4 ms window,
+            most of the store's work is failed writes, and buyers hit the
+            attempt limit. A decrement the store applies in place, like the
+            conditional `UPDATE`, has no losers to retry.
+      answer: most-attempts-lose
+
+    - id: reserve-with-a-version
+      format: fix
+      label: Your fix
+      context: |
+        store.get(sku)                          -> an item with .stock and .version
+        store.put(sku, stock)                   writes, whatever the version
+        store.put_if_version(sku, stock, version)
+                                                writes only if the key's version
+                                                is still `version`; returns
+                                                True if it wrote, False if not
+
+        The tests play the other replica: they can sell stock between your
+        read and your write.
+      prompt: >-
+        Rewrite `reserve` so it cannot oversell however the two replicas
+        interleave. Write only with `put_if_version`, using the version you
+        read. If the write loses, read again and decide again, for at most 5
+        attempts in all, then raise `Contended`. Raise `SoldOut`, writing
+        nothing, whenever the stock you read is less than `quantity`. Return
+        the stock left.
+      explanation: >-
+        A loop of at most five attempts: read the item, raise `SoldOut` if its
+        stock is too low, and `put_if_version` the new stock with the version
+        just read. A True means nobody wrote in between, so return what is
+        left; a False means someone did, so go round and read again. Check the
+        stock on every pass, not only the first, because the write that beat
+        yours may have taken the last pair. The lock can go: it never protected
+        anything the other replica could reach.
+      fix:
+        tests: inventory_tests.py
+        counter_examples:
+          - file: retry-for-ever.py
+            expect_failures: [it-gives-up-after-five-attempts]
+          - file: give-up-at-the-first-conflict.py
+            expect_failures:
+              - a-sale-on-another-replica-is-not-overwritten
+              - the-last-pair-is-sold-once
+              - it-gives-up-after-five-attempts
+          - file: check-the-stock-once.py
+            expect_failures: [the-last-pair-is-sold-once]
+          - file: retry-the-same-version.py
+            expect_failures:
+              - a-sale-on-another-replica-is-not-overwritten
+              - the-last-pair-is-sold-once

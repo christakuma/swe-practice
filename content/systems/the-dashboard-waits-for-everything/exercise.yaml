@@ -1,0 +1,233 @@
+schema_version: 1
+id: systems/the-dashboard-waits-for-everything
+kind: quiz
+title: The dashboard waits for everything in turn
+difficulty: easy
+tags: [performance, latency, async]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket WEB-388** — *home dashboard slow, and sometimes very slow*
+
+  > The dashboard takes about two seconds to appear, and a few times an
+  > hour it takes over eight. Nothing on it is slow on its own page. The
+  > recommendations panel at the bottom is the part people scroll past.
+
+  A trace of a typical request:
+
+  ```
+  GET /dashboard                1,912 ms
+  ├─ profile              0 →   302 ms
+  ├─ orders             302 →   700 ms
+  ├─ notifications      700 →   901 ms
+  ├─ recommendations    901 → 1,905 ms
+  └─ render           1,905 → 1,912 ms
+  ```
+
+  The handler:
+
+  ```python
+  async def load_dashboard(user_id, services):
+      profile = await services.profile(user_id)
+      orders = await services.orders(user_id)
+      notifications = await services.notifications(user_id)
+      recommendations = await services.recommendations(user_id)
+      ...
+  ```
+
+hints:
+  - "Does any of the four calls need the result of another one?"
+  - "If all four were started at once, which one would the page be waiting for?"
+  - "The page can be drawn without recommendations. How long should it be willing to wait for them?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "The four services are independent: no call needs another's result."
+    - "Profile, orders and notifications are required: the page is an error page without any of them."
+    - "Recommendations are optional, and the page should never wait more than 300 ms for them."
+    - "Recommendations take about 1 s at p50 and over 8 s at p99."
+  questions:
+    - id: all-at-once
+      format: single
+      label: How long the four calls take if they start together
+      context: |
+        profile         302 ms
+        orders          398 ms
+        notifications   201 ms
+        recommendations 1,004 ms
+
+        Each takes the same time whether it runs alone or beside the others.
+      prompt: >-
+        If the handler started all four calls at once and waited for all of
+        them, roughly how long would they take?
+      options:
+        - id: sum
+          text: About 1.9 s, the same as now.
+          why: >-
+            That is the sum, which is what awaiting them in turn costs. Started
+            together, they overlap, and the waits run side by side.
+        - id: mean
+          text: About 480 ms, the average of the four.
+          why: >-
+            Averages describe no single request. The page waits until the last
+            call is back, and the last call is the slowest.
+        - id: slowest
+          text: >-
+            About 1 s, as long as the slowest.
+          why: >-
+            Concurrent calls take as long as the slowest of them. The other
+            three finish while recommendations is still running, so it alone
+            sets the time.
+        - id: fastest
+          text: About 200 ms, the fastest call.
+          why: >-
+            That is when the first answer arrives. The page still needs the
+            other three.
+      answer: slowest
+
+    - id: the-optional-widget
+      format: single
+      label: What to do about recommendations at 8 seconds
+      context: >-
+        With the calls concurrent, a typical page takes about 1 s, and the few
+        requests where recommendations take 8 s take 8 s. Recommendations are
+        optional; profile, orders and notifications are not.
+      prompt: What should the page do when recommendations are slow?
+      options:
+        - id: wait-for-them
+          text: Wait for them; the page should be complete.
+          why: >-
+            That makes the slowest optional panel the page's latency. The p99
+            of the whole page becomes the p99 of the one call it could do
+            without.
+        - id: retry-them
+          text: Retry the recommendations call when it is slow.
+          why: >-
+            A retry starts the wait again from zero, and adds load to a
+            service that is already slow.
+        - id: same-budget-for-all
+          text: Give every call the same 300 ms budget and draw whatever arrives.
+          why: >-
+            Orders takes about 400 ms, so on most requests the page would draw
+            without the orders it cannot do without. A budget is for what is
+            optional.
+        - id: budget-and-drop
+          text: >-
+            Give them a 300 ms budget, then draw the page without them.
+          why: >-
+            The page now takes as long as the slowest *required* call, about
+            400 ms, and the panel is shown whenever it answers in time.
+            Cancelling the late call matters too: left running, it holds a
+            connection for a page that has already gone.
+      answer: budget-and-drop
+
+    - id: the-fan-out-tail
+      format: single
+      label: How often a page meets at least one slow call
+      context: >-
+        Each of the four services is slower than its own p99 on 1% of
+        calls, independently of the others. A page waits for all four.
+      prompt: About what share of pages are slowed by at least one call past its p99?
+      options:
+        - id: four-percent
+          text: About 4%.
+          why: >-
+            The chance that all four are fast is 0.99⁴, about 0.961, so about
+            3.9% of pages wait for at least one slow call. Fan-out multiplies
+            the tail: a page that waits on a hundred such calls meets at least
+            one slow one on 63% of requests.
+        - id: one-percent
+          text: About 1%.
+          why: >-
+            That is the share for one call. With four, each has its own 1% chance,
+            and any one of them is enough.
+        - id: a-quarter
+          text: About 25%.
+          why: >-
+            That treats one in four calls as slow. Each call is slow 1% of the
+            time, so the chance a page meets one is about four times 1%, not a
+            quarter.
+        - id: tiny
+          text: About 0.000001%.
+          why: >-
+            That is the chance that *all four* are slow at once, 0.01⁴. One slow
+            call is enough to slow the page.
+      answer: four-percent
+
+    - id: where-the-time-goes
+      format: line
+      label: Where the handler waits for profile
+      context: >-
+        Profile takes about 300 ms, and the trace shows the orders call
+        starting at 302 ms.
+      prompt: >-
+        On which line does the handler sit for those 300 ms, with nothing else
+        in flight?
+      snippet: |
+        async def load_dashboard(user_id, services):
+            profile = await services.profile(user_id)
+            orders = await services.orders(user_id)
+            notifications = await services.notifications(user_id)
+            recommendations = await services.recommendations(user_id)
+            return {
+                "profile": profile,
+                "orders": orders,
+                "notifications": notifications,
+                "recommendations": recommendations,
+            }
+      snippet_language: python
+      answer: 2
+      explanation: >-
+        `await` suspends the handler until the awaited call finishes, so line 2
+        both starts the profile call and waits for it, and line 3 does not run
+        until it is done. That is what turns four independent calls into a
+        chain. Starting all the calls first and awaiting them together, with
+        `asyncio.gather` or a `TaskGroup`, is what lets the waits overlap.
+
+    - id: load-the-widgets-at-once
+      format: fix
+      label: Your fix
+      context: |
+        services.profile(user_id)          async; required
+        services.orders(user_id)           async; required
+        services.notifications(user_id)    async; required
+        services.recommendations(user_id)  async; optional
+
+        Each returns the widget's content, or raises. The tests can make any
+        of them slow, failing, or never answer at all.
+      prompt: >-
+        Rewrite `load_dashboard` so all four calls are in flight at once. Give
+        recommendations at most `RECOMMENDATIONS_BUDGET` seconds: if they have
+        not answered by then, or raise, the page has `None` for them and the
+        call is cancelled. Wait for the three required widgets however long
+        they take, and let an error from any of them reach the caller.
+      explanation: >-
+        Wrap only the recommendations call in `asyncio.wait_for(...,
+        RECOMMENDATIONS_BUDGET)` inside a `try` that returns `None` on any
+        exception, and pass that, with the three required calls, to
+        `asyncio.gather`. `wait_for` cancels the call when the budget runs out,
+        so it does not keep working after the page has gone. A `TaskGroup` with
+        `asyncio.timeout` around the optional call does the same. The hidden
+        tests check that all four calls are started before any answers, that a
+        silent or failing recommendations service leaves the rest of the page
+        intact, that the abandoned call is cancelled, and that a slow or
+        failing required widget is waited for or reported.
+      fix:
+        tests: dashboard_tests.py
+        time_limit_seconds: 30
+        counter_examples:
+          - file: one-after-another.py
+            expect_failures: [the-four-calls-are-in-flight-at-once]
+          - file: gather-everything.py
+            expect_failures:
+              - silent-recommendations-are-left-out
+              - the-abandoned-call-is-cancelled
+              - failing-recommendations-are-left-out
+          - file: a-budget-for-every-widget.py
+            expect_failures:
+              - a-slow-required-widget-is-waited-for
+              - a-failing-required-widget-fails-the-page
+          - file: left-running.py
+            expect_failures: [the-abandoned-call-is-cancelled]

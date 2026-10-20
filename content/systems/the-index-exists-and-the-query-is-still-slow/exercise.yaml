@@ -1,0 +1,225 @@
+schema_version: 1
+id: systems/the-index-exists-and-the-query-is-still-slow
+kind: quiz
+title: The index exists, and the query is still slow
+difficulty: medium
+tags: [databases, postgres, performance]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket AUTH-77** — *login takes 2 s since the case-insensitive email change*
+
+  > Last sprint we made login ignore the case of the email address, because
+  > people typed `Ana@Example.com` and were told no such account existed.
+  > Since then login takes about two seconds. There is an index on
+  > `users.email`, and we checked that it is there.
+
+  ```sql
+  -- the index, unchanged since the table was created
+  CREATE UNIQUE INDEX users_email_key ON users (email);
+
+  -- the login query, since the change
+  SELECT id, password_hash FROM users WHERE lower(email) = lower($1);
+  ```
+
+  ```
+  EXPLAIN SELECT id, password_hash FROM users WHERE lower(email) = lower('ana@example.com');
+
+   Seq Scan on users  (cost=0.00..389412.00 rows=60000 width=68)
+     Filter: (lower((email)::text) = 'ana@example.com'::text)
+  ```
+
+hints:
+  - "The index is on `email`. What is the query comparing?"
+  - "Can a B-tree sorted by `email` tell you where `lower(email)` is a given value?"
+  - "Postgres can index the result of an expression, not only a column."
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "PostgreSQL 16, default collation `en_US.UTF-8`. `users` has 12 million rows."
+    - "Emails are stored as the user typed them at sign-up, mixed case included."
+    - "Two accounts must never have emails that differ only in case."
+  questions:
+    - id: why-the-scan
+      format: single
+      label: Why the planner ignores users_email_key
+      context: |
+        Index:  users_email_key ON users (email)
+        Query:  WHERE lower(email) = lower($1)
+        Plan:   Seq Scan on users, Filter: (lower((email)::text) = ...)
+      prompt: Why does the planner scan the table instead of using the index?
+      options:
+        - id: expression-not-indexed
+          text: >-
+            The index holds `email`, and the query asks about `lower(email)`.
+          why: >-
+            A B-tree finds rows by the value it was built on. `Ana@Example.com`
+            and `ana@example.com` are far apart in that order, so knowing
+            `lower(email)` tells it nowhere to look, and every row has to be
+            lowered and compared.
+        - id: stale-statistics
+          text: Its statistics are out of date, so it thinks a scan is cheaper.
+          why: >-
+            Stale statistics change estimates, not what an index can answer.
+            No amount of `ANALYZE` lets an index on `email` find rows by
+            `lower(email)`.
+        - id: unique-indexes
+          text: >-
+            Unique indexes cannot be used for lookups, only to enforce the
+            constraint.
+          why: >-
+            A unique index is an ordinary B-tree that also refuses duplicates;
+            the planner uses it for lookups all the time. Before the change,
+            this query used it.
+        - id: parameter-type
+          text: >-
+            `lower($1)` returns `text` and `email` is `varchar`, so the types
+            do not match the index.
+          why: >-
+            `varchar` is compared as `text` in Postgres, and a plain `email =
+            $1` used this index before the change. The cast in the filter is
+            harmless; the function around the column is not.
+      answer: expression-not-indexed
+
+    - id: the-index-to-add
+      format: single
+      label: The index that serves the new query
+      context: >-
+        Emails must stay unique ignoring case, and the login query should stay
+        as it is: `WHERE lower(email) = lower($1)`.
+      prompt: Which index makes the login query an index scan and keeps emails unique?
+      options:
+        - id: partial-index
+          text: "`CREATE UNIQUE INDEX ON users (email) WHERE email = lower(email)`"
+          why: >-
+            A partial index covers only rows already stored in lower case, and
+            still orders them by `email`, not `lower(email)`. Mixed-case rows,
+            the ones the change was for, are not in it at all.
+        - id: hash-index
+          text: "`CREATE INDEX ON users USING hash (email)`"
+          why: >-
+            A hash index, like the B-tree, is built on `email`, so it cannot
+            find `lower(email)` either. And Postgres hash indexes cannot be
+            unique.
+        - id: composite-index
+          text: "`CREATE UNIQUE INDEX ON users (email, id)`"
+          why: >-
+            Still ordered by `email` first, so no help with `lower(email)`; and
+            unique on the pair, which every row already is.
+        - id: expression-index
+          text: "`CREATE UNIQUE INDEX ON users (lower(email))`"
+          why: >-
+            An expression index stores `lower(email)` for every row, so the
+            query's `WHERE lower(email) = ...` matches what it holds and is an
+            index scan. Unique on the lowered value, it also refuses a second
+            account that differs only in case, which the old index allowed.
+      answer: expression-index
+
+    - id: which-can-use-it
+      format: multiple
+      label: Searches a B-tree on name can serve
+      context: >-
+        `customers` has a B-tree index `CREATE INDEX ON customers (name
+        text_pattern_ops)`, which supports equality and `LIKE` with a fixed
+        prefix whatever the collation.
+      prompt: Which of these can use that index to avoid reading the whole table? Choose every one that can.
+      options:
+        - id: equality
+          text: "`WHERE name = 'Okafor'`"
+          why: >-
+            Equality on the indexed column is the simplest index lookup there
+            is.
+        - id: prefix
+          text: "`WHERE name LIKE 'Oka%'`"
+          why: >-
+            A fixed prefix is a range in sort order, from `Oka` up to `Okb`,
+            and `text_pattern_ops` lets the planner use it as one.
+        - id: suffix
+          text: "`WHERE name LIKE '%for'`"
+          why: >-
+            A leading wildcard says nothing about where in the sorted order a
+            match starts, so every entry has to be checked. A trigram index
+            (`pg_trgm`) is the tool for this, not a B-tree.
+        - id: wrapped
+          text: "`WHERE upper(name) = 'OKAFOR'`"
+          why: >-
+            The same mistake as the ticket: the index holds `name`, and the
+            query asks about `upper(name)`.
+        - id: concatenated
+          text: "`WHERE name || '' = 'Okafor'`"
+          why: >-
+            Any expression around the column hides it from the index, even one
+            that changes nothing. It is an old trick for *stopping* the planner
+            using an index.
+      answer: [equality, prefix]
+
+    - id: column-order
+      format: single
+      label: The query a composite index cannot help
+      context: >-
+        `orders` has 80 million rows and an index `CREATE INDEX ON orders
+        (customer_id, created_at)`. A B-tree on two columns is sorted by the
+        first, and by the second only among rows that share the first.
+        PostgreSQL 16 has no skip scan.
+      prompt: Which query can the index not narrow down?
+      options:
+        - id: customer-only
+          text: "`WHERE customer_id = 42`"
+          why: >-
+            The leading column alone is a range of the index: every entry for
+            customer 42 sits together.
+        - id: both
+          text: "`WHERE customer_id = 42 AND created_at > now() - interval '7 days'`"
+          why: >-
+            Equality on the first column, then a range on the second within
+            it: exactly the order the index is sorted in.
+        - id: date-only
+          text: "`WHERE created_at > now() - interval '7 days'`"
+          why: >-
+            Without the leading column, last week's rows are scattered through
+            every customer's section of the index. On PostgreSQL 16 the planner
+            has to read all of it or scan the table; a separate index on
+            `created_at` is what this query needs.
+        - id: latest-for-customer
+          text: "`WHERE customer_id = 42 ORDER BY created_at DESC LIMIT 20`"
+          why: >-
+            The index is sorted by `created_at` within customer 42, so the
+            planner reads the last 20 entries of that section backwards, with
+            no sort.
+      answer: date-only
+
+    - id: measuring-safely
+      format: single
+      label: How to see real timings for a slow DELETE
+      context: >-
+        A `DELETE FROM sessions WHERE expires_at < now()` takes minutes, and
+        you want the plan with real row counts and timings, not estimates.
+        `EXPLAIN ANALYZE` runs the statement to measure it.
+      prompt: How do you get those numbers without deleting anything?
+      options:
+        - id: plain-explain
+          text: "`EXPLAIN DELETE ...`, which shows the plan."
+          why: >-
+            Plain `EXPLAIN` does not run the statement, so it shows estimates
+            only. A slow query is often slow exactly where the estimate is
+            wrong.
+        - id: analyze-in-a-rollback
+          text: "`BEGIN; EXPLAIN (ANALYZE, BUFFERS) DELETE ...; ROLLBACK;`"
+          why: >-
+            The DELETE really runs, so the timings are real, and the ROLLBACK
+            undoes it. Do it where holding those row locks for the run is
+            acceptable, since the transaction holds them until the rollback.
+        - id: analyze-is-dry
+          text: "`EXPLAIN ANALYZE DELETE ...`; ANALYZE never changes data."
+          why: >-
+            It does: `EXPLAIN ANALYZE` executes the statement, and outside a
+            transaction that is rolled back, the rows are gone.
+        - id: select-instead
+          text: "`EXPLAIN ANALYZE SELECT * FROM sessions WHERE expires_at < now()`"
+          why: >-
+            That measures finding the rows, not deleting them. The time a
+            DELETE spends is often in what the SELECT skips: index
+            maintenance, foreign keys, triggers.
+      answer: analyze-in-a-rollback

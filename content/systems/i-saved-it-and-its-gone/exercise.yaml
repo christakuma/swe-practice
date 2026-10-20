@@ -1,0 +1,195 @@
+schema_version: 1
+id: systems/i-saved-it-and-its-gone
+kind: quiz
+title: I saved my profile, and the page shows the old name
+difficulty: easy
+tags: [databases, replication, consistency]
+estimated_minutes: 15
+
+prompt: |
+  **Ticket ACCT-310** — *"my change didn't save"* (it did)
+
+  > Users change their display name, press Save, and the page that loads
+  > next shows the old name. They save again, or refresh and see the new
+  > one. Support has been telling people to "wait a second".
+
+  How the app talks to the database:
+
+  ```
+  writes        -> primary
+  reads         -> one of three read replicas, chosen per query
+  replica lag   p50 40 ms, p99 800 ms, peaks of 3 s during backups
+  ```
+
+  One save, end to end:
+
+  ```
+  10:20:01.100  POST /profile        UPDATE users SET name = 'Inês Ferreira'   primary
+  10:20:01.180  302 -> /profile
+  10:20:01.260  GET  /profile        SELECT name FROM users ...           replica-2
+  10:20:01.262                       name = 'Ines Ferreira'   (the old name)
+  ```
+
+hints:
+  - "Where did the write go, and where did the read go?"
+  - "How long after the write did the read run, and how far behind is a replica at worst?"
+  - "Who needs to see the new name straight away: everyone, or the person who changed it?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "PostgreSQL with streaming replication: replicas apply the primary's changes asynchronously."
+    - "The replicas exist because the primary cannot take the read load on its own."
+    - "Other users may see a changed name a few seconds late; the person who changed it must not."
+  questions:
+    - id: why-old
+      format: single
+      label: Why the page showed the old name
+      context: |
+        10:20:01.100  UPDATE users SET name = ...        primary
+        10:20:01.260  SELECT name FROM users ...         replica-2
+        replica lag: p50 40 ms, p99 800 ms
+      prompt: Why did the read return the old name?
+      options:
+        - id: not-committed
+          text: The update had not committed when the redirect was sent.
+          why: >-
+            The handler sends the redirect after the UPDATE returns, and a
+            Postgres statement outside an explicit transaction commits before it
+            returns. The primary had the new name.
+        - id: browser-cache
+          text: >-
+            The browser showed a copy of the profile page it had cached before
+            the save.
+          why: >-
+            The server log shows a fresh GET reaching the app and a SELECT
+            returning the old name. The stale value came from the database.
+        - id: replica-behind
+          text: >-
+            It read from a replica that had not applied the update yet.
+          why: >-
+            Replicas apply the primary's changes asynchronously, so for a
+            moment after every write they are behind. 160 ms is inside the
+            usual range of lag, so this reader saw the replica's past.
+        - id: lost-update
+          text: Another request overwrote the new name with the old one.
+          why: >-
+            A refresh a second later shows the new name, which an overwrite
+            would not. The new value was there; this read looked somewhere it
+            had not arrived yet.
+      answer: replica-behind
+
+    - id: whose-guarantee
+      format: single
+      label: What read-your-writes promises
+      context: >-
+        The fix is described as giving users read-your-writes consistency.
+        Another user, viewing Inês's profile from elsewhere, may still see the
+        old name for up to a few seconds afterwards.
+      prompt: Is that other user seeing the old name a bug under read-your-writes?
+      options:
+        - id: yes-everyone
+          text: Yes; read-your-writes means every reader sees a write at once.
+          why: >-
+            That is a much stronger guarantee, linearizability, and it would
+            mean reading every query from the primary or waiting for every
+            replica.
+        - id: yes-if-same-region
+          text: Only if the other user is in the same region as the writer.
+          why: >-
+            The guarantee is about who wrote, not where readers are. Regions
+            change the lag, not the promise.
+        - id: depends-on-cache
+          text: It depends on whether the profile page is cached.
+          why: >-
+            A cache is one more place to be stale, and the guarantee is the
+            same: the writer sees the write; others may not yet.
+        - id: no-only-the-writer
+          text: No; it promises the writer sees their own writes, nobody else.
+          why: >-
+            Read-your-writes is a promise to the session that wrote. Other
+            readers get the replicas' eventual consistency, which the
+            constraints allow.
+      answer: no-only-the-writer
+
+    - id: ways-to-fix
+      format: multiple
+      label: Ways to make the writer see their write
+      context: >-
+        The primary cannot take every read, and replicas lag by up to 3 s
+        during backups. The person who saved must see the new name on the next
+        page.
+      prompt: Which of these guarantee that? Choose every one that does.
+      options:
+        - id: primary-after-write
+          text: >-
+            After a user writes, send that user's reads to the primary for the
+            next 5 seconds.
+          why: >-
+            Their reads cannot see stale data for a window longer than the
+            worst lag, and everyone else still reads from replicas. The window
+            must cover the worst case, so 5 s, not 1 s, given backups.
+        - id: wait-for-position
+          text: >-
+            Remember the primary's WAL position after the write, and read from
+            a replica only once it has replayed past that position.
+          why: >-
+            `pg_current_wal_lsn()` on the primary and
+            `pg_last_wal_replay_lsn()` on the replica say exactly whether the
+            write has arrived. It is precise rather than a guess at the lag,
+            and falls back to the primary when no replica has caught up.
+        - id: sleep-before-redirect
+          text: Sleep 200 ms before sending the redirect.
+          why: >-
+            That covers the median lag and not the p99 of 800 ms, let alone a
+            backup's 3 s. It makes every save slower and some still stale.
+        - id: show-what-was-sent
+          text: >-
+            Render the confirmation page from the values the user just
+            submitted, not from a read.
+          why: >-
+            It fixes the page after Save, and only that page: the profile, the
+            header and every other page the user opens next still read from a
+            replica that may not have the change.
+        - id: more-replicas
+          text: Add two more replicas, so each is less loaded and lags less.
+          why: >-
+            Less load lowers the lag, and lag is never zero with asynchronous
+            replication. Some read still lands before the change does.
+      answer: [primary-after-write, wait-for-position]
+
+    - id: going-backwards
+      format: single
+      label: When a user sees the new name, then the old one
+      context: >-
+        With the fix in place, a user reports this: after saving, the profile
+        showed the new name, then a refresh showed the old one, then the new
+        one again. Each refresh may go to a different replica.
+      prompt: What is happening?
+      options:
+        - id: monotonic-reads
+          text: >-
+            The refreshes hit replicas that were behind by different amounts.
+          why: >-
+            Two replicas with different lag show two points in the past, so a
+            user moving between them can see time go backwards. The guarantee
+            that rules it out is monotonic reads, and the usual way to get it
+            is to keep a session on one replica, or to apply the same "not
+            older than position X" rule to every read.
+        - id: write-reverted
+          text: The update was rolled back and then applied again.
+          why: >-
+            A committed update is not rolled back, and nothing applied it a
+            second time. Every replica gets the same changes in the same order.
+        - id: primary-stale
+          text: The primary itself served an old value once.
+          why: >-
+            The primary is where the write happened; it cannot be behind it.
+        - id: clock-skew
+          text: The replicas' clocks disagree, so they order the changes differently.
+          why: >-
+            Streaming replication replays the primary's log in order; it
+            does not use replica clocks to order anything. What differs is how
+            far each one has got.
+      answer: monotonic-reads

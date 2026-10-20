@@ -467,24 +467,49 @@ tracks:
       - docker/the-api-starts-before-the-database
       - docker/node-modules-vanished
 
-  # Phase 25's quizzes: incidents to diagnose, with a fix here and there.
-  # The N+1 page is in `start-here`; these are the other seven.
+  # Phases 25 and 26's quizzes: incidents to diagnose, with a fix here and
+  # there. The N+1 page is in `start-here`; these are the other nineteen.
   #
-  # Reading numbers first (percentiles and Little's law), because three of
+  # Reading numbers first (percentiles and Little's law), because several of
   # the later incidents are Little's law in disguise. Then the double
-  # charge, which is easy and which the retry storm leans on. The two
-  # deadlocks are a pair, threads before Postgres, because the second's
-  # whole point is that row locks are the first one's mutexes. The dead
-  # dependency, then the rollout, and the retry storm last: it is the one
-  # hard incident, and it assumes the circuit breaker and the idempotency
-  # key have both been met.
+  # charge, and the two welcome emails straight after it: an idempotent
+  # consumer is an idempotency key seen from the other side. The easy
+  # data incidents next (replica lag, offset pagination), then the
+  # dashboard's fan-out, which leans on p99's tail, and the index, which
+  # leans on the N+1 page's habit of reading a plan.
+  #
+  # Concurrency as a run: the two deadlocks, threads before Postgres,
+  # because the second's whole point is that row locks are the first one's
+  # mutexes; then the oversell, where a lock in one process is no lock at
+  # all; then the nightly job, the one hard concurrency incident, which is
+  # the oversell's lesson applied to a lock with a timeout. The outbox
+  # follows, because its relay is at-least-once and assumes the welcome
+  # emails.
+  #
+  # Resilience as a run: the dead dependency (timeouts, breakers), then
+  # bulkheads, which complete it; the growing queue, then the stampede,
+  # both overload turned into something else. The two change incidents,
+  # rollout then config, and the retry storm last: it is the hardest, and it
+  # assumes the circuit breaker and the idempotency key have both been met.
   - name: systems
     title: "Systems: incidents to diagnose, and the occasional fix"
     exercises:
       - systems/p99-is-ten-times-p50
       - systems/charged-twice-on-retry
+      - systems/two-welcome-emails
+      - systems/i-saved-it-and-its-gone
+      - systems/page-two-repeats-page-one
+      - systems/the-dashboard-waits-for-everything
+      - systems/the-index-exists-and-the-query-is-still-slow
       - systems/transfers-hang-under-load
       - systems/postgres-says-deadlock-detected
+      - systems/oversold-on-launch-day
+      - systems/the-nightly-job-ran-twice
+      - systems/saved-but-nobody-heard
       - systems/every-request-waits-for-a-dead-service
+      - systems/one-slow-dependency-took-down-every-endpoint
+      - systems/the-queue-keeps-growing
+      - systems/a-cache-stampede-at-midnight
       - systems/the-rollout-broke-halfway
+      - systems/one-config-push-every-region-down
       - systems/a-blip-became-an-outage

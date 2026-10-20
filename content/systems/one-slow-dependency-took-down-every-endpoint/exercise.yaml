@@ -1,0 +1,232 @@
+schema_version: 1
+id: systems/one-slow-dependency-took-down-every-endpoint
+kind: quiz
+title: One slow dependency took down every endpoint
+difficulty: medium
+tags: [resilience, timeouts, bulkheads]
+estimated_minutes: 20
+
+prompt: |
+  **Incident INC-163** — *checkout API down for 25 minutes, all endpoints*
+
+  > The tax service had a bad deploy and started answering in about 30
+  > seconds instead of 50 ms. Only checkout calls tax. But for 25 minutes
+  > every endpoint of the checkout API timed out, including `/catalog`,
+  > `/cart` and `/health`, and the load balancer took every instance out of
+  > rotation.
+
+  One instance during the incident:
+
+  ```
+  worker threads     200 of 200 busy
+  requests waiting   1,840 in the accept queue
+  stuck in           tax_client.quote()        200 of 200
+  /checkout          50 req/s                  all time out
+  /catalog           400 req/s                 all time out
+  /health            1 req/s                   times out after 2 s
+  ```
+
+hints:
+  - "How many threads does `/checkout` need, at 50 requests a second, when each one waits 30 seconds for tax?"
+  - "What does a `/catalog` request need in order to run, and who has all of them?"
+  - "What if tax calls could only ever use some of the threads?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "Each instance serves every endpoint from one pool of 200 worker threads; a thread is held for the whole request, including time spent waiting on a call."
+    - "Healthy, tax answers in 50 ms at p50 and 180 ms at p99. Its client's timeout is the library default, 30 s."
+    - "Checkout must not complete without a tax quote."
+    - "Per instance, /checkout gets 50 requests a second and /catalog 400; a catalog request takes 10 ms of a thread."
+  questions:
+    - id: why-catalog-failed
+      format: single
+      label: Why endpoints that never call tax failed
+      context: |
+        worker threads     200 of 200 busy
+        stuck in           tax_client.quote()        200 of 200
+        /catalog           400 req/s, never calls tax, all time out
+      prompt: Why did `/catalog` fail, when it does not call tax?
+      options:
+        - id: tax-crashed-catalog
+          text: The tax client's errors crashed the process the catalog runs in.
+          why: >-
+            Nothing crashed: the threads were alive, waiting. A crash would
+            have restarted the instances, and they would have recovered for a
+            moment each time.
+        - id: database-locked
+          text: Checkout held database locks that the catalog queries needed.
+          why: >-
+            Every busy thread was in `tax_client.quote()`, not in the
+            database. And catalog reads do not take the locks checkout's
+            writes do.
+        - id: load-balancer
+          text: >-
+            The load balancer removed the instances, so nothing could reach
+            the catalog.
+          why: >-
+            That came after. The health check timed out because it, too, had
+            no thread to run on; the load balancer then removed instances that
+            had already stopped answering.
+        - id: threads-exhausted
+          text: >-
+            Every thread was waiting on tax, so catalog requests had none to
+            run on.
+          why: >-
+            The pool is shared. Checkout requests took threads and held them
+            for thirty seconds each, until all 200 were waiting on tax, and a
+            catalog request that needs 10 ms of a thread waited in the queue
+            behind them until it timed out. The slow dependency of one
+            endpoint became the failure of all of them.
+      answer: threads-exhausted
+
+    - id: threads-for-tax
+      format: single
+      label: How many threads tax calls need
+      context: >-
+        Little's law: the average number of requests in a system is the rate
+        they arrive at times the time each one spends there. Checkout calls
+        tax 50 times a second per instance.
+      prompt: >-
+        On average, how many threads are waiting on tax when it answers in
+        50 ms, and how many when it answers in 30 s?
+      options:
+        - id: same-either-way
+          text: About 50 either way; the request rate has not changed.
+          why: >-
+            The rate is the same, and the time in the system is six hundred
+            times longer. Concurrency is the product of the two.
+        - id: fifty-then-two-hundred
+          text: About 50, then 200, the size of the pool.
+          why: >-
+            200 is where it stops because there are no more threads, not what
+            the load needs. And 50 is the rate, not the concurrency: each call
+            holds a thread for a twentieth of a second.
+        - id: one-then-thirty
+          text: About 1, then about 30.
+          why: >-
+            That is the latency in seconds, rounded, without the rate. Each of
+            the 50 calls a second holds a thread for that long.
+        - id: two-and-a-half-then-1500
+          text: About 2.5, then about 1,500.
+          why: >-
+            50 a second times 0.05 s is 2.5 threads; 50 a second times 30 s is
+            1,500. The pool has 200, so it fills in four seconds and stays
+            full. A dependency's latency is a demand for your threads.
+      answer: two-and-a-half-then-1500
+
+    - id: the-bulkhead
+      format: single
+      label: What a bulkhead does to this incident
+      context: >-
+        A bulkhead caps how much of a shared resource one dependency can use.
+        Suppose a semaphore lets at most 20 requests at a time be calling tax,
+        and a checkout request that finds all 20 permits taken fails at once
+        with 503.
+      prompt: With tax answering in 30 s, what happens now?
+      options:
+        - id: checkout-fails-fast
+          text: >-
+            Checkout fails fast once its 20 permits are taken, and every other
+            endpoint keeps working.
+          why: >-
+            The damage is confined to the compartment: twenty threads wait on
+            tax, checkout beyond that gets a quick 503, and the 180 threads
+            left serve the catalog, the cart and the health check as normal.
+            That is the bulkhead's whole job: it does not save checkout, it
+            saves everything else.
+        - id: checkout-recovers
+          text: Checkout recovers, because only 20 tax calls run at once.
+          why: >-
+            Tax is still taking 30 s to answer; limiting the callers does not
+            make it faster. Checkout fails, quickly.
+        - id: nothing-changes
+          text: Nothing changes, because 20 threads still fill up.
+          why: >-
+            They fill up, and that is the point: only those 20. The rest of the
+            pool never sees a tax call.
+        - id: queues-grow
+          text: >-
+            Checkout requests queue for the 20 permits, so the queue grows
+            until the instance runs out of memory.
+          why: >-
+            The bulkhead here refuses rather than queues. A bulkhead with an
+            unbounded queue in front of it would do this, and is a common
+            mistake; bound the queue too, or fail at once.
+      answer: checkout-fails-fast
+
+    - id: the-timeout
+      format: single
+      label: The longest timeout the bulkhead can afford
+      context: >-
+        The bulkhead allows 20 tax calls at once, and checkout calls tax 50 times a second.
+        Healthy, tax answers in 50 ms at p50 and 180 ms at p99. A call that
+        times out frees its thread.
+      prompt: >-
+        What is the longest timeout on tax calls that keeps them inside 20
+        threads even when every call runs to the timeout?
+      options:
+        - id: forty-ms
+          text: 40 ms.
+          why: >-
+            That fits, and fails healthy calls: the p50 is 50 ms, so most calls
+            would time out on a good day.
+        - id: four-hundred-ms
+          text: 400 ms.
+          why: >-
+            20 threads divided by 50 calls a second is 0.4 s per call. At
+            400 ms the bulkhead holds even when tax is at its worst, and it is
+            twice the healthy p99, so good calls are not cut off.
+        - id: two-point-five-s
+          text: 2.5 s.
+          why: >-
+            50 calls a second each holding a thread for 2.5 s is 125 threads,
+            six times the bulkhead.
+        - id: thirty-s
+          text: 30 s, the library default.
+          why: >-
+            The default is what made this an incident: 1,500 threads' worth of
+            waiting. A library's default timeout is a guess made without your
+            numbers.
+      answer: four-hundred-ms
+
+    - id: would-have-saved-catalog
+      format: multiple
+      label: What would have kept the catalog up
+      context: >-
+        Tax at 30 s, 50 checkout requests a second, 400 catalog requests a
+        second, one pool of 200 threads. Checkout may fail; the question is
+        whether the rest of the API stays up.
+      prompt: Which of these, on its own, would have kept `/catalog` answering? Choose every one that would.
+      options:
+        - id: separate-pool
+          text: At most 20 tax calls at a time, and a 503 at once beyond that.
+          why: >-
+            The bulkhead: tax can hold 20 threads and never the other 180.
+        - id: short-timeout
+          text: A 400 ms timeout on tax calls.
+          why: >-
+            Each call now holds a thread for at most 0.4 s, so tax occupies
+            about 20 threads at worst and the pool keeps 180 for everything
+            else.
+        - id: circuit-breaker
+          text: >-
+            A circuit breaker on tax that opens after a run of failed calls,
+            with the 30 s timeout left as it is.
+          why: >-
+            A breaker counts calls as they finish, and the first slow ones
+            finish thirty seconds in, by which time the pool has been full for
+            twenty-six. It would cut the outage short, not prevent it. With a
+            short timeout under it, it trips in seconds.
+        - id: bigger-pool
+          text: A pool of 400 threads instead of 200.
+          why: >-
+            The load needs 1,500. It takes eight seconds instead of four to
+            fill, and then the outage is the same.
+        - id: retry-tax
+          text: Retry tax calls that time out, up to three times.
+          why: >-
+            Each retry holds the thread for another 30 s, and adds load to a
+            service that is already struggling. It makes the pool fill faster.
+      answer: [separate-pool, short-timeout]

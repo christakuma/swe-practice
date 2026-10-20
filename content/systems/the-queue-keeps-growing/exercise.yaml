@@ -1,0 +1,206 @@
+schema_version: 1
+id: systems/the-queue-keeps-growing
+kind: quiz
+title: Thumbnails take over an hour, and nothing has failed
+difficulty: medium
+tags: [queues, backpressure, capacity]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket MEDIA-212** — *new uploads show a grey box for over an hour*
+
+  > Since the marketing campaign went live on Monday morning, a photo
+  > uploaded after lunch waits over an hour for its thumbnail. No errors: every
+  > upload is accepted, every job succeeds, the workers are healthy and busy.
+
+  The thumbnail queue on Monday:
+
+  ```
+  time    uploads/s   thumbnails/s   jobs waiting   oldest job waiting
+  08:00      620          800                 0          0 s
+  09:00    1,000          800                 0          0 s     campaign live
+  10:00    1,000          800           720,000      12 min
+  14:00    1,000          800         3,600,000      60 min
+  18:00      300          800         1,800,000      44 min
+  ```
+
+hints:
+  - "Compare the two rates. What does the difference do to the queue each second?"
+  - "A job joining the back of the queue waits for everything in front of it. How fast does the front move?"
+  - "What would the upload API have to know, and do, for the backlog never to reach millions?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "The workers process 800 jobs a second between them, and no faster; the cluster takes a day to grow."
+    - "Jobs are processed in the order they arrive."
+    - "The queue is unbounded, and the broker has disk for about 50 million jobs."
+    - "A thumbnail that is late is a grey box; a photo that is lost is an angry customer."
+  questions:
+    - id: when-is-it-empty
+      format: single
+      label: When the backlog is gone
+      context: |
+        18:00   jobs waiting: 1,800,000
+                uploads:      300 a second from now on
+                thumbnails:   800 a second
+      prompt: If uploads stay at 300 a second, when is the queue empty?
+      options:
+        - id: thirty-seven-minutes
+          text: In about 37 minutes, at 18:37.
+          why: >-
+            That is 1.8 million at 800 a second, as if nothing new arrived. 300
+            new jobs a second keep joining, so the backlog only shrinks by the
+            difference.
+        - id: one-hour
+          text: >-
+            In about an hour, at 19:00.
+          why: >-
+            The queue drains at the service rate minus the arrival rate, 800 -
+            300 = 500 jobs a second, and 1,800,000 / 500 is 3,600 seconds.
+        - id: one-hundred-minutes
+          text: In 100 minutes, at 19:40.
+          why: >-
+            That divides by the arrival rate, 300 a second. Arrivals add to the
+            queue; they do not remove anything from it.
+        - id: never
+          text: Never, while the campaign runs.
+          why: >-
+            The queue only grows while arrivals exceed what the workers can do.
+            At 300 a second they are well under 800, and it shrinks.
+      answer: one-hour
+
+    - id: how-long-it-waits
+      format: single
+      label: How long a photo uploaded at 18:00 waits
+      context: >-
+        At 18:00 there are 1,800,000 jobs waiting, the workers take 800 a
+        second from the front, and a new job joins at the back.
+      prompt: How long does a photo uploaded at 18:00 wait for its thumbnail?
+      options:
+        - id: thirty-seven-minutes
+          text: About 37 minutes.
+          why: >-
+            Everything in front of it has to go first, 1.8 million jobs at 800
+            a second: 2,250 seconds. What arrives after it does not matter,
+            because it is behind it.
+        - id: one-hour
+          text: About an hour, until the backlog is gone.
+          why: >-
+            The backlog is gone when the jobs that arrive after it are done
+            too. This photo is done when the 1.8 million in front of it are.
+        - id: two-point-two-seconds
+          text: About 2 seconds.
+          why: >-
+            That is 1,800,000 divided by 800, read as milliseconds. It is
+            2,250 seconds.
+        - id: no-wait
+          text: No wait; the queue is shrinking now.
+          why: >-
+            Shrinking is not empty. A new job still has 1.8 million in front
+            of it.
+      answer: thirty-seven-minutes
+
+    - id: what-the-queue-did
+      format: single
+      label: What the unbounded queue did with the overload
+      context: >-
+        From 10:00 to 14:00, 1,000 uploads a second arrived and 800 were
+        processed. Every request succeeded, every job succeeded, and no alarm
+        fired.
+      prompt: What did the unbounded queue do with the 200 jobs a second the workers could not take?
+      options:
+        - id: absorbed-it
+          text: It absorbed them harmlessly, as queues are meant to.
+          why: >-
+            A queue absorbs a burst that ends before it grows too long. A rate
+            that is higher for four hours is not a burst; the queue turned it
+            into waiting.
+        - id: lost-them
+          text: It dropped them once it filled, and the users never noticed.
+          why: >-
+            It never filled: the broker has room for 50 million jobs, and
+            every one of these was processed in the end, late.
+        - id: slowed-the-workers
+          text: It slowed the workers down, because a long queue is slower to read.
+          why: >-
+            The workers did 800 a second all day. Taking a job from the front
+            of a queue costs the same however long it is.
+        - id: turned-into-delay
+          text: It turned them into a delay that grew for every later job.
+          why: >-
+            Every second added 200 jobs to everyone's wait. Nothing failed, so
+            nothing alerted, and the overload showed up as a latency that rose
+            for hours. An unbounded queue hides overload as delay.
+      answer: turned-into-delay
+
+    - id: backpressure
+      format: single
+      label: What the upload API should do when the queue is long
+      context: >-
+        The workers cannot go faster today. A photo must not be lost, and a
+        late thumbnail is acceptable within reason. The queue can be bounded.
+      prompt: What should happen when the queue reaches its bound?
+      options:
+        - id: grow-the-bound
+          text: Raise the bound, so it is never reached.
+          why: >-
+            That is the unbounded queue again, with a number on it. The delay
+            it allows is the bound divided by 800, and it grows with it.
+        - id: drop-new
+          text: Accept the upload, and drop its thumbnail job without telling anyone.
+          why: >-
+            The photo is kept and the thumbnail is never made: a grey box for
+            ever, and no record that it needs doing.
+        - id: push-back
+          text: >-
+            Keep the photo, and tell the client to check back for the
+            thumbnail.
+          why: >-
+            That is backpressure: the queue's fullness reaches the producer,
+            which slows down or comes back later. The photo is safe, the delay
+            is bounded and visible, and the client can show "processing" rather
+            than a grey box with no end.
+        - id: second-queue
+          text: Overflow into a second, unbounded queue.
+          why: >-
+            Two queues are one longer queue. The jobs still wait behind
+            everything that arrived before them.
+      answer: push-back
+
+    - id: what-to-page-on
+      format: multiple
+      label: Signals that would have paged someone at 10:00
+      context: >-
+        No alert fired all day. The dashboard had uploads per second,
+        thumbnails per second, jobs waiting, the age of the oldest job waiting,
+        and worker CPU.
+      prompt: Which of these would have warned someone that morning? Choose every one that would.
+      options:
+        - id: oldest-job-age
+          text: The oldest job waiting has been waiting more than 5 minutes.
+          why: >-
+            It measures the thing users feel, delay, directly. It passed 5
+            minutes at about 09:25, twenty-five minutes into the campaign.
+        - id: arrivals-over-throughput
+          text: Arrivals have exceeded completions for 10 minutes in a row.
+          why: >-
+            This is the cause, measured: a sustained rate above capacity means
+            the queue grows without limit. It fires before the delay is large.
+        - id: worker-cpu
+          text: Worker CPU above 90%.
+          why: >-
+            The workers were busy all day, which is what a worker is for. Busy
+            workers on a queue that is keeping up look exactly the same.
+        - id: job-failures
+          text: The job failure rate above 1%.
+          why: >-
+            No job failed. Overload into an unbounded queue raises no errors at
+            all, which is why this incident went unnoticed.
+        - id: queue-not-empty
+          text: More than zero jobs waiting.
+          why: >-
+            A healthy queue is rarely empty. This would page on every burst,
+            and an alert that always fires is one nobody reads.
+      answer: [oldest-job-age, arrivals-over-throughput]

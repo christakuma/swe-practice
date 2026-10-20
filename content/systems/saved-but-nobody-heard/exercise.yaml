@@ -1,0 +1,218 @@
+schema_version: 1
+id: systems/saved-but-nobody-heard
+kind: quiz
+title: The order was saved, and the warehouse never heard
+difficulty: medium
+tags: [messaging, transactions, distributed-systems]
+estimated_minutes: 20
+
+prompt: |
+  **Incident INC-171** — *orders paid for and never shipped*
+
+  > Support found 214 orders from the last month that were paid, are in the
+  > database, and were never shipped. The warehouse has no record of them.
+  > The warehouse learns about an order from an `OrderPlaced` message.
+
+  ```python
+  def place_order(order):
+      with db.transaction():
+          db.insert_order(order)
+          db.insert_payment(order.payment)
+      broker.publish("OrderPlaced", {"order_id": order.id})
+      return order.id
+  ```
+
+  For one of the 214:
+
+  ```
+  09:41:07.220  orders-2  order 77120 committed
+  09:41:07.221  orders-2  publishing OrderPlaced order=77120
+  09:41:12.221  orders-2  broker publish timed out after 5 s
+  09:41:12.222  orders-2  500 Internal Server Error
+  ```
+
+hints:
+  - "There are two systems here, the database and the broker. Which line touches which?"
+  - "Is there any moment at which the order is in one of them and not the other?"
+  - "What if the message were written to the database, in the same transaction as the order, and sent from there?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "Orders are in Postgres. The broker is a separate system, and a publish can fail or time out at any moment."
+    - "Every committed order must eventually reach the warehouse, even if the process crashes at any point."
+    - "The warehouse must never ship an order that was not committed."
+    - "There is no distributed transaction across the database and the broker."
+  questions:
+    - id: the-gap
+      format: line
+      label: The line a crash or a timeout separates from the commit
+      context: |
+        09:41:07.220  orders-2  order 77120 committed
+        09:41:12.221  orders-2  broker publish timed out after 5 s
+      prompt: >-
+        Which line, if it fails or never runs, leaves an order committed and
+        the warehouse not told?
+      snippet: |
+        def place_order(order):
+            with db.transaction():
+                db.insert_order(order)
+                db.insert_payment(order.payment)
+            broker.publish("OrderPlaced", {"order_id": order.id})
+            return order.id
+      snippet_language: python
+      answer: 5
+      explanation: >-
+        The transaction commits when the `with` block on lines 2 to 4 ends.
+        Line 5 is a second write, to a second system, and nothing ties it to
+        the first: a timeout, a crash, or a deploy between the commit and the
+        publish leaves the order saved and the message never sent. That is the
+        dual-write problem, and the 500 makes it worse, because the customer
+        may retry and be told the order failed when it did not.
+
+    - id: publish-inside
+      format: single
+      label: What publishing inside the transaction would do
+      context: >-
+        A proposal: move `broker.publish` inside the `with db.transaction()`
+        block, after the inserts, so a failed publish rolls the order back.
+      prompt: What new failure does that introduce?
+      options:
+        - id: none
+          text: None; the order and the message now succeed or fail together.
+          why: >-
+            They do not: the broker is not part of the transaction. A publish
+            that succeeds cannot be undone by a rollback that follows it.
+        - id: deadlocks
+          text: The broker and the database deadlock waiting for each other.
+          why: >-
+            The broker takes no locks in Postgres, and Postgres none in the
+            broker. The transaction does stay open for up to five seconds while
+            the publish waits, which holds its row locks, but that is
+            contention, not a deadlock.
+        - id: slower-only
+          text: >-
+            Only that each order holds its transaction open for one more
+            network round trip.
+          why: >-
+            That cost is real, and it is not the failure. The failure is a
+            message sent for an order that then rolls back.
+        - id: ships-uncommitted
+          text: >-
+            The warehouse can be told about an order whose commit then fails.
+          why: >-
+            The message is out the moment the broker accepts it. If the commit
+            then fails, on a constraint, a deadlock or a crash, the order rolls
+            back and the warehouse ships it anyway. That breaks the second
+            constraint, which the original code kept.
+      answer: ships-uncommitted
+
+    - id: the-outbox
+      format: order
+      label: The order of events with a transactional outbox
+      context: >-
+        The fix: an `outbox` table in the same database. `place_order` writes
+        the message into it in the same transaction as the order, and a
+        separate relay process sends whatever is in it.
+      prompt: Put the steps in the order they happen for one order.
+      options:
+        - id: relay-marks-sent
+          text: The relay marks the outbox row as sent.
+          why: >-
+            Last, and only after the broker has confirmed. A crash between the
+            publish and this step means the row is sent again.
+        - id: insert-both
+          text: >-
+            In one transaction, insert the order, its payment, and an outbox row
+            holding the `OrderPlaced` message.
+          why: >-
+            First, and this is the whole idea: the order and the intent to
+            announce it are one atomic write to one system. Either both exist
+            or neither does.
+        - id: relay-publishes
+          text: The relay publishes the message to the broker and waits for confirmation.
+          why: >-
+            After the relay has read the row, and before it marks it sent. If
+            the publish fails, the row stays unsent and is tried again.
+        - id: commit
+          text: The transaction commits.
+          why: >-
+            Second. Until it commits, the relay cannot see the outbox row, so a
+            rolled-back order is never announced.
+        - id: relay-reads
+          text: The relay reads the unsent rows from `outbox`, oldest first.
+          why: >-
+            Only committed rows are visible to it, so it can only ever announce
+            orders that exist.
+      answer: [insert-both, commit, relay-reads, relay-publishes, relay-marks-sent]
+
+    - id: what-the-relay-guarantees
+      format: single
+      label: What the relay guarantees the warehouse
+      context: >-
+        The relay publishes a row, waits for the broker's confirmation, then
+        marks the row sent. It can crash at any point and is restarted.
+      prompt: What delivery does the warehouse get from it?
+      options:
+        - id: exactly-once
+          text: Exactly once, because the row is marked sent after publishing.
+          why: >-
+            A crash after the publish and before the mark leaves the row unsent,
+            and the restarted relay publishes it again.
+        - id: at-least-once
+          text: >-
+            At least once, since a crash can make it send an order twice.
+          why: >-
+            Every committed order is published eventually, and some are
+            published twice, after a crash in the gap. The outbox moves the
+            dual write into a retry loop; it does not remove the need for an
+            idempotent consumer, keyed here by the order id.
+        - id: at-most-once
+          text: At most once, because a crash can lose the message.
+          why: >-
+            The message is a committed row until the relay marks it sent, so a
+            crash cannot lose it; at worst it is sent again.
+        - id: none
+          text: No guarantee, because the broker can still time out.
+          why: >-
+            A timeout leaves the row unsent, and the relay tries again. The
+            broker being down delays the warehouse; it cannot make it miss an
+            order.
+      answer: at-least-once
+
+    - id: change-data-capture
+      format: single
+      label: What change data capture replaces
+      context: >-
+        Another team does the same thing with Debezium, which reads Postgres's
+        write-ahead log and publishes every committed insert into `outbox` to
+        the broker.
+      prompt: What part of the outbox pattern does that replace?
+      options:
+        - id: the-outbox-table
+          text: The outbox table; the order rows themselves are published.
+          why: >-
+            Publishing raw order rows is possible, and it couples the
+            warehouse to the order table's schema. The team here still writes
+            the outbox, and Debezium reads it.
+        - id: the-transaction
+          text: The transaction, since the log already orders every write.
+          why: >-
+            The order and its outbox row still have to be written together;
+            the log only records what the transaction committed.
+        - id: the-relay
+          text: >-
+            The polling relay, since the log is read instead of the table.
+          why: >-
+            The write side is unchanged. Instead of a process querying `outbox`
+            for unsent rows, the database's own log of committed changes is
+            streamed to the broker, in commit order and without polling. It is
+            still at least once.
+        - id: idempotency
+          text: The idempotent consumer, because the log is read exactly once.
+          why: >-
+            A CDC connector that restarts resumes from its last recorded
+            position, and anything it sent after that is sent again. The
+            warehouse still has to ignore an order it has seen.
+      answer: the-relay

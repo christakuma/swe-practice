@@ -1,0 +1,240 @@
+schema_version: 1
+id: systems/one-config-push-every-region-down
+kind: quiz
+title: One config push took down every region
+difficulty: medium
+tags: [deployments, reliability, configuration]
+estimated_minutes: 20
+
+prompt: |
+  **Incident INC-188** — *global outage, 47 minutes*
+
+  > At 16:02 an engineer changed one value in the rate-limiter config and
+  > pushed it. Within 90 seconds every API server in all four regions had
+  > crashed and was restarting in a loop. Code deploys roll out over two
+  > hours, one region at a time. Config changes do not.
+
+  The change:
+
+  ```yaml
+  rate_limits:
+    checkout:
+  -   burst: 200
+  +   burst: 2O0        # the letter O, not a zero
+  ```
+
+  From every API server:
+
+  ```
+  16:02:41  config-agent  new config version 9117 received, reloading
+  16:02:41  api           ValueError: invalid literal for int() with base 10: '2O0'
+  16:02:41  api           fatal: could not load config, exiting
+  16:02:44  api           starting (restart 1)
+  16:02:44  api           ValueError: invalid literal for int() with base 10: '2O0'
+  ```
+
+  The fix, a revert, took 45 minutes to land: the config service's web
+  console is served by the same API servers.
+
+hints:
+  - "The code that parses the config is the same everywhere. What else was the same everywhere?"
+  - "What would have happened if version 9117 had gone to one server first?"
+  - "When a server is handed a config it cannot read, it has a working one already. What should it do?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "Four regions, about 300 API servers each. A code deploy goes to one canary server, then one region at a time over two hours."
+    - "The config service pushes a new version to every server within seconds."
+    - "Config changes are reviewed by one other engineer before they are pushed."
+    - "Recovery should not depend on the system that has failed."
+  questions:
+    - id: what-made-it-global
+      format: single
+      label: What turned one typo into a global outage
+      context: |
+        code deploy      canary, then one region at a time, over 2 hours
+        config push      every server in every region, within seconds
+        16:02:41         every server fails to parse version 9117 and exits
+      prompt: Why did a bad value take down all four regions, not one?
+      options:
+        - id: shared-database
+          text: >-
+            All four regions read one config database, and that database
+            failed.
+          why: >-
+            The config service delivered the new version perfectly. What failed
+            was each server reading it, and they all failed at once because
+            they all got it at once.
+        - id: delivered-everywhere-at-once
+          text: >-
+            Config skipped the staged rollout and went to every server at
+            once.
+          why: >-
+            A canary and a region-by-region rollout exist so that a bad change
+            hurts a few servers first. Config is a change to production
+            behaviour too, and here it bypassed every one of those stages: the
+            blast radius of one push was the whole fleet.
+        - id: no-staging
+          text: >-
+            The change was not tried in a staging environment before
+            production.
+          why: >-
+            Staging would likely have caught this, and would not have bounded
+            it. A change that passes staging and fails in production still
+            reaches every region in seconds, the same way.
+        - id: bad-review
+          text: >-
+            The reviewer approved a change that had an obvious typo in it.
+          why: >-
+            Reviewers miss things; that is why rollouts are staged. Review
+            lowers the chance of a bad change, and does nothing about how far
+            one spreads.
+      answer: delivered-everywhere-at-once
+
+    - id: the-staged-push
+      format: order
+      label: The stages a config change should go through
+      context: >-
+        The team decides config will be rolled out like code. Each stage below
+        must pass before the next starts, and a failure at any stage stops the
+        rollout and reverts it automatically.
+      prompt: Put the stages in order, from the engineer's change to the whole fleet.
+      options:
+        - id: remaining-regions
+          text: The remaining regions, one at a time.
+          why: >-
+            Last. Each region is its own blast radius; one at a time keeps a
+            surprise that only shows up at scale to one of them.
+        - id: validate
+          text: >-
+            Validate it against the config schema, and load it in the real
+            parser, in CI.
+          why: >-
+            First, and cheapest: `2O0` is not an integer, and a schema check
+            catches it before it leaves the engineer's branch.
+        - id: one-region
+          text: Every server in one region.
+          why: >-
+            After the canaries are healthy for a while. A region shows load and
+            interactions a handful of servers cannot.
+        - id: canary
+          text: >-
+            A few canary servers in one region, watched for errors and
+            restarts for ten minutes.
+          why: >-
+            Second. A crash on load, like this one, shows up here in seconds,
+            on a few servers rather than 1,200.
+      answer: [validate, canary, one-region, remaining-regions]
+
+    - id: unreadable-config
+      format: single
+      label: What a server should do with a config it cannot read
+      context: >-
+        Each server was running happily on version 9116 when 9117 arrived, and
+        9117 failed to parse.
+      prompt: What should the server have done?
+      options:
+        - id: exit
+          text: >-
+            Exit, so that the orchestrator restarts it with a clean state.
+          why: >-
+            That is what it did. A restart reads the same bad config and fails
+            the same way: a crash loop on every server.
+        - id: keep-last-good
+          text: Keep running on 9116, refuse 9117, and report the failure.
+          why: >-
+            The server already has a config that works. Rejecting the new one
+            and alerting turns a global outage into a failed push, and the
+            config service can see which servers refused it. This is sometimes
+            called failing static.
+        - id: use-defaults
+          text: Fall back to built-in defaults for the whole config.
+          why: >-
+            The defaults are not production's config: other limits, other
+            hosts, other feature flags. The servers stay up and behave
+            differently, which can be its own outage.
+        - id: skip-the-bad-key
+          text: Load everything except the value that failed to parse.
+          why: >-
+            A partially applied config is a combination nobody wrote or tested.
+            Missing one key may mean no rate limit on checkout at all.
+      answer: keep-last-good
+
+    - id: limits-the-blast-radius
+      format: multiple
+      label: What limits how far a bad change spreads
+      context: >-
+        Four regions, about 300 servers each. The question is not whether a bad
+        change gets made, but how many servers and users it reaches before
+        someone, or something, stops it.
+      prompt: Which of these limit the blast radius of the next bad config? Choose every one that does.
+      options:
+        - id: staged-rollout
+          text: Rolling config out region by region, with a canary first.
+          why: >-
+            A bad version reaches a few servers, then one region, and is
+            stopped before the rest.
+        - id: auto-rollback
+          text: >-
+            Automatically reverting a rollout when canary error or restart
+            rates rise.
+          why: >-
+            The stop happens in seconds and needs no human to notice. Without
+            it, a staged rollout limits the damage only as fast as someone
+            reads a dashboard.
+        - id: second-reviewer
+          text: Requiring a second reviewer for every config change.
+          why: >-
+            Two reviewers miss fewer typos, and a typo they miss still goes
+            everywhere at once. It lowers the odds, not the reach.
+        - id: push-off-peak
+          text: Only pushing config outside business hours.
+          why: >-
+            Fewer users at the moment of the outage, and the same outage: every
+            region, all at once, with fewer engineers awake.
+        - id: per-region-config
+          text: >-
+            Keeping each region's config separate, so a change is made to one
+            region at a time.
+          why: >-
+            A change applied to one region can only break that region. It is
+            the same idea as the staged rollout, enforced by how config is
+            stored.
+      answer: [staged-rollout, auto-rollback, per-region-config]
+
+    - id: why-recovery-was-slow
+      format: single
+      label: Why the revert took 45 minutes
+      context: >-
+        The bad version was identified within five minutes. Reverting it is one
+        click in the config service's web console, which is served by the same
+        API servers that were crash-looping.
+      prompt: What made recovery slow?
+      options:
+        - id: diagnosis
+          text: It took 45 minutes to find which change caused it.
+          why: >-
+            The log names the value, and the change was found within five
+            minutes. The forty minutes after that were spent getting the revert
+            to the servers.
+        - id: slow-restarts
+          text: The servers take 45 minutes to restart.
+          why: >-
+            They restarted every three seconds, which was the problem: each
+            restart read the same bad config.
+        - id: revert-reviewed
+          text: The revert had to be reviewed before it could be pushed.
+          why: >-
+            A reviewer approving a revert during an outage takes minutes. The
+            console that would have pushed it was not there to be used.
+        - id: tool-depended-on-outage
+          text: >-
+            The revert tool ran on the servers that were down.
+          why: >-
+            The way out depended on the thing that was down. Engineers had to
+            find another way to reach the config store, under pressure. Keep
+            the recovery path, the config store's own CLI or a break-glass
+            console, independent of the system it repairs.
+      answer: tool-depended-on-outage

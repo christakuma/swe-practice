@@ -1,0 +1,247 @@
+schema_version: 1
+id: systems/a-cache-stampede-at-midnight
+kind: quiz
+title: The price service falls over at midnight
+difficulty: medium
+tags: [caching, performance, async]
+estimated_minutes: 20
+
+prompt: |
+  **Incident INC-152** — *catalogue pages timing out at 00:00, every night*
+
+  > Every night at midnight, for about two minutes, the catalogue is close
+  > to unusable: p99 goes from 40 ms to 30 s and the prices database pins at
+  > 100% CPU. Then it recovers by itself. The cache hit rate is 99.6% for
+  > the rest of the day.
+
+  The price lookup every catalogue page makes:
+
+  ```python
+  class PriceCache:
+      ...
+      async def get(self, product_id):
+          price = await self.cache.get(product_id)
+          if price is None:
+              price = await self.db.load_price(product_id)
+              await self.cache.set(product_id, price, ttl=24 * 60 * 60)
+          return price
+  ```
+
+  From the prices database, 23:59 to 00:02:
+
+  ```
+  time     queries/s   p50 query   active connections
+  23:59        14         6 ms           3
+  00:00     3,850       780 ms         400 (max)
+  00:01     3,910       810 ms         400 (max)
+  00:02        22         7 ms           4
+  ```
+
+hints:
+  - "When was each popular price last loaded, and so when does it expire?"
+  - "At 00:00, how many requests miss on the same product before the first load has finished?"
+  - "The first request to miss is already loading the price. What could the others do instead of loading it too?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "Prices change once a day, at an import that finishes by 23:00."
+    - "Three weeks ago the cache was flushed and warmed for every product at 00:00, with the 24-hour TTL the code above sets."
+    - "The catalogue serves about 4,000 requests a second from 20 instances; the 200 most popular products take most of them."
+    - "Loading a price costs about 6 ms when the database is idle and nearly a second when it is saturated."
+    - "A price up to an hour old is acceptable; a page that does not load is not."
+  questions:
+    - id: what-happened-at-midnight
+      format: single
+      label: Why the database saturates at midnight
+      context: |
+        23:00, nightly           the import finishes
+        00:00, three weeks ago   cache flushed and warmed: every key set
+                                 with a 24-hour TTL
+        00:00, every night since the incident, for about two minutes
+      prompt: What is happening at 00:00?
+      options:
+        - id: import-locks
+          text: >-
+            The nightly import holds locks on the prices table, and every
+            lookup waits for them.
+          why: >-
+            The import finishes by 23:00, an hour before the incident, and
+            queries are running, not waiting: 3,850 a second at 780 ms each is
+            work, not a queue on a lock.
+        - id: cache-evicts
+          text: >-
+            The cache runs out of memory at midnight and evicts most of the
+            keys.
+          why: >-
+            Memory pressure would not wait for midnight, and would not clear
+            up by itself two minutes later. The timing matches the TTL, not
+            the memory.
+        - id: clock-rollover
+          text: >-
+            The date changes at midnight, so every cache key that includes the
+            date is new.
+          why: >-
+            The keys are product ids, with no date in them. The expiry is the
+            TTL running out, which happens to be at midnight because that is
+            when the keys were set.
+        - id: everything-expires-at-once
+          text: >-
+            Every popular price expires in the same second, and each miss
+            loads it.
+          why: >-
+            The warming set every key in the same second with the same TTL, so
+            they all expired together the next midnight. Reloaded in that
+            second, they got the same expiry again, and have every night
+            since. Each request that misses starts its own load, so a popular
+            product gets hundreds of identical loads before the first one
+            finishes. That is a cache stampede.
+      answer: everything-expires-at-once
+
+    - id: spread-the-expiry
+      format: single
+      label: The change that stops every key expiring together
+      context: >-
+        A key expires 24 hours after it was last loaded, and every popular key
+        was last loaded within a second of midnight. A price up to an hour
+        stale is acceptable.
+      prompt: Which change stops the keys expiring in the same second?
+      options:
+        - id: jittered-ttl
+          text: A TTL of 24 hours minus a random amount of up to an hour.
+          why: >-
+            Each key now expires at its own moment across an hour, so misses
+            arrive as a trickle the database absorbs. Jitter breaks the
+            synchronisation that made thousands of keys one event.
+        - id: longer-ttl
+          text: A 48-hour TTL, so the keys expire half as often.
+          why: >-
+            Every key still expires at the same moment, every other night
+            instead of every night, and each stampede is as big as before.
+        - id: warm-later
+          text: Flush and warm the cache again at 03:00, when traffic is lowest.
+          why: >-
+            Every key is then set in the same second at 03:00, so they all
+            expire together at 03:00, every night. Smaller, because traffic is
+            lower, and the same shape.
+        - id: bigger-cache
+          text: Give the cache twice the memory.
+          why: >-
+            Nothing is being evicted for lack of memory. The keys are expiring
+            because they were told to, and all at once.
+      answer: jittered-ttl
+
+    - id: loads-in-flight
+      format: single
+      label: How many loads of one product run at once
+      context: >-
+        The most popular product gets 2,000 requests a second across the
+        fleet: 100 a second on each of 20 instances. Under the stampede a
+        load takes about 800 ms. Suppose each instance lets only one load per
+        product run at a time, and makes every other request for that product
+        wait for it.
+      prompt: About how many loads of that product run at once across the fleet?
+      options:
+        - id: one
+          text: "1"
+          why: >-
+            That would need coordination between instances. Coalescing inside
+            each process gives one load per instance, and there are 20.
+        - id: twenty
+          text: "20"
+          why: >-
+            One per instance, whatever the request rate. Without coalescing it
+            is 2,000 a second times 0.8 s, about 1,600 at once: Little's law,
+            and the reason 400 connections ran out. Twenty is a load the
+            database barely notices.
+        - id: eighty
+          text: "80"
+          why: >-
+            That is 100 requests a second times 0.8 s on one instance, the
+            number of loads one instance runs at once *without* coalescing.
+        - id: sixteen-hundred
+          text: "1,600"
+          why: >-
+            That is the fleet without coalescing: every request that misses
+            during the 800 ms load starts one more.
+      answer: twenty
+
+    - id: stale-while-revalidate
+      format: single
+      label: What a request gets just after the price goes stale
+      context: >-
+        Another approach: store each price with two ages. Before the soft TTL
+        (23 hours) it is fresh. Between the soft TTL and the hard TTL (24
+        hours) it is stale but servable. A request that finds a stale price
+        triggers one background refresh.
+      prompt: What does a request get when it finds a stale price?
+      options:
+        - id: waits-for-refresh
+          text: It waits for the refresh, then gets the new price.
+          why: >-
+            That is a miss with extra steps. Every request in the window would
+            wait for the database, which is the stampede again.
+        - id: an-error
+          text: An error, so the client retries once the refresh is done.
+          why: >-
+            The business wants a slightly old price over a page that fails.
+            And retries arriving together are a second stampede.
+        - id: nothing-cached
+          text: >-
+            Nothing: a stale price is deleted when its soft TTL passes, and the
+            request loads it.
+          why: >-
+            Deleting at the soft TTL makes the soft TTL a hard TTL. The point
+            of keeping a stale copy is to serve it while the new one loads.
+        - id: stale-now
+          text: >-
+            The stale price at once, while a single refresh replaces it in the
+            background.
+          why: >-
+            No request waits for the database while a stale copy exists, and
+            only one refresh per key runs. The price is at most an hour old,
+            which the business accepts. This is HTTP's
+            `stale-while-revalidate` applied to a cache.
+      answer: stale-now
+
+    - id: coalesce-the-misses
+      format: fix
+      label: Your fix
+      context: |
+        cache.get(key)                -> async; the price, or None on a miss
+        cache.set(key, value, ttl)    -> async
+        db.load_price(key)            -> async; the price, or raises
+
+        The tests start many callers at once and hold the database's answer
+        until every one of them has missed.
+      prompt: >-
+        Rewrite `PriceCache.get` so that, within one instance, at most one load
+        of a given product is in flight. A caller that misses while a load is
+        running waits for that load and gets its price, or its error. A
+        failure is not remembered: the next miss loads again. Different
+        products load independently, and a later miss after the price expires
+        loads the price as it is then.
+      explanation: >-
+        Keep a dictionary of in-flight loads, keyed by product. On a miss, if a
+        load is already there, await it; otherwise start one as a task, store
+        it, and await it. The task loads, fills the cache, and in a `finally`
+        removes itself from the dictionary, so a finished load, good or bad,
+        is never handed to a later caller. `asyncio.shield` keeps one
+        caller's cancellation from cancelling the load the others are waiting
+        on. A lock per product looks similar and is not: after a failed load,
+        each waiter takes the lock in turn and loads again, so an outage costs
+        one load per caller, one after another.
+      fix:
+        tests: prices_tests.py
+        counter_examples:
+          - file: one-lock-for-every-price.py
+            expect_failures:
+              - two-products-load-side-by-side
+              - a-failed-load-fails-every-caller-waiting-on-it
+          - file: a-lock-per-price.py
+            expect_failures: [a-failed-load-fails-every-caller-waiting-on-it]
+          - file: keep-every-flight.py
+            expect_failures:
+              - a-failure-is-not-remembered
+              - a-later-miss-loads-the-new-price

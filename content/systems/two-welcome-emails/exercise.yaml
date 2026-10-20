@@ -1,0 +1,187 @@
+schema_version: 1
+id: systems/two-welcome-emails
+kind: quiz
+title: New users get two welcome emails
+difficulty: easy
+tags: [messaging, idempotency, distributed-systems]
+estimated_minutes: 15
+
+prompt: |
+  **Ticket GROW-51** — *"why did I get the welcome email twice?"*
+
+  > A few dozen sign-ups a day get two copies of the welcome email, always a
+  > minute or so apart. It seems to happen on days we deploy.
+
+  The welcome worker reads `UserSignedUp` messages from a queue:
+
+  ```python
+  def handle(message):
+      user = users.get(message.body["user_id"])
+      mailer.send_welcome(user.email)
+      queue.ack(message)
+  ```
+
+  From one of the duplicates:
+
+  ```
+  14:02:11.304  worker-3  received msg-8812 UserSignedUp user=50117
+  14:02:11.912  worker-3  welcome email sent to user 50117
+  14:02:11.913  worker-3  SIGTERM (deploy), exiting
+  14:03:11.950  worker-1  received msg-8812 UserSignedUp user=50117 (delivery 2)
+  14:03:12.540  worker-1  welcome email sent to user 50117
+  14:03:12.541  worker-1  acked msg-8812
+  ```
+
+hints:
+  - "What did worker-3 do between sending the email and exiting?"
+  - "If the queue never hears an ack, what does it assume about the message?"
+  - "Duplicates cannot be prevented here. What would make a duplicate do nothing?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "The queue delivers each message at least once: a message that is not acked within 60 seconds is delivered again."
+    - "The sign-up service retries publishing if the broker does not confirm in time, so the same sign-up can be published twice."
+    - "The email provider accepts an idempotency key and sends at most one email per key in 24 hours."
+    - "A user should get exactly one welcome email; none at all is worse than two."
+  questions:
+    - id: why-twice
+      format: single
+      label: Why the message was handled twice
+      context: |
+        14:02:11.912  worker-3  welcome email sent to user 50117
+        14:02:11.913  worker-3  SIGTERM (deploy), exiting
+        14:03:11.950  worker-1  received msg-8812 ... (delivery 2)
+      prompt: Why did worker-1 receive msg-8812 again?
+      options:
+        - id: broker-bug
+          text: The broker delivered it twice by mistake.
+          why: >-
+            It delivered it again by design. The broker cannot tell a worker
+            that finished but never acked from one that died halfway, so it
+            delivers again, and that is what "at least once" promises.
+        - id: published-twice
+          text: The sign-up service published the event twice.
+          why: >-
+            That happens too, and would show as two message ids. This is one
+            message, msg-8812, on its second delivery.
+        - id: two-workers-raced
+          text: Two workers took the same message at the same time.
+          why: >-
+            worker-1 received it a minute after worker-3, and only after
+            worker-3 had gone. The broker hands a message to one worker at a
+            time.
+        - id: never-acked
+          text: >-
+            worker-3 exited after the send and before the ack.
+          why: >-
+            The ack is how the broker learns a message is done. One second
+            between the send and the ack was enough for a deploy's SIGTERM to
+            land in it, and 60 seconds later the unacked message went to
+            another worker.
+      answer: never-acked
+
+    - id: ack-first
+      format: single
+      label: What acking before sending would change
+      context: >-
+        A teammate suggests moving `queue.ack(message)` to the top of
+        `handle`, before the email is sent, so a redelivery can never happen
+        after a send.
+      prompt: What does that change?
+      options:
+        - id: fixes-it
+          text: It fixes it; every user then gets exactly one email.
+          why: >-
+            It removes one way to get two, and adds a way to get none: a
+            worker killed after the ack and before the send loses the email,
+            and the broker will never deliver it again.
+        - id: no-difference
+          text: Nothing, because the broker redelivers acked messages too.
+          why: >-
+            An acked message is done as far as the broker is concerned; it is
+            never delivered again.
+        - id: duplicates-become-losses
+          text: >-
+            A crash between the ack and the send now loses the email.
+          why: >-
+            Acking first is at-most-once delivery: the message is gone before
+            the work is done. The constraints say none is worse than two, so
+            this trades the lesser failure for the greater.
+        - id: slower
+          text: It only makes the worker slower, by one round trip per message.
+          why: >-
+            The ack costs the same round trip wherever it goes. What changes is
+            what a crash at the wrong moment does.
+      answer: duplicates-become-losses
+
+    - id: the-key
+      format: single
+      label: The idempotency key to send the email with
+      context: >-
+        The email provider sends at most one email per idempotency key. Both
+        duplicates must be caught: a message delivered twice, and one sign-up
+        published twice, which arrives as two messages with different ids.
+      prompt: What should the key be?
+      options:
+        - id: message-id
+          text: "The message id: `msg-8812`."
+          why: >-
+            That catches a redelivery, which keeps its id, and not a sign-up
+            published twice, which arrives as two messages with two ids and so
+            two keys.
+        - id: user-and-purpose
+          text: "The user and the purpose: `welcome:50117`."
+          why: >-
+            The key names the thing that should happen once: this user's
+            welcome. Every copy of it, however it was duplicated, carries the
+            same key, and the provider sends one.
+        - id: timestamp
+          text: "The time it is handled: `welcome:14:03:12`."
+          why: >-
+            The two deliveries were handled a minute apart, so they have
+            different keys and both are sent. A key must be the same for every
+            copy of one event.
+        - id: random
+          text: A new random UUID for each attempt to send.
+          why: >-
+            A fresh key per attempt is a key that never repeats, which is no
+            key at all: the provider sees two different requests.
+      answer: user-and-purpose
+
+    - id: exactly-once
+      format: single
+      label: Whether exactly-once delivery would fix it
+      context: >-
+        Someone proposes moving to a broker that advertises exactly-once
+        semantics, such as Kafka with transactions, so that this cannot happen.
+      prompt: Would it stop the duplicate email?
+      options:
+        - id: not-across-the-boundary
+          text: >-
+            No; the email is outside what the broker can make atomic.
+          why: >-
+            No broker can make an external side effect and its own commit one
+            atomic step. The handler can always run again after the side effect
+            and before the commit. What makes it safe is the side effect
+            refusing to happen twice: an idempotent consumer.
+        - id: yes-exactly-once
+          text: >-
+            Yes; with exactly-once delivery, the handler runs only once.
+          why: >-
+            Kafka's exactly-once covers reading from Kafka and writing back to
+            Kafka in one transaction. Sending an email is outside it: a worker
+            killed after the send and before the commit still sends again.
+        - id: only-with-acks-first
+          text: >-
+            Only if the acks are also moved to before the send.
+          why: >-
+            That is at-most-once, which loses emails, on any broker.
+        - id: yes-but-slower
+          text: >-
+            Yes, at some cost to throughput and to latency.
+          why: >-
+            The cost is real, and so is the gap: the email is sent outside the
+            transaction, so a crash between them still duplicates it.
+      answer: not-across-the-boundary

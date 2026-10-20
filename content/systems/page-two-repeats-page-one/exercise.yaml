@@ -1,0 +1,231 @@
+schema_version: 1
+id: systems/page-two-repeats-page-one
+kind: quiz
+title: Page two repeats the end of page one
+difficulty: easy
+tags: [databases, pagination, api-design]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket FEED-143** — *duplicate posts when scrolling the feed*
+
+  > Scrolling the activity feed shows the same posts twice, usually a few
+  > at the top of the next page. It is worst in the evening, when people
+  > post most. Occasionally someone also says a post they know exists was
+  > skipped.
+
+  ```
+  GET /feed?page=2
+
+  SELECT id, created_at, body FROM posts
+  ORDER BY created_at DESC, id DESC
+  LIMIT 20 OFFSET 20
+  ```
+
+  From one user's session:
+
+  ```
+  20:14:03  GET /feed?page=1   ids 9120 ... 9101   (20 posts)
+  20:14:05  3 new posts by other users: 9121, 9122, 9123
+  20:14:19  GET /feed?page=2   ids 9103, 9102, 9101, 9100 ... 9084
+  ```
+
+hints:
+  - "Page two is rows 21 to 40 of the list. Is it the same list it was when page one was read?"
+  - "Instead of saying how many rows to skip, could the request say where the last page ended?"
+  - "Two posts can share a `created_at`. What has the cursor got to hold to name exactly one place in the list?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "Posts arrive at about one a second in the evening, and can be deleted at any time."
+    - "Posts imported from the old system kept their dates and were given new ids, so ids are not in time order."
+    - "Many posts share a timestamp to the second."
+    - "There is an index on `posts (created_at, id)`. The feed is read newest first."
+  questions:
+    - id: why-repeats
+      format: single
+      label: Why page two began with page one's last posts
+      context: |
+        20:14:03  page 1: ids 9120 ... 9101   (rows 1-20, newest first)
+        20:14:05  3 new posts: 9121, 9122, 9123
+        20:14:19  page 2: ids 9103, 9102, 9101, 9100 ...   (rows 21-40)
+      prompt: Why did page two start with 9103, 9102 and 9101?
+      options:
+        - id: cache
+          text: Page two was served from a cache filled before page one.
+          why: >-
+            A cache that old would have shown page two without the overlap,
+            not with it. The repeated posts are exactly the three that the new
+            posts pushed down.
+        - id: sort-not-stable
+          text: Rows with the same `created_at` come back in a random order.
+          why: >-
+            That would be true with `ORDER BY created_at` alone. This query
+            breaks ties by `id`, so the order is total and repeatable.
+        - id: rows-shifted
+          text: >-
+            Three new posts at the top pushed every row down by three places.
+          why: >-
+            OFFSET counts rows in the list as it is when the query runs. Three
+            new posts at the top push everything down by three, so the first
+            three rows of "page two" are the last three the user just read.
+            A deletion does the opposite, shifting rows up, and a post is
+            skipped.
+        - id: replica-lag
+          text: >-
+            The two pages were read from two replicas with different amounts
+            of lag.
+          why: >-
+            Lag would make page two older, not newer: it could miss the new
+            posts, not be pushed by them. And one replica would give the same
+            overlap.
+      answer: rows-shifted
+
+    - id: deep-pages
+      format: single
+      label: What OFFSET costs on page 5,000
+      context: >-
+        A crawler pages through the whole feed:
+        `ORDER BY created_at DESC, id DESC LIMIT 20 OFFSET 100000`. The index
+        on `(created_at, id)` is used.
+      prompt: How much work does the database do for that one page?
+      options:
+        - id: twenty-rows
+          text: It reads 20 rows, using the index to jump to row 100,001.
+          why: >-
+            An index can find a value, not a position. Nothing in a B-tree says
+            which entry is the 100,001st, so it has to count its way there.
+        - id: sorts-the-table
+          text: It sorts the whole table, then takes 20 rows.
+          why: >-
+            The index already holds the rows in this order, so there is no
+            sort. The cost is walking the first 100,000 entries of it.
+        - id: refuses
+          text: It refuses, because OFFSET is limited to 10,000.
+          why: >-
+            Postgres has no such limit. Some search engines do, which is a sign
+            of how expensive deep offsets are, not a rule of SQL.
+        - id: reads-and-discards
+          text: It reads 100,020 rows and throws away the first 100,000.
+          why: >-
+            OFFSET is implemented by producing rows and discarding them. Page
+            5,000 costs five thousand times page one, which is why deep
+            pagination with OFFSET gets slower the further you go.
+      answer: reads-and-discards
+
+    - id: why-the-id
+      format: single
+      label: Why the cursor holds the id as well as the time
+      context: >-
+        A keyset cursor says where the last page ended, and the next page asks
+        for posts after it: `WHERE created_at < :last_created_at`. Many posts
+        share a `created_at` to the second.
+      prompt: What goes wrong with a cursor that holds only `created_at`?
+      options:
+        - id: ties-skipped
+          text: >-
+            The rest of a tie at the page boundary is skipped.
+          why: >-
+            If page one ended halfway through a group of posts with the same
+            second, `created_at <` that second excludes the rest of the group.
+            The cursor has to name one row, and `(created_at, id)` does:
+            `WHERE (created_at, id) < (:t, :id)`.
+        - id: out-of-order
+          text: The posts come back in the wrong order.
+          why: >-
+            The order comes from `ORDER BY`, which is unchanged. The trouble is
+            which rows the `WHERE` lets through.
+        - id: index-unused
+          text: The index on `(created_at, id)` can no longer be used.
+          why: >-
+            A condition on the leading column is exactly what the index serves.
+            The plan is fine; the result is wrong.
+        - id: nothing
+          text: Nothing, because two posts in one second are rare.
+          why: >-
+            One a second is the evening rate, and the constraints say many
+            share a timestamp. Rare is still daily, and the skipped post is the
+            one people noticed.
+      answer: ties-skipped
+
+    - id: what-keyset-cannot-do
+      format: single
+      label: What keyset pagination gives up
+      context: >-
+        Keyset pagination asks for "the 20 posts after this one". It is
+        immune to inserts and deletes, and every page costs the same.
+      prompt: What can it not do that OFFSET can?
+      options:
+        - id: jump-to-page
+          text: >-
+            Jump straight to page 37.
+          why: >-
+            A cursor is a position you reached; there is no cursor for page 37
+            until someone has paged there. That is why feeds and timelines use
+            "load more" and not numbered pages.
+        - id: go-backwards
+          text: Go back to the previous page.
+          why: >-
+            The same query with the comparison and the sort reversed, starting
+            from the first post on the page, gives the page before it.
+        - id: sort-descending
+          text: Sort newest first.
+          why: >-
+            The ticket's feed is newest first. Descending order just flips the
+            comparison: rows less than the cursor.
+        - id: filter
+          text: Filter by author or type at the same time.
+          why: >-
+            A `WHERE author_id = ...` sits beside the keyset condition. The
+            index should then lead with the filter column.
+      answer: jump-to-page
+
+    - id: page-by-keyset
+      format: fix
+      label: Your fix
+      context: |
+        feed_page(conn, cursor, size) -> (rows, next_cursor)
+
+        conn     a sqlite3 connection with the `posts` table:
+                 id INTEGER PRIMARY KEY, created_at TEXT, body TEXT
+        rows     a list of (id, created_at, body), newest first
+        cursor   None for the first page; after that, whatever the
+                 previous call returned as next_cursor
+
+        SQLite compares row values: (a, b) < (?, ?) works.
+      prompt: >-
+        Rewrite `feed_page` to page by keyset instead of OFFSET. Order by
+        `created_at DESC, id DESC`. Return the next page's cursor as anything
+        you like that marks exactly where this page ended, or None when the
+        page has fewer than `size` rows. Posts inserted or deleted between two
+        calls must not make a post repeat or be skipped.
+      explanation: >-
+        Return `(created_at, id)` of the page's last row as the cursor, and for
+        a page after the first add `WHERE (created_at, id) < (?, ?)` with that
+        pair, keeping the same `ORDER BY` and `LIMIT`. The comparison is
+        strict, so the last row seen is not repeated, and it includes the id,
+        so a tie at the boundary is split at exactly the right row. The hidden
+        tests page a real SQLite table while inserting and deleting posts
+        between pages, put six posts with one timestamp across a page
+        boundary, and give imported posts ids that are not in time order.
+      fix:
+        tests: feed_tests.py
+        counter_examples:
+          - file: the-time-alone.py
+            expect_failures: [a-tie-across-a-page-boundary-is-neither-lost-nor-repeated]
+          - file: the-id-alone.py
+            expect_failures:
+              - the-first-page-is-the-newest-posts
+              - walking-every-page-sees-every-post-once
+              - a-tie-across-a-page-boundary-is-neither-lost-nor-repeated
+              - new-posts-do-not-repeat-on-the-next-page
+              - a-deleted-post-does-not-make-one-skip
+          - file: or-equal.py
+            expect_failures:
+              - walking-every-page-sees-every-post-once
+              - a-tie-across-a-page-boundary-is-neither-lost-nor-repeated
+              - new-posts-do-not-repeat-on-the-next-page
+              - a-deleted-post-does-not-make-one-skip
+              - the-last-page-says-there-is-no-more

@@ -254,22 +254,35 @@ tracks:
       - docker/node-modules-vanished
 
   # Every quiz: the N+1 page from `start-here`, then the `systems` section in
-  # its own order. Its first three are the three easy incidents, which is what
+  # its own order. Its first three are easy incidents, which is what
   # `test_every_track_opens_gently` asks and what the curriculum's order
   # already gives once the N+1 page is put back in front.
   - name: systems
     title: Systems
     summary: >-
-      Incidents to diagnose, as quizzes: a slow page, a misread dashboard, a
-      double charge, two deadlocks, a dead dependency, a rename that broke a
-      deploy and a blip that became an outage, with a fix to write in three
+      Twenty incidents to diagnose, as quizzes: slow pages, misread
+      dashboards, double charges and duplicate emails, deadlocks and races,
+      lost messages, stale reads, dead dependencies, queues and caches under
+      load, and changes that broke production, with a fix to write in seven
       of them.
     exercises:
       - systems/the-order-page-takes-four-seconds
       - systems/p99-is-ten-times-p50
       - systems/charged-twice-on-retry
+      - systems/two-welcome-emails
+      - systems/i-saved-it-and-its-gone
+      - systems/page-two-repeats-page-one
+      - systems/the-dashboard-waits-for-everything
+      - systems/the-index-exists-and-the-query-is-still-slow
       - systems/transfers-hang-under-load
       - systems/postgres-says-deadlock-detected
+      - systems/oversold-on-launch-day
+      - systems/the-nightly-job-ran-twice
+      - systems/saved-but-nobody-heard
       - systems/every-request-waits-for-a-dead-service
+      - systems/one-slow-dependency-took-down-every-endpoint
+      - systems/the-queue-keeps-growing
+      - systems/a-cache-stampede-at-midnight
       - systems/the-rollout-broke-halfway
+      - systems/one-config-push-every-region-down
       - systems/a-blip-became-an-outage
