@@ -31,10 +31,12 @@ from typing import TYPE_CHECKING, Final
 from practice.adapters.container.compose import ComposeError, parse_compose
 from practice.adapters.container.dockerfile import (
     DockerfileError,
+    assignments,
     compose_process,
     lineage,
     parse,
     stage_index,
+    substitute,
 )
 from practice.adapters.container.dockerignore import IgnoreRules, normalise_path
 from practice.adapters.container.filesystem import (
@@ -159,10 +161,18 @@ class _Held:
     visible: frozenset[Landing]
     workdir: str
     directories: frozenset[str]
+    env: Mapping[str, str]
 
 
 def _landings(stages: Sequence[Stage], files: Sequence[str]) -> list[_Held]:
-    """For every stage, which context files it holds and where."""
+    """For every stage, which context files it holds and where.
+
+    **`WORKDIR` is expanded**, which needs `ENV` carried across `FROM
+    <stage>` and `ARG` kept to its own stage, as `filesystem.py` does. Joined
+    literally, `ENV D=/app` then `WORKDIR $D` put a builder's files under
+    `/$D`, a later `COPY --from=build /app/.env` found nothing there, and the
+    secrets exercise passed an image that ships `.env`.
+    """
     results: list[_Held] = []
     for index, stage in enumerate(stages):
         parent = stage_index(stages[:index], stage.base)
@@ -171,12 +181,17 @@ def _landings(stages: Sequence[Stage], files: Sequence[str]) -> list[_Held]:
         visible = set(inherited.visible) if inherited else set()
         workdir = inherited.workdir if inherited else "/"
         directories = set(inherited.directories) if inherited else {"/"}
+        env = dict(inherited.env) if inherited else {}
+        args: dict[str, str] = {}
         for instruction in stage.instructions:
             added: set[Landing] = set()
-            if instruction.keyword == "WORKDIR" and instruction.args:
-                workdir = posixpath.normpath(
-                    posixpath.join(workdir, instruction.args[0])
-                )
+            if instruction.keyword == "ARG":
+                args.update(assignments(instruction))
+            elif instruction.keyword == "ENV":
+                env.update(assignments(instruction))
+            elif instruction.keyword == "WORKDIR" and instruction.args:
+                written = substitute(instruction.args[0], {**args, **env})
+                workdir = posixpath.normpath(posixpath.join(workdir, written))
                 directories |= _parents_and_self(workdir)
             elif instruction.keyword in {"COPY", "ADD"} and instruction.args[1:]:
                 source_stage = dict(instruction.flags).get("from")
@@ -208,6 +223,7 @@ def _landings(stages: Sequence[Stage], files: Sequence[str]) -> list[_Held]:
                 visible=frozenset(visible),
                 workdir=workdir,
                 directories=frozenset(directories),
+                env=env,
             )
         )
     return results

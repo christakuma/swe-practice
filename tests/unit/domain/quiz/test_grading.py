@@ -104,6 +104,22 @@ def test_a_line_outside_the_snippet_is_named(value: str) -> None:
     assert "runs from 1 to 3" in why(failed("which-line", value))
 
 
+@pytest.mark.parametrize(
+    "value", ["\N{SUPERSCRIPT TWO}", "\N{ARABIC-INDIC DIGIT ONE}", "1" * 5000]
+)
+def test_a_number_int_would_refuse_is_a_verdict_not_a_traceback(value: str) -> None:
+    """`str.isdigit` is true of all three, and `int` raised `ValueError` on the
+    first and the last. The middle one, an Arabic-Indic one, `int` reads; it
+    is refused because a line number in `answers.md` is ASCII."""
+    assert "runs from 1 to 3" in why(failed("which-line", value))
+
+
+def test_a_refused_line_is_not_echoed_whole() -> None:
+    explanation = why(failed("which-line", "1" * 5000))
+    assert explanation.startswith(f"`{'1' * 20}...`")
+    assert len(explanation) < 100
+
+
 def test_a_line_question_takes_one_number() -> None:
     assert "2 were given" in why(failed("which-line", "1", "2"))
 

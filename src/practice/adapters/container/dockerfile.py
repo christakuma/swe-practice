@@ -130,12 +130,19 @@ def parse(text: str) -> tuple[Stage, ...]:
 
 @dataclass(frozen=True, slots=True)
 class Lineage:
-    """What a stage inherited and set, resolved through every `FROM` in the file."""
+    """What a stage inherited and set, resolved through every `FROM` in the file.
+
+    `env` is carried because a stage built on another inherits its `ENV`, and
+    `USER $APP_USER` in the child has to read it: without it the user here was
+    `''` while `filesystem.py`, which inherits `ENV`, ran the same image as
+    `app`. `ARG` is not carried; it ends with the stage that declares it.
+    """
 
     entrypoint: Instruction | None
     cmd: Instruction | None
     shell: tuple[str, ...]
     user: str
+    env: Mapping[str, str] = field(default_factory=dict)
 
 
 def lineage(stages: Sequence[Stage], index: int = -1) -> Lineage:
@@ -153,7 +160,8 @@ def lineage(stages: Sequence[Stage], index: int = -1) -> Lineage:
         else Lineage(entrypoint=None, cmd=None, shell=_DEFAULT_SHELL, user="root")
     )
     entrypoint, cmd, shell, user = state.entrypoint, state.cmd, state.shell, state.user
-    variables: dict[str, str] = {}
+    env = dict(state.env)
+    args: dict[str, str] = {}
     cmd_set_here = False
     for instruction in stage.instructions:
         match instruction.keyword:
@@ -169,12 +177,15 @@ def lineage(stages: Sequence[Stage], index: int = -1) -> Lineage:
             case "SHELL" if instruction.form == "exec" and instruction.args:
                 shell = instruction.args
             case "USER" if instruction.args:
-                user = substitute(instruction.args[0], variables)
-            case "ARG" | "ENV":
-                variables.update(assignments(instruction))
+                # `ENV` wins over an `ARG` of the same name, as in Docker.
+                user = substitute(instruction.args[0], {**args, **env})
+            case "ARG":
+                args.update(assignments(instruction))
+            case "ENV":
+                env.update(assignments(instruction))
             case _:
                 pass
-    return Lineage(entrypoint=entrypoint, cmd=cmd, shell=shell, user=user)
+    return Lineage(entrypoint=entrypoint, cmd=cmd, shell=shell, user=user, env=env)
 
 
 def compose_process(stages: Sequence[Stage]) -> tuple[str, ...]:

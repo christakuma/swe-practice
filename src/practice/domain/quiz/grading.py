@@ -22,8 +22,9 @@ suite that has to run in a process, and the domain starts none; the adapter
 
 from __future__ import annotations
 
+import re
 from collections import Counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from practice.domain.errors import InvalidValueError
 from practice.domain.quiz.questions import QuestionFormat
@@ -34,6 +35,10 @@ if TYPE_CHECKING:
     from practice.domain.quiz.sheet import Answer
 
 __all__ = ["grade"]
+
+_LINE_NUMBER: Final = re.compile(r"0*([0-9]{1,9})")
+#: How much of a refused line answer the verdict repeats.
+_SHOWN: Final = 20
 
 
 def grade(question: Question, answer: Answer | None) -> CheckReport:
@@ -91,15 +96,31 @@ def _line(question: Question, chosen: tuple[str, ...]) -> CheckReport:
             f"This question takes one line number, and {len(chosen)} were given.",
         )
     (value,) = chosen
-    if not value.isdigit() or not 1 <= int(value) <= question.line_count:
+    number = _line_number(value)
+    if number is None or not 1 <= number <= question.line_count:
+        # Cut, because the verdict keeps it: a five-thousand-digit answer is
+        # refused now rather than raising, and was echoed whole.
+        shown = value if len(value) <= _SHOWN else f"{value[:_SHOWN]}..."
         return _failed(
             question,
-            f"`{value}` is not a line of the snippet, which runs from 1 to "
+            f"`{shown}` is not a line of the snippet, which runs from 1 to "
             f"{question.line_count}.",
         )
-    if int(value) == int(question.answer[0]):
+    if number == int(question.answer[0]):
         return _passed(question)
-    return _failed(question, f"Line {int(value)} is not the one.")
+    return _failed(question, f"Line {number} is not the one.")
+
+
+def _line_number(value: str) -> int | None:
+    """`08` as 8; `None` for anything `int` would refuse or should not be asked.
+
+    Not `str.isdigit`, which is true of `²` and of a five-thousand-digit
+    string, and `int` raises on both -- which made a typo in `answers.md` a
+    traceback rather than a verdict. ASCII digits, and few enough of them to
+    be a line number once the leading zeros are gone.
+    """
+    match = _LINE_NUMBER.fullmatch(value)
+    return int(match.group(1)) if match else None
 
 
 def _order(question: Question, chosen: tuple[str, ...]) -> str:

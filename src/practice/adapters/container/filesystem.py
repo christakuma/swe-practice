@@ -109,17 +109,22 @@ _NOGROUP: Final = 65534
 _NORMAL: Final = range(1000, 60001)
 _SYSTEM: Final = range(100, 1000)
 
-#: Commands that change ownership, accounts or which paths exist. One of these
-#: that cannot be read becomes a note; any other command is assumed to change
-#: none of them.
+#: Commands that change ownership, accounts or which paths exist -- and `cd`,
+#: which changes what every relative path after it on the line means. One of
+#: these that cannot be read becomes a note; any other command is assumed to
+#: change none of them.
 _WATCHED: Final = frozenset(
-    {"adduser", "addgroup", "chgrp", "chmod", "chown", "groupadd", "install",
-     "mkdir", "rm", "useradd", "usermod"}
+    {"adduser", "addgroup", "cd", "chgrp", "chmod", "chown", "groupadd",
+     "install", "mkdir", "rm", "useradd", "usermod"}
 )  # fmt: skip
 _ACCOUNTS: Final = frozenset({"adduser", "addgroup", "groupadd", "useradd", "usermod"})
 _SEPARATOR: Final = re.compile(r"&&|;|\n")
 _PIPE: Final = re.compile(r"\|\|?")
 _ASSIGNMENT: Final = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*")
+#: A redirection written as its own word: `>`, `2>/dev/null`, `2>&1`, `&>log`.
+#: The target is in the word, or -- when nothing follows the operator, `>&`
+#: included -- the next word.
+_REDIRECT: Final = re.compile(r"^(?:\d*|&)(?:>>?|<)&?(.*)$")
 _SYMBOLIC: Final = re.compile(r"^([ugoa]*)([-+=])([rwxXst]*)$")
 _CLASS_BITS: Final = {"u": 0o4700, "g": 0o2070, "o": 0o1007, "a": 0o7777}
 _PERM_BITS: Final = {"r": 0o444, "w": 0o222, "x": 0o111, "s": 0o6000, "t": 0o1000}
@@ -325,13 +330,24 @@ class _Node:
 
 @dataclass(slots=True)
 class Filesystem:
-    """One stage's paths and accounts at its end, and what could not be applied."""
+    """One stage's paths and accounts at its end, and what could not be applied.
+
+    **`workdir` and `env` are here rather than on the walk** because a stage
+    built `FROM` an earlier one inherits both, as it inherits `user`: the
+    first version reset them per stage, so `WORKDIR /app` in a base stage
+    and `RUN mkdir data` in the stage built on it made `/data`, while
+    `build_query.py`'s layer model -- which does inherit the workdir -- put
+    the same stage's files under `/app`. `ARG` is not here: Docker scopes a
+    build argument to the stage that declares it.
+    """
 
     nodes: dict[str, _Node]
     accounts: _Accounts
     user: str
     notes: list[str] = field(default_factory=list)
     stopped: str | None = None
+    workdir: str = "/"
+    env: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def base(cls, image: str) -> Filesystem:
@@ -352,6 +368,8 @@ class Filesystem:
             user=self.user,
             notes=list(self.notes),
             stopped=self.stopped,
+            workdir=self.workdir,
+            env=dict(self.env),
         )
 
     def account(self, spec: str | None = None) -> Account | None:
@@ -441,18 +459,29 @@ class _Walk:
     earlier_stages: Sequence[Stage]
     earlier: Sequence[Filesystem]
     files: Sequence[str]
-    workdir: str = "/"
-    variables: dict[str, str] = field(default_factory=dict)
+    #: This stage's `ARG`s, which end with it; `ENV` is the filesystem's.
+    args: dict[str, str] = field(default_factory=dict)
+    #: The shell's directory: the `WORKDIR`, until a `cd` inside a `RUN` line
+    #: moves it for the rest of that line.
+    cwd: str = "/"
+
+    @property
+    def variables(self) -> dict[str, str]:
+        """What `$NAME` expands to. `ENV` wins over an `ARG` of the same name."""
+        return {**self.args, **self.fs.env}
 
     def stage(self, stage: Stage) -> None:
+        self.cwd = self.fs.workdir
         for instruction in stage.instructions:
             if self.fs.stopped is not None:
                 return
             match instruction.keyword:
                 case "USER" if instruction.args:
                     self.fs.user = substitute(instruction.args[0], self.variables)
-                case "ARG" | "ENV":
-                    self.variables.update(assignments(instruction))
+                case "ARG":
+                    self.args.update(assignments(instruction))
+                case "ENV":
+                    self.fs.env.update(assignments(instruction))
                 case "WORKDIR" if instruction.args:
                     self._workdir(instruction)
                 case "COPY" | "ADD" if instruction.args[1:]:
@@ -467,12 +496,15 @@ class _Walk:
         return node is not None and node.directory
 
     def _resolve(self, path: str) -> str:
-        return posixpath.normpath(posixpath.join(self.workdir, path))
+        return posixpath.normpath(posixpath.join(self.cwd, path))
 
     def _workdir(self, instruction: Instruction) -> None:
-        self.workdir = self._resolve(substitute(instruction.args[0], self.variables))
+        self.fs.workdir = self._resolve(substitute(instruction.args[0], self.variables))
+        self.cwd = self.fs.workdir
         owner = self.fs.accounts.owner(self.fs.user, same_number=True) or (0, 0)
-        self.fs.make(self.workdir, owner=owner, mode=_DIRECTORY, line=instruction.line)
+        self.fs.make(
+            self.fs.workdir, owner=owner, mode=_DIRECTORY, line=instruction.line
+        )
 
     # --- COPY and ADD ---------------------------------------------------
 
@@ -502,7 +534,7 @@ class _Walk:
                 return
             landed = owner or (0, 0)
             landings = context_landings(
-                instruction, self.files, self.workdir, self._is_directory
+                instruction, self.files, self.fs.workdir, self._is_directory
             )
             for _, spot in landings:
                 self.fs.make(
@@ -565,7 +597,12 @@ class _Walk:
                 continue
             node = origin.nodes[spot]
             uid, gid = copied.owner or (node.uid, node.gid)
-            self.fs.nodes[posixpath.join(target, spot[len(source) + 1 :])] = _Node(
+            # `lstrip` rather than skipping one more character: when the
+            # source is `/` there is no separator after it to skip, and
+            # `/app` landed at `<target>/pp`. `_from_stage` in
+            # `build_query.py` cuts the same way.
+            relative = spot[len(source) :].lstrip("/")
+            self.fs.nodes[posixpath.join(target, relative)] = _Node(
                 uid, gid, copied.choose(node.mode), node.directory, line
             )
 
@@ -584,15 +621,21 @@ class _Walk:
             commands = [(list(instruction.args), False)]
         else:
             commands = self._commands(instruction.args[0], line)
-        for words, guarded in commands:
-            if not words or words[0] not in _WATCHED:
-                continue
-            try:
-                self._command(words, *resolved, line)
-            except _RefusedError as refused:
-                if not guarded:
-                    self.fs.stop(f"line {line}: `{' '.join(words)}` fails: {refused}")
-                    return
+        try:
+            for words, guarded in commands:
+                if not words or words[0] not in _WATCHED:
+                    continue
+                try:
+                    self._command(words, *resolved, line)
+                except _RefusedError as refused:
+                    if not guarded:
+                        self.fs.stop(
+                            f"line {line}: `{' '.join(words)}` fails: {refused}"
+                        )
+                        return
+        finally:
+            # A `cd` lasts as long as the shell, which is this one line.
+            self.cwd = self.fs.workdir
 
     def _commands(self, text: str, line: int) -> list[tuple[list[str], bool]]:
         """The simple commands of a shell line, and whether a failure is caught.
@@ -621,8 +664,25 @@ class _Walk:
                 continue
             while words and _ASSIGNMENT.fullmatch(words[0]):
                 words = words[1:]
-            commands.append((words, guarded))
+            commands.append((_without_redirections(words), guarded))
         return commands
+
+    def _cd(self, operands: Sequence[str], line: int) -> None:
+        """Move the shell for the rest of the line, as `RUN cd /app && ...` does.
+
+        A directory the model has not seen is followed anyway: a script may
+        have made it, and the paths after the `cd` are better read against it
+        than against a `WORKDIR` the line has left. `cd` alone, `cd -` and `~`
+        depend on the shell's own state and are noted rather than guessed.
+        """
+        target = operands[0] if operands else ""
+        if not target or target == "-" or target.startswith("~"):
+            self.fs.notes.append(
+                f"line {line} runs `cd {target}`, which the grader cannot follow; "
+                f"the paths after it are read from {self.cwd}"
+            )
+            return
+        self.cwd = self._resolve(target)
 
     def _command(self, words: list[str], account: Account, gid: int, line: int) -> None:
         name, *rest = words
@@ -633,6 +693,8 @@ class _Walk:
             return
         options, operands = _options(rest, valued=_FILE_VALUED, modes=name == "chmod")
         match name:
+            case "cd":
+                self._cd(operands, line)
             case "mkdir":
                 self._mkdir(options, operands, account, gid, line)
             case "install" if _has(options, "-d", "--directory"):
@@ -945,6 +1007,25 @@ def context_landings(
             elif path.startswith(source + "/"):
                 landed.add((path, posixpath.join(target, path[len(source) + 1 :])))
     return landed
+
+
+def _without_redirections(words: Sequence[str]) -> list[str]:
+    """A command's words with its redirections and their targets taken out.
+
+    The shell removes them before the command sees its arguments, and left
+    in they were operands: `mkdir /r 2>/dev/null`, run from `/`, also asked
+    for `/2>/dev/null`, whose parent `/2>` does not exist, and that stopped
+    a build that runs.
+    """
+    kept: list[str] = []
+    iterator = iter(words)
+    for word in iterator:
+        found = _REDIRECT.match(word)
+        if found is None:
+            kept.append(word)
+        elif not found.group(1):
+            next(iterator, None)
+    return kept
 
 
 def _self_and_parents(path: str) -> list[str]:

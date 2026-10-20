@@ -177,6 +177,16 @@ class TestCopyFrom:
         assert owners(body, "/app", base=self.BUILD) == ["app:app 755"]
         assert q.path_access("/app").chain[-1].directory
 
+    def test_the_root_of_a_stage_keeps_every_name(self) -> None:
+        """`COPY --from=build / /rootfs` once landed `/out` at `/rootfs/ut`:
+        the relative path was cut one character past a separator `/` lacks."""
+        q = query("COPY --from=build / /rootfs\n", base=self.BUILD)
+        assert q.path_access("/rootfs/out").exists
+        assert not q.path_access("/rootfs/ut").exists
+        assert owners(
+            "COPY --from=build / /rootfs\n", "/rootfs/c1/app.py", base=self.BUILD
+        ) == ["1000:users 755"]
+
     def test_from_another_image_is_root_s(self) -> None:
         body = "COPY --from=nginx:1.27 /etc/nginx/nginx.conf /conf\n"
         assert owners(body, "/conf") == ["root:root 755"]
@@ -305,6 +315,40 @@ class TestRun:
             .exists
         )
 
+    def test_cd_moves_the_rest_of_the_line(self) -> None:
+        """Not followed, `cd /app && mkdir data` made `/data`, and a correct
+        `chown app data` after it gave `app` the wrong directory."""
+        q = query("RUN mkdir /app && cd /app && mkdir data && chown 7 data\n")
+        assert owners("RUN mkdir /app && cd /app && mkdir data\n", "/app/data") == [
+            "root:root 755"
+        ]
+        assert q.path_access("/app/data").chain[-1].uid == 7
+        assert not q.path_access("/data").exists
+
+    def test_cd_ends_with_its_line(self) -> None:
+        q = query("RUN mkdir /app && cd /app\nRUN mkdir data\n")
+        assert q.path_access("/data").exists
+        assert not q.path_access("/app/data").exists
+
+    @pytest.mark.parametrize("command", ["cd", "cd -", "cd ~/x"])
+    def test_a_cd_that_depends_on_the_shell_is_a_note(self, command: str) -> None:
+        access = query(f"RUN {command} && mkdir d\n").path_access("/d")
+        assert access.exists
+        assert "cannot follow" in access.notes[0]
+
+    @pytest.mark.parametrize(
+        "redirect",
+        ["2>/dev/null", "> /dev/null", ">/dev/null 2>&1", "&> log", ">& log"],
+    )
+    def test_a_redirection_is_not_an_operand(self, redirect: str) -> None:
+        """`mkdir /r 2>/dev/null`, run from `/`, also asked for `/2>/dev/null`,
+        whose parent `/2>` does not exist, and stopped a build that runs."""
+        q = query(f"RUN mkdir /r {redirect}\n")
+        assert q.path_access("/r").exists
+        assert q.path_access("/r").stopped is None
+        for target in ("/dev/null", "/log", "/2>", "/>", "/&>"):
+            assert not q.path_access(target).exists, target
+
     def test_a_command_substitution_is_a_note(self) -> None:
         access = query("RUN mkdir /d && chown $(id -u nobody) /d\n").path_access("/d")
         assert access.notes == (
@@ -321,6 +365,61 @@ class TestRun:
         access = query(f"RUN mkdir /d && {command}\n").path_access("/d")
         assert access.notes
         assert "the grader cannot read" in access.notes[0]
+
+
+class TestAStageBuiltOnAnother:
+    """What a `FROM <stage>` inherits: its `WORKDIR` and `ENV`, not its `ARG`.
+
+    Docker's documented behaviour rather than a measurement, and the layer
+    model in `build_query.py` already inherited the workdir: this model reset
+    both per stage, so the two disagreed about where the same line wrote.
+    """
+
+    BASE = (
+        "FROM python:3.12-slim AS base\n"
+        "RUN useradd -m app\n"
+        "WORKDIR /app\n"
+        "ENV APP_USER=app\n"
+        "ARG DIR=/a\n"
+        "FROM base\n"
+    )
+
+    def test_the_workdir_carries_over(self) -> None:
+        q = query("RUN mkdir data\nCOPY app.py .\n", base=self.BASE)
+        assert q.path_access("/app/data").exists
+        assert q.path_access("/app/app.py").exists
+        assert not q.path_access("/data").exists
+
+    def test_env_carries_over(self) -> None:
+        body = "USER $APP_USER\nWORKDIR /w\nRUN mkdir /w/x\n"
+        access = query(body, base=self.BASE).path_access("/w/x")
+        assert access.stopped is None
+        assert owners(body, "/w", base=self.BASE) == ["app:app 755"]
+
+    def test_the_user_it_runs_as_is_the_same_user_in_both_models(self) -> None:
+        """`lineage` dropped inherited `ENV`: `final_user` was `''` while the
+        ownership model ran this image as `app`, in one verdict."""
+        q = query("USER $APP_USER\n", base=self.BASE)
+        account = q.account()
+        assert account is not None
+        assert q.final_user() == account.name == "app"
+
+    def test_a_workdir_from_env_is_where_the_layer_model_puts_files(self) -> None:
+        """Joined literally, `WORKDIR $D` put the builder's files under `/$D`,
+        the copy of `/app/.env` found nothing, and `.env` was said not to
+        ship."""
+        source = (
+            "FROM python:3.12-slim AS build\nENV D=/app\nWORKDIR $D\nCOPY . .\n"
+            "FROM python:3.12-slim\nCOPY --from=build /app/.env /x\n"
+        )
+        q = ParsedBuildQuery(
+            context={".env": "", "app.py": ""}, editable="Dockerfile", source=source
+        )
+        assert q.path_in_image(".env")
+        assert q.path_access("/x").exists
+
+    def test_arg_does_not(self) -> None:
+        assert query("RUN mkdir /x$DIR\n", base=self.BASE).path_access("/x").exists
 
 
 class TestRunAsAnotherUser:

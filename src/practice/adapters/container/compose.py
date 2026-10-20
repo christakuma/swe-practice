@@ -29,6 +29,11 @@ And a named volume the top level does not declare is refused (*refers to
 undefined volume*), which matters more than it looks: the obvious way to
 write the node_modules fix forgets that block, and a grader that accepted it
 would pass a file `compose up` will not start.
+
+One rule is an assumption rather than a measurement: a source that starts
+with `$` is a bind. Compose would interpolate it first, and this module reads
+no environment; `${PWD}` and `$HOME` are host paths, and a volume *named* by
+a variable is rare enough to be the case that gets it wrong.
 """
 
 from __future__ import annotations
@@ -44,6 +49,10 @@ __all__ = ["ComposeError", "parse_compose"]
 _DEFAULT_CONDITION: Final = "service_started"
 #: A Windows drive letter, which is the one colon a volume source may contain.
 _DRIVE: Final = re.compile(r"^[A-Za-z]:[\\/]")
+#: A colon that separates source, target and mode: not one inside `${...}`,
+#: where `${HOME:-.}` spells a default and splitting there made `${HOME` the
+#: source and `-.}/cache` the target.
+_VOLUME_SEPARATOR: Final = re.compile(r":(?![^{}]*\})")
 #: The short-syntax modes compose turns into fields. Others it drops silently.
 _PROPAGATION: Final = frozenset(
     {"shared", "rshared", "slave", "rslave", "private", "rprivate"}
@@ -174,7 +183,7 @@ def _volume(name: str, entry: str) -> dict[str, object]:
     assertion should depend on where a workspace happens to live.
     """
     drive = entry[:2] if _DRIVE.match(entry) else ""
-    parts = entry[len(drive) :].split(":")
+    parts = _VOLUME_SEPARATOR.split(entry[len(drive) :])
     parts[0] = drive + parts[0]
     if len(parts) > 3:  # noqa: PLR2004 - source, target and mode
         raise ComposeError(
@@ -184,7 +193,11 @@ def _volume(name: str, entry: str) -> dict[str, object]:
         return {"type": "volume", "target": _target(parts[0])}
 
     source, target, *modes = parts
-    bind = source.startswith((".", "/", "~")) or bool(drive)
+    # Compose interpolates before it classifies, and this does not
+    # interpolate at all, so a source that opens with a variable is taken as
+    # the host path it almost always is: `${PWD}:/app` read as a named volume
+    # was then refused as undeclared, failing a file `compose up` starts.
+    bind = source.startswith((".", "/", "~", "$")) or bool(drive)
     mount: dict[str, object] = {
         "type": "bind" if bind else "volume",
         "source": source,

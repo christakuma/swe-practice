@@ -170,6 +170,17 @@ class TestCompose:
         )
         assert services["web"]["volumes"] == [long]
 
+    @pytest.mark.parametrize("source", ["${PWD}", "$PWD/src", "${HOME:-.}/cache"])
+    def test_a_variable_source_is_a_bind_and_needs_no_declaration(
+        self, source: str
+    ) -> None:
+        """Compose interpolates first, and `${PWD}` is a host path. Read as a
+        named volume, it was refused as undeclared and the whole file with it."""
+        services = parse_compose(f"services:\n  web:\n    volumes: ['{source}:/app']\n")
+        assert services["web"]["volumes"] == [
+            {"type": "bind", "source": source, "target": "/app"}
+        ]
+
     def test_long_volumes_pass_through(self) -> None:
         services = parse_compose(
             "services:\n  web:\n    volumes:\n"
