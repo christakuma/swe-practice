@@ -29,8 +29,10 @@ from starlette.responses import HTMLResponse, Response
 
 from practice.application.errors import ApplicationError
 from practice.domain.errors import DomainError
+from practice.domain.exercise import QuizSpec
 from practice.domain.ids import AttemptId
 from practice.interface.web.navigation import known_track, next_context
+from practice.interface.web.quiz import latest_sheet, quiz_items
 from practice.interface.web.routes.review import REVIEW_URL
 
 if TYPE_CHECKING:
@@ -38,6 +40,7 @@ if TYPE_CHECKING:
 
     from practice.application.dto import Submission
     from practice.composition import Services
+    from practice.interface.web.quiz import QuizItem
 
 __all__ = ["CONCEDE_URL", "build_router", "render_submission"]
 
@@ -78,8 +81,21 @@ def render_submission(
             "review": services.offer_review(attempt_id),
             "review_url": REVIEW_URL.format(attempt_id=attempt_id),
             **next_context(services, submission.attempt.exercise_id, track_name),
+            # A finished quiz shows every answer and every explanation under
+            # its verdict, which is where a quiz does its teaching: a failed
+            # question only ever said why the chosen option was wrong.
+            "quiz_items": _quiz_items(submission),
         },
     )
+
+
+def _quiz_items(submission: Submission) -> tuple[QuizItem, ...]:
+    """The finished quiz's questions and answers, or `()` for any other kind."""
+    spec = submission.exercise.spec
+    if not isinstance(spec, QuizSpec):
+        return ()
+    attempt = submission.attempt
+    return quiz_items(spec, seed=str(attempt.id), sheet=latest_sheet(attempt, None))
 
 
 def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:

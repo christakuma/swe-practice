@@ -31,6 +31,7 @@ from typer.testing import CliRunner
 from practice.adapters.persistence.sqlite import Database, Migration, load_migrations
 from practice.adapters.sandbox.env import ToolNotFoundError
 from practice.config import DEFAULT_SCHEDULER, SCHEDULER_ENV
+from practice.domain.exercise import ExerciseKind
 from practice.domain.scheduling import FsrsScheduler
 from practice.interface.cli import launcher
 from practice.interface.cli.launcher import FirstRun, prepare
@@ -158,6 +159,23 @@ def test_it_reports_what_it_found_and_not_just_that_it_was_fine(
     assert "1 git scenario" in output
     assert "1 kata" in output
     assert str(library) in output
+
+
+def test_every_kind_is_counted_in_its_own_words() -> None:
+    """A fifth kind is the one an added `s` gets wrong: `8 systems quizs`.
+
+    Every kind in the enum, so a sixth with no name fails here rather than in
+    front of a stranger on their first run.
+    """
+    one = launcher._by_kind(dict.fromkeys(ExerciseKind, 1))
+    many = launcher._by_kind(dict.fromkeys(ExerciseKind, 8))
+
+    assert one == (
+        "1 git scenario, 1 kata, 1 SQL drill, 1 Docker exercise, 1 systems quiz"
+    )
+    assert many == (
+        "8 git scenarios, 8 katas, 8 SQL drills, 8 Docker exercises, 8 systems quizzes"
+    )
 
 
 @pytest.mark.usefixtures("stocked", "opened")

@@ -78,10 +78,12 @@ from practice.domain.exercise import (
     Hint,
     KataSpec,
     ParamValue,
+    QuizSpec,
     SqlDrillSpec,
     Variant,
 )
 from practice.domain.ids import ExerciseId, tag
+from practice.domain.quiz import FixSuite, Option, Question, QuestionFormat
 from practice.domain.verdict import Severity
 
 # `Mapping`, `ParamValue` and `ExerciseSpec` are imported at runtime rather than
@@ -105,6 +107,10 @@ __all__ = [
     "GitScenarioSpecModel",
     "KataFile",
     "KataSpecModel",
+    "OptionModel",
+    "QuestionModel",
+    "QuizFile",
+    "QuizSpecModel",
     "SqlDrillFile",
     "SqlDrillSpecModel",
     "VariantModel",
@@ -518,6 +524,113 @@ class ContainerSpecModel(_SpecModel):
         )
 
 
+class OptionModel(_Model):
+    """One choice in a question's `options:`, and why it is right or wrong."""
+
+    id: _Text
+    text: _Text
+    why: _Text
+
+    def to_domain(self) -> Option:
+        return Option(id=self.id, text=self.text.strip("\n"), why=self.why.strip())
+
+
+class FixModel(_Model):
+    """A fix question's `fix:` block: the hidden suite and the wrong fixes."""
+
+    tests: _Text
+    time_limit_seconds: Annotated[int, Field(ge=1)] = 10
+    counter_examples: tuple[CounterExampleModel, ...] = ()
+
+    def to_domain(self) -> FixSuite:
+        return FixSuite(
+            tests=self.tests,
+            time_limit_seconds=self.time_limit_seconds,
+            counter_examples=tuple(
+                example.to_domain() for example in self.counter_examples
+            ),
+        )
+
+
+class QuestionModel(_Model):
+    """One entry in a quiz's `questions:`.
+
+    **`answer` takes the spelling the question has**: `answer: lock-in-order`
+    for a single choice, `answer: 8` for a line, a list for a select-all or an
+    order. All three become the domain's tuple of strings. Requiring a
+    one-element list for a single answer would be a rule an author meets as a
+    validation error about a type, which is no help.
+
+    Built into a `Question` during validation, for `_CheckModel`'s reason: a
+    question that cannot exist -- two answers to a single choice, a line past
+    the end of its snippet -- is reported at `quiz.questions.3` rather than at
+    the whole `quiz` block.
+    """
+
+    id: _Text
+    format: QuestionFormat
+    label: _Text
+    prompt: _Text
+    context: _Text | None = None
+    options: tuple[OptionModel, ...] = ()
+    answer: str | int | tuple[str | int, ...] = ()
+    snippet: _Text | None = None
+    snippet_language: _Text = "text"
+    explanation: _Text | None = None
+    fix: FixModel | None = None
+
+    _domain: Question = PrivateAttr()
+
+    @model_validator(mode="after")
+    def _build_domain(self) -> Self:
+        self._domain = self.to_domain()
+        return self
+
+    @property
+    def domain(self) -> Question:
+        return self._domain
+
+    def to_domain(self) -> Question:
+        answer = self.answer if isinstance(self.answer, tuple) else (self.answer,)
+        return Question(
+            id=self.id,
+            format=self.format,
+            label=self.label.strip(),
+            prompt=self.prompt.strip("\n"),
+            context=self.context.strip("\n") if self.context is not None else None,
+            options=tuple(option.to_domain() for option in self.options),
+            answer=tuple(str(value) for value in answer),
+            snippet=self.snippet.strip("\n") if self.snippet is not None else None,
+            snippet_language=self.snippet_language,
+            explanation=(
+                self.explanation.strip() if self.explanation is not None else None
+            ),
+            fix=self.fix.to_domain() if self.fix is not None else None,
+        )
+
+
+class QuizSpecModel(_SpecModel):
+    """The `quiz:` block.
+
+    No `checks:`: a quiz's checks are its questions, one each, and a fix
+    question's are its tests. `constraints` are optional here and required by
+    `tests/content/test_quizzes.py`, the same line `KataSpecModel` draws.
+    """
+
+    stub: _Text
+    reference: _Text
+    constraints: tuple[_Text, ...] = ()
+    questions: tuple[QuestionModel, ...]
+
+    def to_domain(self) -> QuizSpec:
+        return QuizSpec(
+            stub=self.stub,
+            reference=self.reference,
+            questions=tuple(question.domain for question in self.questions),
+            constraints=tuple(constraint.strip() for constraint in self.constraints),
+        )
+
+
 # --- the file itself -------------------------------------------------------
 
 
@@ -654,14 +767,25 @@ class ContainerFile(_ExerciseFileBase):
         return self.container
 
 
-type ExerciseFile = KataFile | GitScenarioFile | SqlDrillFile | ContainerFile
+class QuizFile(_ExerciseFileBase):
+    """`kind: quiz`, Phase 25."""
+
+    kind: Literal[ExerciseKind.QUIZ]
+    quiz: QuizSpecModel
+
+    @property
+    def spec_model(self) -> QuizSpecModel:
+        return self.quiz
+
+
+type ExerciseFile = KataFile | GitScenarioFile | SqlDrillFile | ContainerFile | QuizFile
 
 #: The single entry point for parsing. A `TypeAdapter` over the tagged union
 #: rather than a wrapper model, so what an author sees is the discriminator's
 #: own error rather than one nested a level deeper than the file it describes.
 EXERCISE_FILE: TypeAdapter[ExerciseFile] = TypeAdapter(
     Annotated[
-        KataFile | GitScenarioFile | SqlDrillFile | ContainerFile,
+        KataFile | GitScenarioFile | SqlDrillFile | ContainerFile | QuizFile,
         Field(discriminator="kind"),
     ]
 )

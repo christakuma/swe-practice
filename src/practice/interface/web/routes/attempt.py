@@ -55,6 +55,14 @@ try, and which fragment comes back is `routes/submission.py`'s one decision.
 **The Run button is here too** (`try_examples`), beside the submission it is
 the preview of: the same body, a different use case, and nothing recorded.
 
+**So is a quiz's submission** (`answer`, Phase 25), and it is the one route
+here that reads its form by hand. A quiz posts one field per question under a
+name the question chooses, which no signature can declare, so the route is
+`async` for exactly as long as it takes to read the form and hands the rest to
+a thread, for the reason `submit` gives about blocking: a fix question starts a
+pytest subprocess. The form becomes `answers.md` (`interface/web/quiz.py`)
+and goes through `submit_solution` like any other source.
+
 **The id in the URL is the full uuid.** That is the trade §11 named when it
 refused `find_by_prefix` on the `AttemptRepository` port: *"the web app, where the
 id is in a link nobody types."* A route that accepted a prefix would be re-adding
@@ -71,16 +79,28 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Form
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request  # noqa: TC002  (FastAPI reads this at runtime)
 from starlette.responses import HTMLResponse, Response
 
 from practice.application.errors import ApplicationError
 from practice.domain.attempt import ComplexityClaim
 from practice.domain.errors import AttemptStateError, DomainError
-from practice.domain.exercise import GitScenarioSpec, KataSpec, editable_source
+from practice.domain.exercise import (
+    GitScenarioSpec,
+    KataSpec,
+    QuizSpec,
+    editable_source,
+)
 from practice.domain.ids import AttemptId
 from practice.interface.web.errors import render_problem
 from practice.interface.web.navigation import known_track, next_context
+from practice.interface.web.quiz import (
+    FORMAT_NAMES,
+    latest_sheet,
+    quiz_items,
+    sheet_from_form,
+)
 from practice.interface.web.routes.console import COMMAND_URL, SCENARIO_SUBMIT_URL
 from practice.interface.web.routes.editor import EDITOR_URL, WATCH_URL
 from practice.interface.web.routes.review import REVIEW_URL
@@ -93,9 +113,17 @@ if TYPE_CHECKING:
 
     from fastapi.templating import Jinja2Templates
 
+    from practice.application.dto import Submission
     from practice.composition import Services
 
-__all__ = ["CURRENT_URL", "HINT_URL", "SUBMIT_URL", "TRY_URL", "build_router"]
+__all__ = [
+    "ANSWER_URL",
+    "CURRENT_URL",
+    "HINT_URL",
+    "SUBMIT_URL",
+    "TRY_URL",
+    "build_router",
+]
 
 #: Where the editor posts a solution. A template builds the attempt's own URL from
 #: this, so the route and the page cannot disagree about the path.
@@ -103,6 +131,9 @@ SUBMIT_URL = "/api/attempt/{attempt_id}/submit"
 
 #: Where the editor's Run button posts. Records nothing; see `try_examples`.
 TRY_URL = "/api/attempt/{attempt_id}/try"
+
+#: Where a quiz's form posts. A submission, like `SUBMIT_URL`; see `answer`.
+ANSWER_URL = "/api/attempt/{attempt_id}/answers"
 
 #: Where the prompt panel asks for the next hint. No index in it, deliberately: an
 #: endpoint taking one is an endpoint a solver skips to the last hint with, and the
@@ -149,6 +180,9 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         # kata's spec and of no other (`KataSpec` says why). A drill is
         # editable and has neither, so `editable` cannot stand in for this.
         kata = spec if isinstance(spec, KataSpec) else None
+        # A fourth, Phase 25's: a quiz is editable too, and is drawn as a form
+        # over its sheet rather than as an editor showing it.
+        quiz = spec if isinstance(spec, QuizSpec) else None
 
         # **The clock is read here and not in `OpenWorkbench`**, which keeps
         # that use case's "no clock, this only reads" promise intact. How much
@@ -182,7 +216,28 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                     if opened.exercise.variant is not None
                     else None
                 ),
-                "constraints": kata.constraints if kata else (),
+                "constraints": (
+                    kata.constraints if kata else quiz.constraints if quiz else ()
+                ),
+                "is_quiz": quiz is not None,
+                # Every question with this attempt's answer to it, drawn from
+                # the last sheet the log holds -- `interface/web/quiz.py` says
+                # why not the workspace's copy. The attempt id seeds the option
+                # order, so a reload shows the same page.
+                "quiz_items": (
+                    quiz_items(
+                        quiz,
+                        seed=str(parsed),
+                        sheet=latest_sheet(opened.attempt, opened.editor_source),
+                    )
+                    if quiz
+                    else ()
+                ),
+                "answer_url": ANSWER_URL.format(attempt_id=parsed),
+                "formats": FORMAT_NAMES,
+                # A fix question's code gets the Python editor when its mode is
+                # vendored, as a kata's does; `()` draws a plain textarea.
+                "python_mode_files": mode_files("python") if quiz else (),
                 # The mode name CodeMirror knows this language by. From the spec
                 # rather than hardcoded, so a second language is a content change
                 # and a vendored mode file -- which is the whole claim of §15 Q3,
@@ -327,6 +382,31 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
             request=request, name="partials/trial.html", context={"trial": trial}
         )
 
+    @router.post(ANSWER_URL, response_class=HTMLResponse)
+    async def answer(request: Request, attempt_id: str) -> Response:
+        """Grade a quiz's form as the sheet it describes.
+
+        Read here, graded in a thread: see the module docstring.
+        """
+        form = await request.form()
+        fields = {
+            name: [value for value in form.getlist(name) if isinstance(value, str)]
+            for name in form
+        }
+        track = next(iter(fields.get("track", ())), None)
+        try:
+            parsed = AttemptId.parse(attempt_id)
+            submission = await run_in_threadpool(
+                _submit_answers, services, parsed, fields
+            )
+        except (ApplicationError, DomainError, ValueError) as exc:
+            return templates.TemplateResponse(
+                request=request,
+                name="partials/refusal.html",
+                context={"detail": str(exc)},
+            )
+        return render_submission(services, templates, request, submission, track)
+
     @router.post(CURRENT_URL)
     def current(attempt_id: str) -> Response:
         """Make this the attempt a tutor is shown, because its tab is in front.
@@ -382,6 +462,18 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         )
 
     return router
+
+
+def _submit_answers(
+    services: Services, attempt_id: AttemptId, fields: dict[str, list[str]]
+) -> Submission:
+    """The form as a sheet, submitted. Blocking: a fix question runs pytest."""
+    exercise = services.open_workbench(attempt_id).exercise
+    if not isinstance(exercise.spec, QuizSpec):
+        message = f"{exercise.id} is not a quiz, so it has no answers to post"
+        raise ApplicationError(message)
+    sheet = sheet_from_form(exercise.title, exercise.spec, fields)
+    return services.submit_solution(attempt_id, sheet)
 
 
 def _claim(time: str | None, space: str | None) -> ComplexityClaim | None:

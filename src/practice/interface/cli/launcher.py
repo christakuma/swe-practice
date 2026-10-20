@@ -272,7 +272,7 @@ def _scheduler(name: str) -> Step:
 
 
 def _by_kind(counts: Mapping[ExerciseKind, int]) -> str:
-    """`24 git scenarios, 83 katas, 8 SQL drills, 6 Docker exercises`.
+    """`24 git scenarios, 83 katas, ... 8 systems quizzes`, in enum order.
 
     **This line used to be computed by subtraction** --
     `scenarios = len(exercises) - katas` -- which was correct for exactly as
@@ -283,7 +283,7 @@ def _by_kind(counts: Mapping[ExerciseKind, int]) -> str:
     it: the arithmetic is valid, it is the *claim* that stopped being true.
 
     Kinds with no exercises are left out rather than printed as zero. The
-    library this ships with has all four, so the only reader of that branch is
+    library this ships with has all five, so the only reader of that branch is
     someone pointing `--content-root` at a library of their own, and
     `0 SQL drills` is noise in the first line a stranger reads.
 
@@ -295,21 +295,20 @@ def _by_kind(counts: Mapping[ExerciseKind, int]) -> str:
     `ValueError` on the first run of the launcher's tests rather than a line
     that no longer adds up.
 
-    ASCII only and `_plural`, for the reasons the caller gives.
+    ASCII only, for the reasons the caller gives. **Each name is a pair**, as
+    of Phase 25: appending an `s` had been right for four kinds, and the fifth
+    would have printed `8 systems quizs` on the first line a stranger reads.
     """
     names = {
-        ExerciseKind.GIT_SCENARIO: "git scenario",
-        ExerciseKind.KATA: "kata",
-        ExerciseKind.SQL_DRILL: "SQL drill",
-        ExerciseKind.CONTAINER: "Docker exercise",
+        ExerciseKind.GIT_SCENARIO: ("git scenario", "git scenarios"),
+        ExerciseKind.KATA: ("kata", "katas"),
+        ExerciseKind.SQL_DRILL: ("SQL drill", "SQL drills"),
+        ExerciseKind.CONTAINER: ("Docker exercise", "Docker exercises"),
+        ExerciseKind.QUIZ: ("systems quiz", "systems quizzes"),
     }
     parts = [
-        f"{counts[kind]} {_plural(names[kind], counts[kind])}"
+        f"{counts[kind]} {names[kind][0] if counts[kind] == 1 else names[kind][1]}"
         for kind in sorted(ExerciseKind, key=list(names).index)
         if counts.get(kind)
     ]
     return ", ".join(parts)
-
-
-def _plural(noun: str, count: int) -> str:
-    return noun if count == 1 else f"{noun}s"

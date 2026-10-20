@@ -505,7 +505,9 @@ def _audit_something_is_graded(exercise: Exercise) -> Iterator[str]:
         # A kata's checks come out of its test suite rather than its spec, so
         # there is nothing declared here to audit. `tests/content/test_katas.py`
         # holds the equivalent claim by grading the stub and requiring it to
-        # fail.
+        # fail. A quiz's checks are its questions, every one required and every
+        # one graded against a key rather than read off the solver's wording,
+        # and `tests/content/test_quizzes.py` fails the stub on all of them.
         return
 
     required = [check for check in spec.checks if check.is_required]

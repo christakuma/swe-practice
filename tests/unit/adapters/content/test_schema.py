@@ -32,6 +32,7 @@ from practice.domain.exercise import (
     ExerciseKind,
     GitScenarioSpec,
     KataSpec,
+    QuizSpec,
     SqlDrillSpec,
     Variant,
 )
@@ -882,3 +883,111 @@ def test_a_blank_twist_is_rejected() -> None:
     payload["variant"] = {"of": "katas/two-sum", "twist": " "}
 
     assert rejected(payload) == [("variant.twist", "Value error, must not be blank")]
+
+
+# --- a quiz (Phase 25) -----------------------------------------------------
+
+
+def a_quiz_file() -> dict[str, Any]:
+    """One question of each format, spelled the ways the library spells them."""
+    return {
+        "schema_version": 1,
+        "id": "systems/transfers-hang-under-load",
+        "kind": "quiz",
+        "title": "Transfers hang under load",
+        "difficulty": "medium",
+        "estimated_minutes": 20,
+        "prompt": "Transfers freeze.",
+        "quiz": {
+            "stub": "answers.md",
+            "reference": "solution.md",
+            "constraints": ["16 worker threads.\n"],
+            "questions": [
+                {
+                    "id": "which-line",
+                    "format": "line",
+                    "label": "The line",
+                    "prompt": "Which line?\n",
+                    "context": "worker-3 holds acct:17\n",
+                    "snippet": "with a:\n    with b:\n",
+                    "snippet_language": "python",
+                    "answer": 1,
+                    "explanation": "The first.\n",
+                },
+                {
+                    "id": "which-one",
+                    "format": "single",
+                    "label": "The one",
+                    "prompt": "Which?",
+                    "options": [
+                        {"id": "yes", "text": "Yes\n", "why": "Because.\n"},
+                        {"id": "no", "text": "No", "why": "Because not."},
+                    ],
+                    "answer": "yes",
+                },
+                {
+                    "id": "which-steps",
+                    "format": "order",
+                    "label": "The order",
+                    "prompt": "In order.",
+                    "options": [
+                        {"id": "c", "text": "C", "why": "Third."},
+                        {"id": "a", "text": "A", "why": "First."},
+                        {"id": "b", "text": "B", "why": "Second."},
+                    ],
+                    "answer": ["a", "b", "c"],
+                },
+                {
+                    "id": "fix-it",
+                    "format": "fix",
+                    "label": "Your fix",
+                    "prompt": "Fix it.",
+                    "explanation": "Sorted.",
+                    "fix": {
+                        "tests": "ledger_tests.py",
+                        "time_limit_seconds": 30,
+                        "counter_examples": [
+                            {"file": "one-lock.py", "expect_failures": ["parallel"]}
+                        ],
+                    },
+                },
+            ],
+        },
+    }
+
+
+def test_a_quiz_becomes_an_exercise() -> None:
+    exercise = EXERCISE_FILE.validate_python(a_quiz_file()).to_exercise(notes="n")
+    spec = exercise.spec
+    assert isinstance(spec, QuizSpec)
+    assert exercise.kind is ExerciseKind.QUIZ
+    assert spec.constraints == ("16 worker threads.",)
+    line, single, order, fix = spec.questions
+    assert line.answer == ("1",)
+    assert line.snippet == "with a:\n    with b:"
+    assert line.context == "worker-3 holds acct:17"
+    assert line.prompt == "Which line?"
+    assert line.explanation == "The first."
+    assert single.answer == ("yes",)
+    assert single.options[0].text == "Yes"
+    assert single.options[0].why == "Because."
+    assert order.answer == ("a", "b", "c")
+    assert fix.fix is not None
+    assert fix.fix.time_limit_seconds == 30
+    assert fix.fix.counter_examples[0].expect_failures == frozenset({"parallel"})
+
+
+def test_an_impossible_question_is_reported_where_it_is() -> None:
+    payload = a_quiz_file()
+    payload["quiz"]["questions"][1]["answer"] = ["yes", "no"]
+    ((location, message),) = rejected(payload)
+    assert location == "quiz.questions.1"
+    assert "exactly one answer" in message
+
+
+def test_a_quiz_names_its_stub_answers_md() -> None:
+    payload = a_quiz_file()
+    payload["quiz"]["stub"] = "sheet.md"
+    ((location, message),) = rejected(payload)
+    assert location == "quiz"
+    assert "answers.md" in message

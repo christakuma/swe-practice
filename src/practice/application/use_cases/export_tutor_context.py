@@ -60,7 +60,8 @@ from practice.application.errors import AttemptNotFoundError, ExerciseNotFoundEr
 from practice.application.use_cases.inspect_repository import view_of
 from practice.domain.attempt import SolutionSaved
 from practice.domain.errors import PolicyViolationError
-from practice.domain.exercise import GitScenarioSpec, editable_source
+from practice.domain.exercise import GitScenarioSpec, QuizSpec, editable_source
+from practice.domain.quiz import answer_key_text
 
 if TYPE_CHECKING:
     from practice.application.dto import RepoView
@@ -145,7 +146,7 @@ class ExportTutorContext:
             language=editable.language if editable is not None else None,
             verdict=attempt.verdict,
             # With the verdict or not at all: see `TutorContext`.
-            notes=exercise.notes if graded else None,
+            notes=_notes(exercise) if graded else None,
         )
 
     def _repo(self, exercise: Exercise, workspace: Workspace | None) -> RepoView | None:
@@ -153,6 +154,21 @@ class ExportTutorContext:
         if workspace is None or not isinstance(exercise.spec, GitScenarioSpec):
             return None
         return view_of(self.repo_query(workspace))
+
+
+def _notes(exercise: Exercise) -> str:
+    """The author's write-up, and for a quiz the key and its explanations too.
+
+    A finished quiz shows every answer and why under its verdict
+    (`partials/quiz-review.html`), so by ADR 0023's rule the tutor sees them:
+    they are the post-mortem the solver has already been shown. They travel
+    with the notes because the notes are the one field that arrives exactly
+    when the verdict does, which is the boundary `TutorContext` describes.
+    """
+    spec = exercise.spec
+    if isinstance(spec, QuizSpec):
+        return f"{exercise.notes.strip()}\n\n{answer_key_text(spec.questions)}"
+    return exercise.notes
 
 
 def _source(

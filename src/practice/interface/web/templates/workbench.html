@@ -2,7 +2,12 @@
 {% set attempt = workbench.attempt %}
 {% set exercise = workbench.exercise %}
 
-{% block main_class %}{{ '' if is_kata else 'wide' }}{% endblock %}
+{#
+  Wide for a scenario's third column, and for a quiz, whose questions carry
+  their own evidence: a lock dump or a trace in a 40-character column is a
+  page of scrolling.
+#}
+{% block main_class %}{{ 'wide' if is_quiz or not is_kata else '' }}{% endblock %}
 
 {% block main %}
 <h1>{{ exercise.title }}</h1>
@@ -110,6 +115,23 @@
       <h2>Verdict</h2>
       {% include "partials/graded.html" %}
       <p><a href="/browse">Try another exercise</a></p>
+
+    {#
+      A quiz before a kata, because a quiz is editable too: its sheet is a
+      file, and `is_kata` -- *is there a file to edit* -- is true of it. It is
+      drawn as a form over the sheet instead of an editor showing it, and has
+      no own-editor button: a sheet edited in another editor is submitted with
+      `practice submit --source`, and grading it on every save would let a
+      solver flip answers until the page turned green without a try recorded.
+    #}
+    {% elif is_quiz %}
+      <h2>Questions</h2>
+      {% include "partials/quiz.html" %}
+      <div id="verdict">
+        {%- if last_failure %}
+          {% with verdict = last_failure %}{% include "partials/failed.html" %}{% endwith %}
+        {% endif -%}
+      </div>
 
     {% elif is_kata %}
       <h2>Your solution</h2>

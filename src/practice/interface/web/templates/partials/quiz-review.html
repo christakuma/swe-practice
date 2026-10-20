@@ -1,0 +1,58 @@
+{#
+  A finished quiz, question by question: what you answered, what was right,
+  and why each option is what it is.
+
+  **This is where a quiz teaches**, which is why it exists rather than the
+  verdict alone. A failed question said why the option chosen was wrong and
+  nothing more, so that a second submission was a second attempt at reasoning
+  rather than a copy; once the attempt is over, passed or conceded, there is
+  nothing left to protect, and every explanation the author wrote is shown.
+
+  Drawn under the verdict by `partials/graded.html`, from the same items the
+  form was drawn from, so the options appear in the order this solver saw.
+#}
+<section class="quiz-review">
+  <h2>The answers</h2>
+  {% for item in quiz_items %}
+    {% set question = item.question %}
+    <article class="reviewed">
+      <h3>{{ item.number }}. {{ question.label }}</h3>
+
+      {% if question.format.value in ("single", "multiple") %}
+        <ul class="options explained">
+          {% for option in item.options %}
+            {% set right = option.id in question.answer %}
+            {% set chosen = option.id in item.chosen %}
+            <li class="{{ 'right' if right else 'wrong' }}{{ ' chosen' if chosen }}">
+              <span class="mark">{{ 'right' if right else 'wrong' }}{{ ', your answer' if chosen }}</span>
+              <span class="text">{{ option.text }}</span>
+              <span class="why">{{ option.why }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+
+      {% elif question.format.value == "order" %}
+        <ol class="options explained">
+          {% for option in item.right %}
+            <li class="right">
+              <span class="text">{{ option.text }}</span>
+              <span class="why">{{ option.why }}</span>
+            </li>
+          {% endfor %}
+        </ol>
+        <p class="meta">Your order: {{ item.chosen | join(', ') if item.chosen else 'not answered' }}</p>
+
+      {% elif question.format.value == "line" %}
+        <p class="meta">
+          The line is {{ question.answer[0] }}:
+          <code>{{ question.lines[question.answer[0] | int - 1] | trim }}</code>.
+          Your answer: {{ item.chosen | join(', ') if item.chosen else 'not answered' }}.
+        </p>
+      {% endif %}
+
+      {% if question.explanation %}
+        <p class="explanation">{{ question.explanation }}</p>
+      {% endif %}
+    </article>
+  {% endfor %}
+</section>

@@ -21,6 +21,11 @@
   button inside it would have had to be re-rendered by a route that knows
   nothing about tracks.
 #}
+{#
+  And for a quiz, every answer and why, between the verdict and the schedule:
+  it is what the verdict was about, and a quiz teaches there or nowhere.
+#}
 {% include "partials/verdict.html" %}
+{% if quiz_items %}{% include "partials/quiz-review.html" %}{% endif %}
 {% include "partials/review.html" %}
 {% include "partials/next.html" %}

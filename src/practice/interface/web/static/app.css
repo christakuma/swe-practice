@@ -1442,3 +1442,191 @@ a.button {
   font-weight: 600;
   padding: 0.35rem 0.9rem;
 }
+
+/* --- a quiz (Phase 25) --------------------------------------------------- */
+
+/*
+ * One fieldset per question, each carrying its own context. The context keeps
+ * its author's line breaks and alignment, and wraps what is too long for the
+ * column, which is `pre-wrap` for the reason the prompt is: some of it is a
+ * lock dump or a table, and most of it is a sentence or two that would
+ * otherwise scroll off the right edge. The question under it is prose.
+ */
+.quiz .question {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem 0.8rem;
+  min-width: 0;
+}
+
+.quiz legend {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  padding: 0 0.3rem;
+}
+
+.quiz legend .format {
+  margin-left: 0.5rem;
+  color: var(--accent);
+}
+
+.quiz pre.context {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  background: var(--bg-sunken);
+  border-radius: 4px;
+  padding: 0.6rem 0.7rem;
+  margin: 0.3rem 0 0.6rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.quiz .ask {
+  font-weight: 600;
+  margin: 0.4rem 0 0.6rem;
+}
+
+.quiz .options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.quiz .options li {
+  margin: 0.35rem 0;
+}
+
+.quiz .options label {
+  display: flex;
+  gap: 0.55rem;
+  align-items: baseline;
+  cursor: pointer;
+}
+
+.quiz .steps code {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin-right: 0.3rem;
+}
+
+.quiz .order {
+  margin: 0.6rem 0 0;
+  padding-left: 1.6rem;
+}
+
+.quiz .order li {
+  margin: 0.3rem 0;
+}
+
+.quiz select {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  background: var(--bg-sunken);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.15rem 0.3rem;
+}
+
+/* A line question's snippet: radio, number, code, one row per line, and the
+   chosen row lit so the answer is visible without finding the dot. */
+/* Code does not wrap, so a long line scrolls inside the question rather than
+   pushing the snippet past the panel's edge. */
+.quiz .snippet-scroll {
+  overflow-x: auto;
+  border-radius: 4px;
+}
+
+.quiz table.snippet {
+  border-collapse: collapse;
+  width: 100%;
+  background: var(--bg-sunken);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.quiz table.snippet td {
+  padding: 0.05rem 0.4rem;
+  vertical-align: middle;
+}
+
+.quiz table.snippet pre {
+  margin: 0;
+  white-space: pre;
+}
+
+.quiz table.snippet label {
+  cursor: pointer;
+}
+
+.quiz table.snippet .lineno {
+  color: var(--ink-dim);
+  text-align: right;
+  user-select: none;
+}
+
+.quiz table.snippet tr:has(input:checked) {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.quiz textarea.fix-code {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+/* The finished quiz: every option marked right or wrong, the one chosen
+   marked as such, and every reason the author wrote. */
+.quiz-review article {
+  border-top: 1px solid var(--line);
+  padding: 0.6rem 0 0.2rem;
+}
+
+.quiz-review h3 {
+  font-size: 0.95rem;
+  margin: 0.2rem 0 0.4rem;
+}
+
+.quiz-review .options.explained {
+  margin: 0;
+  padding: 0;
+}
+
+.quiz-review .options.explained li {
+  display: grid;
+  gap: 0.15rem;
+  list-style: none;
+  margin: 0.4rem 0;
+  padding: 0.3rem 0.6rem;
+  border-left: 3px solid var(--line);
+}
+
+.quiz-review ol.options.explained li {
+  list-style: decimal inside;
+}
+
+.quiz-review .options.explained li.right {
+  border-left-color: var(--pass);
+}
+
+.quiz-review .options.explained li.wrong.chosen {
+  border-left-color: var(--fail);
+}
+
+.quiz-review .mark {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.quiz-review .why,
+.quiz-review .explanation {
+  color: var(--ink-dim);
+  font-size: 0.88rem;
+}

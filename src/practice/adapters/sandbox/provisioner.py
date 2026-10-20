@@ -57,6 +57,7 @@ from practice.domain.exercise import (
     ContainerSpec,
     GitScenarioSpec,
     KataSpec,
+    QuizSpec,
     SqlDrillSpec,
 )
 from practice.domain.ids import AttemptId, ExerciseId
@@ -199,8 +200,10 @@ class SubprocessSandboxProvisioner:
             self._install_kata_files(layout, directory=directory, spec=spec)
         elif isinstance(spec, SqlDrillSpec):
             self._install_drill_files(layout, directory=directory, spec=spec)
-        else:
+        elif isinstance(spec, ContainerSpec):
             self._install_container_files(layout, directory=directory, spec=spec)
+        else:
+            self._install_quiz_files(layout, directory=directory, spec=spec)
 
         return self._workspace(layout, policy=CommandPolicy.for_exercise(exercise))
 
@@ -356,6 +359,24 @@ class SubprocessSandboxProvisioner:
         """
         shutil.copytree(directory / spec.context, layout.repo, dirs_exist_ok=True)
         shutil.copyfile(directory / spec.stub, layout.repo / spec.stub)
+
+    def _install_quiz_files(
+        self, layout: WorkspaceLayout, *, directory: Path, spec: QuizSpec
+    ) -> None:
+        """Copy the answer sheet in, and each fix question's tests beside it.
+
+        The tests are there for a kata's reason: pytest runs them from the
+        workspace, and a solver who reads them has read the specification of
+        the fix, which is an accepted cost. **The key is not**: the answers
+        are on the spec, and `solution.md` and the fix counter-examples stay
+        in the content directory.
+        """
+        shutil.copyfile(directory / spec.stub, layout.repo / spec.stub)
+        for question in spec.fixes:
+            assert question.fix is not None  # noqa: S101  (a fix question has one)
+            shutil.copyfile(
+                directory / question.fix.tests, layout.repo / question.fix.tests
+            )
 
     def _install_drill_files(
         self, layout: WorkspaceLayout, *, directory: Path, spec: SqlDrillSpec

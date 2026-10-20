@@ -79,6 +79,7 @@ from practice.adapters.persistence import (
     SqliteAttemptRepository,
     SqliteReviewRepository,
 )
+from practice.adapters.quiz import QuizGrader
 from practice.adapters.sandbox import (
     SubprocessEditorLauncher,
     SubprocessSandboxProvisioner,
@@ -621,10 +622,9 @@ def build_graders(
     workspace the solver can change, and `build_services` is what knows which
     library is in use. `None` means the configured one.
     """
+    runner = kata_runner if kata_runner is not None else PytestKataRunner()
     graders: dict[ExerciseKind, Grader] = {
-        ExerciseKind.KATA: KataGrader(
-            kata_runner if kata_runner is not None else PytestKataRunner()
-        ),
+        ExerciseKind.KATA: KataGrader(runner),
         ExerciseKind.GIT_SCENARIO: ScenarioGrader(query_for),
         # No collaborator, and that is the whole report on the third kind's cost
         # here. `KataGrader` takes a runner because a pytest subprocess has to be
@@ -639,5 +639,9 @@ def build_graders(
         ExerciseKind.CONTAINER: ContainerGrader(
             library if library is not None else content_root()
         ),
+        # The fifth grades its choices in the domain and a fix question's code
+        # through the kata runner -- the same one, because it writes
+        # `solution.py` under the lock the Run button already shares.
+        ExerciseKind.QUIZ: QuizGrader(runner),
     }
     return GraderRegistry(graders=graders)

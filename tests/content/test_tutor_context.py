@@ -37,7 +37,7 @@ from practice.application.tutor import as_json, render_markdown
 from practice.application.use_cases import ExportTutorContext
 from practice.config import content_root
 from practice.domain.attempt import Attempt, AttemptPolicy
-from practice.domain.exercise import KataSpec
+from practice.domain.exercise import KataSpec, QuizSpec
 from practice.domain.ids import AttemptId
 from practice.domain.verdict import CheckReport, Severity, Verdict
 from tests.fakes import (
@@ -161,8 +161,21 @@ def _failing(exercise: Exercise) -> Verdict:
 
     A kata's checks are its hidden tests and exist only once pytest has run
     them, so there is no label on the exercise to leak and one report stands in.
+    A quiz's checks are its questions, one failing report each.
     """
     spec = exercise.spec
+    if isinstance(spec, QuizSpec):
+        return Verdict(
+            reports=tuple(
+                CheckReport(
+                    check_id=question.id,
+                    label=question.label,
+                    severity=Severity.REQUIRED,
+                    passed=False,
+                )
+                for question in spec.questions
+            )
+        )
     if isinstance(spec, KataSpec):
         return Verdict(
             reports=(
@@ -190,7 +203,15 @@ def _answers(exercise: Exercise) -> list[str]:
     """
     needles = [exercise.notes.strip()]
     spec = exercise.spec
-    if not isinstance(spec, KataSpec):
+    if isinstance(spec, QuizSpec):
+        # The key is the answers, and the teaching is every option's `why`
+        # and every question's explanation. The statement shows the options'
+        # text, which is the question rather than its answer.
+        for question in spec.questions:
+            needles.extend(option.why for option in question.options)
+            if question.explanation:
+                needles.append(question.explanation)
+    elif not isinstance(spec, KataSpec):
         for check in spec.checks:
             needles.append(check.label)
             if check.explanation:

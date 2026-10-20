@@ -1,0 +1,159 @@
+{#
+  A quiz's questions, as one form over `answers.md` (Phase 25).
+
+  **Plain inputs, posted by htmx, and no script deciding what an answer is.**
+  `interface/web/quiz.py` has the argument for one field name per question:
+  a radio group, a set of checkboxes and an order's run of selects all send a
+  list under `q:<id>`, and the route turns the lot into a sheet. A fix
+  question's code is a textarea; CodeMirror is laid over it below when the
+  Python mode is vendored, and hands its value back before the post.
+
+  **Each question carries its own context.** The ticket on the left says what
+  the incident is; a question that turns on a snippet, a number or a rule has
+  it in front of it, which is what lets a question be read on its own.
+
+  The options are in this attempt's order, not the author's, and nothing on
+  the page marks which is right: a reload after a failed submission redraws
+  the solver's own answers, from the last sheet the attempt saved.
+#}
+<form id="quiz-form" class="quiz"
+      hx-post="{{ answer_url }}"
+      hx-target="#verdict"
+      hx-swap="innerHTML"
+      hx-disabled-elt="find button[type=submit]">
+  {% if track_name %}<input type="hidden" name="track" value="{{ track_name }}">{% endif %}
+
+  {% for item in quiz_items %}
+    {% set question = item.question %}
+    <fieldset class="question" id="question-{{ question.id }}">
+      <legend>
+        <span class="number">{{ item.number }} of {{ quiz_items | length }}</span>
+        <span class="format">{{ formats[question.format.value] }}</span>
+      </legend>
+
+      {% if question.context %}
+        <pre class="context">{{ question.context }}</pre>
+      {% endif %}
+      <p class="ask">{{ question.prompt }}</p>
+
+      {% if question.format.value == "single" %}
+        <ul class="options">
+          {% for option in item.options %}
+            <li>
+              <label>
+                <input type="radio" name="{{ item.field }}" value="{{ option.id }}"
+                       {{ 'checked' if option.id in item.chosen }}>
+                <span>{{ option.text }}</span>
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+
+      {% elif question.format.value == "multiple" %}
+        <ul class="options">
+          {% for option in item.options %}
+            <li>
+              <label>
+                <input type="checkbox" name="{{ item.field }}" value="{{ option.id }}"
+                       {{ 'checked' if option.id in item.chosen }}>
+                <span>{{ option.text }}</span>
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+
+      {% elif question.format.value == "line" %}
+        {#
+          One radio per line, the line number and the code beside it. A table
+          so the numbers line up with the code they number; `pre` per cell so
+          the code keeps its indentation, which is half of what a line is.
+        #}
+        <div class="snippet-scroll">
+        <table class="snippet">
+          {% for text in question.lines %}
+            {% set number = loop.index | string %}
+            <tr>
+              <td class="pick">
+                <input type="radio" name="{{ item.field }}" value="{{ number }}"
+                       id="{{ question.id }}-line-{{ number }}"
+                       {{ 'checked' if number in item.chosen }}>
+              </td>
+              <td class="lineno"><label for="{{ question.id }}-line-{{ number }}">{{ number }}</label></td>
+              <td class="code"><label for="{{ question.id }}-line-{{ number }}"><pre>{{ text }}</pre></label></td>
+            </tr>
+          {% endfor %}
+        </table>
+        </div>
+
+      {% elif question.format.value == "order" %}
+        {#
+          The steps, shuffled, with an id each; then one select per position.
+          A select per position rather than a number per step, because then
+          the browser sends the steps in order and a step chosen twice reaches
+          the grader as exactly that, to be told so.
+        #}
+        <ul class="options steps">
+          {% for option in item.options %}
+            <li><code>{{ option.id }}</code> <span>{{ option.text }}</span></li>
+          {% endfor %}
+        </ul>
+        <ol class="order">
+          {% for position in item.options %}
+            {% set placed = item.chosen[loop.index0] if loop.index0 < item.chosen | length else '' %}
+            <li>
+              <select name="{{ item.field }}" aria-label="Step {{ loop.index }}">
+                <option value="" {{ 'selected' if not placed }}>choose a step</option>
+                {% for option in item.options %}
+                  <option value="{{ option.id }}" {{ 'selected' if option.id == placed }}>{{ option.id }}</option>
+                {% endfor %}
+              </select>
+            </li>
+          {% endfor %}
+        </ol>
+
+      {% else %}
+        <textarea class="fix-code" name="{{ item.field }}" spellcheck="false"
+                  rows="{{ [item.code.count('\n') + 3, 8] | max }}">{{ item.code }}</textarea>
+        <p class="meta">graded by a hidden test suite, on what the code does</p>
+      {% endif %}
+    </fieldset>
+  {% endfor %}
+
+  <div class="editor-actions">
+    <button type="submit">Submit answers</button>
+    <span class="meta">every question has to be right; a wrong answer says why it is wrong, not what is right</span>
+  </div>
+</form>
+
+{#
+  CodeMirror over each fix textarea, when the Python mode is vendored. The
+  values go back into the post through `htmx:configRequest`, which is the one
+  moment htmx has gathered the form and not yet sent it: CodeMirror's own
+  document is what is on screen, and the textarea under it stopped tracking
+  that the moment it was replaced.
+#}
+{% if python_mode_files %}
+  <script src="{{ static }}/vendor/codemirror.min.js"></script>
+  {% for mode_file in python_mode_files %}
+  <script src="{{ static }}/{{ mode_file }}"></script>
+  {% endfor %}
+  <script>
+    (function () {
+      var editors = [];
+      document.querySelectorAll("#quiz-form textarea.fix-code").forEach(function (area) {
+        var editor = CodeMirror.fromTextArea(area, {
+          mode: "python",
+          lineNumbers: true,
+          indentUnit: 4,
+          lineWrapping: false
+        });
+        editors.push({ name: area.name, editor: editor });
+      });
+      document.getElementById("quiz-form").addEventListener("htmx:configRequest", function (event) {
+        editors.forEach(function (entry) {
+          event.detail.parameters[entry.name] = entry.editor.getValue();
+        });
+      });
+    })();
+  </script>
+{% endif %}
