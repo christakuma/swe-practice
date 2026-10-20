@@ -38,12 +38,16 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 from practice.domain.errors import InvalidValueError
+from practice.domain.quiz.presentation import statement_text
+from practice.domain.quiz.questions import QuestionFormat
+from practice.domain.quiz.sheet import SHEET_FILE
 from practice.domain.verdict import Severity
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from practice.domain.ids import ExerciseId, Tag
+    from practice.domain.quiz.questions import Question
 
 __all__ = [
     "CONTAINER_FILES",
@@ -62,6 +66,7 @@ __all__ = [
     "Hint",
     "KataSpec",
     "ParamValue",
+    "QuizSpec",
     "SqlDrillSpec",
     "Variant",
     "editable_source",
@@ -86,6 +91,7 @@ class ExerciseKind(StrEnum):
     GIT_SCENARIO = "git_scenario"
     SQL_DRILL = "sql_drill"
     CONTAINER = "container"
+    QUIZ = "quiz"
 
 
 class Difficulty(StrEnum):
@@ -669,7 +675,96 @@ class ContainerSpec:
         raise InvalidValueError(f"no such check: {check_id!r}")
 
 
-type ExerciseSpec = KataSpec | GitScenarioSpec | SqlDrillSpec | ContainerSpec
+@dataclass(frozen=True, slots=True)
+class QuizSpec:
+    """An incident, the questions that walk through it, and the answer to each.
+
+    The fifth kind (Phase 25), and the first whose answer is not an artifact:
+    a choice, a line, an order, or -- for a `fix` question -- code its hidden
+    suite grades. `domain/quiz/questions.py` says why those formats and no
+    others; PLAN.md's Phase 25 entry is the argument with ADR 0003.
+
+    **One editable file, and it is the answer sheet.** `stub` is literally
+    `answers.md`, for the reason `ContainerSpec` names its stub `Dockerfile`:
+    the instructions a solver reads name the file, and the workspace should
+    be somewhere those instructions are true. That is what keeps this kind one
+    clause in `editable_source` -- the CLI's `submit --source`, the tutor
+    export and the MCP server read and write a sheet exactly as they do a
+    kata's `solution.py`. **The key is here, on the spec, and never copied to
+    the workspace**: the provisioner hands over the stub and a fix question's
+    tests, and leaves the reference and the answers behind.
+
+    `constraints` are the system's facts and rules -- how many threads, what
+    the timeout is, what the team will not give up -- as a list rather than a
+    paragraph, for the reason `KataSpec` gives: a constraint is looked up
+    halfway through choosing, not read once. They belong to the incident; a
+    rule only one question needs goes in that question's `context`.
+    """
+
+    stub: str
+    reference: str
+    questions: tuple[Question, ...]
+    constraints: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for name, value in (("stub", self.stub), ("reference", self.reference)):
+            if not value.strip():
+                raise InvalidValueError(f"a quiz needs a {name}")
+            validate_filename(value, field=name, subject="a quiz")
+        if self.stub != SHEET_FILE:
+            raise InvalidValueError(
+                f"a quiz is answered in {SHEET_FILE}, so its stub has that name, "
+                f"not {self.stub!r}"
+            )
+        if not self.questions:
+            raise InvalidValueError("a quiz needs at least one question")
+        ids = [question.id for question in self.questions]
+        duplicates = sorted({name for name in ids if ids.count(name) > 1})
+        if duplicates:
+            raise InvalidValueError(f"duplicate question ids: {', '.join(duplicates)}")
+        for question in self.fixes:
+            assert question.fix is not None  # noqa: S101  (a fix question has one)
+            for file in question.fix.files:
+                validate_filename(file, field="file", subject=f"fix {question.id!r}")
+        if any(not constraint.strip() for constraint in self.constraints):
+            raise InvalidValueError("a constraint cannot be blank")
+
+    @property
+    def kind(self) -> ExerciseKind:
+        return ExerciseKind.QUIZ
+
+    @property
+    def language(self) -> str:
+        """The editor mode a sheet opens in, should anything open one."""
+        return "markdown"
+
+    @property
+    def fixes(self) -> tuple[Question, ...]:
+        """The questions answered with code, in the order they are asked."""
+        return tuple(
+            question
+            for question in self.questions
+            if question.format is QuestionFormat.FIX
+        )
+
+    @property
+    def referenced_files(self) -> tuple[str, ...]:
+        """The sheets, then each fix question's tests and counter-examples."""
+        files = [self.stub, self.reference]
+        for question in self.fixes:
+            assert question.fix is not None  # noqa: S101  (a fix question has one)
+            files.extend(question.fix.files)
+        return tuple(files)
+
+    def question(self, question_id: str) -> Question:
+        """Look a question up by id, for the content suite."""
+        for candidate in self.questions:
+            if candidate.id == question_id:
+                return candidate
+        raise InvalidValueError(f"no such question: {question_id!r}")
+
+
+type ExerciseSpec = KataSpec | GitScenarioSpec | SqlDrillSpec | ContainerSpec | QuizSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -731,6 +826,10 @@ def editable_source(spec: ExerciseSpec) -> EditableSource | None:
             filename=spec.stub, language="sql", reference=spec.reference
         )
     if isinstance(spec, ContainerSpec):
+        return EditableSource(
+            filename=spec.stub, language=spec.language, reference=spec.reference
+        )
+    if isinstance(spec, QuizSpec):
         return EditableSource(
             filename=spec.stub, language=spec.language, reference=spec.reference
         )
@@ -837,16 +936,25 @@ class Exercise:
         Here rather than in either caller so that the terminal and the tutor
         cannot disagree about what the task says. Just the prompt for a
         scenario and a drill, which have nothing to add.
+
+        **A quiz adds its questions**, and for a sharper reason than a kata
+        adds its examples: at a terminal the statement is the only place the
+        questions are, so a quiz whose statement was its prompt could not be
+        answered from `practice start` at all. No answers and no
+        explanations, which `statement_text` promises.
         """
         sections = [self.prompt.strip()]
-        if isinstance(self.spec, KataSpec):
-            if self.spec.constraints:
-                bullets = [f"- {constraint}" for constraint in self.spec.constraints]
-                sections.append("\n".join(["Constraints:", *bullets]))
+        spec = self.spec
+        if isinstance(spec, KataSpec | QuizSpec) and spec.constraints:
+            bullets = [f"- {constraint}" for constraint in spec.constraints]
+            sections.append("\n".join(["Constraints:", *bullets]))
+        if isinstance(spec, KataSpec):
             sections.extend(
                 _example_text(number, example)
-                for number, example in enumerate(self.spec.examples, start=1)
+                for number, example in enumerate(spec.examples, start=1)
             )
+        if isinstance(spec, QuizSpec):
+            sections.append(statement_text(spec.questions))
         return "\n\n".join(sections)
 
 

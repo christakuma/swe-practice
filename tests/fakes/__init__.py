@@ -25,6 +25,8 @@ from tests.fakes.content import (
     a_container,
     a_drill,
     a_kata,
+    a_quiz,
+    a_quiz_spec,
     a_scenario,
 )
 from tests.fakes.drill import FakeDrillQuery, a_result
@@ -67,6 +69,8 @@ __all__ = [
     "a_container",
     "a_drill",
     "a_kata",
+    "a_quiz",
+    "a_quiz_spec",
     "a_record",
     "a_repo",
     "a_result",

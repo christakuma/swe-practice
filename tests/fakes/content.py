@@ -27,10 +27,12 @@ from practice.domain.exercise import (
     GitScenarioSpec,
     Hint,
     KataSpec,
+    QuizSpec,
     SqlDrillSpec,
     Variant,
 )
 from practice.domain.ids import ExerciseId, tag
+from practice.domain.quiz import FixSuite, Option, Question, QuestionFormat
 from practice.domain.verdict import Severity
 
 if TYPE_CHECKING:
@@ -44,6 +46,8 @@ __all__ = [
     "a_container",
     "a_drill",
     "a_kata",
+    "a_quiz",
+    "a_quiz_spec",
     "a_scenario",
 ]
 
@@ -208,6 +212,104 @@ def a_container(
             ),
         ),
     )
+
+
+def a_quiz(
+    *,
+    exercise_id: str = "systems/transfers-hang-under-load",
+    with_fix: bool = False,
+) -> Exercise:
+    """A quiz with one question of each choice format, and a fix if asked.
+
+    Small enough to read in a test and shaped like the real ones: every
+    question has its context, and each option says why it is what it is.
+    """
+    questions = [
+        Question(
+            id="which-line",
+            format=QuestionFormat.LINE,
+            label="The line that took the lock",
+            prompt="Which line took the lock worker-8 waits for?",
+            context="worker-3 holds acct:17",
+            snippet="with source.lock:\n    with target.lock:\n        pass",
+            answer=("1",),
+            explanation="The source's lock is taken first.",
+        ),
+        Question(
+            id="which-condition",
+            format=QuestionFormat.SINGLE,
+            label="The condition a lock order removes",
+            prompt="Which condition does a fixed order remove?",
+            context="Four conditions.",
+            options=(
+                Option("hold-and-wait", "Hold and wait", "Still held."),
+                Option("circular-wait", "Circular wait", "No cycle can form."),
+            ),
+            answer=("circular-wait",),
+        ),
+        Question(
+            id="which-checks",
+            format=QuestionFormat.MULTIPLE,
+            label="The tests that catch it",
+            prompt="Which of these catch it?",
+            context="Before production.",
+            options=(
+                Option("lock-graph", "A lock-order graph", "Deterministic."),
+                Option("load-test", "A load test", "Only by luck."),
+                Option("lockdep", "Lockdep", "Same idea."),
+            ),
+            answer=("lock-graph", "lockdep"),
+        ),
+        Question(
+            id="which-steps",
+            format=QuestionFormat.ORDER,
+            label="The steps, in order",
+            prompt="Put them in order.",
+            context="Each step finishes first.",
+            options=(
+                Option("drop", "Drop the column", "Last."),
+                Option("add", "Add the column", "First."),
+                Option("copy", "Copy the data", "Between."),
+            ),
+            answer=("add", "copy", "drop"),
+        ),
+    ]
+    if with_fix:
+        questions.append(
+            Question(
+                id="fix-it",
+                format=QuestionFormat.FIX,
+                label="Your fix",
+                prompt="Take the locks in id order.",
+                context="Accounts have .id and .lock.",
+                explanation="Sort by id.",
+                fix=FixSuite(tests="ledger_tests.py"),
+            )
+        )
+    return Exercise(
+        id=ExerciseId(exercise_id),
+        kind=ExerciseKind.QUIZ,
+        title="Transfers hang under load",
+        prompt="Transfers freeze a few times an hour.",
+        difficulty=Difficulty.MEDIUM,
+        tags=(tag("concurrency"),),
+        estimated_minutes=20,
+        hints=(Hint("Read the dump as a pair."),),
+        notes="A lock order decided by the data is not an order.",
+        spec=QuizSpec(
+            stub="answers.md",
+            reference="solution.md",
+            questions=tuple(questions),
+            constraints=("16 worker threads.", "Account ids are unique."),
+        ),
+    )
+
+
+def a_quiz_spec(*, with_fix: bool = True) -> QuizSpec:
+    """`a_quiz`'s spec, typed as one, for tests about the spec alone."""
+    spec = a_quiz(with_fix=with_fix).spec
+    assert isinstance(spec, QuizSpec)
+    return spec
 
 
 class FakeContentRepository:
