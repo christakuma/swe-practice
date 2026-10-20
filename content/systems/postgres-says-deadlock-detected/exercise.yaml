@@ -1,0 +1,239 @@
+schema_version: 1
+id: systems/postgres-says-deadlock-detected
+kind: quiz
+title: Postgres says "deadlock detected" every night at two
+difficulty: medium
+tags: [concurrency, deadlocks, postgres, transactions]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket BILL-58** — *payments fail with "deadlock detected" during the
+  nightly settlement*
+
+  > Between 02:00 and 02:20, while the settlement job runs, about one payment
+  > in three hundred fails with a 500. The job itself logs the same error a
+  > few times a night and carries on. Nobody has seen it outside that window.
+
+  Two code paths touch the same two tables. Each runs its statements inside
+  one transaction:
+
+  ```
+  -- apply_payment: the API, when a customer pays an invoice
+  BEGIN;
+  UPDATE accounts SET balance = balance - :amount WHERE id = :account_id;
+  UPDATE invoices SET paid = paid + :amount       WHERE id = :invoice_id;
+  COMMIT;
+
+  -- settle_invoice: the nightly job, once per invoice due today
+  BEGIN;
+  UPDATE invoices SET status = 'settled'          WHERE id = :invoice_id;
+  UPDATE accounts SET balance = balance + :credit WHERE id = :account_id;
+  COMMIT;
+  ```
+
+  From the Postgres log, at 02:07:13:
+
+  ```
+  ERROR:  deadlock detected
+  DETAIL:  Process 4121 waits for ShareLock on transaction 99812; blocked by process 4170.
+          Process 4170 waits for ShareLock on transaction 99807; blocked by process 4121.
+  HINT:  See server log for query details.
+  CONTEXT:  while updating tuple (12,7) in relation "invoices"
+  ```
+
+  Process 4121 is an API connection running `apply_payment`. Process 4170 is
+  the settlement job running `settle_invoice` for the same invoice.
+
+hints:
+  - "An `UPDATE` locks the row it changes until the transaction ends. Follow which row each transaction locked first."
+  - "The CONTEXT line says which table 4121 was trying to update when it was told about the deadlock."
+  - "Two transactions that lock the same two rows can only wait on each other in a circle if they take them in opposite orders."
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "PostgreSQL 16, default settings: READ COMMITTED isolation, and `deadlock_timeout` is 1 second."
+    - "Both code paths must stay atomic: a payment that debits the account without crediting the invoice is a bug that loses money."
+    - "The API serves about 40 payments a second at 02:00; the job settles about 30,000 invoices in twenty minutes."
+  questions:
+    - id: which-statement-holds-it
+      format: line
+      label: The statement holding the row 4121 is waiting for
+      context: >2-
+          CONTEXT:  while updating tuple (12,7) in relation "invoices"
+
+        Process 4121 (apply_payment) was blocked updating a row of invoices,
+        and process 4170 (settle_invoice) holds that row's lock.
+      prompt: >-
+        Which statement, in the two transactions below, took the lock that
+        process 4121 is waiting for?
+      snippet: |
+        -- apply_payment (process 4121)
+        BEGIN;
+        UPDATE accounts SET balance = balance - :amount WHERE id = :account_id;
+        UPDATE invoices SET paid = paid + :amount       WHERE id = :invoice_id;
+        COMMIT;
+
+        -- settle_invoice (process 4170)
+        BEGIN;
+        UPDATE invoices SET status = 'settled'          WHERE id = :invoice_id;
+        UPDATE accounts SET balance = balance + :credit WHERE id = :account_id;
+        COMMIT;
+      snippet_language: sql
+      answer: 9
+      explanation: >-
+        `settle_invoice` updated the invoice first (line 9) and holds that row
+        lock until it commits. `apply_payment` updated the account first (line
+        3), so when it reached the invoice on line 4 it had to wait for 4170.
+        4170 meanwhile reached the account on line 10 and waits for 4121. The
+        two transactions lock the same two rows in opposite orders, which is
+        the same shape as two threads taking two mutexes in opposite orders.
+
+    - id: what-postgres-did
+      format: single
+      label: What Postgres did about the deadlock
+      context: >2-
+          ERROR:  deadlock detected
+          DETAIL:  Process 4121 waits for ShareLock on transaction 99812; blocked by process 4170.
+                  Process 4170 waits for ShareLock on transaction 99807; blocked by process 4121.
+
+        The API logged a 500 for this payment. The job logged the same error
+        for one invoice, a few seconds later, on a different night.
+      prompt: What happened to the two transactions once the deadlock was found?
+      options:
+        - id: both-rolled-back
+          text: >-
+            Both transactions were rolled back, and both callers got the
+            error.
+          why: >-
+            Rolling back both would be safe and wasteful. Postgres breaks the
+            cycle by aborting one, which is enough, and the other carries on as
+            though it had only waited a while.
+        - id: lock-timeout
+          text: >-
+            Both kept waiting until `lock_timeout` expired, and then the first
+            to time out failed.
+          why: >-
+            `lock_timeout` is off by default, and a deadlock is not a timeout.
+            After `deadlock_timeout` (1s) the waiting backend runs the deadlock
+            check, finds the cycle, and the error is raised immediately.
+        - id: one-aborted
+          text: >-
+            One was aborted with error 40P01, and the other went on to
+            commit.
+          why: >-
+            The backend whose check finds the cycle cancels its own
+            transaction, here 4121, the API. Its row locks are released, 4170
+            gets the account row and commits. On the nights the job was the
+            one to run the check, the job got the error instead.
+        - id: connection-killed
+          text: >-
+            Postgres terminated the API's connection, and the pool reconnected.
+          why: >-
+            The connection survives. Only the transaction is aborted, and the
+            session must issue ROLLBACK before it can do anything else, but
+            nothing is disconnected.
+      answer: one-aborted
+
+    - id: which-changes-prevent-it
+      format: multiple
+      label: The changes that stop the deadlock from forming
+      context: >-
+        From the constraints: both code paths must stay atomic, and neither
+        may give up correctness for speed.
+      prompt: >-
+        Which of these would stop this deadlock from forming? Choose every one
+        that works and keeps both transactions atomic.
+      options:
+        - id: same-table-order
+          text: >-
+            Reorder `settle_invoice` so it updates `accounts` before
+            `invoices`, the same order `apply_payment` uses.
+          why: >-
+            With both transactions taking the account row first, whichever
+            gets it makes the other wait *before* it has locked the invoice.
+            No cycle can form between these two paths. Every path that touches
+            both tables has to follow the same order, which is worth a comment
+            in the code.
+        - id: lock-account-up-front
+          text: >-
+            Start `settle_invoice` with `SELECT 1 FROM accounts WHERE id =
+            :account_id FOR UPDATE`, then run its two updates as they are.
+          why: >-
+            `FOR UPDATE` takes the account row's lock first, so the job now
+            locks account then invoice, the same order as the API, even though
+            its UPDATE statements are still written invoice-first. It is the
+            same fix as reordering, done explicitly.
+        - id: longer-deadlock-timeout
+          text: Raise `deadlock_timeout` from 1 second to 10.
+          why: >-
+            That changes how long Postgres waits before *checking* for a
+            deadlock, not whether there is one. Both transactions would sit
+            locked for ten seconds, blocking everything queued behind those
+            rows, and then one would fail exactly as before.
+        - id: read-uncommitted
+          text: Run both transactions at READ UNCOMMITTED.
+          why: >-
+            Postgres treats READ UNCOMMITTED as READ COMMITTED, and at every
+            isolation level an UPDATE locks the row it changes until commit.
+            Isolation decides what you can *see*, not what you must *lock* to
+            write.
+        - id: autocommit
+          text: >-
+            Run each UPDATE in its own transaction (autocommit), so no
+            transaction ever holds two row locks.
+          why: >-
+            It removes the deadlock and the atomicity with it: a crash between
+            the two statements leaves an account debited and the invoice
+            unpaid. The constraints rule it out.
+      answer: [same-table-order, lock-account-up-front]
+
+    - id: what-the-api-does-on-40p01
+      format: single
+      label: What the application should do when it gets 40P01
+      context: >-
+        After the reorder, these two paths cannot deadlock each other. The
+        team wants the API to survive the next one, from a code path someone
+        writes next year in the wrong order.
+
+
+        When a statement fails with 40P01 inside a transaction, the whole
+        transaction is aborted: every further statement in it fails with
+        25P02 ("current transaction is aborted") until ROLLBACK.
+      prompt: When a payment's transaction fails with SQLSTATE 40P01, what should the API do?
+      options:
+        - id: retry-the-statement
+          text: >-
+            Run the statement that failed again, then continue the transaction
+            and commit.
+          why: >-
+            The transaction is already aborted, so the retried statement fails
+            with 25P02, and so does the COMMIT. Nothing in an aborted
+            transaction can be resumed.
+        - id: retry-the-transaction
+          text: >-
+            Roll back, then run the whole transaction again from BEGIN, a few
+            times at most, with a short randomised pause between tries.
+          why: >-
+            40P01 is one of the errors Postgres expects clients to retry: the
+            other transaction has gone ahead, so a fresh attempt usually
+            succeeds. The cap stops a real bug looping forever, and the jitter
+            keeps two retrying clients from colliding in step again.
+        - id: report-success
+          text: >-
+            Return success to the customer, because the deadlock was the
+            database's problem and Postgres resolved it.
+          why: >-
+            Postgres resolved it by rolling this payment back. Reporting success
+            for a payment that was never recorded is the worst of the options.
+        - id: page-someone
+          text: >-
+            Return a 500 and page the on-call engineer, since a deadlock means
+            a bug in the code.
+          why: >-
+            A deadlock between two correct transactions is possible whenever
+            orders differ, and the database resolved it in a second. Paging for
+            each one turns a retryable error into an alert storm; alert on the
+            *rate* of 40P01 instead.
+      answer: retry-the-transaction

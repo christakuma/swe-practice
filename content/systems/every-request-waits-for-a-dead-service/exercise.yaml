@@ -1,0 +1,239 @@
+schema_version: 1
+id: systems/every-request-waits-for-a-dead-service
+kind: quiz
+title: The recommendations widget took down the product page
+difficulty: medium
+tags: [resilience, timeouts, circuit-breakers]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket WEB-517** — *product pages failing; recommendations service down*
+
+  > The recommendations service went down at 09:14: its hosts stopped
+  > answering, and connections to them hang rather than being refused. By
+  > 09:16 product pages were taking five seconds and then failing with 503s,
+  > though "You may also like" is the only part of the page that comes from
+  > recommendations.
+
+  Product service, per instance, before and after 09:14:
+
+  ```
+                       09:10     09:16
+  requests/s              40        40
+  p50 latency         120 ms    5,100 ms
+  busy worker threads     9/64     64/64
+  requests queued          0       310
+  503s/s                   0        22
+  ```
+
+  The product service calls recommendations synchronously, from the request's
+  worker thread, while it builds every product page.
+
+hints:
+  - "A thread blocked on a network call still occupies a thread. How many does a request need, and for how long?"
+  - "The widget is optional. What should the page do when the thing that fills it is down, and what should it stop doing?"
+  - "A breaker that never sends another request cannot tell when the service is back. How does it find out?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "Each product service instance has 64 worker threads and receives about 40 requests a second."
+    - "Each call to recommendations has a 5-second timeout and no retries."
+    - "Healthy recommendations latency: p50 40 ms, p99 180 ms, p99.9 240 ms."
+    - "A product page must render, without the widget if need be, whatever state recommendations is in."
+  questions:
+    - id: why-the-page-failed
+      format: single
+      label: Why an optional widget took the page down
+      context: >-
+        64 worker threads per instance, 40 requests a second per instance.
+        Every request now waits the full 5-second timeout for
+        recommendations before it can finish.
+      prompt: >-
+        How many worker threads would each instance need to keep up, and what
+        follows from the answer?
+      options:
+        - id: two-hundred-threads
+          text: >-
+            About 200, so requests queue for one of the 64 and whole pages
+            fail.
+          why: >-
+            Little's law again: threads in use = arrival rate × time each is
+            held = 40/s × 5 s = 200. With 64, the excess queues, the queue
+            grows, and requests that wait too long are refused with 503. The
+            dependency that failed was optional; the thread pool it exhausted
+            was not.
+        - id: enough-threads
+          text: "64 is enough: a thread waiting on the network uses no CPU, so a
+            waiting request costs nothing."
+          why: >-
+            Waiting costs no CPU, and it does cost the thread. The pool is
+            counted in threads, and each blocked request holds one for 5 s.
+        - id: forty-threads
+          text: >-
+            About 40, one per request arriving each second, which 64 covers.
+          why: >-
+            That would hold if each request finished within a second. They
+            take five, so five seconds' arrivals are in flight at once.
+        - id: three-hundred-twenty-threads
+          text: >-
+            About 320 (64 × 5), because each thread is now five times slower.
+          why: >-
+            The demand comes from the arrival rate, not the pool's size:
+            40 requests a second held for 5 s each is 200, whatever the pool.
+      answer: two-hundred-threads
+
+    - id: what-the-page-should-do
+      format: single
+      label: What the page should do while recommendations is down
+      context: >-
+        A product page must render, without the widget if need be, whatever
+        state recommendations is in. Recommendations has been down for two
+        minutes and every call has timed out.
+      prompt: What should the product service do on the next request?
+      options:
+        - id: shorter-timeout
+          text: >-
+            Keep calling recommendations on every request, but with a 300 ms
+            timeout instead of 5 seconds.
+          why: >-
+            Much better than 5 s, and still not right: every page pays 300 ms
+            waiting for an answer that will not come, and the service keeps
+            sending a dead dependency 40 requests a second per instance.
+        - id: retry-twice
+          text: >-
+            Call it, and retry twice on a timeout in case it has just come
+            back.
+          why: >-
+            Three timeouts instead of one: each page now waits up to three
+            times as long, and recommendations gets three times the traffic
+            the moment it tries to come back.
+        - id: fail-the-page
+          text: >-
+            Return a 503 for the whole page, because part of it cannot be
+            built.
+          why: >-
+            The constraints say the page renders regardless. An optional
+            widget is the one part of a page whose failure should not be the
+            page's failure.
+        - id: fail-fast
+          text: >-
+            Stop calling it for a while, render without the widget, and check
+            now and then.
+          why: >-
+            That is a circuit breaker with a fallback: once failures pass a
+            threshold, calls fail immediately (an empty widget) without a
+            network round trip or a held thread, and periodic trial calls
+            notice the recovery.
+      answer: fail-fast
+
+    - id: after-the-cool-down
+      format: single
+      label: What the breaker does after its cool-down
+      context: >-
+        The breaker opened at 09:14:20 after 20 failures in 10 seconds. It is
+        configured with a 30-second cool-down, and recommendations may or may
+        not be back by then.
+      prompt: What should the breaker do when the 30 seconds are up?
+      options:
+        - id: close-fully
+          text: Close, and send every request to recommendations again.
+          why: >-
+            If recommendations is still down, every request waits on it again
+            until 20 more fail. If it is just coming back, it meets the full
+            load at once, which can knock it over again.
+        - id: half-open
+          text: >-
+            Let a few trial requests through, and close or reopen on how they
+            go.
+          why: >-
+            The half-open state: a small probe answers "is it back?" at the
+            cost of a few slow requests rather than all of them. Success
+            closes the breaker; failure restarts the cool-down.
+        - id: wait-for-a-human
+          text: Stay open until an engineer resets it by hand.
+          why: >-
+            Then every blip becomes an outage of the widget that lasts until
+            someone notices, which can be hours. The breaker can find out on
+            its own.
+        - id: close-with-short-timeout
+          text: >-
+            Close, but give every call a 300 ms timeout for the first minute
+            after.
+          why: >-
+            Every request still goes to a service that may be dead, each now
+            costing 300 ms. A probe does the same job with a handful.
+      answer: half-open
+
+    - id: what-counts-as-failure
+      format: multiple
+      label: What the breaker should count as a failure
+      context: >-
+        The breaker opens after 20 failures in 10 seconds. Recommendations
+        answers 404 when it has nothing to recommend for a product, which is
+        common for new products.
+      prompt: Which responses should count towards opening the breaker? Choose every one.
+      options:
+        - id: timeouts
+          text: A call that times out.
+          why: >-
+            The clearest signal that the service is unhealthy, and the one
+            that costs the caller most while it continues.
+        - id: refused
+          text: A connection refused.
+          why: >-
+            Nothing is listening. It is cheap to detect, and it means the
+            service is not there.
+        - id: unavailable
+          text: A 503 Service Unavailable.
+          why: >-
+            The service is saying it cannot serve right now, which is what a
+            breaker exists to respect.
+        - id: not-found
+          text: A 404 for a product with no recommendations.
+          why: >-
+            That is a correct answer from a healthy service. Counting it would
+            open the breaker on a busy day of new products and turn off a
+            working widget.
+        - id: bad-request
+          text: A 400, because the product service sent a malformed request.
+          why: >-
+            That is the caller's bug, and the service is fine. Opening the
+            breaker would hide the bug and cut the healthy requests too; it
+            belongs in an error log and an alert.
+      answer: [timeouts, refused, unavailable]
+
+    - id: choose-the-timeout
+      format: single
+      label: The timeout for calls to recommendations
+      context: >-
+        Healthy recommendations latency: p50 40 ms, p99 180 ms, p99.9 240 ms.
+        Every timeout counts as a failure towards opening the breaker.
+      prompt: Which timeout should the product service use?
+      options:
+        - id: five-seconds
+          text: Keep 5 seconds, so no healthy call is ever cut off.
+          why: >-
+            No healthy call takes anywhere near 5 s, so the extra 4.7 s buys
+            nothing, and it is how long each thread is held when the service
+            is down.
+        - id: at-the-p99
+          text: 180 ms, the healthy p99.
+          why: >-
+            One healthy call in a hundred takes longer than that, so the
+            breaker sees a steady 1% failure rate from a service that is fine,
+            and at 40 requests a second that adds up.
+        - id: above-the-p999
+          text: About 250 ms, just above the healthy p99.9.
+          why: >-
+            Fewer than one healthy call in a thousand is cut off, and a dead
+            service costs each request at most a quarter of a second until
+            the breaker opens. Set from measured latency, not a round number.
+        - id: near-the-median
+          text: 50 ms, just above the median, to keep the page fast.
+          why: >-
+            The median is 40 ms, so a large share of calls that would have
+            succeeded take longer than 50 ms and would time out. The breaker
+            would open against a working service.
+      answer: above-the-p999

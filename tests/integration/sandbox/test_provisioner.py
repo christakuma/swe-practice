@@ -22,7 +22,7 @@ from practice.adapters.sandbox.env import FIXTURE_EPOCH, FIXTURE_STEP
 from practice.adapters.sandbox.fixture_runner import FixtureError
 from practice.config import content_root
 from practice.domain.exercise import ExerciseKind
-from practice.domain.ids import AttemptId
+from practice.domain.ids import AttemptId, ExerciseId
 from tests.integration.sandbox.conftest import FLAGSHIP, RECOVERY, scenario
 
 if TYPE_CHECKING:
@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     from practice.adapters.content import FilesystemContentRepository
     from practice.adapters.sandbox import SubprocessWorkspace
     from practice.domain.exercise import Exercise
-    from practice.domain.ids import ExerciseId
 
 
 # --- what a fixture leaves behind ------------------------------------------
@@ -233,6 +232,31 @@ def test_a_katas_reference_solution_is_not_copied_in(
     workspace = provisioner.provision(kata, attempt_id)
     try:
         assert not (workspace.repo / "solution.py").exists()
+    finally:
+        workspace.dispose()
+
+
+def test_a_quiz_gets_its_sheet_and_its_fixs_tests_and_no_answers(
+    provisioner: SubprocessSandboxProvisioner,
+    library: FilesystemContentRepository,
+    attempt_id: AttemptId,
+) -> None:
+    """Phase 25: the sheet to answer in, and the suite pytest runs a fix with.
+
+    The reference sheet and the wrong fixes stay in the library, and so does
+    the key, which lives on the spec rather than in any file the workspace
+    could be handed.
+    """
+    quiz = library.get(ExerciseId("systems/transfers-hang-under-load"))
+    assert quiz is not None
+
+    workspace = provisioner.provision(quiz, attempt_id)
+    try:
+        names = sorted(path.name for path in workspace.repo.iterdir())
+        assert "answers.md" in names
+        assert "ledger_tests.py" in names
+        assert "solution.md" not in names
+        assert "one-ledger-lock.py" not in names
     finally:
         workspace.dispose()
 

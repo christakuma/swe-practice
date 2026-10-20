@@ -6,8 +6,8 @@
 #
 # Tracks here are pedagogical and finer than the three directories on disk. An
 # exercise id is exactly <track>/<slug> and the loader enforces two path
-# segments, so `git/`, `katas/`, `sql/` and `docker/` are all the filesystem can express;
-# the twenty-two runs below are a second grouping over the same files, and
+# segments, so `git/`, `katas/`, `sql/`, `docker/` and `systems/` are all the filesystem
+# can express; the twenty-three runs below are a second grouping over the same files, and
 # nothing is moved to express them.
 #
 # Within a track the order is difficulty and dependency: an exercise should only
@@ -58,13 +58,20 @@ tracks:
   # and the first Docker exercise took it. Git and katas keep two each: they
   # are most of the library, and Two Sum on the dashboard is what the e2e
   # suite asks for. A fifth kind would have to take a git or kata row.
+  #
+  # Phase 25's fifth kind took a git row. `amend-the-last-commit` moved to
+  # the head of `git-foundations`, which is the section it was always the
+  # first lesson of, and no track's order changed for it. Katas keep two
+  # because they are four-fifths of the library. The quiz on the first
+  # screen is the N+1 page, the easiest of the eight and the bug a new
+  # engineer is likeliest to have already written.
   - name: start-here
     title: "Start here: one of each, nothing clever"
     exercises:
       - git/publish-a-branch-for-review
       - katas/two-sum
       - sql/newest-customers-first
-      - git/amend-the-last-commit
+      - systems/the-order-page-takes-four-seconds
       - katas/valid-parentheses
       - docker/dockerize-a-python-web-service
 
@@ -90,6 +97,7 @@ tracks:
   - name: git-foundations
     title: "Git: the operations you undo things with"
     exercises:
+      - git/amend-the-last-commit
       - git/move-commits-off-main
       - git/squash-fixups-before-pushing
       - git/drop-a-secret-from-a-commit
@@ -458,3 +466,25 @@ tracks:
       - docker/unable-to-open-database-file
       - docker/the-api-starts-before-the-database
       - docker/node-modules-vanished
+
+  # Phase 25's quizzes: incidents to diagnose, with a fix here and there.
+  # The N+1 page is in `start-here`; these are the other seven.
+  #
+  # Reading numbers first (percentiles and Little's law), because three of
+  # the later incidents are Little's law in disguise. Then the double
+  # charge, which is easy and which the retry storm leans on. The two
+  # deadlocks are a pair, threads before Postgres, because the second's
+  # whole point is that row locks are the first one's mutexes. The dead
+  # dependency, then the rollout, and the retry storm last: it is the one
+  # hard incident, and it assumes the circuit breaker and the idempotency
+  # key have both been met.
+  - name: systems
+    title: "Systems: incidents to diagnose, and the occasional fix"
+    exercises:
+      - systems/p99-is-ten-times-p50
+      - systems/charged-twice-on-retry
+      - systems/transfers-hang-under-load
+      - systems/postgres-says-deadlock-detected
+      - systems/every-request-waits-for-a-dead-service
+      - systems/the-rollout-broke-halfway
+      - systems/a-blip-became-an-outage

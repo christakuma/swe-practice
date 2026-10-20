@@ -1,0 +1,236 @@
+schema_version: 1
+id: systems/p99-is-ten-times-p50
+kind: quiz
+title: The average is fine, and checkout still misses its SLO
+difficulty: easy
+tags: [performance, latency, observability]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket OPS-140** — *checkout latency review before the sale*
+
+  > Checkout has an SLO of 99% of requests under 300 ms. The team lead's
+  > summary of last hour: "Mean is 48 ms, way under 300. We're fine for the
+  > sale." The SRE on call disagrees and wants the numbers read properly
+  > before Friday.
+
+  Last hour, checkout service, all 12 instances:
+
+  ```
+  requests     1,204,311
+  mean            48 ms
+  p50             22 ms
+  p90             61 ms
+  p99            410 ms
+  max          9,812 ms
+  ```
+
+  Each request to checkout queries the orders database through a connection
+  pool, and the product page, which calls checkout's pricing endpoint among
+  others, is also on the review.
+
+hints:
+  - "A percentile is a statement about a fraction of requests. Say what p99 = 410 ms means as a sentence about requests."
+  - "If a page needs five independent calls to all be fast, what is the chance that every one of them is?"
+  - "A pool of connections finishes work at a fixed rate. Requests arriving faster than that rate do not take a little longer; they wait in line."
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "The SLO is about individual requests: 99% of them must complete in under 300 ms."
+    - "Latencies are measured at the service, from request received to response sent."
+    - "The orders database pool has 20 connections and queues callers when all are busy, failing a caller after 30 seconds of waiting."
+    - "Each instance computes its own percentiles over its own requests."
+  questions:
+    - id: read-the-numbers
+      format: single
+      label: What the dashboard says about the SLO
+      context: |
+        SLO: 99% of requests under 300 ms.
+
+        mean 48 ms    p50 22 ms    p90 61 ms    p99 410 ms    max 9,812 ms
+      prompt: Which statement about these numbers is right?
+      options:
+        - id: mean-is-under
+          text: >-
+            The SLO is met: the mean of 48 ms is far below 300 ms, so nearly
+            every request is.
+          why: >-
+            A mean says nothing about how many requests are slow. A thousand
+            requests at 22 ms and ten at 4 seconds average to about 62 ms.
+            The tail is exactly the part a mean dilutes, and the SLO is about
+            the tail.
+        - id: one-percent-over
+          text: >-
+            The SLO is missed: p99 is 410 ms, so more than 1% of requests took
+            longer than 300 ms.
+          why: >-
+            p99 = 410 ms means 99% of requests took 410 ms or less, and so
+            fewer than 99% took 300 ms or less. Last hour that is more than
+            12,000 requests over the line.
+        - id: slowest-was-410
+          text: The slowest checkout last hour took 410 ms.
+          why: >-
+            That is the max, which was 9.8 seconds. p99 is the time 1% of
+            requests exceeded: about 12,000 requests last hour were slower
+            than 410 ms.
+        - id: half-took-22
+          text: Half of all requests took 22 ms.
+          why: >-
+            p50 is the median: half took 22 ms *or less*, and half took 22 ms
+            or more. Almost none took exactly 22.
+      answer: one-percent-over
+
+    - id: fan-out
+      format: single
+      label: How often a fan-out page hits a slow call
+      context: >-
+        The product page calls five backends in parallel and waits for all
+        five. Each backend, independently, has p99 = 410 ms and is usually
+        far faster.
+      prompt: >-
+        Roughly what fraction of product page loads wait on at least one call
+        of 410 ms or more?
+      options:
+        - id: one-percent
+          text: About 1%, the same as each backend.
+          why: >-
+            Each call has a 1% chance of being slow, and the page needs all
+            five to be fast. It gets five chances to be slow.
+        - id: five-percent
+          text: About 5%.
+          why: >-
+            The chance that all five calls are fast is 0.99 to the fifth,
+            about 0.951, so about 4.9% of pages wait on a slow one. The
+            backends' p99 is close to the page's p95. This is why fan-out
+            services care about p99.9.
+        - id: tiny
+          text: About 0.00000001%, the chance that all five are slow at once.
+          why: >-
+            That is 0.01 to the fifth, the chance that *every* call is slow.
+            The page waits for the slowest call, so one slow call is enough.
+        - id: two-seconds
+          text: >-
+            Every page takes at least five times 410 ms, about two seconds.
+          why: >-
+            The calls run in parallel, so the page waits for the slowest one,
+            not the sum. And 410 ms is a tail value, not a typical one.
+      answer: five-percent
+
+    - id: pool-capacity
+      format: single
+      label: What the connection pool can serve
+      context: >-
+        The orders database pool: 20 connections. Each query holds a
+        connection for 50 ms, from checkout to return.
+      prompt: What is the most queries per second this pool can complete?
+      options:
+        - id: twenty
+          text: 20 per second.
+          why: >-
+            That would be true if each query took a whole second. Each
+            connection finishes 20 queries a second (1 s ÷ 50 ms).
+        - id: one-thousand
+          text: 1,000 per second.
+          why: >-
+            That is 50 connections' worth, or 20 connections at 20 ms each. At
+            50 ms, each connection completes 20 queries a second.
+        - id: four-hundred
+          text: 400 per second.
+          why: >-
+            Little's law: concurrency = throughput × time in the system. With
+            20 connections busy and 50 ms each, throughput is 20 ÷ 0.05 s =
+            400 queries a second. No amount of waiting gets more than that
+            through 20 connections.
+        - id: unlimited
+          text: >-
+            There is no fixed limit: the pool queues callers, so it serves
+            whatever arrives, more slowly.
+          why: >-
+            The queue holds callers; it does not serve them. Completions per
+            second are capped by connections ÷ time held, and a queue only
+            changes what happens to the rest.
+      answer: four-hundred
+
+    - id: over-capacity
+      format: single
+      label: What happens above capacity
+      context: >-
+        The pool completes at most 400 queries a second. During the sale's
+        first two minutes, queries arrive at 450 a second. The pool queues
+        callers when every connection is busy, and fails a caller after 30
+        seconds of waiting.
+      prompt: What happens to query latency during those two minutes?
+      options:
+        - id: a-bit-slower
+          text: >-
+            Each query takes about 12% longer, about 56 ms instead of 50, for
+            the two minutes.
+          why: >-
+            Latency does not scale with the overload ratio. Above capacity, 50
+            queries a second join a queue that nothing drains, so the wait
+            keeps growing for as long as the excess lasts.
+        - id: the-excess-fails
+          text: >-
+            About 50 queries a second fail at once, and the other 400 are
+            unaffected.
+          why: >-
+            That is what a pool with no queue would do: fail fast. This pool
+            queues, so the excess waits, and every query behind it waits too.
+        - id: the-queue-grows
+          text: Waits keep climbing for as long as the peak lasts.
+          why: >-
+            After 60 s the backlog is about 3,000 queries, which takes 3,000 ÷
+            400 = 7.5 s to drain, so a new query waits about that long; after
+            120 s it is about 15 s. Four minutes would reach the pool's
+            30-second limit and callers would start failing. A service run
+            near capacity has a cliff, not a slope.
+        - id: pool-grows
+          text: >-
+            The pool opens more connections to absorb the peak, so latency
+            barely moves.
+          why: >-
+            The pool is fixed at 20, and even an elastic one is capped by what
+            the database will accept.
+      answer: the-queue-grows
+
+    - id: combine-instances
+      format: multiple
+      label: How to get one p99 for twelve instances
+      context: >-
+        Each of the 12 checkout instances reports its own p99, computed over
+        its own requests. The dashboard needs one p99 for the whole service.
+      prompt: >-
+        Which of these give the service's p99? Choose every one that does.
+      options:
+        - id: average-the-p99s
+          text: Average the 12 instances' p99 values.
+          why: >-
+            Percentiles do not average. One instance with a bad tail and
+            eleven with good ones averages to a number no request experienced,
+            and it ignores how much traffic each instance served.
+        - id: merge-histograms
+          text: >-
+            Have each instance export a latency histogram (a count per
+            bucket), add the 12 histograms bucket by bucket, and read p99 from
+            the sum.
+          why: >-
+            Bucket counts add up exactly, so the merged histogram is the
+            service's histogram, and its p99 is the service's, to the
+            resolution of the buckets. This is how Prometheus histograms and
+            HDR histograms are meant to be combined.
+        - id: max-of-the-p99s
+          text: Take the largest of the 12 p99 values.
+          why: >-
+            That is an upper bound on the service's p99, not its value. It
+            reports the worst instance, and a service whose worst instance
+            misses can still meet the SLO overall.
+        - id: all-the-latencies
+          text: >-
+            Send every request's latency to one place and compute p99 over all
+            of them.
+          why: >-
+            Exact, and expensive at 1.2 million requests an hour. Correct is
+            what was asked; histograms are how you get it cheaply.
+      answer: [merge-histograms, all-the-latencies]

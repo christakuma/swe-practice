@@ -1,0 +1,237 @@
+schema_version: 1
+id: systems/the-order-page-takes-four-seconds
+kind: quiz
+title: The order page takes four seconds for big orders
+difficulty: easy
+tags: [performance, databases, latency]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket SHOP-904** — *order detail page slow for wholesale customers*
+
+  > Wholesale customers say their order page takes "forever". Retail orders
+  > (a few items) load in under 100 ms. A wholesale order with 250 line items
+  > takes about four seconds. The database's CPU is at 9%, and no query in the
+  > slow-query log takes longer than 20 ms.
+
+  A trace of one slow request:
+
+  ```
+  GET /orders/8812                                         4,118 ms
+  ├─ db   SELECT * FROM orders WHERE id = $1                    3 ms
+  ├─ db   SELECT * FROM line_items WHERE order_id = $1          4 ms
+  ├─ db   SELECT * FROM products WHERE id = $1                 16 ms
+  ├─ db   SELECT * FROM products WHERE id = $1                 17 ms
+  ├─ db   SELECT * FROM products WHERE id = $1                 16 ms
+  │  ... 247 more spans like the three above, one after another ...
+  └─ render template                                           12 ms
+  ```
+
+hints:
+  - "Count the spans, and compare the number with the number of line items."
+  - "Each product query is fast. What is the cost that is paid 250 times, and is it the query or the trip to the database?"
+  - "The repository already has a way to ask for many products in one query. What limits how many it takes at once?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "The database is in another availability zone: every query costs about 15 ms of round trip before it does any work."
+    - "An order has at most 250 line items. Two lines can name the same product."
+    - "`db.get_products(ids)` runs `WHERE id = ANY($1)` and takes at most 100 ids per call; it raises ValueError above that."
+    - "The page shows each product's current stock status, which changes many times a day."
+    - "The service talks to the database through a pool of 10 connections."
+  questions:
+    - id: what-the-trace-shows
+      format: single
+      label: The pattern in the trace
+      context: |
+        ├─ db   SELECT * FROM line_items WHERE order_id = $1          4 ms
+        ├─ db   SELECT * FROM products WHERE id = $1                 16 ms
+        ├─ db   SELECT * FROM products WHERE id = $1                 17 ms
+        │  ... 247 more ...
+
+        products.id is the table's primary key.
+      prompt: What is making this page slow?
+      options:
+        - id: missing-index
+          text: >-
+            `products` is missing an index, so each lookup scans the table.
+          why: >-
+            `products.id` is the primary key, so it is indexed, and each query
+            takes 16 ms, about one round trip to the other zone. A scan would
+            take longer and would show in the slow-query log and the CPU.
+        - id: n-plus-one
+          text: "One query per line item, run one after another: 250 round
+            trips."
+          why: >-
+            That is the N+1 pattern: N queries driven by the result of one.
+            Each is cheap, and 250 sequential round trips of about 16 ms add
+            up to four seconds, while the database barely notices.
+        - id: slow-template
+          text: >-
+            The template renders 250 rows, and rendering is what takes the
+            time.
+          why: >-
+            The trace times the render at 12 ms. The four seconds are in the
+            database spans above it.
+        - id: lock-contention
+          text: >-
+            The product rows are locked by other transactions, and each query
+            waits for its lock.
+          why: >-
+            A plain SELECT takes no row lock in Postgres and does not wait for
+            writers. The spans are all the same length, which is what a network
+            cost looks like, not a queue.
+      answer: n-plus-one
+
+    - id: how-many-queries
+      format: single
+      label: The number of queries once products are batched
+      context: >-
+        The fix: fetch the order, fetch its line items, then fetch the
+        products with `db.get_products(ids)`, which takes at most 100 ids per
+        call. Order 8812 has 250 line items and every line is a different
+        product.
+      prompt: How many queries does the page make for order 8812 after the fix?
+      options:
+        - id: three
+          text: "3"
+          why: >-
+            That is one query for the products, and `get_products` refuses
+            more than 100 ids, so 250 products take more than one call.
+        - id: four
+          text: "4"
+          why: >-
+            Two batches of 100 cover 200 products, and there are 250. The last
+            50 need a third batch.
+        - id: five
+          text: "5"
+          why: >-
+            One for the order, one for the line items, and three batches of
+            products: 100, 100 and 50. Five round trips of about 16 ms is
+            under 100 ms, however many items the order has.
+        - id: two-hundred-fifty-two
+          text: "252"
+          why: >-
+            That is the count today: one for the order, one for the items, one
+            per item.
+      answer: five
+
+    - id: what-about-concurrency
+      format: single
+      label: What running the lookups concurrently would cost
+      context: >-
+        A teammate proposes keeping one query per product, but running all 250
+        at once on a thread pool.
+
+
+        The pool has 10 database connections, and each product query holds
+        one for about 16 ms.
+      prompt: Roughly how long would the 250 product queries take then?
+      options:
+        - id: sixteen-ms
+          text: About 16 ms, the time of one query.
+          why: >-
+            That would need 250 connections. With 10, the queries wait for a
+            free one, ten at a time.
+        - id: four-hundred-ms
+          text: >-
+            About 400 ms, and the page holds all 10 connections for that time.
+          why: >-
+            250 queries, 10 at a time, is 25 rounds of 16 ms. That is ten times
+            faster than today and still eight times slower than batching, and
+            while it runs every other request in the service waits for a
+            connection.
+        - id: four-seconds
+          text: About four seconds, unchanged.
+          why: >-
+            Concurrency does help here, up to the pool's size: ten queries run
+            at once instead of one.
+        - id: one-point-six-seconds
+          text: About 1.6 seconds.
+          why: >-
+            That is 100 rounds of 16 ms, which would be a pool of 2.5
+            connections. With 10 it is 25 rounds.
+      answer: four-hundred-ms
+
+    - id: catch-it-in-ci
+      format: multiple
+      label: Checks that would catch the next N+1 before production
+      context: >-
+        The N+1 had been there since the page was written. Retail orders have
+        three items, and every test used a retail order.
+      prompt: >-
+        Which of these would have caught it before production? Choose every
+        one that would.
+      options:
+        - id: count-the-queries
+          text: >-
+            A test that renders a 50-item order against a database that counts
+            queries, and fails above a fixed number.
+          why: >-
+            The query count is the thing that grew with the order, and a
+            50-item fixture makes it 52 instead of 5. The fixed number is the
+            test: it fails the day someone adds a lookup inside the loop.
+        - id: detect-repeated-queries
+          text: >-
+            A check in development and test runs that warns when one request
+            runs the same query, with different parameters, many times.
+          why: >-
+            That is what tools like Django's `nplusone` and Rails' Bullet do,
+            and it would have fired on the first local page load of any order
+            with more than a few lines.
+        - id: snapshot-the-page
+          text: >-
+            A snapshot test that compares the rendered page with a stored copy.
+          why: >-
+            The page was always right. A slow page with the right content
+            matches its snapshot.
+        - id: index-every-foreign-key
+          text: >-
+            A migration check that every foreign key column has an index.
+          why: >-
+            A good check, and not this bug: every lookup was by primary key,
+            already indexed. The cost was the number of trips, not the work
+            per trip.
+      answer: [count-the-queries, detect-repeated-queries]
+
+    - id: batch-the-products
+      format: fix
+      label: Your fix
+      context: |
+        db.get_order(order_id)       -> an order, with .id
+        db.get_line_items(order_id)  -> a list of line items, each with
+                                        .product_id and .quantity
+        db.get_product(product_id)   -> one product, with .id, .name and
+                                        .in_stock
+        db.get_products(ids)         -> {id: product} for up to 100 ids;
+                                        raises ValueError above 100
+
+        Every product a line item names exists. The tests count every call.
+      prompt: >-
+        Rewrite `render_order` so it makes at most 2 + ⌈distinct products ÷
+        100⌉ queries for any order, returns the same lines in the same order
+        as now, and shows each product's stock as it is at the time of the
+        call.
+      explanation: >-
+        Collect the distinct product ids in the order they first appear, ask
+        for them in slices of 100 (`ids[i:i + 100]`), merge the dictionaries,
+        and build the lines from that mapping. Fetch on every call rather than
+        keeping the products between calls: stock changes all day, and a cache
+        is a second problem (when to forget) that this ticket does not need.
+        The hidden tests count queries for orders of 3, 150 and 250 lines,
+        including one where 150 lines name only 60 products, and render an
+        order twice with a stock change in between.
+      fix:
+        tests: orders_tests.py
+        counter_examples:
+          - file: one-batch-for-everything.py
+            expect_failures: [a-250-line-order-takes-five-queries]
+          - file: batch-and-cache-forever.py
+            expect_failures: [stock-is-read-fresh-on-every-call]
+          - file: concurrent-lookups.py
+            expect_failures:
+              - a-small-order-takes-three-queries
+              - a-250-line-order-takes-five-queries
+              - a-repeated-product-is-fetched-once

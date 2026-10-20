@@ -252,3 +252,24 @@ tracks:
       - docker/unable-to-open-database-file
       - docker/the-api-starts-before-the-database
       - docker/node-modules-vanished
+
+  # Every quiz: the N+1 page from `start-here`, then the `systems` section in
+  # its own order. Its first three are the three easy incidents, which is what
+  # `test_every_track_opens_gently` asks and what the curriculum's order
+  # already gives once the N+1 page is put back in front.
+  - name: systems
+    title: Systems
+    summary: >-
+      Incidents to diagnose, as quizzes: a slow page, a misread dashboard, a
+      double charge, two deadlocks, a dead dependency, a rename that broke a
+      deploy and a blip that became an outage, with a fix to write in three
+      of them.
+    exercises:
+      - systems/the-order-page-takes-four-seconds
+      - systems/p99-is-ten-times-p50
+      - systems/charged-twice-on-retry
+      - systems/transfers-hang-under-load
+      - systems/postgres-says-deadlock-detected
+      - systems/every-request-waits-for-a-dead-service
+      - systems/the-rollout-broke-halfway
+      - systems/a-blip-became-an-outage

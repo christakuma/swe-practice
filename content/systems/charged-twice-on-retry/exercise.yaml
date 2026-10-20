@@ -1,0 +1,236 @@
+schema_version: 1
+id: systems/charged-twice-on-retry
+kind: quiz
+title: Customers are charged twice when the card provider is slow
+difficulty: easy
+tags: [distributed-systems, idempotency, api-design]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket PAY-402** — *duplicate charges, 31 customers yesterday*
+
+  > Support has 31 customers charged twice for one order, all between 12:00
+  > and 12:20 yesterday, when the card provider was having a slow day. Each
+  > of them has two payments recorded for the order, and two charges on
+  > their card statement.
+
+  One of them, from both sides:
+
+  ```
+  -- the mobile app
+  12:00:01.100  POST /payments  order=8812 amount=49.00
+  12:00:11.100  no response after 10 s, retrying
+  12:00:11.160  POST /payments  order=8812 amount=49.00
+  12:00:11.950  201 Created  payment p_2
+
+  -- the payments API
+  12:00:01.130  POST /payments order=8812  charging card
+  12:00:11.190  POST /payments order=8812  charging card
+  12:00:11.930  201 Created payment p_2 (charge ch_9Kb)
+  12:00:12.340  201 Created payment p_1 (charge ch_7Qa)    provider took 11.2 s
+  ```
+
+hints:
+  - "When the app's timeout fired, what did it actually know about the first request?"
+  - "The server needs a way to recognise the retry as the same payment. Who can give the payment that identity, and when?"
+  - "Think about the moment the retry arrives: the first request is still waiting on the provider. What should the server do then?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "The app times out a request after 10 seconds and retries it once."
+    - "The card provider usually answers in 300 ms, and on a bad day sometimes takes more than 10 seconds."
+    - "The payments API runs six instances behind a round-robin load balancer, and every deploy restarts them."
+    - "Payments are recorded in Postgres. Each call to the card provider is a separate charge."
+  questions:
+    - id: what-happened
+      format: single
+      label: What the logs show happened
+      context: |
+        12:00:01.100  app  POST /payments  order=8812 amount=49.00
+        12:00:11.100  app  no response after 10 s, retrying
+        12:00:11.160  app  POST /payments  order=8812 amount=49.00
+        12:00:12.340  api  201 Created payment p_1 (charge ch_7Qa)    provider took 11.2 s
+      prompt: What happened to this customer?
+      options:
+        - id: load-balancer-duplicated
+          text: >-
+            The load balancer retried the request on a second instance when
+            the first was slow to answer.
+          why: >-
+            The app's log shows it sent two requests, ten seconds apart, the
+            second after its own timeout. The load balancer did what it was
+            asked.
+        - id: provider-charged-twice
+          text: The card provider charged the first request twice.
+          why: >-
+            There are two different charges, `ch_7Qa` and `ch_9Kb`, one for
+            each request the API made. The provider charged once per call.
+        - id: timeout-said-nothing
+          text: >-
+            The app gave up on a request that was still running, then sent
+            another.
+          why: >-
+            A timeout means "no answer yet", not "it failed". The first
+            request carried on and charged the card 1.2 s after the app had
+            given up on it, and the retry looked to the server like a new
+            payment, so it charged again.
+        - id: double-tap
+          text: The customer tapped Pay twice.
+          why: >-
+            A double tap sends two requests milliseconds apart. These are ten
+            seconds apart, and the app logged the second as its own retry.
+      answer: timeout-said-nothing
+
+    - id: when-to-make-the-key
+      format: single
+      label: When the client creates the idempotency key
+      context: >-
+        The fix: the app sends an `Idempotency-Key` header, and the server
+        treats requests with the same key as one payment.
+
+
+        The app retries a request after 10 seconds; a customer may also pay
+        for the same order twice on purpose, for example after a decline.
+      prompt: When should the app create the key?
+      options:
+        - id: once-per-payment
+          text: >-
+            Once, when the customer presses Pay, and reused on every retry of
+            that payment.
+          why: >-
+            The key names the customer's intent, one payment, so every retry
+            carries the same one and the server can recognise it. A new press
+            of Pay after a decline is a new intent with a new key.
+        - id: once-per-request
+          text: Freshly for every HTTP request, retries included.
+          why: >-
+            Then the retry has a key the server has never seen, and it is
+            charged as a new payment. Exactly the bug, with a header added.
+        - id: hash-of-the-order
+          text: >-
+            As a hash of the order id and the amount, so that the server can
+            derive the same key itself.
+          why: >-
+            Two genuine payments for one order and amount, such as paying
+            again after a decline, would share a key, and the second would
+            be refused as a duplicate.
+        - id: issued-by-server
+          text: >-
+            By the server, which returns a key in its first response for the
+            app to reuse.
+          why: >-
+            The first response is the thing that never arrived. The key has
+            to exist before the first request is sent.
+      answer: once-per-payment
+
+    - id: retry-during-the-first
+      format: single
+      label: What the server does with a retry while the first is running
+      context: >-
+        The retry arrives at 12:00:11.190. The first request with the same key
+        is still waiting on the card provider and will finish at 12:00:12.340.
+        The server has the key recorded, and no result for it yet.
+      prompt: What should the server do with the retry?
+      options:
+        - id: process-it-anyway
+          text: >-
+            Process it as a new payment, since the first one has not finished
+            and may fail.
+          why: >-
+            If the first succeeds, the customer is charged twice, the bug the
+            key exists to prevent. "May fail" is a reason to wait for the
+            answer, not to start another.
+        - id: refuse-with-conflict
+          text: Refuse it with 409 Conflict, and let the app retry later.
+          why: >-
+            Nothing is charged twice, and the app's next retry, after the
+            first finishes, gets the stored result. Stripe's API behaves this
+            way for concurrent requests with one idempotency key.
+        - id: created-at-once
+          text: Return 201 Created straight away, with an empty body.
+          why: >-
+            The server does not know yet whether the payment will succeed, so
+            201 may be a lie, and the app has no payment id to show.
+        - id: drop-the-old-key
+          text: >-
+            Delete the stored key, since the first request's client has given
+            up, and process the retry.
+          why: >-
+            The first request is still charging the card whether or not its
+            client is listening. Deleting the key forgets that, and both
+            charges go through.
+      answer: refuse-with-conflict
+
+    - id: where-keys-live
+      format: single
+      label: Where the server keeps the keys
+      context: >-
+        Six instances behind a round-robin load balancer, so a retry usually
+        reaches a different instance from the first request. Every deploy
+        restarts all six.
+      prompt: Where should the server keep idempotency keys?
+      options:
+        - id: instance-memory
+          text: In a dictionary in each instance's memory.
+          why: >-
+            A retry reaches another instance five times in six, and finds an
+            empty dictionary. A deploy empties all of them.
+        - id: sticky-sessions
+          text: >-
+            In each instance's memory, with the load balancer pinning each app
+            to one instance.
+          why: >-
+            A restart or a scale-down still loses every key on that instance,
+            and the pinned instance may be the one that just died, which is
+            when retries happen most.
+        - id: client-storage
+          text: In the app's local storage, so it can tell the server what it already sent.
+          why: >-
+            The app already knows it sent the request. What it cannot know is
+            whether the server completed it, and only the server can say.
+        - id: database-table
+          text: >-
+            In a table in the payments database, with a unique constraint on
+            the key.
+          why: >-
+            Every instance sees it and it survives restarts. The unique
+            constraint makes "first one wins" the database's decision: two
+            requests inserting one key cannot both succeed, so two concurrent
+            requests cannot both charge.
+      answer: database-table
+
+    - id: same-key-new-body
+      format: single
+      label: A reused key with a different request
+      context: >-
+        A request arrives with a key the server has already completed: the
+        stored request was 49.00 for order 8812. This one says 59.00 for
+        order 8812.
+      prompt: What should the server do?
+      options:
+        - id: replay-the-result
+          text: Return the stored response for the 49.00 payment.
+          why: >-
+            The app asked for 59.00 and is told it succeeded, with a payment
+            of 49.00. A silent mismatch is worse than an error.
+        - id: charge-the-new-amount
+          text: Charge 59.00 too, since it is a different request.
+          why: >-
+            Then a key no longer guarantees one charge, which is its only job.
+            A bug that reuses keys would charge twice.
+        - id: reject-the-reuse
+          text: "Reject it: the key belongs to the request it first came with."
+          why: >-
+            The server stores a fingerprint of the first request with the key
+            and refuses any other request under it. Reuse is a client bug,
+            and it should be loud. Stripe returns an error for exactly this.
+        - id: replace-the-payment
+          text: >-
+            Update the stored payment to 59.00 and charge the 10.00 difference.
+          why: >-
+            An idempotency key makes retries safe; it is not a way to amend
+            a payment. Changing an amount is a separate operation with its own
+            rules (refunds, a new authorisation).
+      answer: reject-the-reuse

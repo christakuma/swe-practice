@@ -177,6 +177,14 @@ ignore = [
 # binding every interface is what three of the six exercises teach (`S104`).
 "content/docker/**" = ["T20", "S104"]
 "content/docker/**/tests/*.py" = ["S101", "PLR2004"]
+# A systems quiz's fix questions (Phase 25). The code is the incident's own,
+# as the question's snippet shows it -- untyped, with the team's exception
+# names -- and a counter-example is that code with one plausible mistake, so
+# annotations or renames it does not have would be a second difference from
+# the code it varies. The hidden suites are pytest suites, for the kata
+# reason, and their randomness picks test data rather than keys (`S311`).
+"content/systems/**/*.py" = ["ANN", "N818"]
+"content/systems/**/*_tests.py" = ["ANN", "N818", "S101", "PLR2004", "S311"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]

@@ -1,0 +1,246 @@
+schema_version: 1
+id: systems/the-rollout-broke-halfway
+kind: quiz
+title: A column rename broke the site for the length of a deploy
+difficulty: medium
+tags: [deployments, migrations, postgres]
+estimated_minutes: 20
+
+prompt: |
+  **Incident INC-91** — *profile pages 500ing during the 14:00 deploy*
+
+  > Release 3.12 renamed `users.name` to `users.full_name`. The pipeline ran
+  > the migration, then started the rolling deploy. For the twenty minutes
+  > the deploy took, a shrinking share of requests failed, from about 90% at
+  > the start to none at the end.
+
+  The migration:
+
+  ```sql
+  ALTER TABLE users RENAME COLUMN name TO full_name;
+  ```
+
+  From the instances still running 3.11 during the deploy:
+
+  ```
+  ERROR:  column "name" does not exist at character 8
+  STATEMENT:  SELECT name, email FROM users WHERE id = $1
+  ```
+
+hints:
+  - "During a rolling deploy, which versions of the code are running, and against how many schemas?"
+  - "A rename is a change both versions have to survive. Can one schema serve code that reads `name` and code that reads `full_name` at the same time?"
+  - "Split the rename into steps where every step is safe for the version before it and the version after it, including a rollback."
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "PostgreSQL 16. `users` has 40 million rows and is written to all day."
+    - "A deploy replaces 10 instances one at a time over about 20 minutes; old and new versions serve traffic side by side the whole time."
+    - "Any deploy may be rolled back to the version before it."
+    - "Each migration runs before the deploy that needs it, and each deploy finishes before the next step starts."
+  questions:
+    - id: why-it-broke
+      format: single
+      label: Why the old instances failed
+      context: |
+        14:00  migration: RENAME COLUMN name TO full_name
+        14:01  deploy starts: 10 instances on 3.11, replaced one at a time
+        14:21  deploy ends: 10 instances on 3.12
+
+        Failing requests fell from about 90% to none over the deploy.
+      prompt: Why did requests fail, and why did the failure rate fall?
+      options:
+        - id: cached-schema
+          text: >-
+            The 3.11 instances had cached the table's old columns, and each
+            stopped failing when it was restarted onto 3.12.
+          why: >-
+            The error is Postgres's own: the column did not exist in the
+            database. No cache was involved, and restarting a 3.11 instance
+            would not have helped.
+        - id: replica-lag
+          text: >-
+            The rename reached the read replicas a few seconds late, and
+            queries routed to a replica failed until it caught up.
+          why: >-
+            Replication lag is seconds, and the failures lasted twenty
+            minutes and followed the deploy, not the replicas.
+        - id: orm-reload
+          text: >-
+            The ORM in 3.12 needed a schema reload after the migration, and
+            loaded it one instance at a time.
+          why: >-
+            The failing queries came from 3.11, which still asked for `name`.
+            3.12 was the version that worked.
+        - id: two-versions-one-schema
+          text: >-
+            Two versions ran against one schema, and the old one read a column
+            that was gone.
+          why: >-
+            A rolling deploy runs two versions at once by design, so every
+            schema it runs against must work for both. A rename cannot: one
+            version reads `name`, the other `full_name`, and only one exists
+            at a time.
+      answer: two-versions-one-schema
+
+    - id: the-safe-sequence
+      format: order
+      label: The order of a zero-downtime rename
+      context: >-
+        Each step below is one migration or one deploy, and each finishes
+        before the next begins. At every moment, the version running and the
+        version before it must both work, because either may be serving
+        traffic or be rolled back to.
+      prompt: Put the steps of a rename that never breaks either version in order.
+      options:
+        - id: drop-name
+          text: Drop the `name` column.
+          why: >-
+            Last, and only once no running version, or one you might roll
+            back to, reads or writes it.
+        - id: backfill
+          text: Copy `name` into `full_name` for every existing row, in batches.
+          why: >-
+            After dual writes, so every row written from then on is already
+            right, and the backfill only has to catch up the past. Done
+            before, the rows written between the backfill and dual writes
+            would be missed.
+        - id: switch-reads
+          text: Deploy code that reads `full_name`, still writing both columns.
+          why: >-
+            Only after the backfill, so every row has a `full_name` to read.
+            Still writing `name` keeps a rollback to the previous version
+            safe.
+        - id: add-column
+          text: Add a nullable `full_name` column.
+          why: >-
+            First: it changes nothing any running code reads or writes, so
+            both versions are fine with it.
+        - id: stop-writing-name
+          text: Deploy code that stops writing `name`.
+          why: >-
+            Only once every running version reads `full_name`; after this,
+            `name` goes stale, which is safe because nothing reads it.
+        - id: write-both
+          text: Deploy code that writes both columns and still reads `name`.
+          why: >-
+            Second: from here on every new or changed row has `full_name`, and
+            the version before it, which reads and writes only `name`, still
+            works.
+      answer: [add-column, write-both, backfill, switch-reads, stop-writing-name, drop-name]
+
+    - id: how-to-backfill
+      format: single
+      label: How to backfill 40 million rows
+      context: >-
+        users: 40 million rows, written to all day. Dual writes are running,
+        so new and changed rows already have `full_name`.
+      prompt: How should the backfill run?
+      options:
+        - id: one-statement
+          text: "One statement: `UPDATE users SET full_name = name WHERE full_name IS NULL`."
+          why: >-
+            One transaction over 40 million rows: it holds every row lock it
+            takes until it commits, so user updates to those rows wait for
+            the whole run, and it writes 40 million new row versions at once,
+            a burst of WAL that lags every replica.
+        - id: in-batches
+          text: >-
+            In batches of a few thousand rows by id, each its own short
+            transaction, with a pause between batches.
+          why: >-
+            Each batch holds its locks for milliseconds, and the pause leaves
+            room for replicas and vacuum to keep up. A batch that fails can
+            be retried alone, and the job can stop and resume.
+        - id: lazy-trigger
+          text: >-
+            Do not backfill; a trigger fills `full_name` whenever a row is
+            next updated.
+          why: >-
+            Rows that are never updated, inactive users, never get one. When
+            reads switch, those users have no name.
+        - id: serializable
+          text: >-
+            One transaction at SERIALIZABLE isolation, so the copy is
+            consistent.
+          why: >-
+            Isolation does not shrink the transaction. It is still 40 million
+            rows locked until commit, now with a serialization failure likely
+            at the end.
+      answer: in-batches
+
+    - id: why-rollback-is-safe
+      format: single
+      label: What makes rolling back the read switch safe
+      context: >-
+        The deploy that switches reads to `full_name` goes wrong for a reason
+        unrelated to the column, and is rolled back to the version before it.
+        The database is not touched.
+      prompt: Why does the rolled-back version still work?
+      options:
+        - id: postgres-rolls-back
+          text: The rollback undoes the migrations that came with the deploy.
+          why: >-
+            A deploy rollback replaces code; it does not run migrations
+            backwards. The schema stays as it is, which is why each step must
+            work with the version before it.
+        - id: backfill-copied-it
+          text: The backfill copied every `name` into `full_name`.
+          why: >-
+            That copied in the other direction. The version rolled back to
+            reads `name`, so what matters is that `name` is still current.
+        - id: still-writing-name
+          text: Every version since dual writes began still writes `name`.
+          why: >-
+            Dual writes are what make each step reversible: while both columns
+            are written, either can be read. That is why "stop writing `name`"
+            comes only after reads have moved.
+        - id: not-safe
+          text: "It is not safe: a rollback after a schema change never is."
+          why: >-
+            It is safe whenever the schema works for both versions, which is
+            what the expand-and-contract sequence arranges at every step.
+      answer: still-writing-name
+
+    - id: before-the-alter
+      format: single
+      label: What the migration sets before ALTER TABLE
+      context: >-
+        Adding a nullable column with no default does not rewrite the table,
+        but ALTER TABLE still needs an ACCESS EXCLUSIVE lock on `users` for an
+        instant. When the migration runs, a 15-minute analytics query is
+        reading `users`, and Postgres queues lock requests in arrival order.
+      prompt: What should the migration do before its ALTER TABLE?
+      options:
+        - id: nothing-needed
+          text: >-
+            Nothing: adding a nullable column is instant, so it cannot block
+            anything.
+          why: >-
+            It is instant once it has the lock. Getting the lock means waiting
+            for the analytics query, and while the ALTER waits, every query
+            that arrives after it waits behind it: the table is unusable for
+            fifteen minutes.
+        - id: concurrently
+          text: Use `ALTER TABLE ... ADD COLUMN ... CONCURRENTLY`.
+          why: >-
+            There is no such option. `CONCURRENTLY` exists for `CREATE INDEX`
+            and a few others, not for adding a column.
+        - id: lock-timeout
+          text: >-
+            `SET lock_timeout = '2s'`, and retry the migration a little later
+            if it times out.
+          why: >-
+            If the lock is not free within two seconds, the ALTER gives up
+            instead of queueing, so it never holds up the queries behind it
+            for longer than that. Retried a few times, it gets its instant
+            eventually.
+        - id: run-at-night
+          text: Run migrations only at 03:00, when traffic is lowest.
+          why: >-
+            Long reports are as likely to run at night as at any time, and the
+            ALTER would still queue behind one. Timing changes the odds; a lock
+            timeout changes the outcome.
+      answer: lock-timeout

@@ -1,0 +1,265 @@
+schema_version: 1
+id: systems/a-blip-became-an-outage
+kind: quiz
+title: A five-second network blip became a forty-minute outage
+difficulty: hard
+tags: [resilience, retries, distributed-systems]
+estimated_minutes: 25
+
+prompt: |
+  **Incident INC-77** — *payments down 14:02 to 14:42*
+
+  > At 14:02:00 a switch reboot cut the payments service off from its
+  > database for five seconds. The network was back at 14:02:05. Payments
+  > stayed down for forty minutes, the database pinned at 100% CPU, and it
+  > only recovered when someone turned retries off with a feature flag.
+
+  Every service on the path retries a failed call to the service below it,
+  three times, immediately:
+
+  ```
+  mobile app ──▶ API gateway ──▶ orders ──▶ payments ──▶ payments-db
+     retries       retries       retries     retries
+    3 times       3 times       3 times     3 times
+  ```
+
+  The payments database, from the incident timeline:
+
+  ```
+  time        queries/s   error rate   db CPU
+  14:01:50       1,180        0.1%       41%
+  14:02:00           0      100.0%        2%    switch reboots
+  14:02:05      11,240       64.0%      100%    network back
+  14:10:00      10,870       61.0%      100%
+  14:42:00       1,320        3.0%       58%    retries disabled by flag
+  14:42:30       1,210        0.2%       43%
+  ```
+
+hints:
+  - "Count attempts, not requests: if each layer makes up to four tries at the layer below, what does one tap become at the bottom?"
+  - "The network came back at 14:02:05 and the query rate went to nine times normal. Where did the extra queries come from, and what happened to the ones that timed out?"
+  - "A retry policy has three parts: which errors are worth retrying, how many times, and how long to wait. The incident got all three wrong."
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "Every layer gives each call to the layer below a 2-second timeout and retries it three times on any error, with no wait."
+    - "The payments service checks each database connection before handing it out, so a connection broken by the blip is never reused."
+    - "The database handles about 1,500 queries a second before its CPU saturates."
+    - "A charge is not idempotent: POST /charge sent twice charges the card twice."
+  questions:
+    - id: one-tap-becomes
+      format: single
+      label: How many database attempts one tap can become
+      context: >2-
+          mobile app ──▶ API gateway ──▶ orders ──▶ payments ──▶ payments-db
+
+        The app, the gateway, orders and payments each make up to 4 attempts
+        (1 + 3 retries) at the next thing along: the app at the gateway, the
+        gateway at orders, orders at payments, and payments at its database.
+      prompt: >-
+        While the database is unreachable, how many attempts at the payments
+        database can a single tap in the app cause, at most?
+      options:
+        - id: two-hundred-fifty-six
+          text: "256"
+          why: >-
+            Each layer multiplies: 4 app attempts, each producing 4 gateway
+            attempts at orders, each producing 4 at payments, each producing 4
+            queries. 4 × 4 × 4 × 4 = 256. Retries at every layer multiply;
+            they do not add.
+        - id: thirteen
+          text: "13"
+          why: >-
+            That is 1 + 3 + 3 + 3 + 3, as though each layer's retries were
+            added to the total once. Each attempt at an upper layer causes a
+            whole set of attempts below it.
+        - id: sixteen
+          text: "16"
+          why: >-
+            That counts two layers of retries, 4 × 4. There are four retrying
+            layers between the tap and the database.
+        - id: four
+          text: "4"
+          why: >-
+            That is payments alone. Every layer above it also retries, and
+            each of their attempts starts a fresh set of four.
+      answer: two-hundred-fifty-six
+
+    - id: why-it-stayed-down
+      format: single
+      label: Why the outage outlived the blip
+      context: >2-
+          time        queries/s   error rate   db CPU
+          14:02:05      11,240       64.0%      100%    network back
+          14:10:00      10,870       61.0%      100%
+          14:42:00       1,320        3.0%       58%    retries disabled by flag
+
+        The database handles about 1,500 queries a second before its CPU
+        saturates. Connections are checked before reuse.
+      prompt: Why did payments stay down after the network came back at 14:02:05?
+      options:
+        - id: stale-connections
+          text: >-
+            The connection pool kept connections the blip had broken, and went
+            on handing them out.
+          why: >-
+            The constraints rule it out: connections are checked before they
+            are handed out. And the database was answering over 10,000
+            queries a second, so the connections were working.
+        - id: database-recovering
+          text: >-
+            The database was still recovering from the blip, replaying its
+            write-ahead log and warming its cache for most of an hour.
+          why: >-
+            A network blip does not crash a database or start recovery. Its
+            CPU was at 100% *serving queries*, more than seven times what it
+            can handle.
+        - id: cached-dns-failure
+          text: >-
+            Clients had cached the failed DNS lookup for the database and kept
+            failing until it expired.
+          why: >-
+            Then the database would have seen almost no queries. It saw nine
+            times its normal load.
+        - id: retries-kept-it-overloaded
+          text: >-
+            Retries arrived at many times the database's capacity, and every
+            timeout was retried again, so the load never fell.
+          why: >-
+            Once load is above capacity, requests take longer than the 2 s
+            timeouts, every timeout is retried at four layers, and the retries
+            are the load. The system had a stable, broken state it could not
+            leave on its own, which is why turning retries off ended it in
+            thirty seconds.
+      answer: retries-kept-it-overloaded
+
+    - id: what-stops-it
+      format: multiple
+      label: The changes that keep a blip a blip
+      context: >-
+        The team will change the retry policy everywhere before the next
+        switch maintenance. Payments must still recover on its own from a
+        five-second blip with no human involved.
+      prompt: Which changes would stop a blip turning into an outage? Choose every one that would.
+      options:
+        - id: retry-in-one-layer
+          text: >-
+            Retry in one layer only, here payments' call to its database, and
+            have the layers above pass a failure up instead of retrying it.
+          why: >-
+            Retries no longer multiply: one tap is at most four queries, not
+            256. The layer that retries is the one that knows whether the
+            failure is worth retrying.
+        - id: jittered-backoff
+          text: >-
+            Wait before each retry, doubling the wait each time, with the
+            wait chosen at random between zero and that ceiling.
+          why: >-
+            Backoff spreads retries out so a recovering database is not met
+            by all of them at once. The randomness (jitter) matters as much as
+            the doubling: without it, every client that failed together
+            retries together, in synchronised waves.
+        - id: retry-budget
+          text: >-
+            Give each client a retry budget: retries may add at most 10% to
+            its traffic, and past that it fails without retrying.
+          why: >-
+            A budget bounds how much a failure can amplify load, whatever the
+            policy at each layer says. When most calls are failing, the budget
+            runs out and the client stops making it worse.
+        - id: more-retries
+          text: >-
+            Raise every layer's retries from 3 to 5, so more requests
+            eventually get through.
+          why: >-
+            Each layer then makes up to 6 attempts and one tap becomes 6⁴ =
+            1,296 queries. During an overload, more retries are more overload.
+        - id: shorter-timeouts
+          text: >-
+            Halve every timeout, so a failed call is retried sooner.
+          why: >-
+            Under overload, more requests exceed the shorter timeout, so more
+            are retried, sooner. It deepens the storm. Timeouts should sit
+            just above healthy latency, not be used to speed up retries.
+      answer: [retry-in-one-layer, jittered-backoff, retry-budget]
+
+    - id: what-to-retry
+      format: single
+      label: The errors worth retrying
+      context: >-
+        From the constraints: a charge is not idempotent. POST /charge sent
+        twice charges the card twice.
+      prompt: Which failures should payments retry at all?
+      options:
+        - id: not-processed-yet
+          text: >-
+            Only failures that show nothing happened yet: connection refused,
+            or a 503.
+          why: >-
+            These are transient and safe: nothing happened, and waiting might
+            help. A failure that says the request is wrong (400) will fail the
+            same way every time, and one that leaves the outcome unknown
+            (a timeout after sending) is not safe to repeat blind.
+        - id: every-error
+          text: Every error, since any failure might be transient.
+          why: >-
+            A 400 Bad Request fails identically on every retry, and retrying
+            it is pure added load. Retrying an unknown outcome can do the work
+            twice.
+        - id: every-5xx
+          text: >-
+            Every 5xx response, including a plain 500, since a server error is
+            the server's problem.
+          why: >-
+            A 500 is often a bug that fails the same way every time, and it may
+            come after part of the work was done. 503 means "not now"; 500
+            means "something went wrong", which is not the same promise.
+        - id: charge-timeouts
+          text: >-
+            A timeout on POST /charge, because the client never got an answer.
+          why: >-
+            The charge may well have gone through; only the answer was lost.
+            Retrying it without an idempotency key is how a customer gets
+            charged twice (another incident in this track).
+      answer: not-processed-yet
+
+    - id: write-the-policy
+      format: fix
+      label: Your retry policy
+      context: |
+        call_with_retries(operation, *, sleep, rng)
+
+        operation()   makes one call; raises Unavailable when the database is
+                      unreachable, or another exception for any other failure
+        sleep(s)      waits s seconds (the tests record it instead)
+        rng.uniform(low, high)
+                      a random float in [low, high) (the tests control it)
+      prompt: >-
+        Rewrite `call_with_retries`: at most 4 attempts in all; retry only
+        `Unavailable`, raising anything else at once; before retry k (k = 1,
+        2, 3) sleep `rng.uniform(0, 0.1 * 2 ** k)` seconds, so the ceilings
+        are 0.2, 0.4 and 0.8; and when the attempts are used up, raise the
+        last `Unavailable`. Do not sleep after the last attempt.
+      explanation: >-
+        A loop over four attempts that returns on success, re-raises any
+        exception that is not `Unavailable`, and on `Unavailable` either
+        raises (last attempt) or sleeps a jittered, doubling wait before the
+        next one. The tests drive it with a recording `sleep` and an `rng`
+        whose draws they choose, so they can check the number of attempts,
+        which errors are retried, the three ceilings, and that the wait slept
+        is the one drawn rather than the ceiling itself.
+      fix:
+        tests: retry_tests.py
+        counter_examples:
+          - file: no-jitter.py
+            expect_failures:
+              - the-ceilings-double-from-a-fifth-of-a-second
+              - each-wait-is-the-random-draw
+          - file: retry-everything.py
+            expect_failures:
+              - other-errors-are-not-retried
+              - an-error-after-a-retry-is-not-retried-either
+          - file: five-attempts.py
+            expect_failures: [gives-up-after-four-attempts]

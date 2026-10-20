@@ -557,7 +557,7 @@ def _ids_of_kind(kind: ExerciseKind) -> set[str]:
 
 
 def test_the_library_offers_the_tracks_it_says_it_does() -> None:
-    """Five, in this order -- and the order is load-bearing, because the first
+    """Six, in this order -- and the order is load-bearing, because the first
     track is the one the Next button follows when nothing has said which.
     """
     assert list(_tracks()) == [
@@ -566,6 +566,7 @@ def test_the_library_offers_the_tracks_it_says_it_does() -> None:
         "git-scenarios",
         "sql-drills",
         "docker",
+        "systems",
     ]
 
 
@@ -598,6 +599,7 @@ def test_the_blind_75_is_the_seventy_five() -> None:
         ("git-scenarios", ExerciseKind.GIT_SCENARIO),
         ("sql-drills", ExerciseKind.SQL_DRILL),
         ("docker", ExerciseKind.CONTAINER),
+        ("systems", ExerciseKind.QUIZ),
     ],
 )
 def test_a_track_named_for_a_kind_misses_nothing_of_that_kind(

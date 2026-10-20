@@ -1,0 +1,241 @@
+schema_version: 1
+id: systems/transfers-hang-under-load
+kind: quiz
+title: Transfers hang under load, and only a restart clears them
+difficulty: medium
+tags: [concurrency, deadlocks, locking]
+estimated_minutes: 20
+
+prompt: |
+  **Ticket PAY-311** — *ledger stops processing transfers during the promotion*
+
+  > Since Monday's merchant promotion, the ledger service freezes a few times
+  > an hour. CPU drops to zero, every transfer request times out, and nothing
+  > recovers until someone restarts the process. Nothing is logged as an
+  > error: the service is simply waiting.
+
+  The ledger keeps accounts in memory, one `threading.Lock` per account, and
+  a transfer holds both accounts' locks while it moves the money, so that no
+  other transfer can see a balance halfway through a change. Most of the
+  promotion's traffic is between a handful of merchant accounts and the
+  platform's settlement account, in **both directions**: sales go one way,
+  refunds the other.
+
+  The service's `/debug/locks` endpoint, captured during the last freeze:
+
+  ```
+  worker-3   transfer 17 -> 42   holds acct:17   waiting for acct:42   (ledger.py:9)
+  worker-8   transfer 42 -> 17   holds acct:42   waiting for acct:17   (ledger.py:9)
+  worker-1   transfer 17 -> 90   waiting for acct:17                   (ledger.py:8)
+  worker-5   transfer 42 -> 63   waiting for acct:42                   (ledger.py:8)
+  ... 12 more workers waiting for acct:17 or acct:42
+  ```
+
+hints:
+  - "Read the first two lines of the dump as a pair. What does each worker hold, and what is it waiting for?"
+  - "A deadlock needs a cycle of waits. Where in `transfer` is the order the two locks are taken decided, and what decides it?"
+  - "If every transfer took the two locks in an order that depends only on the accounts and not on the direction of the money, could two transfers ever wait on each other in a circle?"
+
+quiz:
+  stub: answers.md
+  reference: solution.md
+  constraints:
+    - "The ledger runs 16 worker threads in one process; transfers arrive at up to 200 per second at peak."
+    - "Each account has its own `threading.Lock`, at `account.lock`. Account ids are unique integers."
+    - "A transfer either moves the whole amount or moves nothing, and the caller is told which."
+    - "Transfers between unrelated pairs of accounts must not wait for each other: the promotion's throughput depends on it."
+  questions:
+    - id: which-line-took-it
+      format: line
+      label: The line that took the lock worker-8 is waiting for
+      context: |
+        worker-3   transfer 17 -> 42   holds acct:17   waiting for acct:42   (ledger.py:9)
+        worker-8   transfer 42 -> 17   holds acct:42   waiting for acct:17   (ledger.py:9)
+      prompt: >-
+        worker-8 is waiting for account 17's lock, which worker-3 holds.
+        worker-3 is running `transfer(source=17, target=42)`. Which line of
+        `ledger.py` acquired the lock that worker-8 is waiting for?
+      snippet: |
+        class InsufficientFunds(Exception):
+            pass
+
+
+        def transfer(source, target, amount):
+            if source is target:
+                raise ValueError("cannot transfer to the same account")
+            with source.lock:
+                with target.lock:
+                    if source.balance < amount:
+                        raise InsufficientFunds(source.id)
+                    source.balance -= amount
+                    target.balance += amount
+      snippet_language: python
+      answer: 8
+      explanation: >-
+        worker-3 is moving money out of account 17, so 17 is its `source`, and
+        line 8 took `source.lock`. It is now blocked on line 9 waiting for
+        account 42, which worker-8 took on *its* line 8, because for worker-8
+        account 42 is the source. Each worker took its source first, and the
+        two sources are each other's targets. The order of the two locks is
+        decided by the direction the money moves, and that is the bug.
+
+    - id: which-condition-breaks
+      format: single
+      label: The deadlock condition a fixed lock order removes
+      context: |
+        A deadlock needs all four of these at once (Coffman, 1971):
+
+          mutual exclusion   a lock is held by one thread at a time
+          hold and wait      a thread holds one lock while it waits for another
+          no preemption      nothing takes a held lock away from its thread
+          circular wait      the waits form a cycle: A waits for B, B waits for A
+      prompt: >-
+        The usual fix is to make every transfer take the two locks in the same
+        global order, for example by account id. Which of the four conditions
+        does that remove?
+      options:
+        - id: mutual-exclusion
+          text: Mutual exclusion
+          why: >-
+            Each account's lock is still held by one thread at a time, and has
+            to be: two transfers updating one balance at once is the lost
+            update the locks exist to prevent.
+        - id: hold-and-wait
+          text: Hold and wait
+          why: >-
+            A transfer still takes its first lock and then waits for the
+            second while holding it. What changes is which lock is first, not
+            whether one is held while waiting.
+        - id: no-preemption
+          text: No preemption
+          why: >-
+            Nothing takes a lock away from a thread under a fixed order. A held
+            lock is released only by the thread that holds it, exactly as
+            before.
+        - id: circular-wait
+          text: Circular wait
+          why: >-
+            With one global order, a thread holding a lock only ever waits for
+            a lock later in that order. A cycle would need some thread to wait
+            for a lock *earlier* than one it holds, and none ever does.
+      answer: circular-wait
+
+    - id: which-fix
+      format: single
+      label: The fix that keeps the constraints
+      context: >-
+        From the constraints: transfers between unrelated accounts must not
+        wait for each other, and a transfer moves the whole amount or nothing,
+        and the caller is told which.
+      prompt: Which change fixes the freeze and keeps both of those?
+      options:
+        - id: one-ledger-lock
+          text: >-
+            Replace the per-account locks with one module-level lock, taken
+            around the whole of `transfer`.
+          why: >-
+            It cannot deadlock, because there is only one lock. It also
+            serialises every transfer in the process, so a refund between two
+            small accounts waits behind the settlement account's queue: the
+            throughput constraint is the one thing the per-account locks were
+            buying.
+        - id: give-up-quietly
+          text: >-
+            Take the target's lock with `acquire(timeout=1)`; if it times out,
+            release the source and return without moving anything.
+          why: >-
+            The freeze ends, because nobody waits forever. But the transfer is
+            dropped while the caller is told nothing, which breaks "the caller
+            is told which". Timing out *and raising*, so the caller retries, is
+            a real technique; returning as though it had worked is a lost
+            payment.
+        - id: lowest-id-first
+          text: >-
+            In every transfer, take the lock of the account with the lower id
+            first, whichever of the two is the source.
+          why: >-
+            A transfer from 17 to 42 and one from 42 to 17 now both lock 17
+            first. Whichever gets it, the other waits for 17 *without holding
+            42*, so there is no cycle, and transfers between other accounts do
+            not touch these two locks at all.
+        - id: reentrant-locks
+          text: Swap each `threading.Lock` for a `threading.RLock`.
+          why: >-
+            A reentrant lock lets the thread that holds it take it again. Here
+            two *different* threads each hold the lock the other wants, and
+            reentrancy does nothing for that: worker-8 is not worker-3.
+      answer: lowest-id-first
+
+    - id: how-to-catch-it
+      format: single
+      label: Catching it before production, deterministically
+      context: >-
+        The freeze took a week of production traffic to show up. The team
+        wants a test that would have caught it on the first run, every run,
+        without depending on two threads happening to collide.
+      prompt: Which test does that?
+      options:
+        - id: load-test
+          text: >-
+            A load test at twice peak traffic, run for an hour before each
+            release.
+          why: >-
+            It might find it, and it might not: the deadlock needs two opposite
+            transfers to interleave in a window a few microseconds wide. A test
+            that passes when the timing is kind is not a test of this bug.
+        - id: lock-order-graph
+          text: >-
+            Record the order locks are taken in during tests, and fail on any
+            cycle.
+          why: >-
+            A cycle in the order locks are taken is a deadlock waiting for the
+            right timing, and it appears on the first `transfer(17, 42)`
+            followed by `transfer(42, 17)`, even run one after the other on one
+            thread. The Linux kernel's lockdep and ThreadSanitizer's
+            lock-order-inversion check both work this way.
+        - id: request-timeout
+          text: Add a five-second timeout to every transfer request.
+          why: >-
+            A timeout turns a freeze into a stream of errors, which is better
+            for users and says nothing in a test: the deadlocked threads are
+            still stuck behind it, holding their locks.
+        - id: unit-test-both-ways
+          text: >-
+            A unit test that runs `transfer(a, b)` and then `transfer(b, a)`
+            and checks both balances.
+          why: >-
+            Run one after the other, both calls succeed and the balances are
+            right, so the test passes against the bug. Calling it in both
+            directions is the right input; checking balances is the wrong
+            thing to check.
+      answer: lock-order-graph
+
+    - id: fix-the-lock-order
+      format: fix
+      label: Your fix
+      context: >-
+        Tests call `transfer(source, target, amount)` with account objects that
+        have `.id` (a unique int), `.balance` (an int) and `.lock` (the
+        account's lock). They call it from one thread and from many.
+      prompt: >-
+        Rewrite `transfer` in the block below so it takes the two accounts'
+        locks in ascending `id` order, whichever is the source. Keep the
+        same-account check, keep raising `InsufficientFunds` with nothing
+        moved, and do not add any lock of your own.
+      explanation: >-
+        Sort the two accounts by id and take their locks in that order:
+        `first, second = sorted((source, target), key=lambda a: a.id)`, then
+        `with first.lock, second.lock:`. The balance check and the two updates
+        are unchanged, and the `with` statements release both locks on every
+        path out, including the one that raises. The hidden tests record the
+        order every lock is taken in and fail on any cycle; they also check
+        that two transfers between unrelated accounts can be inside `transfer`
+        at the same moment, which is what rules out one big lock.
+      fix:
+        tests: ledger_tests.py
+        time_limit_seconds: 30
+        counter_examples:
+          - file: one-ledger-lock.py
+            expect_failures: [unrelated-transfers-do-not-wait-for-each-other]
+          - file: released-only-on-success.py
+            expect_failures: [a-refused-transfer-releases-both-locks]
