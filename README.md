@@ -57,8 +57,8 @@ the real repository, and the repository's state beside it.
 
 ## What is in it
 
-- **132 exercises, every one of them graded**: 24 git scenarios, 83 Python
-  katas, 8 SQL drills, 9 Docker exercises and 8 systems quizzes, in one
+- **144 exercises, every one of them graded**: 24 git scenarios, 83 Python
+  katas, 8 SQL drills, 9 Docker exercises and 20 systems quizzes, in one
   hand-ordered curriculum.
 - **Problem statements you can check**: every kata lists its constraints and
   has an Examples tab of inputs and outputs, each one run against the
@@ -165,7 +165,7 @@ your browser on `http://127.0.0.1:8765`:
 
 ```
   ok   git         /usr/bin/git
-  ok   library     132 exercises (24 git scenarios, 83 katas, 8 SQL drills, 9 Docker exercises, 8 systems quizzes) in ~/swe-practice/content
+  ok   library     144 exercises (24 git scenarios, 83 katas, 8 SQL drills, 9 Docker exercises, 20 systems quizzes) in ~/swe-practice/content
   ok   workspaces  ~/.cache/swe-practice/ws
   ok   database    ~/.local/share/swe-practice/practice.db (created v2)
   ok   scheduler   sm2 (Sm2Scheduler())
@@ -438,7 +438,7 @@ PRACTICE_DOCKER_TESTS=1 uv run pytest -q --no-cov -n0 tests/docker
 
 ## Systems quizzes
 
-Eight incidents to diagnose: the engineering that is not a data structure or a
+Twenty incidents to diagnose: the engineering that is not a data structure or a
 tool. Each is a ticket with its evidence, a lock dump, a trace, a Postgres
 error or a dashboard, and four or five questions that walk from what happened
 to why, to the fix, to how you would catch it next time. Every question
@@ -450,10 +450,22 @@ thread counts, timeouts, what the team will not give up.
 | The order page takes four seconds for big orders ★ | a trace with 250 identical product queries | N+1 queries, batching under a limit, why not concurrency or a cache |
 | The average is fine, and checkout still misses its SLO | mean, p50, p99 and max for an hour | reading percentiles, fan-out tails, Little's law, the cliff at capacity |
 | Customers are charged twice when the card provider is slow | the app's log and the API's, side by side | a timeout is not a failure; idempotency keys, and where they live |
+| New users get two welcome emails | a consumer killed between the send and the ack | at-least-once delivery, idempotent consumers, choosing the key |
+| I saved my profile, and the page shows the old name | a write to the primary and a read from a replica | replica lag, read-your-writes, monotonic reads |
+| Page two repeats the end of page one ★ | two pages of a feed with new posts between them | offset against keyset pagination, a tie-breaker in the cursor |
+| The dashboard waits for everything in turn ★ | a trace of four calls made one after another | fan-out, the tail it multiplies, a budget for the optional widget |
+| The index exists, and the query is still slow | a sequential scan beside the index that should serve it | expression indexes, leading wildcards, composite column order, `EXPLAIN ANALYZE` safely |
 | Transfers hang under load ★ | a lock dump of two workers waiting on each other | lock ordering, the four deadlock conditions, catching it deterministically |
 | Postgres says "deadlock detected" every night at two | the server's deadlock report | row locks deadlock like mutexes; what 40P01 means and how to retry |
+| Oversold on launch day ★ | two replicas reading the same stock in the same millisecond | check-then-act, why a process lock is no lock, compare-and-set, the conditional `UPDATE` |
+| The nightly invoice job ran twice | a VM paused past its Redis lock's expiry | leases, why a TTL is not enough, fencing tokens, making twice harmless |
+| The order was saved, and the warehouse never heard | a commit, then a publish that timed out | the dual write, the transactional outbox, change data capture |
 | The recommendations widget took down the product page | busy threads and 503s per instance | timeouts from measurements, circuit breakers, half-open, fallbacks |
+| One slow dependency took down every endpoint | every worker thread stuck in one client | shared-pool exhaustion, bulkheads, timeouts sized by Little's law |
+| Thumbnails take over an hour, and nothing has failed | a queue's rates and depth through a campaign | arrival above service rate, backpressure, what to alert on |
+| The price service falls over at midnight ★ | a database pinned for two minutes every night | a cache stampede, jittered TTLs, single-flight, stale-while-revalidate |
 | A column rename broke the site for the length of a deploy | the old version's `column does not exist` | expand and contract, batched backfills, `lock_timeout` |
+| One config push took down every region | one typo, and every server in a crash loop | blast radius, staged config rollouts, failing static, recovery paths |
 | A five-second network blip became a forty-minute outage ★ | the database's query rate through the incident | retry amplification, metastable failure, backoff with jitter, budgets |
 
 The answers are **choices, never prose**: one option, every option that
@@ -461,9 +473,10 @@ applies (the exact set), a line of a snippet, or steps in order. That is what
 makes a quiz gradable at all, because a choice from a closed set has an
 answer and a paragraph does not
 ([ADR 0032](docs/adr/0032-a-quiz-grades-a-choice-and-a-fix-grades-code.md)).
-The three marked ★ end with **a small fix to write**, graded
-by hidden tests on what the code does: a lock order, a batched lookup, a retry
-policy. A wrong answer is told why the option it chose is wrong and never which
+The seven marked ★ end with **a small fix to write**, graded
+by hidden tests on what the code does: a batched lookup, a keyset page, a
+concurrent fan-out, a lock order, a compare-and-set, a coalesced cache miss and
+a retry policy. A wrong answer is told why the option it chose is wrong and never which
 one is right, and the attempt stays open for another try. Once it is over, the
 page shows every answer and why.
 
@@ -480,12 +493,12 @@ and an end. Six ship.
 
 | Track | Steps | Order |
 |---|---|---|
-| The whole library | 132 | The curriculum's: every kind interleaved |
+| The whole library | 144 | The curriculum's: every kind interleaved |
 | The Blind 75 | 75 | By technique, each on-ramp pulled to where it is needed |
 | Git scenarios | 24 | Local work first, shared history last |
 | SQL drills | 8 | Read, read carefully, then write |
 | Docker | 9 | Write one Dockerfile, then the two networking tickets, then PID 1, layers, image size, permissions, readiness and mounts |
-| Systems | 8 | The three easy incidents, then the deadlocks, the dead dependency and the rename, and the retry storm last |
+| Systems | 20 | The easy incidents, then concurrency, then resilience under load, then the changes that broke production, and the retry storm last |
 
 Start one from `/tracks` and every finished attempt offers the step after it:
 
@@ -857,7 +870,7 @@ src/practice/
 │   └── mcp/         a read-only MCP server on stdio: the third, and an optional extra
 ├── composition.py the single wiring point; the only cross-layer import
 └── config.py      where the library, the workspaces and the database live
-content/           132 exercises as declarative data
+content/           144 exercises as declarative data
 ├── curriculum.yaml the one order, in twenty-three sections; validate holds it to covering them all
 ├── tracks.yaml    the routes you can follow; validate holds their order to the curriculum's
 └── fixtures.lock  commit hashes every fixture must reproduce, on any platform

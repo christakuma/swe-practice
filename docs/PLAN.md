@@ -5,7 +5,7 @@ actually tested on: **data-structure problem solving** and **operational
 competence with git**. Local web app, no network, no accounts, no CDN.
 
 > **Status:** **v1.0.0, seven stretch items taken — Phases 13 through 19 — and
-> Phases 20 to 25, the changes that came from a user.**
+> Phases 20 to 26, the changes that came from a user.**
 > In Phase 21 every kata came to state its constraints and show
 > examples that are *run against its reference*
 > ([ADR 0027](adr/0027-examples-are-source-run-against-the-reference.md)), on a
@@ -378,9 +378,22 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > the first draft failed it: the right option was the longest in 21 of 28
 > questions.
 >
+> **Phase 26 is the other twelve incidents from the sketch Phase 25 started
+> from**, and its prediction was that the kind would hold them without a
+> line of `src/` changing. It held: twenty quizzes, seven ending in a fix,
+> and the diff is content, manifests and prose. The four new fixes are
+> graded without a clock: an oversell by a fake store that plays the other
+> replica *inside* its own read, a fan-out and a cache stampede under
+> `asyncio`, where concurrency is cooperative and so deterministic, and
+> keyset pagination against a real SQLite table that changes between pages.
+> What the phase found is the two things the content suite cannot see: a
+> pagination test that could not fail, because its tie never reached the
+> page boundary, and the same longest-answer tell Phase 25 wrote a rule
+> against, in twenty of the forty-one new questions, while the rule still
+> passed.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 25 (systems quizzes: incidents you diagnose, and the
-> occasional fix), 2026-10-19
+> · **Last phase:** 26 (the other twelve incidents), 2026-10-19
 > · **Last change:** Run, and trying again after a failure, 2026-10-16
 
 ---
@@ -2948,6 +2961,67 @@ user (the cache stampede, the outbox, keyset pagination…) are Phase 26.
 | The workbench draws a quiz as a form, and its post grades it | `tests/web/test_quiz.py` |
 | A tutor sees the key once the quiz is graded, and not before | `tests/content/test_tutor_context.py` |
 | The systems track opens gently, and the first screen still offers every kind | `tests/content/test_library.py::test_every_track_opens_gently`, `::test_the_first_screen_of_the_curriculum_offers_every_kind` |
+
+### Phase 26 — The other twelve incidents · **1 session**
+
+**Goal:** the rest of the twenty incidents sketched with the user before
+Phase 25, which built the kind and shipped eight. Phase 25's sketch put the
+other twelve, and a systems track, in Phase 26; the track shipped early,
+with the first eight, so this phase is content and nothing else. **The
+prediction is that it touches nothing under `src/`**: a sixth fix suite, a
+twentieth incident and a question format used twice as often are all things
+ADR 0032 claims the kind already holds.
+
+**Scope.** Twelve incidents, in the sketch's five sections. Four end in a
+fix question (★), so the library goes from three fix suites to seven.
+
+| Section | Incident | What it teaches |
+|---|---|---|
+| Concurrency | ★ Oversold on launch day | check-then-act, why a process lock fails across replicas, compare-and-set by version, the conditional `UPDATE` |
+| | The nightly job ran twice | leases, why a time-to-live alone is not enough, fencing tokens |
+| Latency | ★ The dashboard waits for everything in turn | sequential awaits, fan-out, a timeout on the optional widget only |
+| | ★ A cache stampede at midnight | request coalescing (single-flight), stale-while-revalidate, why a longer TTL only moves the cliff |
+| | The index exists and the query is still slow | `EXPLAIN` on a function-wrapped column, a leading wildcard, composite column order |
+| Resilience | One slow dependency took down every endpoint | a shared pool exhausted by one caller, bulkheads, Little's law again |
+| | The queue keeps growing | arrival above service rate, backpressure, shedding, why an unbounded queue is a latency bug |
+| Data & messaging | Two welcome emails | at-least-once delivery, idempotent consumers, ack after the work |
+| | Saved, but nobody heard about it | dual writes, the transactional outbox, and why the relay is at-least-once too |
+| | ★ Page two repeats page one | offset against keyset pagination, a tie-breaker in the cursor |
+| | I saved it and it's gone | replica lag, read-your-writes, routing a session's reads |
+| Change & ops | One config push, every region down | blast radius, staged rollouts, config as code that is deployed like code |
+
+**How the four fixes are graded without a clock.** Phase 25's suites count
+calls and record sleeps rather than timing anything, and these keep to it.
+The oversell suite interleaves a second buyer *inside* the fake store's read,
+the way another replica would, so a process-local lock is visibly no help.
+The dashboard and the stampede are `asyncio`, which makes concurrency
+cooperative and therefore deterministic: a test parks every caller at an
+`Event` and counts who arrived. A timeout is checked against a widget that
+never answers, so nothing waits on a real deadline being hit precisely. The
+pagination suite pages a real in-memory SQLite table while rows are
+inserted between pages, because what is wrong with `OFFSET` is what happens
+to a list that moves.
+
+**Order.** Each incident goes into the curriculum's `systems` section where
+what it leans on is already met, and the systems track takes the section's
+order: the two welcome emails after the double charge (an idempotent
+consumer is an idempotency key seen from the other side), the oversell
+after both deadlocks, the nightly job after the oversell, bulkheads after
+the circuit breaker, the outbox after the welcome emails, and the retry
+storm still last.
+
+**Commits** — content, then docs.
+1. `feat(content): twelve more systems incidents, four with a fix`
+2. `docs: Phase 26, the other twelve incidents`
+
+| Exit criterion | Met by |
+|---|---|
+| Nothing under `src/` changes | `git diff --stat f3e320a -- src/` |
+| Twenty quizzes, every reference passing and every stub failing every question | `tests/content/test_quizzes.py::test_there_are_quizzes`, `::test_the_reference_sheet_passes`, `::test_the_stub_fails_every_question` |
+| Seven fix suites, every counter-example failing exactly what it declares | `tests/content/test_quizzes.py::test_every_fix_counter_example_fails_exactly_what_it_declares` |
+| No question gives itself away, over the twenty | the library-wide rules in `tests/content/test_quizzes.py` |
+| The systems track misses no quiz and still opens gently | `tests/content/test_library.py::test_a_track_named_for_a_kind_misses_nothing_of_that_kind`, `::test_every_track_opens_gently` |
+| A tutor sees the key once a quiz is graded, and not before, for all twenty | `tests/content/test_tutor_context.py` |
 
 ---
 
@@ -6632,3 +6706,94 @@ statement and branch coverage over 3,825 statements and 958 branches.
 `practice validate` reports 294 exercises, eight more than 286, and
 `practice fixtures --check` is unchanged. The gate took 11m48s, one run, and
 CLAUDE.md's warning that one run is not a measurement applies to it.
+
+**2026-10-19 — Phase 26: the other twelve incidents.** Phase 25's sketch,
+agreed with the user before any code, listed twenty incidents and put twelve
+of them in Phase 26 with a systems track; the track shipped with the first
+eight. So this phase is content, and it came with a prediction worth
+checking: **the kind holds twelve more incidents and four more fix suites
+without a line of `src/` changing.** It held. `git diff --stat f3e320a --
+src/` is empty, and `practice validate` reports 306 exercises, twelve more
+than 294.
+
+**How the four fixes are graded without a clock**, which was the design
+question, since Phase 25's suites count and record rather than time:
+
+- **The oversell** is a fake store whose `get` can run another replica's
+  whole sale after taking its snapshot and before returning. The race happens
+  on every run, and the stub's `threading.Lock` is visibly no help, because
+  the sale that slips in never goes through it. Retrying for ever fails a
+  test rather than hanging, because the store refuses a fiftieth read.
+- **The dashboard and the stampede are `asyncio`**, where a task only
+  yields at an `await`, so concurrency is something a test arranges rather
+  than hopes for. Every fake service waits at one `Event` until all four have
+  started, and a handler that awaits in turn never starts the second. A
+  timeout is tested against a service that never answers, so nothing waits
+  on a deadline firing at a precise moment. One trap: `asyncio.run` cancels
+  every pending task as it closes, which would have made *left running*
+  indistinguishable from *cancelled*, so the suite records cancellations
+  inside the loop.
+- **Pagination runs against a real SQLite table** that has posts inserted
+  and deleted between pages, because a list that holds still cannot tell
+  OFFSET from a keyset.
+
+**Two answers the prompts leave open were run, and both pass**: a
+`TaskGroup` for the dashboard, which raises an `ExceptionGroup` rather than
+the bare error, so the failing-widget test accepts the error inside a group;
+and the oversell with the old lock kept and the retry written recursively.
+
+**What only running it could show, twice over.**
+
+- **A test that could not fail.** The pagination suite's tie test put six
+  posts with one timestamp at the *newest* end of the feed, so page one held
+  all six and the boundary never split them. The cursor that holds only the
+  time, the bug the test is named for, passed it. ADR 0022's rule is exactly
+  this case, and running the counter-example before writing its declaration
+  is what caught it. The tie now sits across row 20, and the test asserts
+  that it does.
+- **The tell Phase 25 wrote a rule against came back, under the rule.**
+  Twenty of the forty-one new single-choice answers were the strictly
+  longest option, and one position held 52% of the library's right answers.
+  The length rule still passed, at 26 of 69, because it is library-wide and
+  Phase 25's trimmed questions carried it. The position rule failed. Both
+  were fixed rather than squeaked under: right answers trimmed to a claim
+  with their argument left in the `why`, thin distractors given a full
+  sentence, and answers moved. The new content has no longest-option tell
+  at all; the library ends at 6 longest and 5 shortest of 69, and no
+  position holds more than 28%. **A library-wide rule cannot see a tell
+  that a batch of new content brings in below the average**, which is worth
+  knowing about every threshold in that file.
+- **An option id contained `wrong`** (`wrong-order`). The giveaway-word rule
+  caught it, as it caught `answer-created` in Phase 25.
+
+**What reading caught before running did.** Three tickets disagreed with
+their own numbers: the nightly job's headline count of customers billed
+twice; the queue's "three hours", against a table that gives about an hour,
+and an oldest-job age that FIFO arithmetic puts at 60 minutes where 75 was
+written; and a cache-warming story that contradicted its own timeline. Each was checked against the arithmetic and rewritten. And two
+options were right in some circumstances, which ADR 0032's rule forbids: a
+circuit breaker with the 30-second timeout left under it does cut the
+bulkhead incident short, only not before the pool has been full for
+twenty-six seconds, so it is now a distractor that says so.
+
+**And one thing only the browser showed**, by driving the real app against
+a scratch database: the dashboard's trace, a four-column table, wrapped in
+the prompt panel and lost its columns. It is half the width now. A
+half-wrong sheet submitted through the form failed with the chosen option's
+reason, ran the fix suite in the workbench, and reported 7 of 12, which is
+the count by hand.
+
+**No ADR.** Nothing here was expensive to reverse: twelve directories, two
+manifests and prose.
+
+**Final numbers.** 9,735 passing and 71 skipped in the gate, where the last
+entry ended on 9,530 and 71: 205 new tests, all of them content.
+100% statement and branch coverage over 3,825 statements and 958 branches,
+*exactly* Phase 25's figures, which is the prediction in one line.
+`practice validate` reports 306 exercises and `practice fixtures --check` is
+unchanged. **The gate took 34 minutes, twice, and one run failed**: a
+variant kata this phase did not touch, `first-missing-positive`, whose stub
+run was killed at its 10-second limit. It passed alone in 26 seconds, and
+the second full run passed clean. Both runs shared the machine with a game
+that had used six hours of CPU, which is the noise CLAUDE.md warns about
+taken to its extreme: neither figure is a measurement of this phase.
