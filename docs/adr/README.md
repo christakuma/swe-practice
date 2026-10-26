@@ -31,7 +31,7 @@ an afternoon do not need one.
 | [0007](0007-htmx-over-a-single-page-app.md) | HTMX and server-rendered fragments, not a single-page app | accepted |
 | [0008](0008-sm2-first-with-fsrs-behind-a-port.md) | SM-2 first, with FSRS behind the same port | accepted |
 | [0009](0009-ship-our-own-prompts.md) | Ship our own prompts; never redistribute problem text | accepted |
-| [0010](0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | accepted |
+| [0010](0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | superseded by 0034 |
 | [0011](0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
 | [0012](0012-inspect-the-repository-through-the-grading-port.md) | The repo state panel reads through the grading port, not a second git path | accepted |
 | [0013](0013-grade-on-save-is-a-preview.md) | Grade-on-save is a preview that persists nothing | accepted |
@@ -55,6 +55,7 @@ an afternoon do not need one.
 | [0031](0031-ownership-is-modelled-from-the-definition-not-grepped.md) | Who owns a path is modelled from the definition, not grepped for | accepted |
 | [0032](0032-a-quiz-grades-a-choice-and-a-fix-grades-code.md) | A quiz grades a choice from a closed set, and a fix question grades code | accepted |
 | [0033](0033-review-scheduling-is-optional-and-deadlines-come-from-pace.md) | Review scheduling is optional, and a deadline is computed from pace | accepted |
+| [0034](0034-monaco-over-codemirror.md) | Monaco, vendored and trimmed, replaces CodeMirror 5 | accepted |
 
 0022 is the odd one in this set: the only record here about **how the content is
 authored** rather than how the code is arranged. It exists because Phase 17's

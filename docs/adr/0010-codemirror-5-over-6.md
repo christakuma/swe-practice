@@ -1,6 +1,6 @@
 # 0010 — CodeMirror 5 over 6, to avoid an npm build step
 
-- **Status:** accepted
+- **Status:** superseded by [ADR-0034](0034-monaco-over-codemirror.md)
 - **Date:** 2026-10-02
 - **Phase:** 7
 

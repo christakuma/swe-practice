@@ -195,8 +195,10 @@ filters the library by kind, difficulty and tag, says which exercises you have
 passed and when, and starts an attempt; `/attempt/{id}` is the workbench;
 `/progress` is the long form.
 
-For a kata the workbench is the prompt beside a CodeMirror editor seeded from
-the exercise's stub. The prompt column has two tabs. **Prompt** is the task and,
+For a kata the workbench is the prompt beside a Monaco editor (the one VS Code uses) seeded from
+the exercise's stub. The prompt sits on the left in tabs and the editor fills the right, with a
+draggable divider whose position is remembered; below about 900px they stack.
+The tabs are **Prompt**, **Examples** and **Hints**. **Prompt** is the task and,
 under it, the constraints: how long the input can be, how large the values, and
 what is guaranteed. **Examples** is a list of inputs and the outputs they give.
 Each input is Python you could run against your own solution and the output is
@@ -224,13 +226,14 @@ submission renders is the same template the page uses when it loads an attempt
 that was graded last week, so a reload cannot disagree with what you were just
 shown ([ADR 0007](docs/adr/0007-htmx-over-a-single-page-app.md)).
 
-**Offline is enforced, not promised.** htmx and CodeMirror 5 are committed files
-pinned by SHA-256. One test greps every template and stylesheet of ours for a
-remote reference, a second checks the five vendored files against their hashes,
+**Offline is enforced, not promised.** htmx is a committed file and Monaco a
+committed directory, both pinned by SHA-256. One test greps every template and
+stylesheet of ours for a remote reference, a second checks the vendored files
+against their hashes,
 and a third asserts that every file under `static/` is covered by one of the
-two. CodeMirror **5** and not 6 is a real tradeoff, recorded in
-[ADR 0010](docs/adr/0010-codemirror-5-over-6.md): a maintenance-mode dependency,
-accepted to keep an npm toolchain out of a Python project for one widget.
+two. Monaco, and a release old enough to be trimmable, is a real tradeoff, recorded
+in [ADR 0034](docs/adr/0034-monaco-over-codemirror.md): about 4 MB in the wheel,
+accepted for an editor that closes brackets and indents, with no npm toolchain.
 
 ### The scenario workbench
 
@@ -927,6 +930,6 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## License
 
-[MIT](LICENSE). The vendored copies of CodeMirror 5 (MIT) and htmx (0BSD) keep
+[MIT](LICENSE). The vendored copies of Monaco Editor (MIT) and htmx (0BSD) keep
 their own licences, reproduced in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

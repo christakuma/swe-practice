@@ -392,8 +392,16 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > against, in twenty of the forty-one new questions, while the rule still
 > passed.
 >
+> **Phase 27 replaced the editor.** The kata page's CodeMirror 5 became Monaco
+> 0.52.2, vendored trimmed to ten files and pinned as one directory by hash
+> ([ADR 0034](adr/0034-monaco-over-codemirror.md), superseding ADR 0010), behind
+> one component that every editor page uses, and an open kata or drill is now
+> prompt-beside-editor with a draggable divider. Driving it in a real browser
+> found what no test could: on Windows Monaco's default line ending is CRLF, so
+> the document and the textarea under it disagreed.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 26 (the other twelve incidents), 2026-10-19
+> · **Last phase:** 27 (a real editor), 2026-10-26
 > · **Last change:** Run, and trying again after a failure, 2026-10-16
 
 ---
@@ -3025,7 +3033,7 @@ storm still last.
 
 ### Phase 27 — A real editor, and room for it · **2 sessions**
 
-**Goal:** the kata page's editor stops being "a somewhat inconvenient little
+**Status: done (2026-10-26).** **Goal:** the kata page's editor stops being "a somewhat inconvenient little
 window". Today it is CodeMirror 5 in a fixed 26rem box inside a vertical page,
 with Tab inserting a tab character and no bracket closing or matching. ADR 0010
 chose CM5 to avoid an npm build step and recorded "a maintenance-mode
@@ -3067,11 +3075,11 @@ that goes in §16 — Phase 7's CM5 overrides were found "by looking at it".
 
 | Exit criterion | Met by |
 |---|---|
-| Every vendored Monaco file matches its pinned hash, and no CM5 file remains | `tests/web/` vendor test |
-| No page loads two editor engines | a template test over the editor pages |
-| Submit, Run, examples and own-editor work through the new handle | `tests/web/` and `tests/e2e/test_solve_a_kata_in_the_browser.py` |
-| Tab indents, Enter keeps indentation, brackets close | driven in a browser; recorded in §16 |
-| The built-in offline-asset test still passes | `tests/web/` offline-asset test |
+| Every vendored Monaco file matches its pinned hash, and no CM5 file remains | `tests/web/test_vendored_assets.py::test_every_vendored_asset_matches_its_pinned_hash`, `::test_a_tree_is_pinned_as_the_directory_it_is`, `::test_no_codemirror_file_remains` |
+| No page loads two editor engines | `tests/web/test_editor_component.py` |
+| Submit, Run, examples and own-editor work through the new handle | `tests/web/test_workbench.py`, `tests/web/test_editor_script.py` (the handle, run under node) and `tests/e2e/test_solve_a_kata_in_the_browser.py` |
+| Tab indents, Enter keeps indentation, brackets close | driven in headless Chrome over CDP; recorded in §16 |
+| The built-in offline-asset test still passes | `tests/web/test_offline.py` |
 
 ### Phase 28 — A standard kata format · **3 sessions**
 
@@ -3142,7 +3150,7 @@ changed"* is worth more than any code sample.
 | [0007](adr/0007-htmx-over-a-single-page-app.md) | HTMX and server-rendered fragments, not a single-page app | accepted |
 | [0008](adr/0008-sm2-first-with-fsrs-behind-a-port.md) | SM-2 first, with FSRS behind the same port | accepted |
 | [0009](adr/0009-ship-our-own-prompts.md) | Ship our own prompts; never redistribute problem text | accepted |
-| [0010](adr/0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | accepted |
+| [0010](adr/0010-codemirror-5-over-6.md) | CodeMirror 5 over 6, to avoid an npm build step | superseded by 0034 |
 | [0011](adr/0011-reference-solutions-are-command-lists.md) | Reference solutions are command lists, not shell scripts | accepted |
 | [0012](adr/0012-inspect-the-repository-through-the-grading-port.md) | The repo state panel reads through the grading port, not a second git path | accepted |
 | [0013](adr/0013-grade-on-save-is-a-preview.md) | Grade-on-save is a preview that persists nothing | accepted |
@@ -3166,6 +3174,7 @@ changed"* is worth more than any code sample.
 | [0031](adr/0031-ownership-is-modelled-from-the-definition-not-grepped.md) | Who owns a path is modelled from the definition, not grepped for | accepted |
 | [0032](adr/0032-a-quiz-grades-a-choice-and-a-fix-grades-code.md) | A quiz grades a choice from a closed set, and a fix question grades code | accepted |
 | [0033](adr/0033-review-scheduling-is-optional-and-deadlines-come-from-pace.md) | Review scheduling is optional, and a deadline is computed from pace | accepted |
+| [0034](adr/0034-monaco-over-codemirror.md) | Monaco, vendored and trimmed, replaces CodeMirror 5 | accepted |
 
 ---
 
@@ -6912,3 +6921,53 @@ before they happened: `Services` field order, `Record` equality in
 `test_tracks.py`, and `review.html` dereferencing an offer the route no longer
 supplied. Final: 9814 passed, 71 skipped, 100% coverage of `domain/` and
 `application/`; the gate took 13m10s, one run, so not a measurement.
+
+**2026-10-26 — Phase 27: a real editor, and room for it
+([ADR 0034](adr/0034-monaco-over-codemirror.md)).** CodeMirror 5 became Monaco
+on every page that edits code, and an open kata or drill became a
+prompt-beside-editor workbench.
+
+**What deviated from the plan, and why.**
+- **Monaco 0.52.2, not the latest.** The plan said "vendor Monaco, trimmed".
+  Later releases are ESM-first, and their `editor.main` statically imports a
+  7 MB TypeScript worker and three others, so nothing can be dropped. 0.52 is
+  the last classic AMD layout; ten files, 4.4 MB.
+- **A textarea stays under the editor.** The plan said "behind the handle the
+  page already uses". The handle is kept, but it is backed by a hidden
+  textarea that follows the document, so the quiz's `configRequest` script is
+  deleted, a failed load leaves a working page, and `getValue()` answers
+  before Monaco has arrived.
+- **Constraints stayed on the Prompt tab**, with hints as a third tab beside
+  Prompt and Examples (only where tabs already exist). Constraints are read
+  while reading the prompt.
+- **YAML indents by two, everything else by four.** The plan said four.
+- **Autocomplete is off**, which the plan did not say: it would answer the
+  exercise.
+
+**What driving it in a browser found** (headless Chrome over CDP, throwaway
+database, a kata, a drill, a container exercise and a quiz fix). Tab at the
+start of a line indents four spaces; Enter after `def f(x):` indents; `(`, `[`,
+`{` and `'` close and typing past them works; Ctrl+/ toggles comments; the
+divider drags (width 685px after a 200px drag), survives a reload and moves
+by 24px per arrow key; below 800px the page stacks and the divider is gone;
+the theme follows `prefers-color-scheme` live, in both directions. **Three
+defects**, none visible to a test: **Monaco defaults a model to CRLF on
+Windows**, so the document and the LF-normalising textarea disagreed (the model
+is LF now, held by `test_editor_script.py`); **a white native scrollbar beside a
+dark editor** (`color-scheme` is set from the same tokens); and a hint bar that
+wrapped to two lines (shortened). What was *not* done: a real keyboard on a real
+screen. Typing was synthetic key events, so IME input, dead keys and the
+Ctrl+M focus escape are untested.
+
+**What the suite can say.** `editor_harness.js` runs `editor.js` under node
+against a scripted document, and `test_editor_script.py` mutation-checked
+itself: breaking `autoClosingBrackets` and the textarea sync failed exactly the
+two tests that name them.
+
+**No ADR number was reused**; 0010 is marked superseded in both indexes.
+
+**Final numbers.** 9,852 passing and 71 skipped in the gate, where the last
+entry ended on 9,814 and 71. 100% statement and branch coverage over 3,917
+statements and 976 branches. `practice validate` and `practice fixtures
+--check` are unchanged. The gate took 13m47s, one run, which CLAUDE.md says is
+not a measurement.
