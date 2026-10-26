@@ -41,8 +41,8 @@ def test_a_kata_opens_the_editor_on_its_stub(
     body = client.get(f"/attempt/{started.attempt.id}").text
 
     assert "def two_sum(values, target):" in body
-    assert "/static/vendor/codemirror.min.js" in body
-    assert "/static/vendor/codemirror-python.min.js" in body
+    assert 'data-code-editor="python"' in body
+    assert "/static/editor.js" in body
 
 
 def test_the_editor_mode_comes_from_the_exercise(
@@ -51,13 +51,13 @@ def test_the_editor_mode_comes_from_the_exercise(
     """From the spec's own language, not hardcoded.
 
     Which is the claim §15 question 3 rests on: a second language is a content
-    change plus a vendored mode file, and nothing in the page.
+    change plus a vendored tokenizer, and nothing in the page.
     """
     started = wiring.services.start_attempt(KATA)
 
     body = client.get(f"/attempt/{started.attempt.id}").text
 
-    assert 'mode: "python"' in body
+    assert 'data-code-editor="python"' in body
 
 
 def test_a_git_scenario_gets_a_console_rather_than_an_editor(
@@ -73,7 +73,7 @@ def test_a_git_scenario_gets_a_console_rather_than_an_editor(
 
     body = client.get(f"/attempt/{started.attempt.id}").text
 
-    assert "codemirror.min.js" not in body
+    assert "data-code-editor" not in body
     assert 'id="console-log"' in body
 
 
@@ -92,7 +92,7 @@ def test_a_finished_attempt_shows_its_verdict_instead_of_an_editor(
 
     assert response.status_code == 200
     assert "Finds the two positions" in response.text
-    assert "codemirror.min.js" not in response.text
+    assert "data-code-editor" not in response.text
 
 
 def test_an_unknown_attempt_is_a_page_not_a_traceback(client: TestClient) -> None:
@@ -286,29 +286,26 @@ def test_a_drill_opens_the_editor_on_its_stub(
     body = client.get(f"/attempt/{started.attempt.id}").text
 
     assert "every customer and how many orders" in body
-    assert "/static/vendor/codemirror.min.js" in body
+    assert 'data-code-editor="sql"' in body
 
 
-def test_a_drill_loads_the_sql_mode_and_not_the_python_one(
+def test_a_drill_asks_for_the_sql_language_and_not_the_python_one(
     client: TestClient, wiring: Wiring
 ) -> None:
     """**The half of §15 Q3's prediction that was wrong.**
 
-    `vendor.py` said a second language costs "a second line here and nothing
-    else". The second line is right; this page had
-    `codemirror-python.min.js` written into its script tag, so a drill would
-    have loaded a Python tokenizer and then asked CodeMirror for a `sql` mode
-    it had not loaded — which fails by silently giving you a plain textarea,
-    the worst available way for it to fail. No existing assertion could have
-    caught it: the mode *name* was already coming from the spec.
+    It stays a test after the file names went away. Phase 14 found the Python
+    tokenizer's file name written into the script tag, so a drill loaded Python
+    and asked for a `sql` mode it had not loaded -- a plain textarea, silently.
+    The language id is now the only thing the page says, and this holds it to
+    the exercise's own.
     """
     started = wiring.services.start_attempt(DRILL)
 
     body = client.get(f"/attempt/{started.attempt.id}").text
 
-    assert 'mode: "sql"' in body
-    assert "/static/vendor/codemirror-sql.min.js" in body
-    assert "/static/vendor/codemirror-python.min.js" not in body
+    assert 'data-code-editor="sql"' in body
+    assert 'data-code-editor="python"' not in body
 
 
 def test_a_drill_gets_no_repository_panel(client: TestClient, wiring: Wiring) -> None:

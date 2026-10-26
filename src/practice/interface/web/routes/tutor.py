@@ -7,8 +7,8 @@ not serve. Phase 18; ADR 0023.
 
 **A POST that writes nothing, and it is a POST because of what it carries.**
 Every other read in this app is a GET. This one has a body: a kata's solution
-lives in the browser's editor until it is submitted, and the textarea under
-CodeMirror stops tracking it the moment the editor loads (`workbench.html`), so
+lives in the browser's editor until it is submitted, and the editor handle is
+what says what is on screen (`workbench.html`), so
 the only way the server learns what the solver has typed is to be sent it. A
 tutor shown the untouched stub while the solver looks at forty lines of their
 own code would be answering a different question.

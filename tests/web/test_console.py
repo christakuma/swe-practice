@@ -50,7 +50,7 @@ def test_a_scenario_gets_a_console_instead_of_an_editor(
     assert f"/api/attempt/{attempt_id}/command" in body
     assert f"/api/attempt/{attempt_id}/submit-scenario" in body
     # No editor on this page, and no editor machinery loaded for it either.
-    assert "codemirror.min.js" not in body
+    assert "data-code-editor" not in body
 
 
 def test_the_console_names_the_commands_this_exercise_allows(

@@ -32,7 +32,7 @@ the pytest run, the SQLite read — is pushed to a thread by the use case itself
 **Native `EventSource`, not an htmx extension.** htmx 2 moved SSE out of the
 core into `htmx-ext-sse`, so using the attribute form would mean a fifth
 hash-pinned vendored asset (§8.2) for one panel on one page. The page already
-hand-wires its submission in a `<script>`, because CodeMirror forced that in
+hand-wires its submission in a `<script>`, because the editor handle forced that in
 Phase 7, so the honest comparison is four lines of `addEventListener` against a
 new third-party file to download, pin, review and keep. The four lines won.
 

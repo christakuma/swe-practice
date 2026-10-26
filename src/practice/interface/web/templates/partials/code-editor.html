@@ -1,0 +1,32 @@
+{#
+  The one code editor, as a macro (Phase 27, ADR 0034).
+
+  **A textarea with a bar over it, and `static/editor.js` does the rest.** The
+  script finds `textarea[data-code-editor]`, hides it, mounts Monaco beside it
+  and keeps the two equal on every change. Rendering the textarea here, and not
+  an empty `<div>` Monaco fills, is the decision: a form serialises it with no
+  help, the page still works if Monaco never arrives, and `getValue()` has
+  something to answer from for the seconds it is loading.
+
+  `language` is a Monaco language id, or empty for an editor with no colouring.
+  `run` is a selector for the button Ctrl+Enter should press -- empty where
+  there is nothing to run, which is every editor but a kata's.
+
+  Every page that edits code imports this and nothing else
+  (`tests/web/test_editor_component.py` holds the pages to it), because two
+  engines is worse than either.
+#}
+{% macro code_editor(id, name, value, language, rows=20, run="") %}
+<div class="code-editor">
+  <div class="code-editor-bar">
+    <span class="meta" title="Ctrl+M makes Tab move focus instead of indenting">Tab indents · Ctrl+/ comment · Ctrl+F find{% if run %} · Ctrl+Enter run{% endif %}</span>
+    <span class="font-size" role="group" aria-label="Editor font size">
+      <button type="button" class="quiet" data-editor-font="-1" aria-label="Smaller text">A&minus;</button>
+      <button type="button" class="quiet" data-editor-font="1" aria-label="Larger text">A+</button>
+    </span>
+  </div>
+  <textarea id="{{ id }}" name="{{ name }}" spellcheck="false" rows="{{ rows }}"
+            data-code-editor="{{ language or 'plaintext' }}"
+            {%- if run %} data-run="{{ run }}"{% endif %}>{{ value }}</textarea>
+</div>
+{% endmacro %}

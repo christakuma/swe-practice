@@ -9,8 +9,8 @@
  * component.
  *
  * Dark by default, with a light scheme behind `prefers-color-scheme`. The
- * vendored CodeMirror stylesheet assumes a light editor, so the few overrides it
- * needs are at the bottom rather than scattered.
+ * editor draws itself from these same custom properties (`static/editor.js`
+ * reads them), so there is no second palette to keep in step.
  */
 
 :root {
@@ -1100,40 +1100,55 @@ code.path {
   fill: var(--note);
 }
 
-/* --- CodeMirror overrides ----------------------------------------------- */
+/* --- the code editor --------------------------------------------------- */
 
 /*
- * A fixed height with CodeMirror's own scrolling, not `height: auto` plus a
- * `min-height`. That pairing looks right until you load a short stub: the widget
- * sizes to its eight lines, the min-height adds empty panel underneath, and the
- * horizontal scrollbar is drawn at the *content* edge with dead space below it.
- * Found by looking at it; no test would have.
+ * A fixed height, not `height: auto`. Monaco lays itself out against its host,
+ * and a host that sizes to its content has nothing to measure; the workbench
+ * layout overrides this to fill the column. Phase 7's CodeMirror version of this
+ * rule was "found by looking at it", and so is the first draft of this one.
  */
-.CodeMirror {
-  height: 26rem;
-  font-family: var(--mono);
-  font-size: 0.85rem;
-  background: var(--bg-sunken);
-  color: var(--ink);
+.code-editor {
   border: 1px solid var(--line);
   border-radius: 6px;
-}
-
-.CodeMirror-gutters {
   background: var(--bg-sunken);
-  border-right: 1px solid var(--line);
+  overflow: hidden;
 }
 
-.CodeMirror-linenumber {
-  color: var(--ink-dim);
+.code-editor-host {
+  height: 26rem;
 }
 
-.CodeMirror-cursor {
-  border-left: 1px solid var(--ink);
+.code-editor-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--line);
 }
 
-.CodeMirror-selected {
-  background: var(--line);
+.code-editor-bar .font-size button {
+  padding: 0.05rem 0.45rem;
+  font-size: 0.8rem;
+}
+
+/* Until Monaco has mounted, and for good if it cannot, the textarea is the
+   editor: monospace, full width, and not a different-looking widget. */
+.code-editor textarea {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  tab-size: 4;
+  resize: vertical;
+}
+
+.code-editor textarea[hidden] {
+  display: none;
 }
 
 /* --- the schedule control ----------------------------------------------- */
@@ -1574,10 +1589,8 @@ a.button {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-.quiz textarea.fix-code {
-  width: 100%;
-  font-family: var(--mono);
-  font-size: 0.82rem;
+.quiz .code-editor-host {
+  height: 12rem;
 }
 
 /* The finished quiz: every option marked right or wrong, the one chosen

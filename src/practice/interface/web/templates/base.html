@@ -6,9 +6,12 @@
   form of that rule that survives someone adding a stylesheet in a hurry
   (PLAN.md §8.2) — and the reason this comment names none of them literally.
 
-  CodeMirror's stylesheet is loaded on every page rather than only the workbench,
-  deliberately: it is 7 KB from the local disk, and the alternative is a per-page
-  asset block that the one page needing it forgets to fill in.
+  `editor.js` is loaded on every page rather than only the ones with an editor,
+  deliberately: it is 9 KB from the local disk and fetches Monaco itself, and
+  only when a `textarea[data-code-editor]` is on the page -- so the alternative,
+  a per-page asset block, would buy nothing and be the thing the one page that
+  needs it forgets to fill in. Last in the body so the textareas exist when it
+  looks for them.
 #}<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -18,7 +21,6 @@
      leaks the exercise you are stuck on into a referer header would be absurd. #}
   <meta name="referrer" content="no-referrer">
   <title>{{ title }} · swe-practice</title>
-  <link rel="stylesheet" href="{{ static }}/vendor/codemirror.min.css">
   <link rel="stylesheet" href="{{ static }}/app.css">
   <script src="{{ static }}/vendor/htmx.min.js" defer></script>
 </head>
@@ -46,5 +48,6 @@
   <footer class="foot">
     <span>Grade the end state, not the answer text.</span>
   </footer>
+  <script src="{{ static }}/editor.js" data-monaco="{{ static }}/vendor/monaco/vs"></script>
 </body>
 </html>

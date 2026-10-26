@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/code-editor.html" import code_editor %}
 {% set attempt = workbench.attempt %}
 {% set exercise = workbench.exercise %}
 
@@ -136,8 +137,8 @@
     {% elif is_kata %}
       <h2>Your solution</h2>
       <form id="solution-form">
-        <textarea id="source" name="source" spellcheck="false"
-                  rows="20">{{ workbench.editor_source or '' }}</textarea>
+        {{ code_editor("source", "source", workbench.editor_source or '', editor_mode,
+                       run="#run-examples" if examples else "") }}
 
         <div class="editor-actions">
           {#
@@ -215,39 +216,21 @@
 </div>
 
 {#
-  `editor_mode_files` rather than a hardcoded `codemirror-python.min.js`, which
-  is the half of §15 Q3's prediction Phase 14 found. `vendor.py` said a second
-  language was "a second line here and nothing else"; the second line was
-  right, but this tag had the Python tokenizer written into it, so a SQL drill
-  loaded Python and then asked CodeMirror for a `sql` mode it did not have --
-  failing by silently giving you a plain textarea. The route hands down the
-  filename from the manifest, so the set of modes that have a file stays a fact
-  about `vendor.py` instead of a path guessed at here.
-#}
-{% if workbench.is_active and is_kata and editor_mode_files %}
-  <script src="{{ static }}/vendor/codemirror.min.js"></script>
-  {% for mode_file in editor_mode_files %}
-  <script src="{{ static }}/{{ mode_file }}"></script>
-  {% endfor %}
-  <script>
-    // CodeMirror replaces the textarea with its own document, so the element the
-    // form would serialise stops tracking what is on screen. Everything that
-    // reads the solution reads `editor` instead -- which is why this handle is
-    // hung on `window` rather than kept in the closure.
-    window.practiceEditor = CodeMirror.fromTextArea(
-      document.getElementById("source"),
-      {
-        mode: {{ editor_mode | tojson }},
-        lineNumbers: true,
-        indentUnit: 4,
-        lineWrapping: false
-      }
-    );
+  The editor itself is `static/editor.js`, mounted over the textarea above and
+  reachable here as `window.practiceEditor` -- a handle that exists from the
+  moment the page does and answers from the textarea until Monaco has loaded,
+  so nothing below waits for it.
 
-    // The submission is wired here rather than as `hx-post` on the form, and
-    // that is forced by the line above: htmx would serialise the textarea, and
-    // the textarea stopped tracking the document the moment CodeMirror replaced
-    // it. `getValue()` is the only thing that knows what is on screen.
+  `editor_mode` is the Monaco language id from the exercise's own spec (§15 Q3:
+  a second language is a content change and a vendored tokenizer, and nothing
+  in a page). Phase 14 found the first version of this hardcoding the Python
+  tokenizer's file name; the file name is gone, and the id is all that is left.
+#}
+{% if workbench.is_active and is_kata and not is_quiz %}
+  <script>
+    // The submission is wired here rather than as `hx-post` on the form: the
+    // handle is what knows what is on screen. `getValue()` is the contract, and
+    // it holds whether Monaco is up or the textarea is all there is.
     document.getElementById("solution-form").addEventListener("submit", function (event) {
       event.preventDefault();
       var form = event.target;
@@ -282,8 +265,9 @@
       });
     });
 
-    // The Run button, wired here for the reason the submission is: `editor` is
-    // the only thing that knows what is on screen. Same slot, same in-flight
+    // The Run button, wired here for the reason the submission is: the handle is
+    // the only thing that knows what is on screen. Ctrl+Enter in the editor
+    // clicks it, so this is the one place Run is defined. Same slot, same in-flight
     // state -- a run starts a process too -- and nothing it returns is kept.
     var runButton = document.getElementById("run-examples");
     if (runButton !== null) {
@@ -302,9 +286,7 @@
       });
     }
 
-    // Own-editor mode, wired here for the reason the submission is: the thing
-    // that knows what is on screen is `editor`, not the textarea htmx would
-    // serialise. The response is a panel with no script in it, so the swap is
+    // Own-editor mode, wired here for the reason the submission is. The response is a panel with no script in it, so the swap is
     // plain HTML and everything that runs runs from this block.
     document.getElementById("open-editor").addEventListener("click", function (event) {
       var button = event.target;
@@ -318,15 +300,13 @@
 
     // From here on the file is the solution and this editor is a mirror of it.
     // Read-only is not decoration: with two editors open on one attempt, the
-    // one that is not the source of truth has to stop looking like it is --
-    // and `nocursor` is the value that also removes the caret, because a
-    // caret in a read-only document is an invitation.
+    // one that is not the source of truth has to stop looking like it is.
     function watchTheFile() {
       var status = document.getElementById("watch-status");
       if (status === null) {
         return;  // the reveal was refused; the panel is a problem, not a path
       }
-      window.practiceEditor.setOption("readOnly", "nocursor");
+      window.practiceEditor.setReadOnly(true);
 
       // Native `EventSource` rather than htmx's SSE extension, which htmx 2
       // ships separately and would be a fifth vendored file for four lines.

@@ -5,8 +5,9 @@
   `interface/web/quiz.py` has the argument for one field name per question:
   a radio group, a set of checkboxes and an order's run of selects all send a
   list under `q:<id>`, and the route turns the lot into a sheet. A fix
-  question's code is a textarea; CodeMirror is laid over it below when the
-  Python mode is vendored, and hands its value back before the post.
+  question's code is the shared editor (`partials/code-editor.html`), whose
+  textarea follows the document on every change -- so this form posts what is
+  on screen with no script of its own.
 
   **Each question carries its own context.** The ticket on the left says what
   the incident is; a question that turns on a snippet, a number or a rule has
@@ -16,6 +17,7 @@
   the page marks which is right: a reload after a failed submission redraws
   the solver's own answers, from the last sheet the attempt saved.
 #}
+{% from "partials/code-editor.html" import code_editor %}
 <form id="quiz-form" class="quiz"
       hx-post="{{ answer_url }}"
       hx-target="#verdict"
@@ -112,8 +114,8 @@
         </ol>
 
       {% else %}
-        <textarea class="fix-code" name="{{ item.field }}" spellcheck="false"
-                  rows="{{ [item.code.count('\n') + 3, 8] | max }}">{{ item.code }}</textarea>
+        {{ code_editor("fix-" ~ item.number, item.field, item.code, "python",
+                       rows=[item.code.count('\n') + 3, 8] | max) }}
         <p class="meta">graded by a hidden test suite, on what the code does</p>
       {% endif %}
     </fieldset>
@@ -124,36 +126,3 @@
     <span class="meta">every question has to be right; a wrong answer says why it is wrong, not what is right</span>
   </div>
 </form>
-
-{#
-  CodeMirror over each fix textarea, when the Python mode is vendored. The
-  values go back into the post through `htmx:configRequest`, which is the one
-  moment htmx has gathered the form and not yet sent it: CodeMirror's own
-  document is what is on screen, and the textarea under it stopped tracking
-  that the moment it was replaced.
-#}
-{% if python_mode_files %}
-  <script src="{{ static }}/vendor/codemirror.min.js"></script>
-  {% for mode_file in python_mode_files %}
-  <script src="{{ static }}/{{ mode_file }}"></script>
-  {% endfor %}
-  <script>
-    (function () {
-      var editors = [];
-      document.querySelectorAll("#quiz-form textarea.fix-code").forEach(function (area) {
-        var editor = CodeMirror.fromTextArea(area, {
-          mode: "python",
-          lineNumbers: true,
-          indentUnit: 4,
-          lineWrapping: false
-        });
-        editors.push({ name: area.name, editor: editor });
-      });
-      document.getElementById("quiz-form").addEventListener("htmx:configRequest", function (event) {
-        editors.forEach(function (entry) {
-          event.detail.parameters[entry.name] = entry.editor.getValue();
-        });
-      });
-    })();
-  </script>
-{% endif %}
