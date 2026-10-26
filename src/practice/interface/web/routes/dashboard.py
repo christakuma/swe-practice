@@ -27,9 +27,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Form
 from starlette.requests import Request  # noqa: TC002  (FastAPI reads this at runtime)
-from starlette.responses import HTMLResponse, Response
+from starlette.responses import HTMLResponse, RedirectResponse, Response
+
+from practice.application.preferences import reviews_enabled, set_reviews_enabled
 
 if TYPE_CHECKING:
     from fastapi.templating import Jinja2Templates
@@ -58,7 +60,9 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
         (`subprocess`, `sqlite3`), and wrapping blocking work in a coroutine is
         the one way to make a single-user local app unresponsive.
         """
-        queue = services.review_queue()
+        # Not asked at all when scheduling is off: the queue is a join over
+        # the whole library and an unseen page has no use for it.
+        queue = services.review_queue() if reviews_enabled(services.settings) else ()
         open_attempts = services.list_open_attempts()
         return templates.TemplateResponse(
             request=request,
@@ -86,5 +90,11 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 },
             },
         )
+
+    @router.post("/settings/reviews")
+    def reviews_setting(enabled: str = Form("1")) -> Response:
+        """Turn review scheduling on or off. Cards are kept either way."""
+        set_reviews_enabled(services.settings, enabled=enabled != "0")
+        return RedirectResponse("/", status_code=303)
 
     return router

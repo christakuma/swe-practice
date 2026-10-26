@@ -29,7 +29,11 @@ if TYPE_CHECKING:
     from practice.domain.ids import AttemptId, ExerciseId
     from practice.domain.review import ReviewCard
 
-__all__ = ["InMemoryAttemptRepository", "InMemoryReviewRepository"]
+__all__ = [
+    "InMemoryAttemptRepository",
+    "InMemoryReviewRepository",
+    "InMemorySettingsRepository",
+]
 
 
 class InMemoryAttemptRepository:
@@ -169,3 +173,24 @@ class InMemoryReviewRepository:
 
     def __repr__(self) -> str:
         return f"InMemoryReviewRepository({len(self._cards)} cards)"
+
+
+class InMemorySettingsRepository:
+    """Settings in a dict. Strings are immutable, so nothing is copied."""
+
+    __slots__ = ("_values",)
+
+    def __init__(self) -> None:
+        self._values: dict[str, str] = {}
+
+    def get(self, key: str) -> str | None:
+        return self._values.get(key)
+
+    def set(self, key: str, value: str) -> None:
+        self._values[key] = value
+
+    def delete(self, key: str) -> None:
+        self._values.pop(key, None)
+
+    def __repr__(self) -> str:
+        return f"InMemorySettingsRepository({len(self._values)} keys)"

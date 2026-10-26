@@ -24,6 +24,7 @@ from practice.adapters.persistence.sqlite.connection import (
     load_migrations,
 )
 from practice.adapters.persistence.sqlite.reviews import SqliteReviewRepository
+from practice.adapters.persistence.sqlite.settings import SqliteSettingsRepository
 
 __all__ = [
     "Database",
@@ -31,5 +32,6 @@ __all__ = [
     "MigrationError",
     "SqliteAttemptRepository",
     "SqliteReviewRepository",
+    "SqliteSettingsRepository",
     "load_migrations",
 ]

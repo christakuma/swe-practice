@@ -3066,6 +3066,7 @@ changed"* is worth more than any code sample.
 | [0030](adr/0030-docker-exercises-graded-statically-one-editable-file.md) | Docker exercises are graded on the definition, one editable file each | accepted |
 | [0031](adr/0031-ownership-is-modelled-from-the-definition-not-grepped.md) | Who owns a path is modelled from the definition, not grepped for | accepted |
 | [0032](adr/0032-a-quiz-grades-a-choice-and-a-fix-grades-code.md) | A quiz grades a choice from a closed set, and a fix question grades code | accepted |
+| [0033](adr/0033-review-scheduling-is-optional-and-deadlines-come-from-pace.md) | Review scheduling is optional, and a deadline is computed from pace | accepted |
 
 ---
 
@@ -6797,3 +6798,18 @@ run was killed at its 10-second limit. It passed alone in 26 seconds, and
 the second full run passed clean. Both runs shared the machine with a game
 that had used six hours of CPU, which is the noise CLAUDE.md warns about
 taken to its extreme: neither figure is a measurement of this phase.
+
+**2026-10-26 — Optional review scheduling, choosable track steps, pace-based
+goals ([ADR 0033](adr/0033-review-scheduling-is-optional-and-deadlines-come-from-pace.md)).**
+A request rather than a phase. **The track page already let you pick any step**
+(144 Start buttons on `everything`); the finding was that nothing said so —
+the title link is not underlined and the row's only control was *Continue* —
+so the fix is a "choose a step (N)" link, tags on each row and a GET-form
+search, not a new page. Scheduling became a preference (`settings` table,
+migration 0006, `SettingsRepository` with SQLite and in-memory twins), default
+on. A reviewer agent cut the first draft's goals table, use case and chips down
+to a projection plus one stored date per track, and caught three breakages
+before they happened: `Services` field order, `Record` equality in
+`test_tracks.py`, and `review.html` dereferencing an offer the route no longer
+supplied. Final: 9814 passed, 71 skipped, 100% coverage of `domain/` and
+`application/`; the gate took 13m10s, one run, so not a measurement.

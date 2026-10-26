@@ -99,6 +99,7 @@ def test_a_pass_is_recorded_with_the_day_it_happened() -> None:
         passes=1,
         last_attempted_at=ended_at(THE_5TH),
         last_passed_at=ended_at(THE_5TH),
+        first_passed_at=ended_at(THE_5TH),
     )
     assert record.is_done
 

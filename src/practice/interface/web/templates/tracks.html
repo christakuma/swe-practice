@@ -24,6 +24,7 @@
       {% set open = open_by_exercise.get(step.exercise.id) if step else none %}
       <li>
         <a class="title" href="/tracks/{{ progress.track.name }}">{{ progress.track.title }}</a>
+        <a class="steps-link" href="/tracks/{{ progress.track.name }}">choose a step ({{ progress.total }}) →</a>
         {% if step and open %}
           <a href="/attempt/{{ open.attempt.id }}?track={{ progress.track.name }}">Resume</a>
         {% elif step %}

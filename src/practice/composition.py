@@ -76,8 +76,10 @@ from practice.adapters.ids import Uuid4IdGenerator
 from practice.adapters.kata import KataExampleRunner, KataGrader, PytestKataRunner
 from practice.adapters.persistence import (
     Database,
+    InMemorySettingsRepository,
     SqliteAttemptRepository,
     SqliteReviewRepository,
+    SqliteSettingsRepository,
 )
 from practice.adapters.quiz import QuizGrader
 from practice.adapters.sandbox import (
@@ -146,6 +148,7 @@ if TYPE_CHECKING:
         ReviewRepository,
         SandboxProvisioner,
         Scheduler,
+        SettingsRepository,
     )
 
 __all__ = ["SCHEDULERS", "Services", "build_scheduler", "build_services"]
@@ -221,6 +224,11 @@ class Services:
     #: about a random start care which way chance falls. The default is the
     #: real adapter, which this module is the one place allowed to name.
     chooser: Chooser = field(default_factory=RandomChooser)
+    #: Defaulted for the reason `chooser` is: a dozen test wirings build
+    #: `Services` by hand and almost none care about preferences. The default is
+    #: an empty in-memory store, i.e. every setting at its default -- review
+    #: scheduling on, no goals -- which is what an existing test already assumes.
+    settings: SettingsRepository = field(default_factory=InMemorySettingsRepository)
 
     @property
     def choose_version(self) -> ChooseVersion:
@@ -586,6 +594,7 @@ def build_services(  # noqa: PLR0913
         editor=SubprocessEditorLauncher(),
         watcher=WatchfilesFileWatcher(),
         examples=KataExampleRunner(kata_runner),
+        settings=SqliteSettingsRepository(storage),
     )
 
 

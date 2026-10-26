@@ -1630,3 +1630,30 @@ a.button {
   color: var(--ink-dim);
   font-size: 0.88rem;
 }
+
+/* --- choosing a step, goals, the review switch ------------------------------ */
+
+/* The track title is not underlined (it sits in a row of buttons), so the
+   thing that says "this opens a list you can choose from" is its own link. */
+.library .steps-link {
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.track-filter,
+.goal .inline-form,
+.setting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+}
+
+.track-filter input[type="search"] {
+  flex: 1 1 16rem;
+}
+
+.goal {
+  margin: 1rem 0;
+}

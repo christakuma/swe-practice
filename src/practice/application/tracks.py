@@ -40,7 +40,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
-    from datetime import datetime
+    from datetime import date, datetime
 
     from practice.domain.attempt import Attempt
     from practice.domain.exercise import Exercise
@@ -53,6 +53,7 @@ __all__ = [
     "Step",
     "TrackProgress",
     "choose",
+    "filter_steps",
     "follow",
     "records_of",
 ]
@@ -72,6 +73,10 @@ class Record:
     passes: int
     last_attempted_at: datetime
     last_passed_at: datetime | None = None
+    #: The first time it passed, which `last_passed_at` cannot tell you once the
+    #: exercise has been done again. Pace is counted from this one, so redoing
+    #: an old step is practice and not progress (`application/pace.py`).
+    first_passed_at: datetime | None = None
 
     @property
     def is_done(self) -> bool:
@@ -124,6 +129,20 @@ class TrackProgress:
         """The first unfinished step from the top, or `None` when there is none."""
         return next((step for step in self.steps if not step.is_done), None)
 
+    @property
+    def first_pass_days(self) -> tuple[date, ...]:
+        """The UTC day each finished step was first passed. What pace is made of.
+
+        UTC because `finished_at` is, and `Clock.today()` is the same clock's
+        date: converting here to a local zone would put the window's edge in a
+        different place from the queue's idea of today.
+        """
+        return tuple(
+            step.record.first_passed_at.date()
+            for step in self.steps
+            if step.record is not None and step.record.first_passed_at is not None
+        )
+
     def after(self, exercise_id: ExerciseId) -> Step | None:
         """The first unfinished step *beyond* this exercise, wrapping to the top.
 
@@ -172,6 +191,9 @@ def records_of(attempts: Iterable[Attempt]) -> dict[ExerciseId, Record]:
         last_passed = seen.last_passed_at if seen is not None else None
         if passed and (last_passed is None or ended > last_passed):
             last_passed = ended
+        first_passed = seen.first_passed_at if seen is not None else None
+        if passed and (first_passed is None or ended < first_passed):
+            first_passed = ended
         found[attempt.exercise_id] = Record(
             attempts=(seen.attempts if seen is not None else 0) + 1,
             passes=(seen.passes if seen is not None else 0) + (1 if passed else 0),
@@ -181,6 +203,7 @@ def records_of(attempts: Iterable[Attempt]) -> dict[ExerciseId, Record]:
                 else seen.last_attempted_at
             ),
             last_passed_at=last_passed,
+            first_passed_at=first_passed,
         )
     return found
 
@@ -210,6 +233,34 @@ def follow(
             if exercise_id in exercises
         ),
     )
+
+
+def filter_steps(
+    progress: TrackProgress, query: str = "", show: str = "all"
+) -> tuple[Step, ...]:
+    """The steps a search and a status filter leave, still in the track's order.
+
+    **Step numbers are not renumbered**: they are the track's, so "step 41" means
+    the same thing with or without a filter, and a person who found it by
+    searching can say where it sits. Substring, case-insensitive, over the
+    title, the id and the tags -- the things a person remembers an exercise by.
+    An unrecognised `show` is `all`, because it arrives in a query string.
+    """
+    needle = query.strip().casefold()
+    kept: list[Step] = []
+    for step in progress.steps:
+        if show == "todo" and step.is_done:
+            continue
+        if show == "done" and not step.is_done:
+            continue
+        if needle:
+            haystack = " ".join(
+                (step.exercise.title, str(step.exercise.id), *step.exercise.tags)
+            ).casefold()
+            if needle not in haystack:
+                continue
+        kept.append(step)
+    return tuple(kept)
 
 
 def choose(tracks: Sequence[Track], name: str | None) -> Track | None:

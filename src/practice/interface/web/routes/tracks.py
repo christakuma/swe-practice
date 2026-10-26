@@ -17,6 +17,13 @@ listing. Somebody followed a link to a track that is not here, and saying so —
 with the navigation still on the page — is more use than landing them somewhere
 they did not ask for with no explanation.
 
+**The detail page is searchable and carries an optional goal.** `?q=` and
+`?show=todo|done` are a plain GET form: a hundred and forty-four steps with no
+way to narrow them was the complaint, and a form needs none of the script
+surface a client-side filter would add. The finish date is computed from recent
+pace (`application/pace.py`) and shown with no setup; pinning it as a goal is
+one POST, and a goal is a preference, so it works with review scheduling off.
+
 **Every Start on these pages posts the track's name**, which is the one thing
 they do that Browse does not: it is what makes the attempt's own page know
 which track to offer the next step of (`interface/web/navigation.py`).
@@ -24,18 +31,23 @@ which track to offer the next step of (`interface/web/navigation.py`).
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Form
 from starlette.requests import Request  # noqa: TC002  (FastAPI reads this at runtime)
-from starlette.responses import HTMLResponse, Response
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 
+from practice.application.pace import project, read_goal
+from practice.application.preferences import clear_goal, goal_for, set_goal
+from practice.application.tracks import filter_steps
 from practice.interface.web.errors import render_problem
 
 if TYPE_CHECKING:
     from fastapi.templating import Jinja2Templates
 
     from practice.application.dto import OpenAttempt
+    from practice.application.tracks import TrackProgress
     from practice.composition import Services
     from practice.domain.ids import ExerciseId
 
@@ -58,9 +70,8 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
             },
         )
 
-    @router.get("/tracks/{name}", response_class=HTMLResponse)
-    def track(request: Request, name: str) -> Response:
-        found = next(
+    def find(name: str) -> TrackProgress | None:
+        return next(
             (
                 progress
                 for progress in services.follow_tracks()
@@ -68,14 +79,25 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
             ),
             None,
         )
+
+    def no_such_track(request: Request, name: str) -> Response:
+        return render_problem(
+            templates,
+            request,
+            title="No such track",
+            detail=f"This library has no track called {name!r}.",
+            status=404,
+        )
+
+    @router.get("/tracks/{name}", response_class=HTMLResponse)
+    def track(request: Request, name: str, q: str = "", show: str = "all") -> Response:
+        found = find(name)
         if found is None:
-            return render_problem(
-                templates,
-                request,
-                title="No such track",
-                detail=f"This library has no track called {name!r}.",
-                status=404,
-            )
+            return no_such_track(request, name)
+        today = services.clock.today()
+        remaining = found.total - found.done
+        days = found.first_pass_days
+        target = goal_for(services.settings, name)
         return templates.TemplateResponse(
             request=request,
             name="track.html",
@@ -83,8 +105,61 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 "title": found.track.title,
                 "progress": found,
                 "open_by_exercise": _open_by_exercise(services),
+                "steps": filter_steps(found, q, show),
+                "q": q.strip(),
+                "show": show if show in ("todo", "done") else "all",
+                "projection": project(days, remaining, today),
+                "goal": target,
+                "goal_reading": (
+                    read_goal(target, days, remaining, today) if target else None
+                ),
+                "today": today,
+                "one_day": timedelta(days=1),
             },
         )
+
+    @router.post("/tracks/{name}/goal")
+    def set_track_goal(
+        request: Request, name: str, target_on: str = Form("")
+    ) -> Response:
+        """Pin a finish-by date. Blank is "use the projection", which is the
+        point of the button: the common case takes no typing. With neither a
+        date nor enough history to project one, say so rather than guess.
+        """
+        found = find(name)
+        if found is None:
+            return no_such_track(request, name)
+        today = services.clock.today()
+
+        def refuse(detail: str) -> Response:
+            return render_problem(
+                templates, request, title="No goal set", detail=detail, status=422
+            )
+
+        if target_on.strip():
+            try:
+                chosen = date.fromisoformat(target_on.strip())
+            except ValueError:
+                return refuse("That is not a date; use the form YYYY-MM-DD.")
+        else:
+            projection = project(found.first_pass_days, found.total - found.done, today)
+            if projection is None or projection.finish_on is None:
+                return refuse(
+                    "There is no pace to project from yet (or it is over a year "
+                    "out). Pick a date yourself."
+                )
+            chosen = projection.finish_on
+        if chosen <= today:
+            return refuse("A goal has to be a day after today.")
+        set_goal(services.settings, name, chosen)
+        return RedirectResponse(f"/tracks/{name}", status_code=303)
+
+    @router.post("/tracks/{name}/goal/clear")
+    def clear_track_goal(request: Request, name: str) -> Response:
+        if find(name) is None:
+            return no_such_track(request, name)
+        clear_goal(services.settings, name)
+        return RedirectResponse(f"/tracks/{name}", status_code=303)
 
     return router
 

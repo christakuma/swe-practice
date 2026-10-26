@@ -54,6 +54,7 @@ an afternoon do not need one.
 | [0030](0030-docker-exercises-graded-statically-one-editable-file.md) | Docker exercises are graded on the definition, one editable file each | accepted |
 | [0031](0031-ownership-is-modelled-from-the-definition-not-grepped.md) | Who owns a path is modelled from the definition, not grepped for | accepted |
 | [0032](0032-a-quiz-grades-a-choice-and-a-fix-grades-code.md) | A quiz grades a choice from a closed set, and a fix question grades code | accepted |
+| [0033](0033-review-scheduling-is-optional-and-deadlines-come-from-pace.md) | Review scheduling is optional, and a deadline is computed from pace | accepted |
 
 0022 is the odd one in this set: the only record here about **how the content is
 authored** rather than how the code is arranged. It exists because Phase 17's

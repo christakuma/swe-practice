@@ -16,7 +16,7 @@
 #}
 <p class="lede">
   <span>{{ progress.total }} graded attempt{{ '' if progress.total == 1 else 's' }}, {{ progress.passed }} passed{% if progress.total %} ({{ (progress.pass_rate * 100) | round | int }}%){% endif %}.</span>
-  <span>{{ progress.scheduled }} exercise{{ '' if progress.scheduled == 1 else 's' }} scheduled.</span>
+  {% if reviews_enabled() %}<span>{{ progress.scheduled }} exercise{{ '' if progress.scheduled == 1 else 's' }} scheduled.</span>{% endif %}
   {% if progress.streak_days %}<span>Current streak <strong>{{ progress.streak_days }} day{{ '' if progress.streak_days == 1 else 's' }}</strong>.</span>{% else %}<span>No streak running.</span>{% endif %}
 </p>
 

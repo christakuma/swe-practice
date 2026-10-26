@@ -3,6 +3,7 @@
 {% block main %}
 <h1>Practice</h1>
 
+{% if reviews_enabled() %}
 <section>
   <h2>Due today</h2>
   {#
@@ -70,6 +71,7 @@
     </p>
   {% endif %}
 </section>
+{% endif %}
 
 <section>
   <h2>Tracks</h2>
@@ -86,6 +88,7 @@
         {% set open = open_by_exercise.get(step.exercise.id) if step else none %}
         <li>
           <a class="title" href="/tracks/{{ progress.track.name }}">{{ progress.track.title }}</a>
+          <a class="steps-link" href="/tracks/{{ progress.track.name }}">choose a step ({{ progress.total }}) →</a>
           {% if step and open %}
             <a href="/attempt/{{ open.attempt.id }}?track={{ progress.track.name }}">Resume</a>
           {% elif step %}
@@ -123,7 +126,7 @@
   #}
   <p class="lede">
     {% if progress.streak_days %}<span><strong>{{ progress.streak_days }} day{{ '' if progress.streak_days == 1 else 's' }}</strong> running.</span>{% else %}<span>No streak yet — one attempt today starts one.</span>{% endif %}
-    {% if progress.total %}<span>{{ progress.passed }} of {{ progress.total }} attempt{{ '' if progress.total == 1 else 's' }} passed, {{ progress.scheduled }} exercise{{ '' if progress.scheduled == 1 else 's' }} scheduled.</span> <a href="/progress">See the detail</a>.{% else %}<span>Nothing graded yet, so there is nothing to report.</span>{% endif %}
+    {% if progress.total %}<span>{{ progress.passed }} of {{ progress.total }} attempt{{ '' if progress.total == 1 else 's' }} passed{% if reviews_enabled() %}, {{ progress.scheduled }} exercise{{ '' if progress.scheduled == 1 else 's' }} scheduled{% endif %}.</span> <a href="/progress">See the detail</a>.{% else %}<span>Nothing graded yet, so there is nothing to report.</span>{% endif %}
   </p>
 
   {% if progress.weakest %}
@@ -187,6 +190,23 @@
     </p>
   {% endif %}
 </section>
+
+<form method="post" action="/settings/reviews" class="setting">
+  {#
+    The switch for the spaced-repetition half of the app, on the page that shows
+    it. Turning it off hides the due queue and the grade buttons; the cards are
+    kept, so turning it back on carries on rather than starting over.
+  #}
+  {% if reviews_enabled() %}
+    <input type="hidden" name="enabled" value="0">
+    <button type="submit" class="quiet">Turn off review scheduling</button>
+    <span class="meta">hides "Due today" and the schedule grade. Track goals still work.</span>
+  {% else %}
+    <input type="hidden" name="enabled" value="1">
+    <button type="submit" class="quiet">Turn on review scheduling</button>
+    <span class="meta">brings back the due queue and the schedule grade after each attempt.</span>
+  {% endif %}
+</form>
 
 <p class="meta">
   {{ exercise_count }} exercise{{ '' if exercise_count == 1 else 's' }} in the

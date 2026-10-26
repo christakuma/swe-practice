@@ -15,17 +15,21 @@ dict and losing data here, where a row is only what the last `save` wrote.
 from practice.adapters.persistence.memory import (
     InMemoryAttemptRepository,
     InMemoryReviewRepository,
+    InMemorySettingsRepository,
 )
 from practice.adapters.persistence.sqlite import (
     Database,
     SqliteAttemptRepository,
     SqliteReviewRepository,
+    SqliteSettingsRepository,
 )
 
 __all__ = [
     "Database",
     "InMemoryAttemptRepository",
     "InMemoryReviewRepository",
+    "InMemorySettingsRepository",
     "SqliteAttemptRepository",
     "SqliteReviewRepository",
+    "SqliteSettingsRepository",
 ]

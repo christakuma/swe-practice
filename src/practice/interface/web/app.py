@@ -46,6 +46,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from practice.application.dto import short_ref
+from practice.application.preferences import reviews_enabled
 from practice.domain.review import Grade
 from practice.interface.web.charts import render_activity, render_mastery
 from practice.interface.web.commit_graph import render_graph
@@ -115,6 +116,12 @@ def create_app(services: Services) -> FastAPI:
     # not an error anybody would see. The repository groups the variants by
     # base once, so each of those lookups is a dictionary read.
     templates.env.globals["variants_of"] = services.content.variants_of
+    # A callable, not a value: it is read at render time so that a switch
+    # pressed a moment ago is honoured by every page without each route
+    # having to remember to pass it -- the schedule wording appears on six.
+    templates.env.globals["reviews_enabled"] = lambda: reviews_enabled(
+        services.settings
+    )
     templates.env.filters["short_ref"] = short_ref
     templates.env.filters["commit_graph"] = render_graph
     templates.env.filters["activity_chart"] = render_activity

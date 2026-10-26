@@ -27,5 +27,11 @@
 #}
 {% include "partials/verdict.html" %}
 {% if quiz_items %}{% include "partials/quiz-review.html" %}{% endif %}
-{% include "partials/review.html" %}
+{#
+  Only while scheduling is on. The route still computes the offer, so the
+  guard has to be here: `review.html` reads `review.suggested`, and a switch
+  that hid the panel by passing nothing would fail to render instead.
+#}
+{% if reviews_enabled() %}{% include "partials/review.html" %}
+{% else %}<p><a href="/">Back to the dashboard</a></p>{% endif %}
 {% include "partials/next.html" %}

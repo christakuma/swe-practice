@@ -658,6 +658,26 @@ class ReviewRepository(Protocol):
         ...
 
 
+class SettingsRepository(Protocol):
+    """Persistence for the few things a person chooses about the tool.
+
+    A key-value store rather than a typed table per setting, because the two
+    things in it today -- whether review scheduling is on, and a finish-by date
+    per track -- share nothing but being small, optional and the user's. A column
+    per setting would be a migration per preference. Values are text; the
+    meaning of a key lives with `application/preferences.py`, which is the only
+    reader, so the store never has to know.
+    """
+
+    def get(self, key: str) -> str | None: ...
+
+    def set(self, key: str, value: str) -> None: ...
+
+    def delete(self, key: str) -> None:
+        """Forget a key. Deleting one that is absent is not an error."""
+        ...
+
+
 # --- the sandbox ----------------------------------------------------------
 
 

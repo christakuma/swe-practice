@@ -31,5 +31,5 @@
       hx-confirm="Stop here and record this attempt as failed?">
   {% if track_name %}<input type="hidden" name="track" value="{{ track_name }}">{% endif %}
   <button type="submit" class="quiet">Stop and record the fail</button>
-  <span class="meta">closes the attempt, so it counts and can be scheduled</span>
+  <span class="meta">closes the attempt, so it counts{% if reviews_enabled() %} and can be scheduled{% endif %}</span>
 </form>
