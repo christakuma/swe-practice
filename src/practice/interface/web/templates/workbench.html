@@ -2,13 +2,25 @@
 {% from "partials/code-editor.html" import code_editor %}
 {% set attempt = workbench.attempt %}
 {% set exercise = workbench.exercise %}
+{#
+  *Editing*: an open kata or drill, the one case with an editor to give height
+  to. A finished attempt shows a verdict, a quiz is a form and a scenario has a
+  console, and none of them is laid out as prompt-beside-editor.
+#}
+{% set editing = is_kata and not is_quiz and workbench.is_active %}
+{#
+  Hints join the tabs only where there are tabs already, which is a kata with
+  examples. A drill has neither and keeps its heading and a hints panel below.
+#}
+{% set hints_in_tab = examples and attempt.policy.hint_count %}
 
 {#
-  Wide for a scenario's third column, and for a quiz, whose questions carry
-  their own evidence: a lock dump or a trace in a 40-character column is a
-  page of scrolling.
+  Wide for every kind now. A scenario's third column and a quiz's evidence
+  already needed it (a lock dump in a 40-character column is a page of
+  scrolling), and a kata or drill has since become a side-by-side workbench,
+  which is a bad idea in the reading measure the rest of the app is set to.
 #}
-{% block main_class %}{{ 'wide' if is_quiz or not is_kata else '' }}{% endblock %}
+{% block main_class %}wide{% endblock %}
 
 {% block main %}
 <h1>{{ exercise.title }}</h1>
@@ -38,7 +50,7 @@
   </p>
 {% endif %}
 
-<div class="workbench{{ ' scenario' if not is_kata }}">
+<div class="workbench{{ ' scenario' if not is_kata }}{{ ' editing' if editing }}">
   <section class="panel prompt">
     {#
       **Two tabs for a kata, a heading for everything else.** A kata's examples
@@ -64,6 +76,10 @@
         <label for="tab-prompt">Prompt</label>
         <input type="radio" name="statement" id="tab-examples">
         <label for="tab-examples">Examples <span class="count">{{ examples | length }}</span></label>
+        {% if hints_in_tab %}
+          <input type="radio" name="statement" id="tab-hints">
+          <label for="tab-hints">Hints <span class="count">{{ attempt.policy.hint_count }}</span></label>
+        {% endif %}
 
         <div class="tab-panel" id="panel-prompt">
           {% include "partials/statement.html" %}
@@ -72,6 +88,12 @@
         <div class="tab-panel" id="panel-examples">
           {% include "partials/examples.html" %}
         </div>
+
+        {% if hints_in_tab %}
+          <div class="tab-panel" id="panel-hints">
+            {% include "partials/hints.html" %}
+          </div>
+        {% endif %}
       </div>
     {% else %}
       <h2>Prompt</h2>
@@ -86,7 +108,7 @@
       it, because a panel that is simply absent is indistinguishable from an
       exercise nobody wrote hints for.
     #}
-    {% if attempt.policy.hint_count %}
+    {% if attempt.policy.hint_count and not hints_in_tab %}
       {% include "partials/hints.html" %}
     {% endif %}
 
@@ -105,6 +127,16 @@
       {% include "partials/tutor.html" %}
     {% endif %}
   </section>
+
+  {#
+    The divider is a window splitter: focusable, and the arrow keys move it, so
+    the layout is not a mouse-only feature. `static/workbench.js` drives it and
+    remembers where it was left.
+  #}
+  {% if editing %}
+    <div class="divider" id="divider" role="separator" aria-orientation="vertical"
+         aria-label="Resize the prompt and the editor" tabindex="0"></div>
+  {% endif %}
 
   <section class="panel" id="work">
     {% if not workbench.is_active %}
@@ -352,6 +384,10 @@
   Only for an attempt that is still open -- a finished one cannot take the
   mark, and the endpoint refuses it.
 #}
+{% if editing %}
+  <script src="{{ static }}/workbench.js"></script>
+{% endif %}
+
 {% if workbench.is_active %}
   <script src="{{ static }}/in-front.js" data-current-url="{{ current_url }}"></script>
 {% endif %}

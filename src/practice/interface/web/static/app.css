@@ -26,6 +26,10 @@
   --note: #e0b454;
   --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* So the browser draws its own scrollbars and form controls in the scheme
+     the page is in: a white scrollbar beside a dark editor was the first thing
+     the side-by-side workbench showed. */
+  color-scheme: dark;
 }
 
 @media (prefers-color-scheme: light) {
@@ -40,6 +44,7 @@
     --pass: #1f7a35;
     --fail: #b4232a;
     --note: #8a5c00;
+    color-scheme: light;
   }
 }
 
@@ -397,12 +402,107 @@ button[disabled] {
 }
 
 #tab-prompt:checked ~ #panel-prompt,
-#tab-examples:checked ~ #panel-examples {
+#tab-examples:checked ~ #panel-examples,
+#tab-hints:checked ~ #panel-hints {
   display: block;
 }
 
 .tab-panel > pre:first-child {
   margin-top: 0;
+}
+
+/* --- the side-by-side workbench ------------------------------------------ */
+
+/*
+ * An open kata or drill: the prompt on the left, the editor on the right at the
+ * height of the window, and a divider between them. The left column is a
+ * custom property (`--split`) that `workbench.js` sets from where the divider
+ * was left, so the layout is one grid rule and the script only moves a number.
+ *
+ * Each column scrolls on its own. The page does not: an editor that scrolls
+ * away with the prompt is the thing this layout exists to stop.
+ */
+.workbench.editing {
+  grid-template-columns: minmax(16rem, var(--split, 30rem)) 0.9rem minmax(24rem, 1fr);
+  gap: 0;
+  align-items: stretch;
+  height: calc(100vh - 12rem);
+  min-height: 32rem;
+}
+
+.workbench.editing > .panel {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The tab bar's own top margin is there to line it up with a heading in the
+   panel beside it; in a column that is its own scroller it is only a gap. */
+.workbench.editing .tabs {
+  margin-top: 0.4rem;
+}
+
+.divider {
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+/* A hairline in a wider hit area: nobody lands a pointer on a 1px line. */
+.divider::after {
+  content: "";
+  position: absolute;
+  inset: 0 calc(50% - 1px);
+  background: var(--line);
+  border-radius: 1px;
+}
+
+.divider:hover::after,
+.divider:focus-visible::after,
+.divider.dragging::after {
+  background: var(--accent);
+}
+
+.divider:focus-visible {
+  outline: none;
+}
+
+/* Editor, then the action row, in the column's height; the verdict is below and
+   scrolls. The `max` keeps a short window from squeezing the editor to a strip. */
+.workbench.editing .code-editor-host {
+  height: max(18rem, calc(100vh - 29rem));
+}
+
+.workbench.editing #work h2 {
+  margin-top: 0.4rem;
+}
+
+/* While a drag is in progress the editor would swallow the pointer events. */
+.workbench.editing.is-dragging {
+  user-select: none;
+}
+
+.workbench.editing.is-dragging .code-editor-host {
+  pointer-events: none;
+}
+
+@media (max-width: 56.25rem) {
+  .workbench.editing {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    gap: 1.25rem;
+  }
+
+  .workbench.editing > .panel {
+    overflow-y: visible;
+  }
+
+  .divider {
+    display: none;
+  }
+
+  .workbench.editing .code-editor-host {
+    height: 26rem;
+  }
 }
 
 /* --- variants ----------------------------------------------------------- */
