@@ -3023,6 +3023,105 @@ storm still last.
 | The systems track misses no quiz and still opens gently | `tests/content/test_library.py::test_a_track_named_for_a_kind_misses_nothing_of_that_kind`, `::test_every_track_opens_gently` |
 | A tutor sees the key once a quiz is graded, and not before, for all twenty | `tests/content/test_tutor_context.py` |
 
+### Phase 27 — A real editor, and room for it · **2 sessions**
+
+**Goal:** the kata page's editor stops being "a somewhat inconvenient little
+window". Today it is CodeMirror 5 in a fixed 26rem box inside a vertical page,
+with Tab inserting a tab character and no bracket closing or matching. ADR 0010
+chose CM5 to avoid an npm build step and recorded "a maintenance-mode
+dependency at the centre of the one screen people use" as its cost; the user
+has said the product should be polished, which is the trade ADR 0010 left open.
+**Monaco**, VS Code's editor, is chosen over CodeMirror 6 because it ships a
+prebuilt AMD loader and so needs no bundler: the vendored, hash-pinned, offline
+rule of §8.2 survives, and CM6's committed-build-output alternative was the one
+thing ADR 0010 refused. A new ADR supersedes 0010.
+
+**Scope.**
+- **Vendor Monaco, trimmed**: the core, the Python, SQL, YAML and Dockerfile
+  tokenizers, and the workers. `vendor.py` pins a directory of files by hash
+  rather than one file each, and the "bytes on disk match the manifest" test
+  keeps its meaning. The CM5 files are deleted.
+- **One editor component** (`partials/code-editor.html` and `static/editor.js`)
+  behind the handle the page already uses — `getValue()` / `setValue()` — so the
+  submit, Run, examples and own-editor wiring is unchanged. It replaces CM5 on
+  *every* page with an editor (kata, SQL drill, container, quiz fix question),
+  because two engines is worse than either. Four-space Tab, auto-indent on
+  Enter, auto-closing brackets and quotes, bracket matching, comment toggle
+  (Ctrl+/), find and replace, Ctrl+Enter to Run, a font-size control kept in
+  `localStorage`, and a theme drawn from the app's colour tokens in light and
+  dark.
+- **A side-by-side workbench**: prompt, examples, constraints and hints in tabs
+  on the left, the editor at full height on the right, a draggable divider whose
+  position is remembered, stacking below about 900px.
+
+**What the suite cannot see.** Hashes, mounting and the template are testable
+from Python; typing behaviour, the divider and the theme are not. The phase is
+not done until the page has been driven in a real browser, and the reading of
+that goes in §16 — Phase 7's CM5 overrides were found "by looking at it".
+
+**Commits** — vendor, component, layout, docs.
+1. `build(web): vendor Monaco, pinned by directory hash`
+2. `feat(web): one editor component over every editor page`
+3. `feat(web): a side-by-side workbench`
+4. `docs: Phase 27, a real editor`
+
+| Exit criterion | Met by |
+|---|---|
+| Every vendored Monaco file matches its pinned hash, and no CM5 file remains | `tests/web/` vendor test |
+| No page loads two editor engines | a template test over the editor pages |
+| Submit, Run, examples and own-editor work through the new handle | `tests/web/` and `tests/e2e/test_solve_a_kata_in_the_browser.py` |
+| Tab indents, Enter keeps indentation, brackets close | driven in a browser; recorded in §16 |
+| The built-in offline-asset test still passes | `tests/web/` offline-asset test |
+
+### Phase 28 — A standard kata format · **3 sessions**
+
+**Goal:** every kata states its function, parameters, return value and input
+sizes in one structure, and the page renders them the same way each time. All
+245 katas (83 listed, 162 variants) already carry `constraints`, `examples` and
+`complexity`; what is missing is structure. Parameters and the return value live
+in the stub's docstring and the prose prompt, and `constraints:` is free text
+that, per ADR 0022's finding, nothing enforces — a new test that steps outside a
+stated bound fails nothing.
+
+**Scope.** Katas only. The other kinds have no function signature, and the
+format is revisited for them only if this one works.
+- **Schema.** `kata.signature` — function name, typed parameters each with a
+  description and a range, and the return type — and an input size
+  (`len(numbers)` up to `10**5`). The prose `constraints` list is derived from
+  these, with an optional `notes:` for what does not fit a range.
+- **A generated header.** Every kata page shows the same Input / Output /
+  Constraints / Examples block, rendered from the fields. `prompt:` keeps the
+  story and drops the restatement.
+- **Stub consistency.** A content test checks that `stub.py`, `solution.py` and
+  every variant agree with the declared signature (by AST), and the stub's
+  docstring is generated from the fields rather than typed beside them.
+- **A migration script** drafts the structured fields for all 245 from the
+  existing stub and constraint strings. Whatever it cannot parse is flagged and
+  written by hand, in batches that are reviewed, because a regex that is
+  confident about a constraint it misread is the failure to avoid.
+- **Bounds that are checked.** The function under test is wrapped, every
+  argument the hidden suite passes is recorded, and a value outside the declared
+  range fails the build. **This lengthens `test_katas.py`, which is already the
+  suite's critical path (CLAUDE.md)**, so its cost is measured, repeatedly,
+  before it is kept; if it is too slow it becomes a marked tier rather than
+  thinning the check.
+- **Authoring.** A template, CLAUDE.md's kata notes brought current, and an ADR
+  for the schema.
+
+**Commits** — schema and header, migration, enforcement, docs.
+1. `feat(content): a structured kata signature and a generated header`
+2. `refactor(content): migrate the katas to the standard format`
+3. `test(content): the hidden suites stay inside the stated bounds`
+4. `docs: Phase 28, a standard kata format`
+
+| Exit criterion | Met by |
+|---|---|
+| Every kata and variant declares a signature that matches its stub and reference | `tests/content/test_katas.py`, `test_variants.py` |
+| The page renders the same header for every kata | `tests/web/` |
+| No hidden suite passes a value outside its declared range | `tests/content/` bounds test |
+| `practice validate` rejects a kata with no signature | `tests/integration/test_cli_validate.py` |
+| The migration left no kata with a hand-edit flag | the script's own report, recorded in §16 |
+
 ---
 
 ## 12. Architecture decision records
