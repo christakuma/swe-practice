@@ -7,7 +7,7 @@ failure mode is the one every offline claim has — it is true on the day it is
 written and nobody notices the stylesheet added six months later.
 
 **Two halves that between them cover every file.** Our own templates and
-stylesheets are grepped for remote references; the four vendored libraries are
+stylesheets are grepped for remote references; the vendored libraries are
 pinned by hash in `test_vendored_assets.py`, because a minified file carries its
 own licence URL and grepping it would have to be weakened until it caught nothing.
 `test_every_file_is_covered_by_one_of_the_two_rules` is what stops a third
@@ -21,7 +21,12 @@ from typing import TYPE_CHECKING, Final
 import pytest
 
 from practice.interface.web.app import templates_root
-from practice.interface.web.vendor import ASSETS, VENDOR_DIRNAME, static_root
+from practice.interface.web.vendor import (
+    ASSETS,
+    VENDOR_DIRNAME,
+    pinned_paths,
+    static_root,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -85,7 +90,7 @@ def test_every_file_is_covered_by_one_of_the_two_rules() -> None:
     directory under `static/` would be read by neither rule and the suite would
     stay green while the app grew an asset nobody had checked.
     """
-    pinned = {asset.path for asset in ASSETS}
+    pinned = pinned_paths()
     uncovered = [
         path.relative_to(static_root()).as_posix()
         for path in static_root().rglob("*")

@@ -23,12 +23,24 @@ itself. So it fetches, writes, computes, and prints the lines to paste.
 
 from __future__ import annotations
 
+import io
+import shutil
 import sys
+import tarfile
 import urllib.error
 import urllib.request
 from typing import TYPE_CHECKING, Final
 
-from practice.interface.web.vendor import ASSETS, digest, static_root, verify
+from practice.interface.web.vendor import (
+    ASSETS,
+    TREES,
+    VendoredTree,
+    digest,
+    local_name,
+    static_root,
+    tree_digest,
+    verify,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -77,10 +89,47 @@ def download(static: Path) -> list[str]:
     return lines
 
 
+def download_tree(tree: VendoredTree, static: Path) -> str | None:
+    """Fetch a tarball and keep only the manifest's members, returning the hash.
+
+    The whole directory is deleted first, so a file dropped from the manifest
+    leaves the disk too -- `verify` calls a stray file a problem, and this is
+    what stops the downloader making one. Members are read out of the archive by
+    name and written by us, never extracted: a tarball is untrusted input, and
+    naming the files we want is the only form of "extract" with no path to
+    escape through.
+    """
+    try:
+        payload = fetch(tree.url)
+    except (urllib.error.URLError, TimeoutError) as exc:
+        print(f"  FAIL {tree.path}: {exc}")
+        return None
+    kept: dict[str, bytes] = {}
+    with tarfile.open(fileobj=io.BytesIO(payload), mode="r:gz") as archive:
+        for member in tree.members:
+            handle = archive.extractfile(f"package/{member}")
+            if handle is None:
+                print(f"  FAIL {tree.path}: {member} is not in the archive")
+                return None
+            kept[local_name(member)] = handle.read()
+    base = tree.location(static)
+    shutil.rmtree(base, ignore_errors=True)
+    for name, data in kept.items():
+        target = base.joinpath(*name.split("/"))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    found = tree_digest(kept)
+    print(f"  ok   {tree.path}  {len(kept)} files  {found}")
+    return found
+
+
 def main() -> int:
     static = static_root()
     print(static)
     computed = download(static)
+    for tree in TREES:
+        found = download_tree(tree, static)
+        computed.append(f'{tree.path}: sha256="{found or ""}"')
 
     problems = verify(static)
     if not problems:

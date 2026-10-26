@@ -106,7 +106,7 @@ from practice.interface.web.routes.editor import EDITOR_URL, WATCH_URL
 from practice.interface.web.routes.review import REVIEW_URL
 from practice.interface.web.routes.submission import CONCEDE_URL, render_submission
 from practice.interface.web.routes.tutor import TUTOR_URL
-from practice.interface.web.vendor import mode_files
+from practice.interface.web.vendor import editor_language
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -235,22 +235,12 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 ),
                 "answer_url": ANSWER_URL.format(attempt_id=parsed),
                 "formats": FORMAT_NAMES,
-                # A fix question's code gets the Python editor when its mode is
-                # vendored, as a kata's does; `()` draws a plain textarea.
-                "python_mode_files": mode_files("python") if quiz else (),
-                # The mode name CodeMirror knows this language by. From the spec
-                # rather than hardcoded, so a second language is a content change
-                # and a vendored mode file -- which is the whole claim of §15 Q3,
-                # and the claim a third kind is the first real test of: `sql` is
-                # a mode CodeMirror already has, so the drill workbench needed a
-                # vendored file and no code.
-                "editor_mode": editable.language if editable else None,
-                # The vendored file that *defines* that mode, from the manifest
-                # rather than built from the name here -- see the comment in
-                # `workbench.html` and `vendor.mode_files`.
-                "editor_mode_files": mode_files(
-                    editable.language if editable else None
-                ),
+                # The Monaco language id for the editor, from the spec rather
+                # than hardcoded, so a second language is a content change and
+                # a vendored tokenizer -- which is the whole claim of §15 Q3.
+                # `None` draws an editor with no colouring, never a textarea
+                # (`vendor.editor_language`).
+                "editor_mode": editor_language(editable.language if editable else None),
                 "submit_url": SUBMIT_URL.format(attempt_id=parsed),
                 "try_url": TRY_URL.format(attempt_id=parsed),
                 "concede_url": CONCEDE_URL.format(attempt_id=parsed),

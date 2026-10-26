@@ -20,6 +20,14 @@ fetches nothing or have to be weakened until it caught nothing. Pinned bytes are
 the stronger statement anyway — the grep says "this file names no remote host",
 and the hash says "this file is the one that was reviewed".
 
+**Monaco is pinned as a directory** (ADR 0034). It is ten files once
+trimmed, and ten rows of near-identical `VendoredAsset`s would bury the one
+fact that matters, which is that they were taken together from one release. A
+`VendoredTree` records the tarball, the members kept, and *one* hash over the
+lot (`tree_digest`: every file's path and content hash, sorted). The
+bytes-on-disk-match-the-manifest test keeps its meaning, and a file added to or
+missing from the directory fails it, which a per-file list could not see.
+
 Upgrading one is two steps: change the version and the hash here, then run
 `uv run python tools/vendor_assets.py`. The test fails in between, which is the
 point of doing it in that order.
@@ -30,7 +38,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -38,13 +45,19 @@ if TYPE_CHECKING:
 
 __all__ = [
     "ASSETS",
-    "CODEMIRROR_VERSION",
     "HTMX_VERSION",
+    "MONACO_LANGUAGES",
+    "MONACO_VERSION",
+    "TREES",
     "VENDOR_DIRNAME",
     "VendoredAsset",
+    "VendoredTree",
     "digest",
-    "mode_files",
+    "editor_language",
+    "local_name",
+    "pinned_paths",
     "static_root",
+    "tree_digest",
     "verify",
 ]
 
@@ -53,10 +66,15 @@ __all__ = [
 #: read as one in the diff rather than arriving with a hash bump.
 HTMX_VERSION: Final = "2.0.11"
 
-#: CodeMirror **5**, not 6, and the tradeoff is recorded in ADR 0010: CM6 is ESM
-#: and needs a bundler, which would drag an npm toolchain into a Python project
-#: for one textarea. CM5 is in maintenance mode and drops in as three files.
-CODEMIRROR_VERSION: Final = "5.65.21"
+#: Monaco, the editor VS Code is built on (ADR 0034, which supersedes ADR 0010's
+#: CodeMirror 5). **0.52.2 and not newer, on purpose**: later releases ship the
+#: ESM-first layout, where `editor.main` statically pulls in a 7 MB TypeScript
+#: worker and three others this app has no use for, and trimming a hashed-chunk
+#: graph by hand is a fight with the build. 0.52 is the last release with the
+#: classic AMD layout, whose language services are separate files that are only
+#: fetched when a model asks for that language -- so not vendoring them is a
+#: trim and not a repair.
+MONACO_VERSION: Final = "0.52.2"
 
 #: Everything under `static/` with this name is third party and hash-pinned. The
 #: offline-asset grep uses the same constant to decide what it is *not* grepping,
@@ -77,119 +95,102 @@ class VendoredAsset:
         return static.joinpath(*self.path.split("/"))
 
 
+@dataclass(frozen=True, slots=True)
+class VendoredTree:
+    """A directory taken whole from one archive, pinned by one hash.
+
+    `members` are archive paths below the tarball's `package/`; a leading `min/`
+    is dropped to get the path under `path`. See the module docstring for why
+    this is a second kind of entry and not many `VendoredAsset`s.
+    """
+
+    path: str
+    url: str
+    members: tuple[str, ...]
+    sha256: str
+
+    def files(self) -> tuple[str, ...]:
+        """Each kept file as a path under `static/`, in manifest order."""
+        return tuple(f"{self.path}/{local_name(m)}" for m in self.members)
+
+    def location(self, static: Path) -> Path:
+        """The directory this tree occupies under a `static/` directory."""
+        return static.joinpath(*self.path.split("/"))
+
+
+def local_name(member: str) -> str:
+    """An archive member's path inside its tree: `min/` is a packaging detail."""
+    return member.removeprefix("min/")
+
+
 ASSETS: Final[tuple[VendoredAsset, ...]] = (
     VendoredAsset(
         path=f"{VENDOR_DIRNAME}/htmx.min.js",
         url=(f"https://cdnjs.cloudflare.com/ajax/libs/htmx/{HTMX_VERSION}/htmx.min.js"),
         sha256="d6fdc75f204e6bdefa99b69bf1e6d4ac69b8a364f77929f45c13476b4000f717",
     ),
-    VendoredAsset(
-        path=f"{VENDOR_DIRNAME}/codemirror.min.js",
-        url=(
-            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
-            f"/codemirror.min.js"
-        ),
-        sha256="d649a8d6bd5d0ca9bb3bef8212c9de6fa5599af3e3fe2898f94861dfe87bea7d",
-    ),
-    VendoredAsset(
-        path=f"{VENDOR_DIRNAME}/codemirror.min.css",
-        url=(
-            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
-            f"/codemirror.min.css"
-        ),
-        sha256="22f18b4dec95cc981a96f8e69f61f595314162fd102ba401abcd20b0674d9846",
-    ),
-    # The language modes, flattened out of the library's own `mode/<name>/`
-    # nesting. PLAN.md §15 Q3 asked what a second language costs, and this file
-    # answered "a second line here and nothing else".
-    #
-    # **Phase 14 tested that and it was nearly right.** Adding SQL is one line
-    # here, one file committed beside the others, and no change to `verify`, the
-    # offline grep, the asset route or the hash test. What it is *not* is
-    # nothing else: `workbench.html` had `codemirror-python.min.js` written into
-    # the script tag, so the page served a Python tokenizer and then asked
-    # CodeMirror for a `sql` mode it had not loaded — which fails by silently
-    # giving you a plain textarea, the worst available way for it to fail.
-    #
-    # The fix is that the template builds the filename from `editor_mode`, which
-    # is why `_MODE_FILES` below exists: the set of modes that have a file is a
-    # fact about this manifest, so the one place that knows it is this module
-    # rather than a template guessing at a path.
-    VendoredAsset(
-        path=f"{VENDOR_DIRNAME}/codemirror-python.min.js",
-        url=(
-            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
-            f"/mode/python/python.min.js"
-        ),
-        sha256="d545dba0fd28b288f13383440a8f763228bc38cbf987d28ee870e4baa1438b21",
-    ),
-    VendoredAsset(
-        path=f"{VENDOR_DIRNAME}/codemirror-sql.min.js",
-        url=(
-            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
-            f"/mode/sql/sql.min.js"
-        ),
-        sha256="4c89a2e950b4c627d7ace5642495f815d5c3cf26302eeaaa92882636d5026af6",
-    ),
-    # Phase 22: the fourth kind's two languages. The Dockerfile mode is built
-    # on CodeMirror's `simple` mode addon, so it is two files where every mode
-    # before it was one -- which is why `mode_files` returns a tuple.
-    VendoredAsset(
-        path=f"{VENDOR_DIRNAME}/codemirror-simple.min.js",
-        url=(
-            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
-            f"/addon/mode/simple.min.js"
-        ),
-        sha256="cc4e091d53fe943388368929cbd74d68e5bb3883695c177ee91347d03d0f8e1a",
-    ),
-    VendoredAsset(
-        path=f"{VENDOR_DIRNAME}/codemirror-dockerfile.min.js",
-        url=(
-            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
-            f"/mode/dockerfile/dockerfile.min.js"
-        ),
-        sha256="0e6d1f15568767ec4ae4f48e101f3065e86bc5cc29a6893853018e92d8eac967",
-    ),
-    VendoredAsset(
-        path=f"{VENDOR_DIRNAME}/codemirror-yaml.min.js",
-        url=(
-            f"https://cdnjs.cloudflare.com/ajax/libs/codemirror/{CODEMIRROR_VERSION}"
-            f"/mode/yaml/yaml.min.js"
-        ),
-        sha256="502bed0f3a9db7ee6c3dfea6984eab3b0a4c474387621b06a04a3cff92a5c312",
-    ),
 )
 
-#: CodeMirror mode name to the vendored files that define it, in load order.
+#: What of Monaco is kept, as archive members relative to the tarball's
+#: `package/`. `min/` is stripped on the way to disk, so `min/vs/loader.js`
+#: lands at `vendor/monaco/vs/loader.js` and the AMD loader's `paths.vs` is
+#: simply `<static>/vendor/monaco/vs`.
 #:
-#: The template reads this through `mode_files`, rather than interpolating the
-#: mode name into a path itself. A missing entry is then an empty tuple, falsy,
-#: which the template can branch on instead of a 404 on a script tag — so test
-#: it for truth, not for `none` — and a mode whose file was
-#: never vendored degrades to a plain textarea *visibly*, in the one place that
-#: can tell the difference.
-_MODE_FILES: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
-    {
-        "python": (f"{VENDOR_DIRNAME}/codemirror-python.min.js",),
-        "sql": (f"{VENDOR_DIRNAME}/codemirror-sql.min.js",),
-        # The addon first: the mode file calls `defineSimpleMode` on load.
-        "dockerfile": (
-            f"{VENDOR_DIRNAME}/codemirror-simple.min.js",
-            f"{VENDOR_DIRNAME}/codemirror-dockerfile.min.js",
-        ),
-        "yaml": (f"{VENDOR_DIRNAME}/codemirror-yaml.min.js",),
-    }
+#: The core, the four tokenizers a shipped exercise is written in (Python for
+#: katas and quiz fixes, SQL for drills, Dockerfile and YAML for the container
+#: kind), the one worker file, and the icon font the find widget draws with.
+#: Not the CSS/HTML/JSON/TypeScript language services and not the nine
+#: `nls.messages.*` translations: nothing here asks for them, and they are most
+#: of the 25 MB the full package would add to the wheel.
+_MONACO_MEMBERS: Final = (
+    "LICENSE",
+    "min/vs/loader.js",
+    "min/vs/editor/editor.main.js",
+    "min/vs/editor/editor.main.css",
+    "min/vs/base/worker/workerMain.js",
+    "min/vs/base/browser/ui/codicons/codicon/codicon.ttf",
+    "min/vs/basic-languages/python/python.js",
+    "min/vs/basic-languages/sql/sql.js",
+    "min/vs/basic-languages/yaml/yaml.js",
+    "min/vs/basic-languages/dockerfile/dockerfile.js",
 )
 
+TREES: Final[tuple[VendoredTree, ...]] = (
+    VendoredTree(
+        path=f"{VENDOR_DIRNAME}/monaco",
+        url=(
+            f"https://registry.npmjs.org/monaco-editor/-/"
+            f"monaco-editor-{MONACO_VERSION}.tgz"
+        ),
+        members=_MONACO_MEMBERS,
+        sha256="0f4fd468ccceb9caa16b8bc643aa096831f718398f7a64e3aecefd8c17b6bd2e",
+    ),
+)
 
-def mode_files(mode: str | None) -> tuple[str, ...]:
-    """The vendored files defining a CodeMirror mode, or `()` if there are none.
+#: The Monaco language ids this app has a tokenizer for. A kata's
+#: `editable.language` is already a Monaco id (`python`, `sql`, `yaml`,
+#: `dockerfile`), which is why this is a set and not a translation table.
+MONACO_LANGUAGES: Final = frozenset({"python", "sql", "yaml", "dockerfile"})
 
-    `()` for `None` as well as for an unknown name, so a git scenario — which
-    has no editor at all — takes the same branch as a language nobody vendored.
-    The template renders no CodeMirror either way, which is correct for both.
+
+def editor_language(language: str | None) -> str | None:
+    """The Monaco language id for an exercise's language, or `None` for "plain".
+
+    `None` for `None` as well as for a language nobody vendored, so a git
+    scenario -- which has no editor -- and a language with no tokenizer take the
+    same branch. An editor with no tokenizer is still an editor: a language
+    nobody vendored degrades to uncoloured text, which is visible, rather than
+    to a textarea, which would be a different widget with different keys.
     """
-    return _MODE_FILES.get(mode, ()) if mode is not None else ()
+    return language if language in MONACO_LANGUAGES else None
+
+
+def pinned_paths() -> frozenset[str]:
+    """Every file under `static/` the manifest vouches for, as posix paths."""
+    return frozenset(
+        [asset.path for asset in ASSETS]
+        + [path for tree in TREES for path in tree.files()]
+    )
 
 
 def static_root() -> Path:
@@ -205,6 +206,17 @@ def static_root() -> Path:
 def digest(payload: bytes) -> str:
     """The hash this module records, computed the one way it is computed."""
     return hashlib.sha256(payload).hexdigest()
+
+
+def tree_digest(files: Mapping[str, bytes]) -> str:
+    """One hash for a directory: each file's path and content hash, sorted.
+
+    Hashing the *list of per-file hashes* and not the concatenated bytes means a
+    renamed file changes it and a moved boundary between two files cannot cancel
+    out, while the failure message can still name which file differs.
+    """
+    lines = sorted(f"{name}\0{digest(payload)}\n" for name, payload in files.items())
+    return hashlib.sha256("".join(lines).encode()).hexdigest()
 
 
 def verify(static: Path | None = None) -> tuple[str, ...]:
@@ -230,3 +242,29 @@ def _problems(root: Path) -> Iterator[str]:
                 f"{asset.path} hashes to {found}, not the pinned "
                 f"{asset.sha256 or '<nothing>'}"
             )
+    for tree in TREES:
+        yield from _tree_problems(root, tree)
+
+
+def _tree_problems(root: Path, tree: VendoredTree) -> Iterator[str]:
+    base = tree.location(root)
+    present = {
+        path.relative_to(base).as_posix(): path.read_bytes()
+        for path in base.rglob("*")
+        if path.is_file()
+    }
+    kept = [local_name(member) for member in tree.members]
+    missing = [name for name in kept if name not in present]
+    for name in missing:
+        yield f"{tree.path}/{name} is missing; run tools/vendor_assets.py"
+    # A stray file is a problem too: the half a per-file list cannot see.
+    for name in sorted(set(present) - set(kept)):
+        yield f"{tree.path}/{name} is not in the manifest; delete it or pin it"
+    if missing:
+        return
+    found = tree_digest(present)
+    if found != tree.sha256:
+        yield (
+            f"{tree.path} hashes to {found}, not the pinned "
+            f"{tree.sha256 or '<nothing>'}"
+        )
