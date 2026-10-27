@@ -8,7 +8,7 @@ def longest_non_decreasing(numbers: list[int]) -> int:
         numbers: the values. May be empty, and may repeat.
 
     Returns:
-        The length of the longest subsequence in which no value is smaller
-        than the one before it.
+        The length of the longest subsequence in which no value is smaller than
+        the one before it.
     """
     raise NotImplementedError

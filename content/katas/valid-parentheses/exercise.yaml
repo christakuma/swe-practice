@@ -34,10 +34,21 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(text) <= 10**5"
+  signature:
+    functions:
+      - name: is_balanced
+        summary: "Whether every bracket in `text` is closed by its matching partner."
+        parameters:
+          - name: text
+            type: str
+            description: "a string of brackets. Only `()`, `[]` and `{}` appear."
+            length: {min: 0, max: 10**5}
+        returns:
+          type: bool
+          description: True if the brackets are balanced and correctly nested.
+  notes:
     - "Every character is one of ( ) [ ] { }."
-    - "Brackets may be nested tens of thousands deep."
+    - Brackets may be nested tens of thousands deep.
   examples:
     - input: |
         is_balanced("{[()]}")

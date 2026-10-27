@@ -39,11 +39,26 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(numbers) <= 2 * 10**5"
-    - "-10**9 <= numbers[i] <= 10**9"
-    - "Values arrive in no particular order and may repeat."
-    - "The value you add may be any integer, inside that range or not."
+  signature:
+    functions:
+      - name: longest_run
+        summary: Return the longest consecutive run obtainable by adding one integer.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              the values. May be empty, may hold duplicates and negatives, and is in no
+              particular order.
+            length: {min: 0, max: 2 * 10**5}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: >-
+            The length of the longest set of consecutive integers that can all be
+            present once a single integer of your choosing has been added.
+  notes:
+    - Values arrive in no particular order and may repeat.
+    - The value you add may be any integer, inside that range or not.
   examples:
     - input: |
         longest_run([1, 2, 4, 5])

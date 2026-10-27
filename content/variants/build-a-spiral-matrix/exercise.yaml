@@ -31,8 +31,20 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(1) beyond the output"
-  constraints:
-    - "0 <= n <= 400"
+  signature:
+    functions:
+      - name: spiral_matrix
+        summary: "Return an `n x n` matrix holding 1..n*n in clockwise spiral order."
+        parameters:
+          - name: n
+            type: int
+            description: the side of the square. Zero or more.
+            values: {min: 0, max: 400}
+        returns:
+          type: list[list[int]]
+          description: >-
+            A list of `n` rows of `n` integers, starting with 1 in the top-left and
+            spiralling clockwise inward.
   examples:
     - input: |
         spiral_matrix(3)

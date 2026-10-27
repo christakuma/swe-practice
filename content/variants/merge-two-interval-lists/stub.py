@@ -8,12 +8,12 @@ def merge_lists(
     """Return the union of two sorted lists of intervals.
 
     Args:
-        first: non-overlapping `(start, end)` pairs in ascending order. May
-            be empty.
+        first: non-overlapping `(start, end)` pairs in ascending order. May be
+            empty.
         second: another such list.
 
     Returns:
-        A new list, ascending and non-overlapping, covering exactly the
-        points covered by either input. Intervals that touch are merged.
+        A new list, ascending and non-overlapping, covering exactly the points
+        covered by either input. Intervals that touch are merged.
     """
     raise NotImplementedError

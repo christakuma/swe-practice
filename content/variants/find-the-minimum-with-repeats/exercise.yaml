@@ -34,9 +34,22 @@ kata:
   complexity:
     expected_time: "O(log n) typically, O(n) when almost every value is equal"
     expected_space: "O(1)"
-  constraints:
-    - "1 <= len(numbers) <= 2 * 10**6"
-    - "-10**9 <= numbers[i] <= 10**9"
+  signature:
+    functions:
+      - name: find_minimum
+        summary: "Return the smallest value in a rotated, non-decreasing list."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              a non-decreasing list rotated left by an unknown amount. Never empty. May
+              hold repeats.
+            length: {min: 1, max: 2 * 10**6}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: The smallest value.
+  notes:
     - "The list is non-decreasing order rotated left by some number of places."
   examples:
     - input: |

@@ -32,10 +32,21 @@ kata:
   complexity:
     expected_time: "O(n m) for n words with a shared prefix of length m"
     expected_space: "O(m)"
-  constraints:
-    - "0 <= len(words) <= 10**4"
-    - "0 <= len(words[i]) <= 1000"
-    - "Characters are compared exactly."
+  signature:
+    functions:
+      - name: longest_common_prefix
+        summary: Return the longest string that every word starts with.
+        parameters:
+          - name: words
+            type: list[str]
+            description: the words to compare. May be empty.
+            length: {min: 0, max: 10**4}
+            item_length: {min: 0, max: 1000}
+        returns:
+          type: str
+          description: The longest common prefix, or the empty string when there is none.
+  notes:
+    - Characters are compared exactly.
   examples:
     - input: |
         longest_common_prefix(["flower", "flow", "flight"])

@@ -41,10 +41,32 @@ kata:
   complexity:
     expected_time: "O(V + E)"
     expected_space: "O(V + E)"
-  constraints:
-    - "At most 2 * 10**4 tasks, and at most 4 * 10**4 dependencies between them."
+  signature:
+    functions:
+      - name: build_time
+        summary: Return how long it takes for every task to finish.
+        parameters:
+          - name: durations
+            type: dict[str, int]
+            description: how long each task takes, by name. Every task is a key.
+          - name: dependencies
+            type: dict[str, list[str]]
+            description: >-
+              for some tasks, the names of the tasks that must finish before it can
+              start. A task with no entry depends on nothing.
+        returns:
+          type: int | None
+          description: >-
+            The time at which the last task finishes, when every task starts as soon as
+            its dependencies allow and any number may run at once. None if the
+            dependencies form a cycle.
+  notes:
+    - >-
+      At most 2 * 10**4 tasks, and at most 4 * 10**4 dependencies between them.
     - "1 <= durations[name] <= 10**6"
-    - "Every name that appears in dependencies, as a key or as a dependency, is a key of durations."
+    - >-
+      Every name that appears in dependencies, as a key or as a dependency, is a key of
+      durations.
     - "A chain may be 10**4 tasks deep, far deeper than Python will recurse."
   examples:
     - input: |

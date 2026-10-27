@@ -41,10 +41,33 @@ kata:
   complexity:
     expected_time: "O(h1 + h2 + k)"
     expected_space: "O(h1 + h2)"
-  constraints:
-    - "Each tree has between 0 and 10**5 nodes; together they have at least one."
+  signature:
+    functions:
+      - name: kth_smallest
+        summary: "Return the kth smallest value across two BSTs, 1-based."
+        parameters:
+          - name: first
+            type: TreeNode | None
+            description: the root of a valid binary search tree, or None.
+          - name: second
+            type: TreeNode | None
+            description: the root of another, or None. A value may be in both trees.
+          - name: k
+            type: int
+            description: >-
+              which value to return, counting from 1 at the smallest. Always within the
+              combined size.
+        returns:
+          type: int
+          description: >-
+            The kth smallest of all the values, with a value held by both trees counted
+            twice.
+  notes:
+    - >-
+      Each tree has between 0 and 10**5 nodes; together they have at least one.
     - "1 <= k <= the total number of nodes"
-    - "Within one tree no two nodes share a value; a value may appear in both trees."
+    - >-
+      Within one tree no two nodes share a value; a value may appear in both trees.
     - "A tree may be 10**5 levels deep along a branch the answer does not need."
   examples:
     - input: |

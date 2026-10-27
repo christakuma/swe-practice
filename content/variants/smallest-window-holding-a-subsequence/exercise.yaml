@@ -42,10 +42,29 @@ kata:
   complexity:
     expected_time: "O(n * m)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(text) <= 2 * 10**4"
-    - "0 <= len(pattern) <= 100"
-    - "Characters are compared exactly."
+  signature:
+    functions:
+      - name: smallest_window
+        summary: "Return the shortest substring of `text` holding `pattern` in order."
+        parameters:
+          - name: text
+            type: str
+            description: the string to search. May be empty.
+            length: {min: 0, max: 2 * 10**4}
+          - name: pattern
+            type: str
+            description: >-
+              the characters that must appear in the window, in this order, with
+              anything or nothing between them. May be empty, in which case the answer
+              is "".
+            length: {min: 0, max: 101}
+        returns:
+          type: str
+          description: >-
+            The shortest substring of which `pattern` is a subsequence, the earliest on
+            a tie, or "" if there is none.
+  notes:
+    - Characters are compared exactly.
   examples:
     - input: |
         smallest_window("abcdebdde", "bde")

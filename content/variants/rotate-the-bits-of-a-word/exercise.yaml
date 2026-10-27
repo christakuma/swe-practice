@@ -41,10 +41,24 @@ kata:
   complexity:
     expected_time: "O(1)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= n <= 2**32 - 1"
-    - "0 <= k <= 10**9"
-    - "The result is in the same range as n."
+  signature:
+    functions:
+      - name: rotate_left
+        summary: "Rotate `n`, read as a 32-bit unsigned word, left by `k` places."
+        parameters:
+          - name: n
+            type: int
+            description: "an integer in `0..2**32 - 1`."
+            values: {min: 0, max: 2**32 - 1}
+          - name: k
+            type: int
+            description: "how many places to rotate. Never negative; may exceed 32."
+            values: {min: 0, max: 10**9 + 7}
+        returns:
+          type: int
+          description: "The rotated word, also in `0..2**32 - 1`."
+  notes:
+    - The result is in the same range as n.
   examples:
     - input: |
         rotate_left(0b1011, 2)

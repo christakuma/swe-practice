@@ -8,12 +8,12 @@ def assign_rooms(meetings: list[tuple[int, int]]) -> list[int]:
     the input, and each takes the lowest-numbered room that is free.
 
     Args:
-        meetings: `(start, end)` pairs with `start < end`, in any order. May
-            be empty and may repeat. A meeting ending when another starts
-            frees its room in time.
+        meetings: `(start, end)` pairs with `start < end`, in any order. May be
+            empty and may repeat. A meeting ending when another starts frees
+            its room in time.
 
     Returns:
-        A list as long as `meetings`. Entry i is the room number, counting
-        from 0, of the meeting at position i of the input.
+        A list as long as `meetings`. Entry i is the room number, counting from
+        0, of the meeting at position i of the input.
     """
     raise NotImplementedError

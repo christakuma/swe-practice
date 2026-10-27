@@ -34,10 +34,23 @@ kata:
   complexity:
     expected_time: "O(n log n) comparisons"
     expected_space: "O(n) for the sorted copy"
-  constraints:
-    - "0 <= len(words) <= 10**5"
-    - "0 <= len(words[i]) <= 100"
-    - "Characters are compared exactly."
+  signature:
+    functions:
+      - name: longest_shared_prefix
+        summary: Return the longest prefix shared by at least two of the words.
+        parameters:
+          - name: words
+            type: list[str]
+            description: the words to compare. May be empty. Not to be modified.
+            length: {min: 0, max: 10**5}
+            item_length: {min: 0, max: 100}
+        returns:
+          type: str
+          description: >-
+            The longest string that two different entries both start with. On a tie, the
+            alphabetically first. Empty when there is none.
+  notes:
+    - Characters are compared exactly.
   examples:
     - input: |
         longest_shared_prefix(["flower", "dog", "flight", "dorm", "flow"])

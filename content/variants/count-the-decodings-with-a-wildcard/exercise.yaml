@@ -39,10 +39,25 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(digits) <= 10**4"
+  signature:
+    functions:
+      - name: count_decodings
+        summary: Count the ways to decode a digit string that may contain wildcards.
+        parameters:
+          - name: digits
+            type: str
+            description: >-
+              characters 0-9 and `*`, where `*` stands for any one digit from 1 to 9.
+              May be empty.
+            length: {min: 0, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            The number of distinct decodings into letters A-Z (1-26), counting each
+            choice of digit for each `*` separately. 0 for the empty string.
+  notes:
     - "Every character is one of the digits 0 to 9, or *."
-    - "The answer is exact however large it is."
+    - The answer is exact however large it is.
   examples:
     - input: |
         count_decodings("*")

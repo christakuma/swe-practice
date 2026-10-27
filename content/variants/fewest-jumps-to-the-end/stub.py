@@ -10,8 +10,7 @@ def fewest_jumps(jumps: list[int]) -> int:
         jumps: non-negative maximum jump lengths. Never empty.
 
     Returns:
-        The smallest number of jumps that reaches the last position, 0 if
-        the list has one position, or -1 if the last position cannot be
-        reached.
+        The smallest number of jumps that reaches the last position, 0 if the
+        list has one position, or -1 if the last position cannot be reached.
     """
     raise NotImplementedError

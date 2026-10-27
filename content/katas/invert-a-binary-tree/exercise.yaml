@@ -38,9 +38,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h) for a tree of height h"
-  constraints:
-    - "The tree has between 0 and 500 nodes, and may be a single chain that deep."
-    - "-10**4 <= node.value <= 10**4"
+  signature:
+    functions:
+      - name: invert
+        summary: Mirror the tree in place and return the root.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of the tree, or None for an empty tree.
+            values: {min: -10**4, max: 10**4}
+            nodes: {min: 0, max: 500}
+        returns:
+          type: TreeNode | None
+          description: >-
+            The same root node, with every node's children swapped. None for an empty
+            tree.
+  notes:
+    - It may be a single chain that deep.
   examples:
     - input: |
         root = TreeNode(

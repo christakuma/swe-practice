@@ -8,8 +8,8 @@ def insert(
     """Insert `new` into a sorted, non-overlapping list, merging overlaps.
 
     Args:
-        intervals: non-overlapping `(start, end)` pairs in ascending order.
-            May be empty.
+        intervals: non-overlapping `(start, end)` pairs in ascending order. May
+            be empty.
         new: the interval to insert, with `start <= end`.
 
     Returns:

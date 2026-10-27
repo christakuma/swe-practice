@@ -36,9 +36,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h)"
-  constraints:
-    - "The tree has between 0 and 500 nodes, and may be a single chain that deep."
-    - "-1000 <= node.value <= 1000"
+  signature:
+    functions:
+      - name: longest_path
+        summary: Return the number of nodes on the longest path in the tree.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of the tree, or None for an empty tree.
+            values: {min: -1000, max: 1000}
+            nodes: {min: 0, max: 500}
+        returns:
+          type: int
+          description: >-
+            The node count of the longest path between any two nodes: 0 for an empty
+            tree, 1 for a single node.
+  notes:
+    - It may be a single chain that deep.
   examples:
     - input: |
         root = TreeNode(1, TreeNode(2, TreeNode(4), TreeNode(5)), TreeNode(3))

@@ -34,10 +34,24 @@ kata:
   complexity:
     expected_time: "O(n log n)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(meetings) <= 2 * 10**5"
-    - "Each meeting is (start, end) with -10**9 <= start < end <= 10**9."
-    - "Meetings arrive in no particular order and may repeat."
+  signature:
+    functions:
+      - name: rooms_needed
+        summary: Return the fewest rooms that can hold all the meetings.
+        parameters:
+          - name: meetings
+            type: list[tuple[int, int]]
+            description: >-
+              `(start, end)` pairs with `start < end`, in any order. May be empty and
+              may repeat. A meeting ending when another starts shares its room.
+            length: {min: 0, max: 2 * 10**5}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: The maximum number of meetings running simultaneously.
+  notes:
+    - "Each meeting is a pair (start, end) with start < end."
+    - Meetings arrive in no particular order and may repeat.
   examples:
     - input: |
         rooms_needed([(0, 30), (5, 10), (15, 20)])

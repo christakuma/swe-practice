@@ -37,9 +37,20 @@ kata:
   complexity:
     expected_time: "O(n log n)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(numbers) <= 5000"
-    - "-10**9 <= numbers[i] <= 10**9"
+  signature:
+    functions:
+      - name: longest_increasing
+        summary: Return the length of the longest strictly increasing subsequence.
+        details: A subsequence keeps the original order but need not be contiguous.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the values. May be empty, and may repeat.
+            length: {min: 0, max: 5000}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: The length of the longest strictly increasing subsequence.
   examples:
     - input: |
         longest_increasing([10, 9, 2, 5, 3, 7, 101, 18])

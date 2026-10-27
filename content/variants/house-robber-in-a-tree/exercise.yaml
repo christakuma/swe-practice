@@ -36,9 +36,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h) for the recursion"
-  constraints:
-    - "The tree has between 0 and 10**4 nodes and is at most 500 levels deep."
-    - "0 <= node.value <= 10**4"
+  signature:
+    functions:
+      - name: best_haul
+        summary: Return the largest total of nodes no two of which share an edge.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: "the root of a tree of non-negative values, or None."
+            values: {min: 0, max: 10**4}
+            nodes: {min: 0, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            The largest sum of a set of nodes in which no node is chosen together with
+            its parent.
+  notes:
+    - It is at most 500 levels deep.
   examples:
     - input: |
         root = TreeNode(3, TreeNode(2, None, TreeNode(3)), TreeNode(3, None, TreeNode(1)))

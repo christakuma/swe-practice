@@ -25,11 +25,10 @@ def invert(root: TreeNode | None) -> TreeNode | None:
     """Mirror the tree in place and return its root.
 
     Args:
-        root: the root of the tree, or None for an empty tree. The tree may
-            be far deeper than Python's recursion limit.
+        root: the root of the tree, or None for an empty tree. The tree may be
+            far deeper than Python's recursion limit.
 
     Returns:
-        The same root node, with every node's left and right children
-        swapped.
+        The same root node, with every node's left and right children swapped.
     """
     raise NotImplementedError

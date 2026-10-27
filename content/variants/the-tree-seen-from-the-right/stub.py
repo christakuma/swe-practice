@@ -28,7 +28,7 @@ def right_side_view(root: TreeNode | None) -> list[int]:
         root: the root of the tree, or None for an empty tree.
 
     Returns:
-        One value per level: the last node on that level when it is read
-        left to right.
+        One value per level: the last node on that level when it is read left
+        to right.
     """
     raise NotImplementedError

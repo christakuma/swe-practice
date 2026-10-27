@@ -8,8 +8,8 @@ def encode(strings: list[str]) -> str:
     """Pack a list of strings into a single string.
 
     Args:
-        strings: the strings to pack. Any contents, including empty strings
-            and any character at all.
+        strings: the strings to pack. Any contents, including empty strings and
+            any character at all.
 
     Returns:
         A single string that a `Decoder` can turn back into the list, however
@@ -29,8 +29,8 @@ class Decoder:
         """Accept the next piece of encoded text.
 
         Args:
-            chunk: the next characters of the output of `encode`. May be
-                empty, and may end anywhere.
+            chunk: the next characters of the output of `encode`. May be empty,
+                and may end anywhere.
 
         Returns:
             The strings whose last character arrived in this chunk, in order.

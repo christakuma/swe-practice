@@ -39,9 +39,27 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
-    - "1 <= len(jumps) <= 10**5"
-    - "0 <= jumps[i] <= 10**5"
+  signature:
+    functions:
+      - name: can_reach_a_zero
+        summary: "Return whether some position holding 0 can be reached from `start`."
+        parameters:
+          - name: jumps
+            type: list[int]
+            description: >-
+              the exact distance that may be jumped from each position, to the left or
+              to the right. Never empty.
+            length: {min: 1, max: 10**5}
+            values: {min: 0, max: 10**5}
+          - name: start
+            type: int
+            description: the position to begin at.
+        returns:
+          type: bool
+          description: >-
+            True if a sequence of jumps that stay inside the list leads from `start` to
+            a position whose value is 0.
+  notes:
     - "0 <= start < len(jumps)"
   examples:
     - input: |

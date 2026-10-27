@@ -9,7 +9,6 @@ def count_slices(numbers: list[int], limit: int) -> int:
         limit: the bound the product must stay under. Zero or more.
 
     Returns:
-        How many contiguous, non-empty slices have a product less than
-        `limit`.
+        How many contiguous, non-empty slices have a product less than `limit`.
     """
     raise NotImplementedError

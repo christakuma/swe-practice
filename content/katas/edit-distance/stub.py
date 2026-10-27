@@ -2,7 +2,8 @@
 
 
 def edit_distance(source: str, target: str) -> int:
-    """Return the fewest single-character edits turning one string into another.
+    """Return the fewest single-character edits turning one string into
+    another.
 
     An edit is inserting a character, deleting one, or replacing one.
 

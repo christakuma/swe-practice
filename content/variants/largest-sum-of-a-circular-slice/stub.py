@@ -5,8 +5,8 @@ def max_slice_sum(numbers: list[int]) -> int:
     """Return the largest sum of any non-empty slice of a circular list.
 
     Args:
-        numbers: the values, arranged in a circle so that the first follows
-            the last. Never empty. May be all negative.
+        numbers: the values, arranged in a circle so that the first follows the
+            last. Never empty. May be all negative.
 
     Returns:
         The largest sum of a contiguous, non-empty slice that uses each

@@ -43,10 +43,27 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "The list has between 0 and 3 * 10**4 nodes; an empty list is None."
-    - "1 <= k <= 3 * 10**4"
-    - "That is far longer than Python will recurse, even one call per group."
+  signature:
+    functions:
+      - name: reverse_in_groups
+        summary: "Reverse the list `k` nodes at a time."
+        parameters:
+          - name: head
+            type: ListNode | None
+            description: the first node, or None for an empty list.
+            nodes: {min: 0, max: 3 * 10**4}
+          - name: k
+            type: int
+            description: the group size, at least 1.
+            values: {min: 1, max: 3 * 10**4}
+        returns:
+          type: ListNode | None
+          description: >-
+            The head of the list with each full group of `k` nodes reversed. A final
+            group of fewer than `k` nodes keeps its order.
+  notes:
+    - An empty list is None.
+    - That is far longer than Python will recurse, even one call per group.
   examples:
     - input: |
         head = ListNode(1, ListNode(2, ListNode(3, ListNode(4, ListNode(5)))))

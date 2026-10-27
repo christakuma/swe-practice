@@ -37,11 +37,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(numbers) <= 10**6"
-    - "-10**9 <= numbers[i] <= 10**9"
-    - "Values may repeat and are in no particular order."
-    - "The list may be rearranged or overwritten."
+  signature:
+    functions:
+      - name: first_missing_positive
+        summary: "Return the smallest positive integer that is not in `numbers`."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              any integers, in any order, possibly repeated. May be empty. May be
+              rearranged.
+            length: {min: 0, max: 10**6}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: The smallest integer greater than zero that does not appear.
+  notes:
+    - Values may repeat and are in no particular order.
+    - The list may be rearranged or overwritten.
   examples:
     - input: |
         first_missing_positive([3, 4, -1, 1])

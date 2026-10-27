@@ -13,7 +13,7 @@ def build_time(
 
     Returns:
         The time at which the last task finishes, when every task starts as
-        soon as its dependencies allow and any number may run at once. None
-        if the dependencies form a cycle.
+        soon as its dependencies allow and any number may run at once. None if
+        the dependencies form a cycle.
     """
     raise NotImplementedError

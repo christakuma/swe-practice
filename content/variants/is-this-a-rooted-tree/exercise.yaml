@@ -40,12 +40,30 @@ kata:
   complexity:
     expected_time: "O(n + e)"
     expected_space: "O(n + e)"
-  constraints:
-    - "1 <= n <= 2 * 10**5"
-    - "0 <= len(edges) <= 2 * 10**5"
-    - "Each edge is a pair (parent, child) with 0 <= parent < n and 0 <= child < n."
-    - "Edges may repeat, and parent may equal child."
-    - "A tree may be a chain 10**5 nodes long, far deeper than Python will recurse."
+  signature:
+    functions:
+      - name: find_root
+        summary: Return the root if the directed edges form a rooted tree, else None.
+        parameters:
+          - name: n
+            type: int
+            description: "the number of nodes, labelled 0 to n - 1. At least 1."
+            values: {min: 1, max: 2 * 10**5}
+          - name: edges
+            type: list[tuple[int, int]]
+            description: "`(parent, child)` pairs. May repeat, and may join a node to itself."
+            length: {min: 0, max: 2 * 10**5}
+        returns:
+          type: int | None
+          description: >-
+            The label of the one node with no parent, provided every other node has
+            exactly one parent and all of them can be reached from it. None otherwise.
+  notes:
+    - >-
+      Each edge is a pair (parent, child) with 0 <= parent < n and 0 <= child < n.
+    - Edges may repeat, and parent may equal child.
+    - >-
+      A tree may be a chain 10**5 nodes long, far deeper than Python will recurse.
   examples:
     - input: |
         find_root(4, [(2, 0), (2, 3), (3, 1)])

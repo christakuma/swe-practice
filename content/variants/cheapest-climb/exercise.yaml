@@ -36,9 +36,22 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(costs) <= 10**5"
-    - "0 <= costs[i] <= 1000"
+  signature:
+    functions:
+      - name: cheapest_climb
+        summary: Return the lowest total cost of climbing past the last step.
+        parameters:
+          - name: costs
+            type: list[int]
+            description: the cost of standing on each step, from the bottom. May be empty.
+            length: {min: 0, max: 10**5}
+            values: {min: 0, max: 1000}
+        returns:
+          type: int
+          description: >-
+            The cheapest total for a climb that starts on the floor before the first
+            step, moves up one or two steps at a time, and ends on the landing after the
+            last step.
   examples:
     - input: |
         cheapest_climb([10, 15, 20])

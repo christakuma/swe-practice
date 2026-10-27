@@ -9,7 +9,7 @@ def redundant_edge(n: int, edges: list[tuple[int, int]]) -> tuple[int, int]:
         edges: exactly n undirected edges forming a tree plus one extra.
 
     Returns:
-        The edge, as given, that appears last in `edges` among those that
-        could be removed to leave a tree.
+        The edge, as given, that appears last in `edges` among those that could
+        be removed to leave a tree.
     """
     raise NotImplementedError

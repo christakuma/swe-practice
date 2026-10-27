@@ -34,8 +34,20 @@ kata:
   complexity:
     expected_time: "O(1) arithmetic operations on the number"
     expected_space: "O(1)"
-  constraints:
-    - "1 <= n < 2**2000"
+  signature:
+    functions:
+      - name: next_with_same_bits
+        summary: "Return the next larger integer with as many 1 bits as `n`."
+        parameters:
+          - name: n
+            type: int
+            description: a positive integer, possibly hundreds of bits long.
+            values: {min: 1, max: 2**2000 - 1}
+        returns:
+          type: int
+          description: >-
+            The smallest integer greater than `n` whose binary representation contains
+            the same number of 1 bits.
   examples:
     - input: |
         next_with_same_bits(0b0110)

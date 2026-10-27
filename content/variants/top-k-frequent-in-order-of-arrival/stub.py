@@ -6,8 +6,7 @@ def top_k_frequent(words: list[str], k: int) -> list[str]:
 
     Args:
         words: the words to count. May be empty.
-        k: how many to return. Never larger than the number of distinct
-            words.
+        k: how many to return. Never larger than the number of distinct words.
 
     Returns:
         The k most frequent words, by count descending. Words with the same

@@ -35,11 +35,30 @@ kata:
   complexity:
     expected_time: "O(amount * number of coins)"
     expected_space: "O(amount)"
-  constraints:
-    - "0 <= len(coins) <= 12"
+  signature:
+    functions:
+      - name: ways_to_make
+        summary: "Count the combinations of coins that add up to `amount`."
+        details: |-
+          Each coin value may be used any number of times, and the order coins are
+          taken in does not matter.
+        parameters:
+          - name: coins
+            type: list[int]
+            description: the available coin values. Distinct and positive.
+            length: {min: 0, max: 12}
+          - name: amount
+            type: int
+            description: the total to make. Zero or more.
+            values: {min: 0, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            How many different multisets of coins sum to `amount`. One for an amount of
+            zero.
+  notes:
     - "1 <= coins[i] <= 10**4, all distinct, in no particular order."
-    - "0 <= amount <= 10**4"
-    - "The answer is exact however large it is."
+    - The answer is exact however large it is.
   examples:
     - input: |
         ways_to_make([1, 2, 5], 5)

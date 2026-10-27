@@ -34,10 +34,24 @@ kata:
   complexity:
     expected_time: "O(n + m)"
     expected_space: "O(k) for k distinct characters"
-  constraints:
-    - "0 <= len(text) <= 3 * 10**5"
-    - "1 <= len(pattern) <= 10**5"
-    - "Any characters may appear in either string."
+  signature:
+    functions:
+      - name: anagram_positions
+        summary: "Return every index at which an anagram of `pattern` starts in `text`."
+        parameters:
+          - name: text
+            type: str
+            description: the string to search. May be empty.
+            length: {min: 0, max: 3 * 10**5}
+          - name: pattern
+            type: str
+            description: the characters to look for, in any order. Not empty.
+            length: {min: 1, max: 10**5 + 1}
+        returns:
+          type: list[int]
+          description: The starting positions, ascending. Empty when there is no match.
+  notes:
+    - Any characters may appear in either string.
   examples:
     - input: |
         anagram_positions("cbaebabacd", "abc")

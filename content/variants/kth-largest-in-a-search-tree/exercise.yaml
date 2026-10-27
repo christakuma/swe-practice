@@ -35,7 +35,23 @@ kata:
   complexity:
     expected_time: "O(h + k)"
     expected_space: "O(h)"
-  constraints:
+  signature:
+    functions:
+      - name: kth_largest
+        summary: "Return the kth largest value in the BST, 1-based."
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of a valid binary search tree with distinct values.
+          - name: k
+            type: int
+            description: >-
+              which value to return, counting from 1 at the largest. Always within the
+              tree's size.
+        returns:
+          type: int
+          description: The kth largest value.
+  notes:
     - "The tree has between 1 and 2 * 10**5 nodes."
     - "Its left side may be a chain 10**5 deep; the part an answer needs is at most 500 deep."
     - "1 <= k <= the number of nodes"

@@ -36,9 +36,19 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(heights) <= 10**6"
-    - "0 <= heights[i] <= 10**4"
+  signature:
+    functions:
+      - name: trapped_water
+        summary: Return the total water trapped between the bars.
+        parameters:
+          - name: heights
+            type: list[int]
+            description: "the height of the unit-wide bar at each position. May be empty."
+            length: {min: 0, max: 10**6 + 2}
+            values: {min: 0, max: 5 * 10**5}
+        returns:
+          type: int
+          description: The number of unit cells of water held after rain.
   examples:
     - input: |
         trapped_water([0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1])

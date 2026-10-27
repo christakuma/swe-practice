@@ -8,8 +8,8 @@ def encode(strings: list[str]) -> str:
     """Pack a list of arbitrary strings into one string.
 
     Args:
-        strings: the strings to pack. Any contents, including empty strings
-            and any character at all.
+        strings: the strings to pack. Any contents, including empty strings and
+            any character at all.
 
     Returns:
         A single string from which `decode` recovers the original list.

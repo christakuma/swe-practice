@@ -44,10 +44,27 @@ kata:
   complexity:
     expected_time: "O(kn log k) for k lists of n nodes"
     expected_space: "O(k) beyond the input"
-  constraints:
-    - "0 <= len(lists) <= 1000"
-    - "Each list has between 0 and 100 nodes, in ascending order; equal values may repeat."
-    - "-10**9 <= node.value <= 10**9"
+  signature:
+    functions:
+      - name: merge_k_lists
+        summary: Merge k sorted lists into one sorted list.
+        parameters:
+          - name: lists
+            type: list[ListNode | None]
+            description: >-
+              the heads of the sorted lists. The outer list may be empty, and any entry
+              may be None for an empty list.
+            length: {min: 0, max: 1000}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: ListNode | None
+          description: >-
+            The head of a sorted list holding every node from every input, reusing the
+            nodes passed in. None when there are no nodes at all.
+  notes:
+    - >-
+      Each list has between 0 and 100 nodes, in ascending order; equal values may
+      repeat.
   examples:
     - input: |
         lists = [

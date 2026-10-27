@@ -42,9 +42,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "The list has between 0 and 10**5 nodes; an empty list is None."
-    - "-10**9 <= node.value <= 10**9"
+  signature:
+    functions:
+      - name: is_palindrome
+        summary: "Return whether the list's values read the same in both directions."
+        parameters:
+          - name: head
+            type: ListNode | None
+            description: >-
+              the first node, or None for an empty list. The list must be left exactly
+              as it was found.
+            values: {min: -10**9, max: 10**9}
+            nodes: {min: 0, max: 10**5}
+        returns:
+          type: bool
+          description: True if the sequence of values equals its own reverse.
+  notes:
+    - An empty list is None.
     - "The list ends: it has no cycle."
   examples:
     - input: |

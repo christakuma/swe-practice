@@ -39,10 +39,28 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(distinct characters)"
-  constraints:
-    - "0 <= len(text) <= 5 * 10**5"
-    - "0 <= k <= 10**6"
-    - "The string may hold any characters, and thousands of different ones."
+  signature:
+    functions:
+      - name: longest_run
+        summary: "Return the longest uniform run obtainable with at most `k` deletions."
+        parameters:
+          - name: text
+            type: str
+            description: the string to work on. May be empty.
+            length: {min: 0, max: 5 * 10**5}
+          - name: k
+            type: int
+            description: >-
+              how many characters may be deleted. Never negative; may exceed
+              `len(text)`.
+            values: {min: 0, max: 10**6}
+        returns:
+          type: int
+          description: >-
+            The length of the longest run of one repeated character that can be left
+            standing.
+  notes:
+    - The string may hold any characters, and thousands of different ones.
   examples:
     - input: |
         longest_run("aabaa", 1)

@@ -19,8 +19,8 @@ def is_palindrome(head: ListNode | None) -> bool:
     """Return whether the list's values read the same in both directions.
 
     Args:
-        head: the first node, or None for an empty list. The list must be
-            left exactly as it was found.
+        head: the first node, or None for an empty list. The list must be left
+            exactly as it was found.
 
     Returns:
         True if the sequence of values equals its own reverse.

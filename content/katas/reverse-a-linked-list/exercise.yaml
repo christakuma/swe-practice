@@ -41,10 +41,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "The list has between 0 and 3 * 10**4 nodes; an empty list is None."
-    - "That is far longer than Python will recurse."
-    - "Values may repeat."
+  signature:
+    functions:
+      - name: reverse_list
+        summary: Reverse the list in place and return the new head.
+        parameters:
+          - name: head
+            type: ListNode | None
+            description: the first node, or None for an empty list.
+            nodes: {min: 0, max: 3 * 10**4}
+        returns:
+          type: ListNode | None
+          description: >-
+            The last node of the original list, now the head. None for an empty list.
+            The returned chain must reuse the nodes passed in.
+  notes:
+    - An empty list is None.
+    - That is far longer than Python will recurse.
+    - Values may repeat.
   examples:
     - input: |
         head = ListNode(1, ListNode(2, ListNode(3, ListNode(4))))

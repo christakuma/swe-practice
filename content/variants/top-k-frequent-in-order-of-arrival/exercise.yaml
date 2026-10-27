@@ -32,9 +32,25 @@ kata:
   complexity:
     expected_time: "O(n + d log d) for d distinct words"
     expected_space: "O(d)"
-  constraints:
-    - "0 <= len(words) <= 10**5"
-    - "1 <= len(words[i]) <= 20"
+  signature:
+    functions:
+      - name: top_k_frequent
+        summary: Return the k most frequent words, ties broken by first appearance.
+        parameters:
+          - name: words
+            type: list[str]
+            description: the words to count. May be empty.
+            length: {min: 0, max: 10**5 + 21}
+            item_length: {min: 1, max: 20}
+          - name: k
+            type: int
+            description: how many to return. Never larger than the number of distinct words.
+        returns:
+          type: list[str]
+          description: >-
+            The k most frequent words, by count descending. Words with the same count
+            are in the order they first appeared in `words`.
+  notes:
     - "0 <= k <= the number of distinct words"
   examples:
     - input: |

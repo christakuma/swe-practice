@@ -11,7 +11,6 @@ def longest_palindrome(text: str) -> str:
         text: the string to search. May be empty.
 
     Returns:
-        The longest contiguous palindromic substring. Empty for an empty
-        input.
+        The longest contiguous palindromic substring. Empty for an empty input.
     """
     raise NotImplementedError

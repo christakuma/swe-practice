@@ -36,10 +36,30 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(k)"
-  constraints:
-    - "0 <= len(text) <= 10**6"
-    - "0 <= k <= 10**6"
-    - "Any character can appear, and case matters."
+  signature:
+    functions:
+      - name: longest_run_with_k_distinct
+        summary: >-
+          Return the length of the longest substring with at most `k` distinct
+          characters.
+        parameters:
+          - name: text
+            type: str
+            description: the string to scan. May be empty.
+            length: {min: 0, max: 10**6}
+          - name: k
+            type: int
+            description: >-
+              the most different characters a substring may hold. Zero or more, and may
+              exceed the number of different characters in `text`.
+            values: {min: 0, max: 10**6}
+        returns:
+          type: int
+          description: >-
+            The length of the longest such substring. Zero when `k` is zero or the
+            string is empty.
+  notes:
+    - Any character can appear, and case matters.
   examples:
     - input: |
         longest_run_with_k_distinct("eceba", 2)

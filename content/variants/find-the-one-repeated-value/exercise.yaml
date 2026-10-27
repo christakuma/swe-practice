@@ -37,10 +37,25 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "2 <= len(numbers) <= 10**6"
+  signature:
+    functions:
+      - name: find_duplicate
+        summary: Return the one value that appears more than once.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              n + 1 integers, each in 1..n. Exactly one value repeats, any number of
+              times. Must not be modified.
+            length: {min: 2, max: 10**6 + 1}
+        returns:
+          type: int
+          description: The repeated value.
+  notes:
     - "1 <= numbers[i] <= len(numbers) - 1"
-    - "Exactly one value appears more than once. It may appear any number of times, so other values may be missing."
+    - >-
+      Exactly one value appears more than once. It may appear any number of times, so
+      other values may be missing.
   examples:
     - input: |
         find_duplicate([1, 3, 4, 2, 2])

@@ -34,11 +34,28 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(numbers) <= 2 * 10**4"
-    - "-30 <= numbers[i] <= 30"
-    - "0 <= k <= 2 * 10**4"
-    - "Every product asked for is small enough to be an ordinary 64-bit integer."
+  signature:
+    functions:
+      - name: product_except_window
+        summary: Return, for each position, the product of everything out of its reach.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the values. May contain zeros and negatives.
+            length: {min: 0, max: 2 * 10**4}
+            values: {min: -30, max: 30}
+          - name: k
+            type: int
+            description: how many neighbours on each side a position also leaves out.
+            values: {min: 0, max: 2 * 10**4}
+        returns:
+          type: list[int]
+          description: >-
+            A list the same length as `numbers`, where position i holds the product of
+            every `numbers[j]` with `abs(i - j) > k`.
+  notes:
+    - >-
+      Every product asked for is small enough to be an ordinary 64-bit integer.
   examples:
     - input: |
         product_except_window([1, 2, 3, 4, 5], 1)

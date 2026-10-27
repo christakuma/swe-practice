@@ -6,8 +6,8 @@ def count_components(n: int, edges: list[tuple[int, int]]) -> list[int]:
 
     Args:
         n: the number of nodes, labelled 0 to n - 1.
-        edges: undirected edges, added in this order. May repeat, and may
-            join a node to itself.
+        edges: undirected edges, added in this order. May repeat, and may join
+            a node to itself.
 
     Returns:
         A list as long as `edges`. Entry i is the number of connected

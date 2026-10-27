@@ -38,10 +38,27 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "The list has between 0 and 2 * 10**4 nodes; an empty list is None."
-    - "0 <= k <= 10**9"
-    - "Values may repeat."
+  signature:
+    functions:
+      - name: rotate
+        summary: "Move the last `k` nodes of the list to its front."
+        parameters:
+          - name: head
+            type: ListNode | None
+            description: the first node, or None for an empty list.
+            nodes: {min: 0, max: 2 * 10**4}
+          - name: k
+            type: int
+            description: >-
+              how many places to rotate to the right. Never negative; may exceed the
+              length of the list.
+            values: {min: 0, max: 10**9}
+        returns:
+          type: ListNode | None
+          description: The head of the rotated list, made of the same nodes.
+  notes:
+    - An empty list is None.
+    - Values may repeat.
   examples:
     - input: |
         head = ListNode(1, ListNode(2, ListNode(3, ListNode(4, ListNode(5)))))

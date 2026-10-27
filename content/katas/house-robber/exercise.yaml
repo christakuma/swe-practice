@@ -34,9 +34,21 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(values) <= 10**5"
-    - "0 <= values[i] <= 10**4"
+  signature:
+    functions:
+      - name: best_haul
+        summary: Return the largest total obtainable without taking two adjacent values.
+        parameters:
+          - name: values
+            type: list[int]
+            description: "non-negative values in a row. May be empty."
+            length: {min: 0, max: 10**5}
+            values: {min: 0, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            The largest sum of a subset of `values` in which no two chosen entries are
+            next to each other.
   examples:
     - input: |
         best_haul([1, 2, 3])

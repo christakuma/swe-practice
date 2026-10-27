@@ -40,9 +40,24 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(1) beyond the output"
-  constraints:
-    - "0 <= m <= 400 and 0 <= n <= 400, for m rows of n values each."
-    - "-10**9 <= matrix[i][j] <= 10**9"
+  signature:
+    functions:
+      - name: spiral_order
+        summary: "Return every value of `matrix` in spiral order."
+        parameters:
+          - name: matrix
+            type: list[list[int]]
+            description: >-
+              an `m x n` grid. May be empty, a single row, or a single column. Rows are
+              all the same length.
+            length: {min: 0, max: 400}
+            item_length: {min: 0, max: 400}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: list[int]
+          description: >-
+            Every value exactly once, starting at the top-left and spiralling clockwise
+            inward.
   examples:
     - input: |
         matrix = [

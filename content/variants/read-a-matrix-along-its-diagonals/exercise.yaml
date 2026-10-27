@@ -42,9 +42,24 @@ kata:
   complexity:
     expected_time: "O(rows * columns)"
     expected_space: "O(1) beyond the output"
-  constraints:
-    - "0 <= rows <= 300 and 0 <= columns <= 300"
-    - "Every row is the same length."
+  signature:
+    functions:
+      - name: diagonal_order
+        summary: "Return the matrix's elements in diagonal zigzag order."
+        parameters:
+          - name: matrix
+            type: list[list[int]]
+            description: a rectangular grid, possibly empty and not necessarily square.
+            length: {min: 0, max: 300}
+            item_length: {min: 0, max: 300}
+        returns:
+          type: list[int]
+          description: >-
+            Every element once, diagonal by diagonal from the top-left corner, with the
+            direction of travel reversing on each diagonal: the second diagonal runs
+            down and to the left.
+  notes:
+    - Every row is the same length.
     - "-10**9 <= matrix[r][c] <= 10**9"
   examples:
     - input: |

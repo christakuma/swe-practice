@@ -39,9 +39,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h) for the recursion"
-  constraints:
-    - "The tree has between 0 and 5000 nodes and is at most 500 levels deep."
-    - "-10**4 <= node.value <= 10**4"
+  signature:
+    functions:
+      - name: is_balanced
+        summary: "Return whether the tree is height-balanced."
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of the tree, or None for an empty tree.
+            values: {min: -10**4, max: 10**4}
+            nodes: {min: 0, max: 5000}
+        returns:
+          type: bool
+          description: >-
+            True if, at every node, the depths of the left and right subtrees differ by
+            at most one.
+  notes:
+    - It is at most 500 levels deep.
   examples:
     - input: |
         root = TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))

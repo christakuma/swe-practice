@@ -9,7 +9,7 @@ def longest_common_substring(first: str, second: str) -> int:
         second: the other. May be empty.
 
     Returns:
-        The length of the longest run of characters that appears
-        contiguously in both.
+        The length of the longest run of characters that appears contiguously
+        in both.
     """
     raise NotImplementedError

@@ -37,11 +37,29 @@ kata:
   complexity:
     expected_time: "O((n + e) * alpha(n)), effectively linear"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= n <= 2 * 10**5"
-    - "0 <= len(edges) <= 2 * 10**5"
+  signature:
+    functions:
+      - name: count_components
+        summary: Return the number of components after each edge is added.
+        parameters:
+          - name: n
+            type: int
+            description: "the number of nodes, labelled 0 to n - 1."
+            values: {min: 0, max: 2 * 10**5}
+          - name: edges
+            type: list[tuple[int, int]]
+            description: >-
+              undirected edges, added in this order. May repeat, and may join a node to
+              itself.
+            length: {min: 0, max: 2 * 10**5}
+        returns:
+          type: list[int]
+          description: >-
+            A list as long as `edges`. Entry i is the number of connected components
+            once edges 0 to i are all in place.
+  notes:
     - "Each edge is a pair (a, b) with 0 <= a < n and 0 <= b < n."
-    - "Edges may repeat, and a may equal b."
+    - Edges may repeat, and a may equal b.
   examples:
     - input: |
         count_components(4, [(0, 1), (2, 3), (1, 2)])

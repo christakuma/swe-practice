@@ -35,11 +35,27 @@ kata:
   complexity:
     expected_time: "O(n * L) for text length n and longest word L"
     expected_space: "O(n + total length of the words)"
-  constraints:
-    - "0 <= len(text) <= 1000"
-    - "0 <= len(words) <= 1000"
-    - "1 <= len(words[i]) <= 20"
-    - "Characters are compared exactly."
+  signature:
+    functions:
+      - name: fewest_words
+        summary: "Return the fewest dictionary words that `text` splits into."
+        parameters:
+          - name: text
+            type: str
+            description: the string to split. May be empty.
+            length: {min: 0, max: 1000}
+          - name: words
+            type: list[str]
+            description: the dictionary. Words may be reused, and not all of them need be used.
+            length: {min: 0, max: 1000}
+            item_length: {min: 1, max: 20}
+        returns:
+          type: int
+          description: >-
+            The smallest number of words whose concatenation is exactly `text`, or -1 if
+            no sequence of dictionary words spells it. 0 for the empty string.
+  notes:
+    - Characters are compared exactly.
   examples:
     - input: |
         fewest_words("applepenapple", ["apple", "pen"])

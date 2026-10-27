@@ -41,11 +41,32 @@ kata:
   complexity:
     expected_time: "O(count + len(second))"
     expected_space: "O(1)"
-  constraints:
+  signature:
+    functions:
+      - name: merge_into
+        summary: "Merge `second` into `first` in place, using the room at its end."
+        parameters:
+          - name: first
+            type: list[int]
+            description: >-
+              a list whose first `count` entries are sorted values and whose remaining
+              `len(second)` entries are spare slots holding junk. Modified in place.
+          - name: count
+            type: int
+            description: "how many real values `first` holds."
+          - name: second
+            type: list[int]
+            description: a sorted list. Must not be modified.
+        returns:
+          type: None
+          description: "None. Afterwards `first` holds every value of both, ascending."
+  notes:
     - "0 <= count and 0 <= len(second), and len(first) == count + len(second)"
     - "len(first) <= 2 * 10**5"
-    - "first[:count] and second are each in ascending order, and values may repeat."
-    - "-10**9 <= value <= 10**9, for every value and for the junk in the spare slots."
+    - >-
+      first[:count] and second are each in ascending order, and values may repeat.
+    - >-
+      -10**9 <= value <= 10**9, for every value and for the junk in the spare slots.
   examples:
     - input: |
         first = [1, 2, 3, 0, 0, 0]

@@ -37,10 +37,26 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(k) for k distinct characters"
-  constraints:
-    - "0 <= len(first) <= 10**6"
-    - "0 <= len(second) <= 10**6"
-    - "Any Unicode characters may appear, not only ASCII."
+  signature:
+    functions:
+      - name: is_anagram
+        summary: "Return whether `second` is a rearrangement of `first`."
+        parameters:
+          - name: first
+            type: str
+            description: the reference string.
+            length: {min: 0, max: 10**6}
+          - name: second
+            type: str
+            description: the candidate rearrangement.
+            length: {min: 0, max: 10**6}
+        returns:
+          type: bool
+          description: >-
+            True if both hold the same characters with the same multiplicities.
+            Comparison is case-sensitive and includes every character.
+  notes:
+    - Any Unicode characters may appear, not only ASCII.
   examples:
     - input: |
         is_anagram("anagram", "nagaram")

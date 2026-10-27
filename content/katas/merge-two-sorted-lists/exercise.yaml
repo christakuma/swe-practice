@@ -40,10 +40,27 @@ kata:
   complexity:
     expected_time: "O(n + m)"
     expected_space: "O(1)"
-  constraints:
+  signature:
+    functions:
+      - name: merge_two_lists
+        summary: Merge two sorted lists into one sorted list.
+        parameters:
+          - name: first
+            type: ListNode | None
+            description: head of the first sorted list, or None if it is empty.
+            values: {min: -10**4, max: 10**4}
+          - name: second
+            type: ListNode | None
+            description: head of the second sorted list, or None if it is empty.
+            values: {min: -10**4, max: 10**4}
+        returns:
+          type: ListNode | None
+          description: >-
+            The head of a sorted list holding every node from both inputs, reusing the
+            nodes passed in. None when both inputs are empty.
+  notes:
     - "Each list has between 0 and 100 nodes; an empty list is None."
-    - "Each list is in ascending order, and equal values may repeat."
-    - "-10**4 <= node.value <= 10**4"
+    - Each list is in ascending order, and equal values may repeat.
   examples:
     - input: |
         first = ListNode(1, ListNode(3, ListNode(5)))

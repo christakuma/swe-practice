@@ -38,9 +38,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h) for a tree of height h"
-  constraints:
-    - "The tree has between 0 and 500 nodes, and may be a single chain that deep."
-    - "-2**31 <= node.value <= 2**31 - 1"
+  signature:
+    functions:
+      - name: is_search_tree
+        summary: Whether the tree satisfies the binary search tree property.
+        details: |-
+          Every value in a node's left subtree must be strictly less than the node's
+          value, and every value in its right subtree strictly greater.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of the tree, or None for an empty tree.
+            values: {min: -2**31, max: 2**31 - 1}
+            nodes: {min: 0, max: 500}
+        returns:
+          type: bool
+          description: True if the whole tree is a valid binary search tree.
+  notes:
+    - It may be a single chain that deep.
   examples:
     - input: |
         root = TreeNode(2, TreeNode(1), TreeNode(3))

@@ -32,8 +32,18 @@ kata:
   complexity:
     expected_time: "O(log n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= n <= 10**18"
+  signature:
+    functions:
+      - name: total_bits_up_to
+        summary: "Return the total number of set bits in every integer from 0 to `n`."
+        parameters:
+          - name: n
+            type: int
+            description: "a non-negative integer, possibly as large as 10**18."
+            values: {min: 0, max: 2**60}
+        returns:
+          type: int
+          description: "The sum, over 0..n inclusive, of each number's count of 1 bits."
   examples:
     - input: |
         total_bits_up_to(5)

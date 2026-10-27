@@ -29,7 +29,7 @@ def level_order(root: TreeNode | None) -> list[list[int]]:
 
     Returns:
         One list per level, starting with the root's level. The first is read
-        left to right, the second right to left, and so on alternately.
-        Empty for an empty tree.
+        left to right, the second right to left, and so on alternately. Empty
+        for an empty tree.
     """
     raise NotImplementedError

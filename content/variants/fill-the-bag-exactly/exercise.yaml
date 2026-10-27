@@ -37,10 +37,27 @@ kata:
   complexity:
     expected_time: "O(len(items) * capacity)"
     expected_space: "O(capacity)"
-  constraints:
-    - "0 <= len(items) <= 200"
-    - "Each item is (weight, value) with 1 <= weight <= 1000 and 1 <= value <= 1000."
-    - "0 <= capacity <= 5000"
+  signature:
+    functions:
+      - name: best_value
+        summary: "Return the most value in a bag filled to exactly `capacity`."
+        parameters:
+          - name: items
+            type: list[tuple[int, int]]
+            description: "`(weight, value)` pairs, each usable at most once."
+            length: {min: 0, max: 200}
+          - name: capacity
+            type: int
+            description: the total weight the chosen items must add up to. Never negative.
+            values: {min: 0, max: 5000}
+        returns:
+          type: int
+          description: >-
+            The greatest total value of a selection whose weights sum to exactly
+            `capacity`, or -1 if there is no such selection.
+  notes:
+    - >-
+      Each item is (weight, value) with 1 <= weight <= 1000 and 1 <= value <= 1000.
   examples:
     - input: |
         best_value([(3, 10), (4, 1)], 4)

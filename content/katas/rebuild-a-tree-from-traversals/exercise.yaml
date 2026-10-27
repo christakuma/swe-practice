@@ -41,10 +41,27 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
+  signature:
+    functions:
+      - name: rebuild
+        summary: "Rebuild the tree from its pre-order and in-order traversals."
+        parameters:
+          - name: preorder
+            type: list[int]
+            description: "the values in pre-order (root, left subtree, right subtree)."
+          - name: inorder
+            type: list[int]
+            description: >-
+              the same values in in-order (left subtree, root, right subtree). All
+              values are distinct.
+        returns:
+          type: TreeNode | None
+          description: The root of the reconstructed tree, or None for empty input.
+  notes:
     - "0 <= len(preorder) <= 10**5, and len(inorder) == len(preorder)"
     - "-10**9 <= value <= 10**9, and no value appears twice."
-    - "The two lists are traversals of one tree, which is at most 500 levels deep."
+    - >-
+      The two lists are traversals of one tree, which is at most 500 levels deep.
   examples:
     - input: |
         rebuild([3, 9, 20, 15, 7], [9, 3, 15, 20, 7])

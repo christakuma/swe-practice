@@ -35,10 +35,25 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(n) for the sorted copy"
-  constraints:
-    - "3 <= len(numbers) <= 2000"
-    - "-10**5 <= numbers[i] <= 10**5"
-    - "-10**6 <= target <= 10**6"
+  signature:
+    functions:
+      - name: closest_sum
+        summary: "Return the sum of three values that is closest to `target`."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: at least three integers. May hold duplicates. Not to be modified.
+            length: {min: 3, max: 2000}
+            values: {min: -10**5, max: 10**5}
+          - name: target
+            type: int
+            description: the value to get close to.
+            values: {min: -10**6, max: 10**6}
+        returns:
+          type: int
+          description: >-
+            The sum of three values from different positions with the smallest distance
+            to `target`. On a tie, the smaller sum.
   examples:
     - input: |
         closest_sum([-1, 2, 1, -4], 1)

@@ -26,8 +26,8 @@ def rebuild(inorder: list[int], postorder: list[int]) -> TreeNode | None:
 
     Args:
         inorder: the values in in-order (left subtree, root, right subtree).
-        postorder: the same values in post-order (left subtree, right
-            subtree, root). All values are distinct.
+        postorder: the same values in post-order (left subtree, right subtree,
+            root). All values are distinct.
 
     Returns:
         The root of the reconstructed tree, or None for empty input.

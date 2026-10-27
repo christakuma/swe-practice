@@ -40,11 +40,34 @@ kata:
   complexity:
     expected_time: "O(C^count) worst case for C candidates"
     expected_space: "O(count) beyond the output"
-  constraints:
-    - "1 <= len(candidates) <= 20, and the candidates are distinct."
-    - "1 <= candidates[i] <= 50"
-    - "0 <= target <= 200"
-    - "0 <= count <= 8"
+  signature:
+    functions:
+      - name: combination_sum
+        summary: >-
+          Return every combination of exactly `count` candidates summing to `target`.
+        parameters:
+          - name: candidates
+            type: list[int]
+            description: >-
+              distinct positive integers, in any order. Each may be used any number of
+              times.
+            length: {min: 1, max: 20}
+            values: {min: 1, max: 50}
+          - name: target
+            type: int
+            description: the sum every combination must reach. Never negative.
+            values: {min: 0, max: 249}
+          - name: count
+            type: int
+            description: >-
+              how many numbers every combination must contain, counting a candidate once
+              for each time it is used. Never negative.
+            values: {min: 0, max: 8}
+        returns:
+          type: list[tuple[int, ...]]
+          description: The combinations as ascending tuples, in ascending order.
+  notes:
+    - The candidates are distinct.
   examples:
     - input: |
         combination_sum([2, 3, 5], 8, 3)

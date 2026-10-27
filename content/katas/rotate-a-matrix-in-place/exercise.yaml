@@ -39,10 +39,24 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= n <= 300"
+  signature:
+    functions:
+      - name: rotate
+        summary: "Rotate `matrix` 90 degrees clockwise, in place."
+        parameters:
+          - name: matrix
+            type: list[list[int]]
+            description: >-
+              an `n x n` grid of integers. Mutated directly; the caller keeps this
+              object, so the rotation must be visible through it.
+            values: {min: -10**9, max: 10**9}
+            length: {min: 0, max: 300}
+            item_length: {min: 0, max: 300}
+        returns:
+          type: None
+          description: Nothing.
+  notes:
     - "The matrix is square: n rows of n values each."
-    - "-10**9 <= matrix[i][j] <= 10**9"
   examples:
     - input: |
         matrix = [

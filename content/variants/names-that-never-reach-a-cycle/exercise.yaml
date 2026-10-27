@@ -36,8 +36,22 @@ kata:
   complexity:
     expected_time: "O(V + E) plus the final sort"
     expected_space: "O(V + E)"
-  constraints:
-    - "At most 2 * 10**4 names, and at most 4 * 10**4 dependencies between them."
+  signature:
+    functions:
+      - name: safe_names
+        summary: Return the names from which no chain of dependencies reaches a cycle.
+        parameters:
+          - name: dependencies
+            type: dict[str, list[str]]
+            description: >-
+              name to the names it depends on. May be empty. A name may appear only as a
+              dependency and never as a key.
+        returns:
+          type: list[str]
+          description: The safe names, sorted ascending.
+  notes:
+    - >-
+      At most 2 * 10**4 names, and at most 4 * 10**4 dependencies between them.
     - "Names are non-empty strings. A name may depend on itself."
     - "A chain may be 10**4 links long, far deeper than Python will recurse."
   examples:

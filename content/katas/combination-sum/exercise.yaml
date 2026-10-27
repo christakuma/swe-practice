@@ -39,12 +39,31 @@ kata:
   complexity:
     expected_time: "O(number of combinations * target / smallest candidate)"
     expected_space: "O(target / smallest candidate) for the recursion"
-  constraints:
-    - "0 <= len(candidates) <= 10"
-    - "1 <= candidates[i] <= 100, and no two candidates are equal."
-    - "0 <= target <= 300"
-    - "Candidates arrive in no particular order."
-    - "The answer never holds more than 1,000 combinations."
+  signature:
+    functions:
+      - name: combination_sum
+        summary: "Return every distinct combination of candidates summing to `target`."
+        parameters:
+          - name: candidates
+            type: list[int]
+            description: >-
+              distinct positive integers, in any order. Each may be used any number of
+              times.
+            length: {min: 0, max: 10}
+            values: {min: 1, max: 100}
+          - name: target
+            type: int
+            description: "the sum to reach. Non-negative."
+            values: {min: 0, max: 300}
+        returns:
+          type: list[tuple[int, ...]]
+          description: >-
+            Each distinct combination once, as an ascending tuple, with the list of
+            combinations sorted ascending. A target of zero gives `[()]`.
+  notes:
+    - No two candidates are equal.
+    - Candidates arrive in no particular order.
+    - The answer never holds more than 1,000 combinations.
   examples:
     - input: |
         combination_sum([2, 3, 6, 7], 7)

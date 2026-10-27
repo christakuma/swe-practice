@@ -38,10 +38,25 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(numbers) <= 10**5"
-    - "-1000 <= numbers[i] <= 1000"
-    - "-10**8 <= target <= 10**8"
+  signature:
+    functions:
+      - name: count_subarrays
+        summary: "Count the contiguous slices of `numbers` that sum to `target`."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the values. May contain zeros and negatives.
+            length: {min: 0, max: 10**5}
+            values: {min: -1000, max: 1000}
+          - name: target
+            type: int
+            description: the sum to look for.
+            values: {min: -10**8, max: 10**8}
+        returns:
+          type: int
+          description: >-
+            How many contiguous, non-empty slices add up to `target`. Slices at
+            different positions count separately even if they hold the same values.
   examples:
     - input: |
         count_subarrays([1, 1, 1], 2)

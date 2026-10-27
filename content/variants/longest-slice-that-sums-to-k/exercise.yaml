@@ -35,10 +35,25 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(numbers) <= 10**5"
-    - "-1000 <= numbers[i] <= 1000"
-    - "-10**8 <= target <= 10**8"
+  signature:
+    functions:
+      - name: longest_slice
+        summary: "Return the length of the longest slice that adds up to `target`."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the values to search. May be empty, and may hold negatives and zeros.
+            length: {min: 0, max: 10**5}
+            values: {min: -1000, max: 1000}
+          - name: target
+            type: int
+            description: the sum a slice must have.
+            values: {min: -10**8, max: 10**8}
+        returns:
+          type: int
+          description: >-
+            The number of elements in the longest contiguous, non-empty slice whose sum
+            is `target`, or 0 if there is none.
   examples:
     - input: |
         longest_slice([1, -1, 5, -2, 3], 3)

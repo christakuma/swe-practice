@@ -32,10 +32,27 @@ kata:
   complexity:
     expected_time: "O(m * n * 8^L) worst case, for a word of length L"
     expected_space: "O(L) for the recursion"
-  constraints:
-    - "0 <= rows <= 6 and 0 <= columns <= 6"
-    - "0 <= len(word) <= 12"
-    - "Every cell is a single character. Matching is exact, so case matters."
+  signature:
+    functions:
+      - name: exists
+        summary: "Return whether `word` can be spelled along a path of 8-way steps."
+        parameters:
+          - name: board
+            type: list[list[str]]
+            description: "a grid of single-character strings. May be empty."
+            length: {min: 0, max: 6}
+            item_length: {min: 0, max: 6}
+          - name: word
+            type: str
+            description: >-
+              the word to spell. A step may go to any of the eight surrounding cells,
+              and no cell may be used twice in one path.
+            length: {min: 0, max: 12}
+        returns:
+          type: bool
+          description: True if such a path exists. The empty word always does.
+  notes:
+    - Every cell is a single character. Matching is exact, so case matters.
   examples:
     - input: |
         board = [

@@ -40,10 +40,26 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(min(m, n))"
-  constraints:
-    - "0 <= len(first) <= 1000"
-    - "0 <= len(second) <= 1000"
-    - "Characters are compared exactly."
+  signature:
+    functions:
+      - name: lcs_length
+        summary: Return the length of the longest common subsequence.
+        parameters:
+          - name: first
+            type: str
+            description: one string. May be empty.
+            length: {min: 0, max: 1000}
+          - name: second
+            type: str
+            description: the other. May be empty.
+            length: {min: 0, max: 1000}
+        returns:
+          type: int
+          description: >-
+            The length of the longest sequence of characters appearing in both, in the
+            same order, not necessarily contiguously.
+  notes:
+    - Characters are compared exactly.
   examples:
     - input: |
         lcs_length("abcde", "ace")

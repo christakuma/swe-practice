@@ -37,9 +37,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(heights) <= 10**6"
-    - "0 <= heights[i] <= 10**4"
+  signature:
+    functions:
+      - name: largest_container
+        summary: Return the largest area formed by any two of the lines.
+        parameters:
+          - name: heights
+            type: list[int]
+            description: >-
+              the height of the vertical line at each position. May be empty or hold a
+              single line, both of which hold nothing.
+            length: {min: 0, max: 10**6}
+            values: {min: 0, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            The largest `min(left, right) * distance`, or 0 if there are fewer than two
+            lines.
   examples:
     - input: |
         largest_container([1, 8, 6, 2, 5, 4, 8, 3, 7])

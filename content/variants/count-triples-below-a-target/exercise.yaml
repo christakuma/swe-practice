@@ -40,11 +40,29 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(numbers) <= 2000"
-    - "-10**5 <= numbers[i] <= 10**5"
-    - "-10**6 <= target <= 10**6"
-    - "Values arrive in no particular order and may repeat."
+  signature:
+    functions:
+      - name: count_triples
+        summary: "Count the triples of positions whose values sum to less than `target`."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              the values to choose from. May be empty and may hold duplicates. Not to be
+              modified.
+            length: {min: 0, max: 2000}
+            values: {min: -10**5, max: 10**5}
+          - name: target
+            type: int
+            description: the sum a triple must be strictly below.
+            values: {min: -10**6, max: 10**6}
+        returns:
+          type: int
+          description: >-
+            The number of ways to choose three different positions, in any order, whose
+            values add up to less than `target`.
+  notes:
+    - Values arrive in no particular order and may repeat.
   examples:
     - input: |
         count_triples([-2, 0, 1, 3], 2)

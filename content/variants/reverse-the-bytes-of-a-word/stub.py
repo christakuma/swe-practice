@@ -8,7 +8,7 @@ def reverse_bytes(n: int) -> int:
         n: an integer in `0..2**32 - 1`.
 
     Returns:
-        The value with its four bytes in the opposite order, also in
-        `0..2**32 - 1`.
+        The value with its four bytes in the opposite order, also in `0..2**32
+        - 1`.
     """
     raise NotImplementedError

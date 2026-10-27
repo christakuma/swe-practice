@@ -38,10 +38,40 @@ kata:
   complexity:
     expected_time: "O(L) per add; O(L * A * L) per search for word length L and alphabet A"
     expected_space: "O(total characters stored)"
-  constraints:
-    - "0 <= len(word) <= 20"
-    - "Words hold any characters at all, a dot included."
-    - "At most 2000 words are stored, and at most 2000 searches are made."
+  signature:
+    classes:
+      - name: WordStore
+        summary: A word store whose search forgives exactly one wrong character.
+        methods:
+          - name: __init__
+            summary: Create an empty store.
+          - name: add
+            summary: "Store `word`. Adding the same word twice changes nothing."
+            parameters:
+              - name: word
+                type: str
+                description: the word to store. May be empty.
+                length: {min: 0, max: 20}
+            returns:
+              type: None
+          - name: search
+            summary: "Return whether a stored word differs from `word` in one position."
+            details: |-
+              The stored word must be the same length as `word` and differ from it
+              in exactly one position -- not zero, and not two.
+            parameters:
+              - name: word
+                type: str
+                description: the word to compare against every stored word.
+                length: {min: 0, max: 20}
+            returns:
+              type: bool
+              description: >-
+                True if some stored word differs from `word` in exactly one position,
+                False otherwise.
+  notes:
+    - Words hold any characters at all, a dot included.
+    - At most 2000 words are stored, and at most 2000 searches are made.
   examples:
     - input: |
         store = WordStore()

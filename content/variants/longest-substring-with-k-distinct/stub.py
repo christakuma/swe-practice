@@ -14,7 +14,7 @@ def longest_run_with_k_distinct(text: str, k: int) -> int:
             and may exceed the number of different characters in `text`.
 
     Returns:
-        The length of the longest such substring. Zero when `k` is zero or
-        the string is empty.
+        The length of the longest such substring. Zero when `k` is zero or the
+        string is empty.
     """
     raise NotImplementedError

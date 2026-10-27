@@ -37,10 +37,27 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "The list has between 0 and 10**5 nodes; an empty list is None."
-    - "An acyclic list may be 10**5 nodes long, far deeper than Python will recurse."
-    - "Values tell you nothing: two nodes are the same node only if they are the same object."
+  signature:
+    functions:
+      - name: cycle_length
+        summary: "Return the number of nodes in the list's cycle."
+        parameters:
+          - name: head
+            type: ListNode | None
+            description: the first node, or None for an empty list.
+            nodes: {min: 0, max: 10**5}
+        returns:
+          type: int
+          description: >-
+            How many distinct nodes are visited again and again when following
+            `next_node` from `head`, or 0 if the list ends.
+  notes:
+    - An empty list is None.
+    - >-
+      An acyclic list may be 10**5 nodes long, far deeper than Python will recurse.
+    - >-
+      Values tell you nothing: two nodes are the same node only if they are the same
+      object.
   examples:
     - input: |
         third = ListNode(3)

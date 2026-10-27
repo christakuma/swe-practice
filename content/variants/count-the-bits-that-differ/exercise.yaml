@@ -35,9 +35,22 @@ kata:
   complexity:
     expected_time: "O(d) for d differing bits"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= a < 2**2000"
-    - "0 <= b < 2**2000"
+  signature:
+    functions:
+      - name: hamming_distance
+        summary: "Return the number of bit positions at which `a` and `b` differ."
+        parameters:
+          - name: a
+            type: int
+            description: "a non-negative integer, possibly much wider than 64 bits."
+            values: {min: 0, max: 2**2000 - 1}
+          - name: b
+            type: int
+            description: another.
+            values: {min: 0, max: 2**2000 - 1}
+        returns:
+          type: int
+          description: How many positions hold a 1 in exactly one of the two numbers.
   examples:
     - input: |
         hamming_distance(1, 4)

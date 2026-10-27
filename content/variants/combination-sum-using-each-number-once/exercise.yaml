@@ -38,11 +38,32 @@ kata:
   complexity:
     expected_time: "O(2^n) in the worst case, pruned by the sort and the skip"
     expected_space: "O(n) for the recursion"
-  constraints:
-    - "0 <= len(candidates) <= 30"
-    - "1 <= candidates[i] <= 50, and values may repeat."
-    - "0 <= target <= 40"
-    - "Candidates arrive in no particular order."
+  signature:
+    functions:
+      - name: combination_sum
+        summary: >-
+          Return every distinct combination summing to `target`, using each candidate at
+          most once.
+        parameters:
+          - name: candidates
+            type: list[int]
+            description: >-
+              positive integers, in any order. Values may repeat, and each occurrence
+              may be used once.
+            length: {min: 0, max: 30}
+            values: {min: 1, max: 50}
+          - name: target
+            type: int
+            description: "the sum to reach. Non-negative."
+            values: {min: 0, max: 40}
+        returns:
+          type: list[tuple[int, ...]]
+          description: >-
+            Each distinct combination once, as an ascending tuple, with the list of
+            combinations sorted ascending. A target of zero gives `[()]`.
+  notes:
+    - Values may repeat.
+    - Candidates arrive in no particular order.
   examples:
     - input: |
         combination_sum([10, 1, 2, 7, 6, 1, 5], 8)

@@ -40,8 +40,25 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(min(m, n))"
-  constraints:
-    - "0 <= width <= 10**5 and 0 <= height <= 10**5"
+  signature:
+    functions:
+      - name: count_paths
+        summary: "Count right/down paths across a grid."
+        parameters:
+          - name: width
+            type: int
+            description: how many columns. May be 0.
+            values: {min: 0, max: 10**5}
+          - name: height
+            type: int
+            description: how many rows. May be 0.
+            values: {min: 0, max: 10**5}
+        returns:
+          type: int
+          description: >-
+            The number of distinct paths from the top-left cell to the bottom-right,
+            moving only right or down. Zero if the grid is empty.
+  notes:
     - "width * height <= 10**6"
     - "The answer is exact however large it is; a float is not accepted."
   examples:

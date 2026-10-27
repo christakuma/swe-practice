@@ -41,9 +41,26 @@ kata:
   complexity:
     expected_time: "O(n) for the smaller tree"
     expected_space: "O(h)"
-  constraints:
+  signature:
+    functions:
+      - name: is_same_tree
+        summary: Return whether two trees have the same shape and values.
+        parameters:
+          - name: first
+            type: TreeNode | None
+            description: the root of the first tree, or None.
+            values: {min: -10**4, max: 10**4}
+          - name: second
+            type: TreeNode | None
+            description: the root of the second tree, or None.
+            values: {min: -10**4, max: 10**4}
+        returns:
+          type: bool
+          description: >-
+            True if both trees have identical structure and identical values at every
+            position.
+  notes:
     - "Each tree has between 0 and 100 nodes; an empty tree is None."
-    - "-10**4 <= node.value <= 10**4"
   examples:
     - input: |
         first = TreeNode(1, TreeNode(2), TreeNode(3))

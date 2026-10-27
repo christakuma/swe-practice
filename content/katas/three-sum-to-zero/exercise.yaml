@@ -40,10 +40,23 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(1) beyond the output and the sort"
-  constraints:
-    - "0 <= len(numbers) <= 2000"
-    - "-10**5 <= numbers[i] <= 10**5"
-    - "Values arrive in no particular order and may repeat."
+  signature:
+    functions:
+      - name: three_sum
+        summary: Return every distinct triple of values summing to zero.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the values to search. May be empty and may hold duplicates.
+            length: {min: 0, max: 2000}
+            values: {min: -10**5, max: 10**5}
+        returns:
+          type: list[tuple[int, int, int]]
+          description: >-
+            Each distinct triple once, as an ascending tuple, with the list of triples
+            itself sorted ascending.
+  notes:
+    - Values arrive in no particular order and may repeat.
   examples:
     - input: |
         three_sum([-1, 0, 1, 2, -1, -4])

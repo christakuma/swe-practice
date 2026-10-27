@@ -25,11 +25,11 @@ def reverse_between(head: ListNode | None, left: int, right: int) -> ListNode | 
     Args:
         head: the first node of the list.
         left: the first position to reverse, counting from 1.
-        right: the last position to reverse. Never before `left` and never
-            past the end of the list.
+        right: the last position to reverse. Never before `left` and never past
+            the end of the list.
 
     Returns:
-        The head of the list, which is a different node from `head` when
-        `left` is 1. The chain reuses the nodes passed in.
+        The head of the list, which is a different node from `head` when `left`
+        is 1. The chain reuses the nodes passed in.
     """
     raise NotImplementedError

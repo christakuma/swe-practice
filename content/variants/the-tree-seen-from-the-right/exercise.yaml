@@ -37,10 +37,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(w) for the widest level"
-  constraints:
-    - "The tree has between 0 and 2 * 10**4 nodes; an empty tree is None."
-    - "It may be a single chain that deep, far deeper than Python will recurse."
-    - "-10**4 <= node.value <= 10**4"
+  signature:
+    functions:
+      - name: right_side_view
+        summary: Return the rightmost value on each level, top to bottom.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of the tree, or None for an empty tree.
+            values: {min: -10**4, max: 2 * 10**4}
+            nodes: {min: 0, max: 2 * 10**4}
+        returns:
+          type: list[int]
+          description: >-
+            One value per level: the last node on that level when it is read left to
+            right.
+  notes:
+    - An empty tree is None.
+    - It may be a single chain that deep, far deeper than Python will recurse.
   examples:
     - input: |
         root = TreeNode(1, TreeNode(2, None, TreeNode(5)), TreeNode(3, None, TreeNode(4)))

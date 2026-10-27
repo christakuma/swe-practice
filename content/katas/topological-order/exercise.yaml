@@ -40,8 +40,25 @@ kata:
   complexity:
     expected_time: "O((V + E) log V) with the heap"
     expected_space: "O(V + E)"
-  constraints:
-    - "At most 2 * 10**4 names, and at most 4 * 10**4 dependencies between them."
+  signature:
+    functions:
+      - name: topological_order
+        summary: Order the names so that every name comes after everything it depends on.
+        parameters:
+          - name: dependencies
+            type: dict[str, list[str]]
+            description: >-
+              name to the names it depends on. A name may appear only as a dependency
+              and never as a key.
+        returns:
+          type: list[str] | None
+          description: >-
+            A valid order, or None if no order exists because of a cycle. Where several
+            orders are valid, the alphabetically smallest available name is chosen at
+            each step, so the result is deterministic.
+  notes:
+    - >-
+      At most 2 * 10**4 names, and at most 4 * 10**4 dependencies between them.
     - "Names are non-empty strings, compared as Python compares strings."
     - "A chain may be 10**4 names deep, far deeper than Python will recurse."
   examples:

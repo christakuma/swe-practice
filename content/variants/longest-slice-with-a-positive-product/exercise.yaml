@@ -37,9 +37,21 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "1 <= len(numbers) <= 10**5"
-    - "-10**9 <= numbers[i] <= 10**9"
+  signature:
+    functions:
+      - name: longest_positive_slice
+        summary: Return the length of the longest slice with a positive product.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the values. Never empty. May contain negatives and zeros.
+            length: {min: 1, max: 10**5}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: >-
+            The number of values in the longest contiguous slice whose product is
+            greater than zero, or zero if there is no such slice.
   examples:
     - input: |
         longest_positive_slice([1, -2, -3, 4])

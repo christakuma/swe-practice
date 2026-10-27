@@ -40,8 +40,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h) beyond the tree"
-  constraints:
-    - "0 <= len(preorder) <= 10**5"
+  signature:
+    functions:
+      - name: rebuild
+        summary: "Rebuild a binary search tree from its pre-order traversal."
+        parameters:
+          - name: preorder
+            type: list[int]
+            description: >-
+              the values in pre-order: node, left subtree, right subtree. All distinct.
+              Must not be modified.
+            length: {min: 0, max: 10**5}
+        returns:
+          type: TreeNode | None
+          description: >-
+            The root of the search tree whose pre-order traversal is `preorder`, or None
+            if the list is empty.
+  notes:
     - "-10**9 <= value <= 10**9, and no value appears twice."
     - "The list is the pre-order traversal of some binary search tree."
     - "That tree may be a single chain, 10**5 levels deep."

@@ -20,8 +20,8 @@ def rotate(head: ListNode | None, k: int) -> ListNode | None:
 
     Args:
         head: the first node, or None for an empty list.
-        k: how many places to rotate to the right. Never negative; may
-            exceed the length of the list.
+        k: how many places to rotate to the right. Never negative; may exceed
+            the length of the list.
 
     Returns:
         The head of the rotated list, made of the same nodes.

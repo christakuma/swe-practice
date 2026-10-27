@@ -10,7 +10,7 @@ def count_triples(numbers: list[int], target: int) -> int:
         target: the sum a triple must be strictly below.
 
     Returns:
-        The number of ways to choose three different positions, in any
-        order, whose values add up to less than `target`.
+        The number of ways to choose three different positions, in any order,
+        whose values add up to less than `target`.
     """
     raise NotImplementedError

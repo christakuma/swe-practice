@@ -8,8 +8,8 @@ def longest_palindrome(text: str) -> str:
         text: the characters available. May be empty.
 
     Returns:
-        The longest palindrome that uses each character no more often than
-        it appears in `text`. Of all those of that length, the one that
-        sorts first.
+        The longest palindrome that uses each character no more often than it
+        appears in `text`. Of all those of that length, the one that sorts
+        first.
     """
     raise NotImplementedError

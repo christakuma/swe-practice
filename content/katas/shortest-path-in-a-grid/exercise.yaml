@@ -40,8 +40,26 @@ kata:
   complexity:
     expected_time: "O(rows * columns)"
     expected_space: "O(rows * columns)"
-  constraints:
-    - "The grid has at most 200 rows and 200 columns, and may be empty."
+  signature:
+    functions:
+      - name: shortest_path
+        summary: Return the number of cells on the shortest route across the grid.
+        details: |-
+          The route runs from the top-left cell to the bottom-right, moving each time
+          to a cell directly above, below, left or right. A cell holding 1 is a wall
+          and cannot be entered.
+        parameters:
+          - name: grid
+            type: list[list[int]]
+            description: "a rectangular grid of 0s (open) and 1s (wall). May be empty."
+            length: {min: 0, max: 200}
+            item_length: {min: 0, max: 200}
+        returns:
+          type: int
+          description: >-
+            How many cells the shortest route visits, counting both ends, or -1 if there
+            is no route. A 1x1 open grid is 1.
+  notes:
     - "Every row is the same length, and every cell is 0 (open) or 1 (wall)."
   examples:
     - input: |

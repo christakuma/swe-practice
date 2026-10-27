@@ -39,9 +39,20 @@ kata:
   complexity:
     expected_time: "O(1), thirty-two steps regardless of input"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= n <= 2**32 - 1"
-    - "The result is in the same range."
+  signature:
+    functions:
+      - name: reverse_bits
+        summary: "Reverse the bits of `n` read as a 32-bit unsigned word."
+        parameters:
+          - name: n
+            type: int
+            description: "an integer in `0..2**32 - 1`."
+            values: {min: 0, max: 2**32 - 1}
+        returns:
+          type: int
+          description: "The value of the reversed 32-bit word, also in `0..2**32 - 1`."
+  notes:
+    - The result is in the same range.
   examples:
     - input: |
         reverse_bits(1)

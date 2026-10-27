@@ -10,7 +10,7 @@ def best_value(items: list[tuple[int, int]], capacity: int) -> int:
         capacity: the total weight allowed. Zero or more.
 
     Returns:
-        The largest total value of any multiset of items whose total weight
-        is within the capacity.
+        The largest total value of any multiset of items whose total weight is
+        within the capacity.
     """
     raise NotImplementedError

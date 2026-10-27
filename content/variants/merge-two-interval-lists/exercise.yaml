@@ -41,10 +41,28 @@ kata:
   complexity:
     expected_time: "O(n + m)"
     expected_space: "O(n + m) for the output"
-  constraints:
-    - "0 <= len(first) <= 10**5 and 0 <= len(second) <= 10**5"
+  signature:
+    functions:
+      - name: merge_lists
+        summary: Return the union of two sorted lists of intervals.
+        parameters:
+          - name: first
+            type: list[tuple[int, int]]
+            description: "non-overlapping `(start, end)` pairs in ascending order. May be empty."
+            length: {min: 0, max: 10**5}
+          - name: second
+            type: list[tuple[int, int]]
+            description: another such list.
+            length: {min: 0, max: 10**5}
+        returns:
+          type: list[tuple[int, int]]
+          description: >-
+            A new list, ascending and non-overlapping, covering exactly the points
+            covered by either input. Intervals that touch are merged.
+  notes:
     - "Every interval is (start, end) with -10**9 <= start <= end <= 10**9."
-    - "Each list is sorted by start, and within a list no two intervals overlap or touch."
+    - >-
+      Each list is sorted by start, and within a list no two intervals overlap or touch.
   examples:
     - input: |
         merge_lists([(1, 3), (8, 10)], [(2, 5), (12, 14)])

@@ -37,11 +37,25 @@ kata:
   complexity:
     expected_time: "O(log n)"
     expected_space: "O(1)"
-  constraints:
-    - "1 <= len(numbers) <= 2 * 10**6"
-    - "-10**9 <= numbers[i] <= 10**9"
-    - "All values are distinct."
-    - "The list is ascending order rotated left by between 0 and len(numbers) - 1 places."
+  signature:
+    functions:
+      - name: find_minimum
+        summary: Return the smallest value in a rotated sorted list of distinct integers.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              a sorted list of distinct integers rotated left by an unknown amount.
+              Never empty. A rotation of zero is possible.
+            length: {min: 1, max: 2 * 10**6}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: The smallest value.
+  notes:
+    - All values are distinct.
+    - >-
+      The list is ascending order rotated left by between 0 and len(numbers) - 1 places.
   examples:
     - input: |
         find_minimum([3, 4, 5, 1, 2])

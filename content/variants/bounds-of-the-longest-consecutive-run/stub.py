@@ -10,7 +10,7 @@ def longest_run(numbers: list[int]) -> tuple[int, int] | None:
             and is in no particular order.
 
     Returns:
-        `(lowest, highest)` for the longest run, the lowest-starting on a
-        tie. None for an empty list.
+        `(lowest, highest)` for the longest run, the lowest-starting on a tie.
+        None for an empty list.
     """
     raise NotImplementedError

@@ -35,10 +35,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(words) <= 2 * 10**5"
-    - "Words are strings of any characters, compared exactly."
-    - "The list may hold as many different words as it has entries."
+  signature:
+    functions:
+      - name: heavy_hitters
+        summary: Return the words that make up more than a third of the list.
+        parameters:
+          - name: words
+            type: list[str]
+            description: any strings, in any order. May be empty. Must not be modified.
+            length: {min: 0, max: 2 * 10**5}
+        returns:
+          type: list[str]
+          description: >-
+            Every word that appears strictly more than `len(words) / 3` times, in
+            ascending order. At most two words.
+  notes:
+    - Words are strings of any characters, compared exactly.
+    - The list may hold as many different words as it has entries.
   examples:
     - input: |
         heavy_hitters(["a", "b", "a", "c", "a"])

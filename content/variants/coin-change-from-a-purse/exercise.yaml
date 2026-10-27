@@ -38,10 +38,29 @@ kata:
   complexity:
     expected_time: "O(len(coins) * amount)"
     expected_space: "O(amount)"
-  constraints:
-    - "0 <= len(coins) <= 100"
-    - "1 <= coins[i] <= 10**4, and values may repeat."
-    - "0 <= amount <= 5000"
+  signature:
+    functions:
+      - name: fewest_coins
+        summary: "Return the fewest coins from the purse that add up to `amount`."
+        parameters:
+          - name: coins
+            type: list[int]
+            description: >-
+              the value of each coin in the purse. Every entry is one coin, usable at
+              most once; equal values are separate coins.
+            length: {min: 0, max: 100}
+            values: {min: 1, max: 10**4}
+          - name: amount
+            type: int
+            description: the total to make exactly. Never negative.
+            values: {min: 0, max: 5049}
+        returns:
+          type: int
+          description: >-
+            The smallest number of coins that sum to `amount`, or -1 if no selection
+            does.
+  notes:
+    - Values may repeat.
   examples:
     - input: |
         fewest_coins([1, 5, 10], 11)

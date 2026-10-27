@@ -44,9 +44,39 @@ kata:
   complexity:
     expected_time: "O(log k) to find the place, O(k) to shift, per add; O(1) per median"
     expected_space: "O(k)"
-  constraints:
-    - "1 <= size <= 10**4"
-    - "-10**6 <= value <= 10**6, and every value is an integer."
+  signature:
+    classes:
+      - name: WindowMedian
+        summary: The median of the most recent values of a stream.
+        methods:
+          - name: __init__
+            summary: "Create an empty stream whose window holds at most `size` values."
+            parameters:
+              - name: size
+                type: int
+                description: how many of the most recent values the window keeps.
+                values: {min: 1, max: 10**4}
+          - name: add
+            summary: Take the next number, pushing out the oldest if the window is full.
+            parameters:
+              - name: value
+                type: int
+                description: the number to add to the stream.
+                values: {min: -10**6, max: 10**6}
+            returns:
+              type: None
+          - name: median
+            summary: Return the median of the values in the window, as a float.
+            returns:
+              type: float
+              description: >-
+                The middle value of the window, or the mean of the two middle values
+                when the window holds an even number of them.
+            raises:
+              - type: ValueError
+                description: if nothing has been added yet.
+  notes:
+    - Every value is an integer.
     - "At most 10**5 values are added to one stream."
     - "median() may be called after every single add."
   examples:

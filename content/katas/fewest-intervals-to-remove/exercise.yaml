@@ -35,10 +35,24 @@ kata:
   complexity:
     expected_time: "O(n log n)"
     expected_space: "O(n) for the sort"
-  constraints:
-    - "0 <= len(intervals) <= 2 * 10**5"
-    - "Each interval is (start, end) with -10**9 <= start <= end <= 10**9."
-    - "Intervals arrive in no particular order and may repeat."
+  signature:
+    functions:
+      - name: fewest_removals
+        summary: Return the fewest intervals to remove so the rest do not overlap.
+        parameters:
+          - name: intervals
+            type: list[tuple[int, int]]
+            description: >-
+              `(start, end)` pairs in any order. May be empty and may repeat. Touching
+              intervals do not overlap.
+            length: {min: 0, max: 2 * 10**5}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: The minimum number of intervals to delete.
+  notes:
+    - "Each interval is a pair (start, end) with start <= end."
+    - Intervals arrive in no particular order and may repeat.
   examples:
     - input: |
         fewest_removals([(1, 2), (2, 3), (3, 4), (1, 3)])

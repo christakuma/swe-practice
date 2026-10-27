@@ -36,10 +36,27 @@ kata:
   complexity:
     expected_time: "O(total characters)"
     expected_space: "O(size of the alphabet)"
-  constraints:
-    - "0 <= len(words) <= 10**5"
-    - "0 <= len(words[i]) <= 20"
-    - "alphabet holds distinct characters, including every character used in words."
+  signature:
+    functions:
+      - name: is_sorted
+        summary: "Return whether `words` is in order under the given alphabet."
+        parameters:
+          - name: words
+            type: list[str]
+            description: the words to check. May be empty, and may repeat.
+            length: {min: 0, max: 10**5}
+            item_length: {min: 0, max: 20}
+          - name: alphabet
+            type: str
+            description: every character in use, once each, in ascending order.
+        returns:
+          type: bool
+          description: >-
+            True if each word is no later than the next, where a word precedes any
+            longer word it is a prefix of.
+  notes:
+    - >-
+      alphabet holds distinct characters, including every character used in words.
   examples:
     - input: |
         is_sorted(["hello", "leetcode"], "hlabcdefgijkmnopqrstuvwxyz")

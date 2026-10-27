@@ -9,7 +9,7 @@ def product_except_window(numbers: list[int], k: int) -> list[int]:
         k: how many neighbours on each side a position also leaves out.
 
     Returns:
-        A list the same length as `numbers`, where position i holds the
-        product of every `numbers[j]` with `abs(i - j) > k`.
+        A list the same length as `numbers`, where position i holds the product
+        of every `numbers[j]` with `abs(i - j) > k`.
     """
     raise NotImplementedError

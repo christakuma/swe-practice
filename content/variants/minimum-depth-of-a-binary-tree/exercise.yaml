@@ -39,10 +39,24 @@ kata:
   complexity:
     expected_time: "O(n) worst case, but only the nodes no deeper than the answer"
     expected_space: "O(w) for the widest level visited"
-  constraints:
-    - "The tree has between 0 and 10**5 nodes; an empty tree is None."
+  signature:
+    functions:
+      - name: min_depth
+        summary: Return the number of nodes on the shortest path from the root to a leaf.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of the tree, or None for an empty tree.
+            values: {min: -10**4, max: 10**5}
+            nodes: {min: 0, max: 10**5 + 2}
+        returns:
+          type: int
+          description: >-
+            The depth of the shallowest leaf, counted in nodes: 0 for an empty tree, 1
+            for a single node. A leaf is a node with no children.
+  notes:
+    - An empty tree is None.
     - "It may be a chain 10**5 nodes long, far deeper than Python will recurse."
-    - "-10**4 <= node.value <= 10**4"
   examples:
     - input: |
         root = TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))

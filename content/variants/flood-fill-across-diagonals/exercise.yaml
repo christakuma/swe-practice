@@ -33,11 +33,35 @@ kata:
   complexity:
     expected_time: "O(rows * columns)"
     expected_space: "O(rows * columns) for the stack in the worst case"
-  constraints:
-    - "0 <= rows <= 300 and 1 <= columns <= 300"
-    - "0 <= colour <= 10**6, for the new colour and for every pixel."
+  signature:
+    functions:
+      - name: flood_fill
+        summary: Recolour the region containing one pixel, with diagonals connected.
+        parameters:
+          - name: image
+            type: list[list[int]]
+            description: a rectangular grid of colour numbers. Modified in place.
+            length: {min: 0, max: 300}
+            item_length: {min: 1, max: 300}
+            values: {min: 0, max: 10**6}
+          - name: row
+            type: int
+            description: "the starting pixel's row."
+          - name: column
+            type: int
+            description: "the starting pixel's column."
+          - name: colour
+            type: int
+            description: the colour to paint the region.
+            values: {min: 0, max: 10**6}
+        returns:
+          type: list[list[int]]
+          description: The same image object, recoloured.
+  notes:
     - "(row, column) is a pixel of the image whenever the image has any."
-    - "A region may cover the whole image: 90,000 pixels, far deeper than Python will recurse."
+    - >-
+      A region may cover the whole image: 90,000 pixels, far deeper than Python will
+      recurse.
   examples:
     - input: |
         image = [

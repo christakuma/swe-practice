@@ -34,9 +34,26 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(text) <= 10**6"
-    - "0 <= k <= 10**6"
+  signature:
+    functions:
+      - name: longest_run
+        summary: "Return the longest run of `target` obtainable with at most `k` changes."
+        parameters:
+          - name: text
+            type: str
+            description: the string to work on. May be empty.
+            length: {min: 0, max: 10**6}
+          - name: k
+            type: int
+            description: how many characters may be replaced. Never negative.
+            values: {min: 0, max: 10**6}
+          - name: target
+            type: str
+            description: the single character the run must consist of.
+        returns:
+          type: int
+          description: "The length of the longest stretch that can be made entirely `target`."
+  notes:
     - "target is a single character; text may hold any characters."
   examples:
     - input: |

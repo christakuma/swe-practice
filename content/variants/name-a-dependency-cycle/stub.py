@@ -9,7 +9,7 @@ def find_cycle(dependencies: dict[str, list[str]]) -> list[str] | None:
             appear only as a dependency, with no entry of its own.
 
     Returns:
-        A list of distinct names in which each depends on the next and the
-        last depends on the first, or None if the graph has no cycle.
+        A list of distinct names in which each depends on the next and the last
+        depends on the first, or None if the graph has no cycle.
     """
     raise NotImplementedError

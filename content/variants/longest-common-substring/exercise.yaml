@@ -34,10 +34,26 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(min(m, n))"
-  constraints:
-    - "0 <= len(first) <= 1000"
-    - "0 <= len(second) <= 1000"
-    - "Characters are compared exactly."
+  signature:
+    functions:
+      - name: longest_common_substring
+        summary: Return the length of the longest substring common to both strings.
+        parameters:
+          - name: first
+            type: str
+            description: one string. May be empty.
+            length: {min: 0, max: 1000}
+          - name: second
+            type: str
+            description: the other. May be empty.
+            length: {min: 0, max: 1000}
+        returns:
+          type: int
+          description: >-
+            The length of the longest run of characters that appears contiguously in
+            both.
+  notes:
+    - Characters are compared exactly.
   examples:
     - input: |
         longest_common_substring("abcde", "ace")

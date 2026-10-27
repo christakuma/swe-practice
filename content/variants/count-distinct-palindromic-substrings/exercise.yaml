@@ -33,9 +33,22 @@ kata:
   complexity:
     expected_time: "O(n^2) expansions"
     expected_space: "O(number of distinct palindromes)"
-  constraints:
-    - "0 <= len(text) <= 1000"
-    - "The string may hold any characters, and they are compared exactly."
+  signature:
+    functions:
+      - name: count_distinct_palindromes
+        summary: "Count the different palindromic substrings of `text`."
+        parameters:
+          - name: text
+            type: str
+            description: the string to search. May be empty.
+            length: {min: 0, max: 1000}
+        returns:
+          type: int
+          description: >-
+            How many distinct strings are palindromic substrings of `text`. The same
+            palindrome at two positions counts once.
+  notes:
+    - The string may hold any characters, and they are compared exactly.
   examples:
     - input: |
         count_distinct_palindromes("aaa")

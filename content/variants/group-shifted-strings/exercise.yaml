@@ -36,10 +36,24 @@ kata:
   complexity:
     expected_time: "O(total characters)"
     expected_space: "O(total characters)"
-  constraints:
-    - "0 <= len(words) <= 10**4"
-    - "0 <= len(words[i]) <= 50"
-    - "Every word is made of lowercase letters a to z."
+  signature:
+    functions:
+      - name: group_shifted
+        summary: Group words that are shifts of one another.
+        parameters:
+          - name: words
+            type: list[str]
+            description: lowercase words. May be empty or hold duplicates.
+            length: {min: 0, max: 10**4}
+            item_length: {min: 0, max: 50}
+        returns:
+          type: list[list[str]]
+          description: >-
+            A list of groups. Each holds words that are the same up to a uniform shift
+            of the alphabet, in the order they appeared; the groups are ordered by where
+            each one's first word appeared.
+  notes:
+    - Every word is made of lowercase letters a to z.
   examples:
     - input: |
         group_shifted(["abc", "bcd", "acef", "xyz", "az", "ba", "a", "z"])

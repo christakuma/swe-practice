@@ -36,10 +36,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(w) for the widest level, and O(1) call depth"
-  constraints:
-    - "The tree has between 0 and 2 * 10**5 nodes; an empty tree is None."
+  signature:
+    functions:
+      - name: invert
+        summary: Mirror the tree in place and return its root.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: >-
+              the root of the tree, or None for an empty tree. The tree may be far
+              deeper than Python's recursion limit.
+            values: {min: -10**9, max: 10**9}
+            nodes: {min: 0, max: 2 * 10**5}
+        returns:
+          type: TreeNode | None
+          description: "The same root node, with every node's left and right children swapped."
+  notes:
+    - An empty tree is None.
     - "It may be as deep as it has nodes: 10**5 levels or more."
-    - "-10**9 <= node.value <= 10**9"
   examples:
     - input: |
         root = TreeNode(4, TreeNode(2, TreeNode(1), TreeNode(3)), TreeNode(7))

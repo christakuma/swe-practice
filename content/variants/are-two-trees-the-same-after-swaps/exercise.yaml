@@ -39,9 +39,27 @@ kata:
   complexity:
     expected_time: "O(n) when values are distinct"
     expected_space: "O(h) for the recursion"
-  constraints:
-    - "Each tree has between 0 and 1000 nodes and is at most 200 levels deep."
-    - "-1000 <= node.value <= 1000, and values may repeat."
+  signature:
+    functions:
+      - name: is_same_tree
+        summary: Return whether swapping children at some nodes makes the trees equal.
+        parameters:
+          - name: first
+            type: TreeNode | None
+            description: the root of one tree, or None for an empty tree.
+            values: {min: -1000, max: 1000}
+          - name: second
+            type: TreeNode | None
+            description: the root of the other, or None.
+            values: {min: -1000, max: 1000}
+        returns:
+          type: bool
+          description: >-
+            True if `second` becomes identical to `first` after exchanging the left and
+            right subtrees of any number of its nodes.
+  notes:
+    - Each tree has between 0 and 1000 nodes and is at most 200 levels deep.
+    - Values may repeat.
   examples:
     - input: |
         first = TreeNode(1, TreeNode(2), TreeNode(3))

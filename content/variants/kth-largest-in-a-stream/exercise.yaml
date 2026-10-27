@@ -41,9 +41,31 @@ kata:
   complexity:
     expected_time: "O(log k) per add"
     expected_space: "O(k)"
-  constraints:
-    - "1 <= k <= 5 * 10**5"
-    - "-10**9 <= value <= 10**9"
+  signature:
+    classes:
+      - name: KthLargest
+        summary: Tracks the kth largest value in a stream of numbers.
+        methods:
+          - name: __init__
+            summary: Create a tracker for the kth largest.
+            parameters:
+              - name: k
+                type: int
+                description: which largest to track. At least 1.
+                values: {min: 1, max: 5 * 10**5}
+          - name: add
+            summary: Take the next number and return the kth largest so far.
+            parameters:
+              - name: value
+                type: int
+                description: the number to add to the stream.
+                values: {min: -10**9, max: 10**9}
+            returns:
+              type: int | None
+              description: >-
+                The kth largest value added so far, or None while fewer than `k` numbers
+                have been added.
+  notes:
     - "At most 10**6 values are added to one tracker."
   examples:
     - input: |

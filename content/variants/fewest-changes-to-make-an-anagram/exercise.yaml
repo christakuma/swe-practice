@@ -38,10 +38,26 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(k) for k distinct characters"
-  constraints:
-    - "0 <= len(first) <= 10**6"
-    - "0 <= len(second) <= 10**6"
-    - "Any Unicode characters may appear, not only ASCII."
+  signature:
+    functions:
+      - name: changes_needed
+        summary: "Return how many replacements make `second` an anagram of `first`."
+        parameters:
+          - name: first
+            type: str
+            description: the string to match.
+            length: {min: 0, max: 10**6}
+          - name: second
+            type: str
+            description: the string whose characters may be replaced, one at a time.
+            length: {min: 0, max: 10**6}
+        returns:
+          type: int
+          description: >-
+            The smallest number of characters of `second` to replace so that it becomes
+            a rearrangement of `first`, or -1 if the lengths differ.
+  notes:
+    - Any Unicode characters may appear, not only ASCII.
   examples:
     - input: |
         changes_needed("bab", "aba")

@@ -26,7 +26,7 @@ def remove_middle(head: ListNode | None) -> ListNode | None:
         head: the first node of a list of at least one node.
 
     Returns:
-        The head of the list without the node at index `n // 2`. None when
-        the list had one node.
+        The head of the list without the node at index `n // 2`. None when the
+        list had one node.
     """
     raise NotImplementedError

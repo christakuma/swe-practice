@@ -35,9 +35,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "1 <= len(numbers) <= 10**5"
-    - "-10**4 <= numbers[i] <= 10**4"
+  signature:
+    functions:
+      - name: max_slice_sum
+        summary: "Return the largest sum of any non-empty slice of a circular list."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              the values, arranged in a circle so that the first follows the last. Never
+              empty. May be all negative.
+            length: {min: 1, max: 10**5}
+            values: {min: -10**4, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            The largest sum of a contiguous, non-empty slice that uses each position at
+            most once and may wrap round the end.
   examples:
     - input: |
         max_slice_sum([5, -3, 5])

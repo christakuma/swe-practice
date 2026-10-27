@@ -14,7 +14,7 @@ def combination_sum(candidates: list[int], target: int) -> list[tuple[int, ...]]
         target: the sum to reach. Non-negative.
 
     Returns:
-        Each distinct combination once, as an ascending tuple, with the list
-        of combinations sorted ascending. A target of zero gives `[()]`.
+        Each distinct combination once, as an ascending tuple, with the list of
+        combinations sorted ascending. A target of zero gives `[()]`.
     """
     raise NotImplementedError

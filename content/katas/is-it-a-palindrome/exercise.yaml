@@ -37,10 +37,25 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(text) <= 3 * 10**6"
-    - "Any Unicode characters may appear, not only ASCII."
-    - "A character counts when str.isalnum() is true of it; case is folded with str.lower()."
+  signature:
+    functions:
+      - name: is_palindrome
+        summary: >-
+          Return whether `text` reads the same both ways, ignoring case and
+          non-alphanumeric characters.
+        parameters:
+          - name: text
+            type: str
+            description: the string to check. May be empty or hold no alphanumerics at all.
+            length: {min: 0, max: 3 * 10**6}
+        returns:
+          type: bool
+          description: "True if the alphanumeric characters, case-folded, form a palindrome."
+  notes:
+    - Any Unicode characters may appear, not only ASCII.
+    - >-
+      A character counts when str.isalnum() is true of it; case is folded with
+      str.lower().
   examples:
     - input: |
         is_palindrome("A man, a plan, a canal: Panama")

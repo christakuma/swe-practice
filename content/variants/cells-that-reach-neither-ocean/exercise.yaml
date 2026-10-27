@@ -37,9 +37,22 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(m * n)"
-  constraints:
-    - "0 <= m <= 200 and 0 <= n <= 200, for m rows of n heights each."
-    - "0 <= heights[i][j] <= 10**5"
+  signature:
+    functions:
+      - name: neither_ocean
+        summary: Return the cells from which water reaches neither ocean.
+        parameters:
+          - name: heights
+            type: list[list[int]]
+            description: "an `m x n` grid of heights. May be empty or have empty rows."
+            length: {min: 0, max: 200}
+            item_length: {min: 0, max: 200}
+            values: {min: 0, max: 10**5}
+        returns:
+          type: list[tuple[int, int]]
+          description: >-
+            Every `(row, column)` from which water can reach no edge of the grid, sorted
+            ascending.
   examples:
     - input: |
         heights = [

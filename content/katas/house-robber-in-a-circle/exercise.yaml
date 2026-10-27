@@ -37,9 +37,21 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(houses) <= 10**5"
-    - "0 <= houses[i] <= 10**4"
+  signature:
+    functions:
+      - name: best_haul
+        summary: Return the largest total takeable from houses in a circle.
+        parameters:
+          - name: houses
+            type: list[int]
+            description: >-
+              non-negative amounts, arranged in a circle so that the first and last are
+              adjacent. May be empty.
+            length: {min: 0, max: 10**5}
+            values: {min: 0, max: 10**4}
+        returns:
+          type: int
+          description: The largest total from a selection with no two adjacent houses.
   examples:
     - input: |
         best_haul([2, 3, 2])

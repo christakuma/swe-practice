@@ -43,11 +43,31 @@ kata:
   complexity:
     expected_time: "O(V + E) over the part of the graph within the radius"
     expected_space: "O(V)"
-  constraints:
-    - "The graph has between 0 and 300 nodes; the empty graph is None."
-    - "0 <= radius <= 300"
+  signature:
+    functions:
+      - name: clone_graph
+        summary: "Deep-copy the part of the graph within `radius` edges of `node`."
+        parameters:
+          - name: node
+            type: Node | None
+            description: any node of a connected undirected graph, or None.
+            nodes: {min: 0, max: 300}
+          - name: radius
+            type: int
+            description: >-
+              the largest number of edges a copied node may be from `node`, by its
+              shortest route. Never negative.
+            values: {min: 0, max: 300}
+        returns:
+          type: Node | None
+          description: >-
+            The copy of `node`. Each copy's neighbours are the copies of the original's
+            neighbours that are within the radius, in the same order.
+  notes:
+    - The empty graph is None.
     - "Edges are undirected: if b is in a.neighbours then a is in b.neighbours."
-    - "Values may repeat. Two nodes are the same node only if they are the same object."
+    - >-
+      Values may repeat. Two nodes are the same node only if they are the same object.
   examples:
     - input: |
         a, b, c = Node(1), Node(2), Node(3)

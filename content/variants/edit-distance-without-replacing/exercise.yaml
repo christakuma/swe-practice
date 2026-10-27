@@ -36,9 +36,25 @@ kata:
   complexity:
     expected_time: "O(len(source) * len(target))"
     expected_space: "O(len(target))"
-  constraints:
-    - "0 <= len(source) <= 500"
-    - "0 <= len(target) <= 500"
+  signature:
+    functions:
+      - name: edit_distance
+        summary: >-
+          Return the fewest insertions and deletions turning `source` into `target`.
+        details: An edit is inserting a character or deleting one. There is no replace.
+        parameters:
+          - name: source
+            type: str
+            description: the string to change.
+            length: {min: 0, max: 500}
+          - name: target
+            type: str
+            description: the string to reach.
+            length: {min: 0, max: 500}
+        returns:
+          type: int
+          description: The minimum number of edits.
+  notes:
     - "Characters are compared exactly; case matters."
   examples:
     - input: |

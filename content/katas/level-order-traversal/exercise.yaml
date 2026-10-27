@@ -36,10 +36,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(w) for a tree of maximum width w"
-  constraints:
-    - "The tree has between 0 and 2 * 10**4 nodes; an empty tree is None."
-    - "A single level may hold thousands of nodes."
-    - "-10**4 <= node.value <= 10**4"
+  signature:
+    functions:
+      - name: level_order
+        summary: Return the values level by level, top to bottom, left to right.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of the tree, or None for an empty tree.
+            values: {min: -10**4, max: 10**4}
+            nodes: {min: 0, max: 2 * 10**4}
+        returns:
+          type: list[list[int]]
+          description: >-
+            One list per level, starting with the root's level. Empty for an empty tree.
+  notes:
+    - An empty tree is None.
+    - A single level may hold thousands of nodes.
   examples:
     - input: |
         root = TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))

@@ -38,10 +38,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(text) <= 10**5"
+  signature:
+    functions:
+      - name: longest_balanced
+        summary: "Return the length of the longest balanced stretch of `text`."
+        parameters:
+          - name: text
+            type: str
+            description: "a string of the characters ( ) [ ] { } only. May be empty."
+            length: {min: 0, max: 10**5 + 1}
+        returns:
+          type: int
+          description: >-
+            The number of characters in the longest contiguous substring that is
+            balanced and correctly nested. 0 if there is none.
+  notes:
     - "Every character is one of ( ) [ ] { }."
-    - "Brackets may be nested tens of thousands deep."
+    - Brackets may be nested tens of thousands deep.
   examples:
     - input: |
         longest_balanced("(()")

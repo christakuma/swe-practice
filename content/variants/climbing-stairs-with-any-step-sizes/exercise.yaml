@@ -33,11 +33,29 @@ kata:
   complexity:
     expected_time: "O(steps * len(sizes))"
     expected_space: "O(steps)"
-  constraints:
-    - "0 <= steps <= 500"
-    - "1 <= len(sizes) <= 10"
+  signature:
+    functions:
+      - name: ways_to_climb
+        summary: "Count the distinct ways to climb `steps` steps using the given sizes."
+        parameters:
+          - name: steps
+            type: int
+            description: how many steps there are. Zero or more.
+            values: {min: 0, max: 500}
+          - name: sizes
+            type: list[int]
+            description: >-
+              the step sizes a single move may take. Distinct and positive, in no
+              particular order.
+            length: {min: 1, max: 10}
+        returns:
+          type: int
+          description: >-
+            The number of distinct sequences of sizes that sum to exactly `steps`. One
+            for zero steps; zero when no sequence fits.
+  notes:
     - "1 <= sizes[i] <= 50, all distinct, in no particular order."
-    - "The answer is exact however large it is."
+    - The answer is exact however large it is.
   examples:
     - input: |
         ways_to_climb(4, [1, 2, 3])

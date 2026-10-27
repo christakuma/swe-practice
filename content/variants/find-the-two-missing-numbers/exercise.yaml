@@ -33,11 +33,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= n <= 10**6, where n is len(numbers)"
+  signature:
+    functions:
+      - name: find_missing
+        summary: "Return the two values from 0..len(numbers) + 1 that are not present."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              `n` distinct integers drawn from `0..n + 1`, in any order, where `n` is
+              `len(numbers)`. May be empty. Not to be modified.
+            length: {min: 0, max: 10**6}
+        returns:
+          type: tuple[int, int]
+          description: The two missing values, smaller first.
+  notes:
     - "0 <= numbers[i] <= n + 1"
     - "All values are distinct, so exactly two values in 0..n + 1 are absent."
-    - "The list is in no particular order."
+    - The list is in no particular order.
   examples:
     - input: |
         find_missing([0, 3])

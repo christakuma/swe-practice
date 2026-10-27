@@ -26,7 +26,6 @@ def lowest_common_ancestor(first: TreeNode, second: TreeNode) -> TreeNode:
         second: a node of the same tree, possibly the same node.
 
     Returns:
-        The lowest common ancestor, as a node. A node is an ancestor of
-        itself.
+        The lowest common ancestor, as a node. A node is an ancestor of itself.
     """
     raise NotImplementedError

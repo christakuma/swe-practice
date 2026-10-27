@@ -11,7 +11,7 @@ def count_bits_up_to(n: int) -> list[int]:
         n: a non-negative integer.
 
     Returns:
-        A list of length `n + 1`, where entry `i` holds the number of 1 bits
-        in `i`.
+        A list of length `n + 1`, where entry `i` holds the number of 1 bits in
+        `i`.
     """
     raise NotImplementedError

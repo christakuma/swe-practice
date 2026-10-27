@@ -36,11 +36,30 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "2 <= len(numbers) <= 10**6"
-    - "-10**9 <= numbers[i] <= 10**9, and so is target."
-    - "numbers is in ascending order, and equal values may repeat."
-    - "Exactly one pair of positions adds up to the target."
+  signature:
+    functions:
+      - name: two_sum
+        summary: "Return the two 1-based positions whose values add up to `target`."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              the values to search, sorted ascending. May contain duplicates and
+              negatives.
+            length: {min: 2, max: 10**6}
+            values: {min: -10**9, max: 10**9}
+          - name: target
+            type: int
+            description: the sum to find.
+        returns:
+          type: tuple[int, int]
+          description: >-
+            The two positions, counted from 1, smaller first. Exactly one such pair
+            exists.
+  notes:
+    - So is target.
+    - numbers is in ascending order, and equal values may repeat.
+    - Exactly one pair of positions adds up to the target.
   examples:
     - input: |
         two_sum([2, 7, 11, 15], 9)

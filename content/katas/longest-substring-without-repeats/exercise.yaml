@@ -39,8 +39,21 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(k), k distinct characters"
-  constraints:
-    - "0 <= len(text) <= 5 * 10**4"
+  signature:
+    functions:
+      - name: longest_unique_run
+        summary: Return the length of the longest run of characters with no repeats.
+        parameters:
+          - name: text
+            type: str
+            description: the string to scan. May be empty.
+            length: {min: 0, max: 5 * 10**4}
+        returns:
+          type: int
+          description: >-
+            The length of the longest substring in which every character is distinct.
+            Zero for an empty string.
+  notes:
     - "Any character can appear: letters, digits, spaces, punctuation."
   examples:
     - input: |

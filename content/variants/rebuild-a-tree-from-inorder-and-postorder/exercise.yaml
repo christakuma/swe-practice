@@ -37,10 +37,27 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
+  signature:
+    functions:
+      - name: rebuild
+        summary: "Rebuild the tree from its in-order and post-order traversals."
+        parameters:
+          - name: inorder
+            type: list[int]
+            description: "the values in in-order (left subtree, root, right subtree)."
+          - name: postorder
+            type: list[int]
+            description: >-
+              the same values in post-order (left subtree, right subtree, root). All
+              values are distinct.
+        returns:
+          type: TreeNode | None
+          description: The root of the reconstructed tree, or None for empty input.
+  notes:
     - "0 <= len(inorder) <= 10**5, and len(postorder) == len(inorder)"
     - "-10**9 <= value <= 10**9, and no value appears twice."
-    - "The two lists are traversals of one tree, which is at most 500 levels deep."
+    - >-
+      The two lists are traversals of one tree, which is at most 500 levels deep.
   examples:
     - input: |
         rebuild([9, 3, 15, 20, 7], [9, 15, 7, 20, 3])

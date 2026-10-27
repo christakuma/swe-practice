@@ -43,10 +43,27 @@ kata:
   complexity:
     expected_time: "O(h)"
     expected_space: "O(1)"
-  constraints:
-    - "The tree has between 1 and 10**5 nodes, and may be a single chain that deep."
-    - "Both nodes are in the same tree."
-    - "Values may repeat. Two nodes are the same node only if they are the same object."
+  signature:
+    functions:
+      - name: lowest_common_ancestor
+        summary: Return the deepest node with both given nodes at or below it.
+        parameters:
+          - name: first
+            type: TreeNode
+            description: a node of the tree.
+            nodes: {min: 1, max: 10**5}
+          - name: second
+            type: TreeNode
+            description: a node of the same tree, possibly the same node.
+            nodes: {min: 1, max: 10**5}
+        returns:
+          type: TreeNode
+          description: The lowest common ancestor, as a node. A node is an ancestor of itself.
+  notes:
+    - It may be a single chain that deep.
+    - Both nodes are in the same tree.
+    - >-
+      Values may repeat. Two nodes are the same node only if they are the same object.
   examples:
     - input: |
         root = TreeNode(3)

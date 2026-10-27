@@ -40,9 +40,20 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(text) <= 5000"
-    - "The string may hold any characters, and they are compared exactly."
+  signature:
+    functions:
+      - name: longest_palindrome
+        summary: Return the longest palindromic substring, earliest on a tie.
+        parameters:
+          - name: text
+            type: str
+            description: the string to search. May be empty.
+            length: {min: 0, max: 5000}
+        returns:
+          type: str
+          description: The longest contiguous palindromic substring. Empty for an empty input.
+  notes:
+    - The string may hold any characters, and they are compared exactly.
   examples:
     - input: |
         longest_palindrome("babad")

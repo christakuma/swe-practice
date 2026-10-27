@@ -31,10 +31,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(numbers) <= 10**5"
-    - "1 <= numbers[i] <= 1000"
-    - "0 <= limit <= 10**6"
+  signature:
+    functions:
+      - name: count_slices
+        summary: "Count the contiguous slices whose product is strictly below `limit`."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: positive integers. May be empty.
+            length: {min: 0, max: 10**5}
+            values: {min: 1, max: 1000}
+          - name: limit
+            type: int
+            description: the bound the product must stay under. Zero or more.
+            values: {min: 0, max: 10**6}
+        returns:
+          type: int
+          description: "How many contiguous, non-empty slices have a product less than `limit`."
   examples:
     - input: |
         count_slices([10, 5, 2, 6], 100)

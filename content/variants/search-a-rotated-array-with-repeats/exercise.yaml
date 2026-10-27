@@ -36,9 +36,26 @@ kata:
   complexity:
     expected_time: "O(log n) typically, O(n) when almost every value is equal"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(numbers) <= 2 * 10**6"
-    - "-10**9 <= numbers[i] <= 10**9, and so is target."
+  signature:
+    functions:
+      - name: contains
+        summary: "Return whether `target` is in a rotated, non-decreasing list."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              a non-decreasing list rotated left by an unknown amount. May be empty, and
+              may hold repeats.
+            length: {min: 0, max: 2 * 10**6}
+            values: {min: -10**9, max: 10**9}
+          - name: target
+            type: int
+            description: the value to find.
+        returns:
+          type: bool
+          description: "True if `target` is present."
+  notes:
+    - So is target.
     - "The list is non-decreasing order rotated left by some number of places."
   examples:
     - input: |

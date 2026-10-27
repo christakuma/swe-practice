@@ -34,8 +34,22 @@ kata:
   complexity:
     expected_time: "O(rows * columns)"
     expected_space: "O(columns)"
-  constraints:
-    - "0 <= rows <= 300 and 0 <= columns <= 300"
+  signature:
+    functions:
+      - name: count_paths
+        summary: "Count right/down paths across a grid that avoid blocked cells."
+        parameters:
+          - name: grid
+            type: list[list[int]]
+            description: "a rectangular grid of 0s (open) and 1s (blocked). May be empty."
+            length: {min: 0, max: 300}
+            item_length: {min: 0, max: 300}
+        returns:
+          type: int
+          description: >-
+            The number of distinct paths from the top-left cell to the bottom-right,
+            moving only right or down through open cells.
+  notes:
     - "Every row is the same length, and every cell is 0 (open) or 1 (blocked)."
   examples:
     - input: |

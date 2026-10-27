@@ -33,9 +33,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1) beyond the comparison of the tails"
-  constraints:
-    - "0 <= len(source) <= 10**6"
-    - "0 <= len(target) <= 10**6"
+  signature:
+    functions:
+      - name: is_one_edit_away
+        summary: Return whether the two strings are at most one edit apart.
+        details: An edit is inserting a character, deleting one, or replacing one.
+        parameters:
+          - name: source
+            type: str
+            description: one string. May be empty.
+            length: {min: 0, max: 10**6 + 1}
+          - name: target
+            type: str
+            description: the other. May be empty.
+            length: {min: 0, max: 10**6 + 1}
+        returns:
+          type: bool
+          description: "True if zero or one edit turns `source` into `target`."
+  notes:
     - "Characters are compared exactly; case matters."
   examples:
     - input: |

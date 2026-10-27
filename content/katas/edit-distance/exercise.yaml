@@ -38,9 +38,25 @@ kata:
   complexity:
     expected_time: "O(n * m)"
     expected_space: "O(min(n, m)) with two rows"
-  constraints:
-    - "0 <= len(source) <= 500"
-    - "0 <= len(target) <= 500"
+  signature:
+    functions:
+      - name: edit_distance
+        summary: >-
+          Return the fewest single-character edits turning one string into another.
+        details: An edit is inserting a character, deleting one, or replacing one.
+        parameters:
+          - name: source
+            type: str
+            description: the string to change.
+            length: {min: 0, max: 500}
+          - name: target
+            type: str
+            description: the string to reach.
+            length: {min: 0, max: 500}
+        returns:
+          type: int
+          description: The minimum number of edits.
+  notes:
     - "Characters are compared exactly; case matters."
   examples:
     - input: |

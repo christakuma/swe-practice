@@ -34,9 +34,21 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h) for a tree of height h"
-  constraints:
-    - "The tree has between 0 and 500 nodes, and may be a single chain that deep."
-    - "-10**4 <= node.value <= 10**4"
+  signature:
+    functions:
+      - name: max_depth
+        summary: Return the number of nodes on the longest path from the root down.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of the tree, or None for an empty tree.
+            values: {min: -10**4, max: 10**4}
+            nodes: {min: 0, max: 500}
+        returns:
+          type: int
+          description: "The depth in nodes: 0 for an empty tree, 1 for a single node."
+  notes:
+    - It may be a single chain that deep.
   examples:
     - input: |
         root = TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))

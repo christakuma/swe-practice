@@ -14,7 +14,11 @@ class Trie:
         raise NotImplementedError
 
     def insert(self, word: str) -> None:
-        """Add `word`. Inserting the same word twice changes nothing."""
+        """Add `word`. Inserting the same word twice changes nothing.
+
+        Args:
+            word: the word to add. May be empty.
+        """
         raise NotImplementedError
 
     def complete(self, prefix: str, limit: int) -> list[str]:
@@ -22,5 +26,12 @@ class Trie:
 
         The words are in ascending order, and are the first `limit` of all
         the matches in that order. A stored word is a prefix of itself.
+
+        Args:
+            prefix: the start every returned word must have. May be empty.
+            limit: how many words to return at most.
+
+        Returns:
+            Up to `limit` matching words, in ascending order.
         """
         raise NotImplementedError

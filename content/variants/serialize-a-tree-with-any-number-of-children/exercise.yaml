@@ -40,11 +40,33 @@ kata:
   complexity:
     expected_time: "O(n) both directions"
     expected_space: "O(n)"
-  constraints:
-    - "The tree has between 0 and 10**5 nodes; an empty tree is None."
+  signature:
+    functions:
+      - name: serialize
+        summary: Pack a tree into a string.
+        parameters:
+          - name: root
+            type: Node | None
+            description: the root of the tree, or None.
+            values: {min: -10**9, max: 10**9}
+            nodes: {min: 0, max: 10**5}
+        returns:
+          type: str
+          description: "A string from which `deserialize` recovers an identical tree."
+      - name: deserialize
+        summary: "Unpack a string produced by `serialize`."
+        parameters:
+          - name: data
+            type: str
+            description: "the output of `serialize`."
+        returns:
+          type: Node | None
+          description: A tree identical in shape, child order and values to the original.
+  notes:
+    - An empty tree is None.
     - "It may be a chain 10**4 deep, far deeper than Python will recurse."
-    - "-10**9 <= node.value <= 10**9, and values may repeat."
-    - "deserialize is only ever given a string that serialize returned."
+    - Values may repeat.
+    - deserialize is only ever given a string that serialize returned.
   examples:
     - input: |
         root = Node(1, [Node(3, [Node(5), Node(6)]), Node(2), Node(4)])

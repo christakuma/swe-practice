@@ -40,10 +40,25 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "The list has between 0 and 10**5 nodes; an empty list is None."
-    - "An acyclic list may be 10**5 nodes long, far deeper than Python will recurse."
-    - "Values tell you nothing: two nodes are the same node only if they are the same object."
+  signature:
+    functions:
+      - name: has_cycle
+        summary: "Whether following `next_node` from `head` ever revisits a node."
+        parameters:
+          - name: head
+            type: ListNode | None
+            description: the first node, or None for an empty list.
+            nodes: {min: 0, max: 10**5}
+        returns:
+          type: bool
+          description: True if the list loops back on itself.
+  notes:
+    - An empty list is None.
+    - >-
+      An acyclic list may be 10**5 nodes long, far deeper than Python will recurse.
+    - >-
+      Values tell you nothing: two nodes are the same node only if they are the same
+      object.
   examples:
     - input: |
         third = ListNode(3)

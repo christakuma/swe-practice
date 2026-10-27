@@ -37,10 +37,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(numbers) <= 2 * 10**5"
-    - "-10**9 <= numbers[i] <= 10**9"
-    - "The list is in ascending order, and a value may repeat any number of times."
+  signature:
+    functions:
+      - name: remove_duplicates
+        summary: Move the distinct values to the front of a sorted list and count them.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: integers in ascending order, possibly repeated. Modified in place.
+            length: {min: 0, max: 2 * 10**5}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: >-
+            The number of distinct values, k. Afterwards `numbers[:k]` holds them in
+            ascending order; the rest of the list may hold anything.
+  notes:
+    - >-
+      The list is in ascending order, and a value may repeat any number of times.
   examples:
     - input: |
         numbers = [1, 1, 2]

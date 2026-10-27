@@ -36,9 +36,22 @@ kata:
   complexity:
     expected_time: "O(n + a log a) for a distinct characters"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(text) <= 10**5"
-    - "The string may hold any characters, and they are compared exactly."
+  signature:
+    functions:
+      - name: longest_palindrome
+        summary: "Return the longest palindrome buildable from the characters of `text`."
+        parameters:
+          - name: text
+            type: str
+            description: the characters available. May be empty.
+            length: {min: 0, max: 10**5}
+        returns:
+          type: str
+          description: >-
+            The longest palindrome that uses each character no more often than it
+            appears in `text`. Of all those of that length, the one that sorts first.
+  notes:
+    - The string may hold any characters, and they are compared exactly.
   examples:
     - input: |
         longest_palindrome("abccccdd")

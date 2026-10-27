@@ -39,10 +39,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(digits) <= 10**4"
-    - "Every character is one of the digits 0 to 9."
-    - "The answer is exact however large it is."
+  signature:
+    functions:
+      - name: count_decodings
+        summary: "Count the ways to decode a digit string into letters A=1..Z=26."
+        parameters:
+          - name: digits
+            type: str
+            description: a string of decimal digits. May be empty.
+            length: {min: 0, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            How many distinct letter strings encode to `digits`. Zero if none do,
+            including for the empty string.
+  notes:
+    - Every character is one of the digits 0 to 9.
+    - The answer is exact however large it is.
   examples:
     - input: |
         count_decodings("12")

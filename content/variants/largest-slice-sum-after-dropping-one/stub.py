@@ -8,7 +8,7 @@ def max_slice_sum(numbers: list[int]) -> int:
         numbers: the values to search. Never empty; may be all negative.
 
     Returns:
-        The greatest sum of any contiguous slice after optionally removing
-        one of its elements, with at least one element remaining.
+        The greatest sum of any contiguous slice after optionally removing one
+        of its elements, with at least one element remaining.
     """
     raise NotImplementedError

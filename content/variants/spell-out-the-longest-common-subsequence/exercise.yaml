@@ -38,11 +38,27 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(m * n)"
-  constraints:
-    - "0 <= len(first) <= 500"
-    - "0 <= len(second) <= 500"
-    - "Characters are compared exactly."
-    - "Any longest common subsequence is accepted."
+  signature:
+    functions:
+      - name: longest_common_subsequence
+        summary: Return a longest subsequence common to both strings.
+        parameters:
+          - name: first
+            type: str
+            description: one string.
+            length: {min: 0, max: 500}
+          - name: second
+            type: str
+            description: the other.
+            length: {min: 0, max: 500}
+        returns:
+          type: str
+          description: >-
+            A string that is a subsequence of both and as long as any such string can
+            be. Empty if they share no characters.
+  notes:
+    - Characters are compared exactly.
+    - Any longest common subsequence is accepted.
   examples:
     - input: |
         longest_common_subsequence("abcde", "ace")

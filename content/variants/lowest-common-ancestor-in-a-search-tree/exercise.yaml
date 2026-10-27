@@ -40,7 +40,24 @@ kata:
   complexity:
     expected_time: "O(h)"
     expected_space: "O(1)"
-  constraints:
+  signature:
+    functions:
+      - name: lowest_common_ancestor
+        summary: Return the value of the deepest node with both values at or below it.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of a valid binary search tree with distinct values.
+          - name: first
+            type: int
+            description: a value in the tree.
+          - name: second
+            type: int
+            description: "a value in the tree. May equal `first`."
+        returns:
+          type: int
+          description: "The lowest common ancestor's value. A node is its own ancestor."
+  notes:
     - "The tree has between 1 and 2 * 10**5 nodes and is a valid search tree."
     - "It may be a chain 10**5 deep on a side the answer does not involve."
     - "-10**9 <= node.value <= 10**9, and no two nodes share a value."

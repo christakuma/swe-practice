@@ -36,9 +36,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n) for the copy, O(h) for the recursion"
-  constraints:
-    - "The tree has between 0 and 500 nodes, and may be a single chain that deep."
-    - "-10**4 <= node.value <= 10**4"
+  signature:
+    functions:
+      - name: mirrored
+        summary: "Return a new tree that is the mirror image of `root`."
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of the tree, or None for an empty tree. Not to be modified.
+            values: {min: -10**4, max: 10**4}
+            nodes: {min: 0, max: 500}
+        returns:
+          type: TreeNode | None
+          description: >-
+            The root of a newly built tree with every node's children swapped. None for
+            an empty tree. No node is shared with the original.
+  notes:
+    - It may be a single chain that deep.
   examples:
     - input: |
         root = TreeNode(1, TreeNode(2), TreeNode(3))

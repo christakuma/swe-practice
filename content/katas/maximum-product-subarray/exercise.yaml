@@ -37,9 +37,21 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "1 <= len(numbers) <= 10**5"
-    - "-10 <= numbers[i] <= 10"
+  signature:
+    functions:
+      - name: max_product
+        summary: "Return the largest product of any contiguous non-empty run."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the values. Never empty. May contain negatives and zeros.
+            length: {min: 1, max: 10**5}
+            values: {min: -10, max: 10}
+        returns:
+          type: int
+          description: >-
+            The largest product achievable by a contiguous run of at least one value.
+  notes:
     - "Every run's product is small enough to be an ordinary 64-bit integer."
   examples:
     - input: |

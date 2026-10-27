@@ -46,11 +46,27 @@ kata:
   complexity:
     expected_time: "O(total input length + C log C) for C distinct characters"
     expected_space: "O(C^2) worst case for the edges"
-  constraints:
-    - "0 <= len(words) <= 100"
-    - "1 <= len(words[i]) <= 20"
-    - "Every word is made of lowercase letters a to z."
-    - "The same word may appear more than once."
+  signature:
+    functions:
+      - name: alien_order
+        summary: Return the alphabet implied by a list of sorted words.
+        parameters:
+          - name: words
+            type: list[str]
+            description: >-
+              words in sorted order according to an unknown alphabet. May be empty, may
+              hold one word, and may repeat a word.
+            length: {min: 0, max: 100}
+            item_length: {min: 1, max: 20}
+        returns:
+          type: str
+          description: >-
+            The lexicographically smallest character ordering consistent with the input,
+            as a string containing every character that appears exactly once. `""` if no
+            ordering is consistent.
+  notes:
+    - Every word is made of lowercase letters a to z.
+    - The same word may appear more than once.
   examples:
     - input: |
         alien_order(["wrt", "wrf", "er", "ett", "rftt"])

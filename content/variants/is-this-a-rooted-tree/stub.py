@@ -10,8 +10,8 @@ def find_root(n: int, edges: list[tuple[int, int]]) -> int | None:
             itself.
 
     Returns:
-        The label of the one node with no parent, provided every other node
-        has exactly one parent and all of them can be reached from it.
-        None otherwise.
+        The label of the one node with no parent, provided every other node has
+        exactly one parent and all of them can be reached from it. None
+        otherwise.
     """
     raise NotImplementedError

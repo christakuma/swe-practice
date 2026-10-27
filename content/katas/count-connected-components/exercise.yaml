@@ -36,11 +36,27 @@ kata:
   complexity:
     expected_time: "O((V + E) * almost-constant)"
     expected_space: "O(V)"
-  constraints:
-    - "0 <= n <= 2 * 10**5"
-    - "0 <= len(edges) <= 2 * 10**5"
+  signature:
+    functions:
+      - name: count_components
+        summary: "Count the connected components among `n` labelled nodes."
+        parameters:
+          - name: n
+            type: int
+            description: "how many nodes there are, labelled 0 to n - 1. May be 0."
+            values: {min: 0, max: 2 * 10**5}
+          - name: edges
+            type: list[tuple[int, int]]
+            description: >-
+              undirected edges as (a, b) pairs. May repeat, and may join nodes that are
+              already connected.
+            length: {min: 0, max: 2 * 10**5}
+        returns:
+          type: int
+          description: The number of connected components. An isolated node counts as one.
+  notes:
     - "Each edge is a pair (a, b) with 0 <= a < n and 0 <= b < n."
-    - "Edges may repeat, and a may equal b."
+    - Edges may repeat, and a may equal b.
   examples:
     - input: |
         count_components(5, [(0, 1), (1, 2), (3, 4)])

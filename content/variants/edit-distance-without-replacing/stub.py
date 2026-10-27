@@ -2,7 +2,8 @@
 
 
 def edit_distance(source: str, target: str) -> int:
-    """Return the fewest insertions and deletions turning `source` into `target`.
+    """Return the fewest insertions and deletions turning `source` into
+    `target`.
 
     An edit is inserting a character or deleting one. There is no replace.
 

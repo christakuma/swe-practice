@@ -29,7 +29,7 @@ def mirrored(root: TreeNode | None) -> TreeNode | None:
             modified.
 
     Returns:
-        The root of a newly built tree with every node's children swapped.
-        None for an empty tree. No node is shared with the original.
+        The root of a newly built tree with every node's children swapped. None
+        for an empty tree. No node is shared with the original.
     """
     raise NotImplementedError

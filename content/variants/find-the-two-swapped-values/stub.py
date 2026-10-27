@@ -29,7 +29,7 @@ def swapped_values(root: TreeNode | None) -> tuple[int, int] | None:
             values, or was one before two of its values were exchanged.
 
     Returns:
-        The two exchanged values, smaller first, or None if the tree is
-        valid as it stands.
+        The two exchanged values, smaller first, or None if the tree is valid
+        as it stands.
     """
     raise NotImplementedError

@@ -39,10 +39,24 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(numbers) <= 1000"
-    - "-10**9 <= numbers[i] <= 10**9"
-    - "The answer is exact however large it is."
+  signature:
+    functions:
+      - name: count_longest_increasing
+        summary: >-
+          Return how many strictly increasing subsequences are of the greatest length.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: integers in any order. May be empty and may repeat.
+            length: {min: 0, max: 1000}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: >-
+            The number of ways to choose positions whose values are strictly increasing
+            and as many as possible. 1 for an empty list.
+  notes:
+    - The answer is exact however large it is.
   examples:
     - input: |
         count_longest_increasing([1, 3, 5, 4, 7])

@@ -39,9 +39,21 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "1 <= len(numbers) <= 10**5"
-    - "-10**4 <= numbers[i] <= 10**4"
+  signature:
+    functions:
+      - name: max_slice_sum
+        summary: Return the largest sum of a slice with at most one element left out.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: "the values to search. Never empty; may be all negative."
+            length: {min: 1, max: 10**5}
+            values: {min: -10**4, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            The greatest sum of any contiguous slice after optionally removing one of
+            its elements, with at least one element remaining.
   examples:
     - input: |
         max_slice_sum([1, -2, 0, 3])

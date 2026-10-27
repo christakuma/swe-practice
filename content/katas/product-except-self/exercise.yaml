@@ -41,10 +41,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1) beyond the output"
-  constraints:
-    - "0 <= len(numbers) <= 2 * 10**4"
-    - "-30 <= numbers[i] <= 30"
-    - "Every product asked for is small enough to be an ordinary 64-bit integer."
+  signature:
+    functions:
+      - name: product_except_self
+        summary: Return, for each position, the product of every other element.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the values. May contain zeros and negatives.
+            length: {min: 0, max: 2 * 10**4}
+            values: {min: -30, max: 30}
+        returns:
+          type: list[int]
+          description: >-
+            A list the same length as `numbers`, where position i holds the product of
+            every element except `numbers[i]`.
+  notes:
+    - >-
+      Every product asked for is small enough to be an ordinary 64-bit integer.
   examples:
     - input: |
         product_except_self([1, 2, 3, 4])

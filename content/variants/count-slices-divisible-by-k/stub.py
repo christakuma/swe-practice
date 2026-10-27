@@ -9,7 +9,7 @@ def count_subarrays(numbers: list[int], k: int) -> int:
         k: the divisor. At least 1.
 
     Returns:
-        How many contiguous, non-empty slices have a sum that is a multiple
-        of `k`, zero included.
+        How many contiguous, non-empty slices have a sum that is a multiple of
+        `k`, zero included.
     """
     raise NotImplementedError

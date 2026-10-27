@@ -33,9 +33,19 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(numbers) <= 3 * 10**5"
-    - "-10**9 <= numbers[i] <= 10**9"
+  signature:
+    functions:
+      - name: move_zeroes
+        summary: Move every zero to the front of the list, in place.
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the list to rearrange. Modified in place.
+            length: {min: 0, max: 3 * 10**5}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: None
+          description: Nothing. The caller reads the result from the list it passed in.
   examples:
     - input: |
         numbers = [0, 1, 0, 3, 12]

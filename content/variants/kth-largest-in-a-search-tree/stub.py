@@ -26,8 +26,8 @@ def kth_largest(root: TreeNode | None, k: int) -> int:
 
     Args:
         root: the root of a valid binary search tree with distinct values.
-        k: which value to return, counting from 1 at the largest. Always
-            within the tree's size.
+        k: which value to return, counting from 1 at the largest. Always within
+            the tree's size.
 
     Returns:
         The kth largest value.

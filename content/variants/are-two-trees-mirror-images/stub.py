@@ -29,7 +29,7 @@ def is_mirror(first: TreeNode | None, second: TreeNode | None) -> bool:
         second: the root of the second tree, or None.
 
     Returns:
-        True if the two hold the same values with left and right exchanged
-        at every node.
+        True if the two hold the same values with left and right exchanged at
+        every node.
     """
     raise NotImplementedError

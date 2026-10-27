@@ -45,11 +45,34 @@ kata:
   complexity:
     expected_time: "O(total length) for both directions"
     expected_space: "O(total length)"
-  constraints:
-    - "0 <= len(strings) <= 10**4"
-    - "0 <= len(strings[i]) <= 10**5"
-    - "A string may hold any Unicode character, including \"\\0\", line breaks and digits."
-    - "decode is only ever given a string that encode returned."
+  signature:
+    functions:
+      - name: encode
+        summary: Pack a list of arbitrary strings into one string.
+        parameters:
+          - name: strings
+            type: list[str]
+            description: >-
+              the strings to pack. Any contents, including empty strings and any
+              character at all.
+            length: {min: 0, max: 10**4}
+            item_length: {min: 0, max: 10**5}
+        returns:
+          type: str
+          description: "A single string from which `decode` recovers the original list."
+      - name: decode
+        summary: "Unpack a string produced by `encode`."
+        parameters:
+          - name: encoded
+            type: str
+            description: "the output of `encode`."
+        returns:
+          type: list[str]
+          description: The original list of strings, exactly.
+  notes:
+    - >-
+      A string may hold any Unicode character, including "\0", line breaks and digits.
+    - decode is only ever given a string that encode returned.
   examples:
     - input: |
         decode(encode(["hello", "world"]))

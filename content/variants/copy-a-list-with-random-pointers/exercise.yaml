@@ -35,10 +35,26 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
-    - "The list has between 0 and 10**4 nodes; an empty list is None."
-    - "Values may repeat. Two nodes are the same node only if they are the same object."
-    - "A random pointer may point forwards, backwards, at its own node, or be None."
+  signature:
+    functions:
+      - name: copy_list
+        summary: "Deep-copy a list whose nodes carry a random pointer."
+        parameters:
+          - name: head
+            type: Node | None
+            description: the first node, or None for an empty list. Not to be modified.
+            nodes: {min: 0, max: 10**4}
+        returns:
+          type: Node | None
+          description: >-
+            The head of a new list with the same values and the same pattern of `next`
+            and `random` pointers, sharing no node with the original.
+  notes:
+    - An empty list is None.
+    - >-
+      Values may repeat. Two nodes are the same node only if they are the same object.
+    - >-
+      A random pointer may point forwards, backwards, at its own node, or be None.
   examples:
     - input: |
         second = Node(2)

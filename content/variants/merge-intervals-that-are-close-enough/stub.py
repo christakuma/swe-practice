@@ -9,8 +9,8 @@ def merge_intervals(
     Args:
         intervals: `(start, end)` pairs with `start <= end`. In any order, and
             may overlap or touch.
-        gap: the largest distance between two intervals that still merges
-            them. Never negative.
+        gap: the largest distance between two intervals that still merges them.
+            Never negative.
 
     Returns:
         The merged intervals, sorted by start. Each runs from the earliest

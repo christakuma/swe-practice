@@ -9,7 +9,7 @@ def count_segmentations(text: str, words: list[str]) -> int:
         words: the allowed words. May repeat; a repeat adds nothing.
 
     Returns:
-        The number of different sequences of words that concatenate to
-        `text`. One for the empty string.
+        The number of different sequences of words that concatenate to `text`.
+        One for the empty string.
     """
     raise NotImplementedError

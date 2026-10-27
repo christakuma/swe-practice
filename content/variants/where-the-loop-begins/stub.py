@@ -22,7 +22,7 @@ def cycle_start(head: ListNode | None) -> ListNode | None:
         head: the first node, or None for an empty list.
 
     Returns:
-        The first node that following `next_node` from `head` reaches twice,
-        or None if the list ends.
+        The first node that following `next_node` from `head` reaches twice, or
+        None if the list ends.
     """
     raise NotImplementedError

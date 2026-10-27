@@ -35,9 +35,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h) for a tree of height h"
-  constraints:
-    - "The tree has between 0 and 500 nodes, and may be a single chain that deep."
-    - "-2**31 <= node.value <= 2**31 - 1"
+  signature:
+    functions:
+      - name: is_search_tree
+        summary: Whether the tree is a search tree that allows repeats on the left.
+        details: |-
+          Every value in a node's left subtree must be less than or equal to the
+          node's value, and every value in its right subtree strictly greater.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of the tree, or None for an empty tree.
+            values: {min: -2**31, max: 2**31 - 1}
+            nodes: {min: 0, max: 500}
+        returns:
+          type: bool
+          description: True if every node satisfies the rule.
+  notes:
+    - It may be a single chain that deep.
   examples:
     - input: |
         is_search_tree(TreeNode(2, TreeNode(2), TreeNode(3)))

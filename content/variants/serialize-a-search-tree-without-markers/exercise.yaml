@@ -42,11 +42,35 @@ kata:
   complexity:
     expected_time: "O(n) for each function"
     expected_space: "O(n)"
-  constraints:
-    - "The tree has between 0 and 10**5 nodes and is at most 500 levels deep; an empty tree is None."
-    - "-10**9 <= node.value <= 10**9, and no two nodes share a value."
-    - "The tree is a valid binary search tree."
-    - "deserialize is only ever given a string that serialize returned."
+  signature:
+    functions:
+      - name: serialize
+        summary: Turn a binary search tree into a string of its values.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: the root of a search tree with distinct values, or None.
+            values: {min: -10**9, max: 10**9}
+            nodes: {min: 0, max: 10**5}
+        returns:
+          type: str
+          description: >-
+            The values as decimal integers joined by commas, one per node and nothing
+            else. The empty string for an empty tree.
+      - name: deserialize
+        summary: "Rebuild the tree that `serialize` was given."
+        parameters:
+          - name: data
+            type: str
+            description: "the output of `serialize`."
+        returns:
+          type: TreeNode | None
+          description: A tree with the same values in the same shape.
+  notes:
+    - "And is at most 500 levels deep; an empty tree is None."
+    - No two nodes share a value.
+    - The tree is a valid binary search tree.
+    - deserialize is only ever given a string that serialize returned.
   examples:
     - input: |
         root = TreeNode(2, TreeNode(1), TreeNode(3))

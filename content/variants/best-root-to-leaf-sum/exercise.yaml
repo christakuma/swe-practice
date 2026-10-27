@@ -37,9 +37,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h) for the recursion"
-  constraints:
-    - "The tree has between 1 and 10**4 nodes and is at most 500 levels deep."
-    - "-1000 <= node.value <= 1000"
+  signature:
+    functions:
+      - name: best_path_sum
+        summary: Return the largest sum along any path from the root down to a leaf.
+        parameters:
+          - name: root
+            type: TreeNode
+            description: "the root of a non-empty tree. Values may be negative."
+            values: {min: -1000, max: 1000}
+            nodes: {min: 1, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            The largest total of the values on a path that starts at `root` and ends at
+            a node with no children.
+  notes:
+    - It is at most 500 levels deep.
   examples:
     - input: |
         root = TreeNode(1, TreeNode(2), TreeNode(3))

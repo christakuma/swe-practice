@@ -41,9 +41,24 @@ kata:
   complexity:
     expected_time: "O(total characters)"
     expected_space: "O(total characters)"
-  constraints:
-    - "0 <= len(words) <= 10**4"
-    - "0 <= len(words[i]) <= 100"
+  signature:
+    functions:
+      - name: group_by_pattern
+        summary: Group words that share a letter pattern.
+        parameters:
+          - name: words
+            type: list[str]
+            description: the words to group. May be empty or hold duplicates.
+            length: {min: 0, max: 10**4}
+            item_length: {min: 0, max: 100}
+        returns:
+          type: list[list[str]]
+          description: >-
+            A list of groups. Each group holds the words that can be turned into one
+            another by consistently renaming letters, in the order they appeared in
+            `words`. The groups themselves are ordered by where each group's first word
+            appeared.
+  notes:
     - "Characters are compared exactly; case matters."
   examples:
     - input: |

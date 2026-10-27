@@ -14,7 +14,11 @@ class WordStore:
         raise NotImplementedError
 
     def add(self, word: str) -> None:
-        """Store `word`. Adding the same word twice changes nothing."""
+        """Store `word`. Adding the same word twice changes nothing.
+
+        Args:
+            word: the word to store. May be empty.
+        """
         raise NotImplementedError
 
     def search(self, word: str) -> bool:
@@ -22,5 +26,12 @@ class WordStore:
 
         The stored word must be the same length as `word` and differ from it
         in exactly one position -- not zero, and not two.
+
+        Args:
+            word: the word to compare against every stored word.
+
+        Returns:
+            True if some stored word differs from `word` in exactly one
+            position, False otherwise.
         """
         raise NotImplementedError

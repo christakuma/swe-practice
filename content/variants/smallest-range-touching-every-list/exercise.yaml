@@ -43,10 +43,28 @@ kata:
   complexity:
     expected_time: "O(n log k) for n nodes in total"
     expected_space: "O(k)"
-  constraints:
-    - "0 <= len(lists) <= 1000"
-    - "Each list has between 0 and 100 nodes, in ascending order; equal values may repeat."
-    - "-10**9 <= node.value <= 10**9"
+  signature:
+    functions:
+      - name: smallest_range
+        summary: Return the narrowest range holding a value from every list.
+        parameters:
+          - name: lists
+            type: list[ListNode | None]
+            description: >-
+              the heads of the sorted lists. The outer list may be empty, and any entry
+              may be None for an empty list. Not to be relinked.
+            length: {min: 0, max: 1000}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: tuple[int, int] | None
+          description: >-
+            `(low, high)` with at least one value from every list between them,
+            inclusive, and `high - low` as small as possible; the smallest `low` among
+            ties. None when there are no lists or any list is empty.
+  notes:
+    - >-
+      Each list has between 0 and 100 nodes, in ascending order; equal values may
+      repeat.
   examples:
     - input: |
         lists = [

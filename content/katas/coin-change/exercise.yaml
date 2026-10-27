@@ -35,10 +35,26 @@ kata:
   complexity:
     expected_time: "O(amount * number of coins)"
     expected_space: "O(amount)"
-  constraints:
-    - "0 <= len(coins) <= 12"
-    - "1 <= coins[i] <= 10**4"
-    - "0 <= amount <= 10**4"
+  signature:
+    functions:
+      - name: fewest_coins
+        summary: "Return the fewest coins that add up to `amount`."
+        details: Each coin value may be used any number of times.
+        parameters:
+          - name: coins
+            type: list[int]
+            description: the available coin values, all positive.
+            length: {min: 0, max: 12}
+            values: {min: 1, max: 10**4}
+          - name: amount
+            type: int
+            description: the total to make. Zero or more.
+            values: {min: 0, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            The smallest number of coins summing to `amount`, or -1 if no combination
+            does.
   examples:
     - input: |
         fewest_coins([1, 2, 5], 11)

@@ -37,9 +37,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= steps <= 500"
-    - "The answer is exact however large it is; Python integers do not overflow."
+  signature:
+    functions:
+      - name: ways_to_climb
+        summary: "Count the distinct ways to climb `steps` steps, one or two at a time."
+        parameters:
+          - name: steps
+            type: int
+            description: how many steps there are. Zero or more.
+            values: {min: 0, max: 500}
+        returns:
+          type: int
+          description: >-
+            The number of distinct sequences of 1s and 2s that sum to `steps`. There is
+            exactly one way to climb zero steps: take none.
+  notes:
+    - >-
+      The answer is exact however large it is; Python integers do not overflow.
   examples:
     - input: |
         ways_to_climb(2)

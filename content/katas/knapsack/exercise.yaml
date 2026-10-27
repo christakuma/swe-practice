@@ -35,10 +35,28 @@ kata:
   complexity:
     expected_time: "O(items * capacity)"
     expected_space: "O(capacity)"
-  constraints:
-    - "0 <= len(items) <= 200"
-    - "Each item is (weight, value) with 1 <= weight <= 1000 and 1 <= value <= 1000."
-    - "0 <= capacity <= 5000"
+  signature:
+    functions:
+      - name: best_value
+        summary: Return the most value that fits in the capacity.
+        details: Each item may be taken at most once, and cannot be split.
+        parameters:
+          - name: items
+            type: list[tuple[int, int]]
+            description: "`(weight, value)` pairs, both positive."
+            length: {min: 0, max: 200}
+          - name: capacity
+            type: int
+            description: the total weight allowed. Zero or more.
+            values: {min: 0, max: 5000}
+        returns:
+          type: int
+          description: >-
+            The largest total value of any subset whose total weight is within the
+            capacity.
+  notes:
+    - >-
+      Each item is (weight, value) with 1 <= weight <= 1000 and 1 <= value <= 1000.
   examples:
     - input: |
         best_value([(1, 1), (3, 4), (4, 5), (5, 7)], 7)

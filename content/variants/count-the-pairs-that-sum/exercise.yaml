@@ -38,10 +38,27 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(numbers) <= 10**5"
-    - "-10**9 <= numbers[i] <= 10**9"
-    - "-10**9 <= target <= 10**9"
+  signature:
+    functions:
+      - name: count_pairs
+        summary: "Return how many pairs of positions hold values adding up to `target`."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              the values to search. May be empty, and may contain duplicates and
+              negatives.
+            length: {min: 0, max: 10**5}
+            values: {min: -10**9, max: 10**9}
+          - name: target
+            type: int
+            description: the sum a pair must have.
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: >-
+            The number of unordered pairs of distinct positions whose values sum to
+            `target`.
   examples:
     - input: |
         count_pairs([1, 5, 7, -1], 6)

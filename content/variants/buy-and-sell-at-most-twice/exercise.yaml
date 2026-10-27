@@ -36,9 +36,21 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(prices) <= 10**5"
-    - "0 <= prices[i] <= 10**4"
+  signature:
+    functions:
+      - name: max_profit
+        summary: Return the largest total profit from at most two trades.
+        parameters:
+          - name: prices
+            type: list[int]
+            description: the price on each day, in order. May be empty.
+            length: {min: 0, max: 10**5}
+            values: {min: 0, max: 10**4}
+        returns:
+          type: int
+          description: >-
+            The best total from up to two buy-then-sell trades that do not overlap, or 0
+            if no trade makes a profit.
   examples:
     - input: |
         max_profit([3, 3, 5, 0, 0, 3, 1, 4])

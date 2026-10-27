@@ -39,9 +39,30 @@ kata:
   complexity:
     expected_time: "O(n * m) in the worst case"
     expected_space: "O(h)"
-  constraints:
-    - "The tree has between 0 and 500 nodes and the candidate between 0 and 100; an empty one is None."
-    - "-10**4 <= node.value <= 10**4"
+  signature:
+    functions:
+      - name: is_subtree
+        summary: >-
+          Return whether `candidate` fits over part of `tree`, from some node down.
+        parameters:
+          - name: tree
+            type: TreeNode | None
+            description: the tree to search.
+            values: {min: -10**4, max: 10**4}
+            nodes: {min: 0, max: 500}
+          - name: candidate
+            type: TreeNode | None
+            description: the shape to look for. None is contained in anything.
+            values: {min: -10**4, max: 10**4}
+            nodes: {min: 0, max: 100}
+        returns:
+          type: bool
+          description: >-
+            True if some node of `tree` matches `candidate`'s root and every node of
+            `candidate` has a same-valued node in the same position below it. The tree
+            may have further nodes the candidate lacks.
+  notes:
+    - "An empty tree, or an empty candidate, is None."
     - "Values may repeat within a tree."
   examples:
     - input: |

@@ -41,11 +41,29 @@ kata:
   complexity:
     expected_time: "O(log n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(numbers) <= 2 * 10**6"
-    - "-10**9 <= numbers[i] <= 10**9, and so is target."
-    - "All values are distinct."
-    - "The list is ascending order rotated left by some number of places, possibly none."
+  signature:
+    functions:
+      - name: search
+        summary: "Return the index of `target` in a rotated sorted list, or -1."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              a sorted list of distinct integers rotated left by an unknown amount. May
+              be empty. A rotation of zero is possible.
+            length: {min: 0, max: 2 * 10**6}
+            values: {min: -10**9, max: 10**9}
+          - name: target
+            type: int
+            description: the value to find.
+        returns:
+          type: int
+          description: "The index of `target`, or -1 if it is not present."
+  notes:
+    - So is target.
+    - All values are distinct.
+    - >-
+      The list is ascending order rotated left by some number of places, possibly none.
   examples:
     - input: |
         search([4, 5, 6, 7, 0, 1, 2], 0)

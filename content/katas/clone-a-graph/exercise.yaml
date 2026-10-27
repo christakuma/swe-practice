@@ -40,11 +40,26 @@ kata:
   complexity:
     expected_time: "O(V + E)"
     expected_space: "O(V)"
-  constraints:
-    - "The graph has between 0 and 300 nodes; the empty graph is None."
-    - "Every node can be reached from the one you are given."
+  signature:
+    functions:
+      - name: clone_graph
+        summary: "Deep-copy the graph reachable from `node`."
+        parameters:
+          - name: node
+            type: Node | None
+            description: any node of a connected undirected graph, or None.
+            nodes: {min: 0, max: 300}
+        returns:
+          type: Node | None
+          description: >-
+            The copy of `node`. Every node and every neighbour reference in the result
+            is newly created; none is shared with the input.
+  notes:
+    - The empty graph is None.
+    - Every node can be reached from the one you are given.
     - "Edges are undirected: if b is in a.neighbours then a is in b.neighbours."
-    - "Values may repeat. Two nodes are the same node only if they are the same object."
+    - >-
+      Values may repeat. Two nodes are the same node only if they are the same object.
   examples:
     - input: |
         a, b = Node(1), Node(2)

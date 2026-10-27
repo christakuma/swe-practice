@@ -33,10 +33,23 @@ kata:
   complexity:
     expected_time: "O(n * number of decodings)"
     expected_space: "O(n) beyond the output"
-  constraints:
-    - "0 <= len(digits) <= 20"
-    - "Every character is one of the digits 0 to 9."
-    - "There are at most 10,946 decodings."
+  signature:
+    functions:
+      - name: decodings
+        summary: "Return every decoding of a digit string into letters A=1..Z=26."
+        parameters:
+          - name: digits
+            type: str
+            description: a string of decimal digits. May be empty.
+            length: {min: 0, max: 20}
+        returns:
+          type: list[str]
+          description: >-
+            Every distinct letter string that encodes to `digits`, in ascending order.
+            Empty if there are none, including for the empty string.
+  notes:
+    - Every character is one of the digits 0 to 9.
+    - There are at most 10,946 decodings.
   examples:
     - input: |
         decodings("12")

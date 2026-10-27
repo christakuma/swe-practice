@@ -10,7 +10,6 @@ def longest_run(text: str, k: int, target: str) -> int:
         target: the single character the run must consist of.
 
     Returns:
-        The length of the longest stretch that can be made entirely
-        `target`.
+        The length of the longest stretch that can be made entirely `target`.
     """
     raise NotImplementedError

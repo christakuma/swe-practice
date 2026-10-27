@@ -35,10 +35,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(min(n, k))"
-  constraints:
-    - "0 <= len(numbers) <= 10**6"
-    - "-10**9 <= numbers[i] <= 10**9"
-    - "0 <= k <= 10**6"
+  signature:
+    functions:
+      - name: has_duplicate
+        summary: "Return whether two equal values sit at most `k` positions apart."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the values to check. May be empty.
+            length: {min: 0, max: 10**6}
+            values: {min: -10**9, max: 10**9}
+          - name: k
+            type: int
+            description: the furthest apart two equal values may be. Zero or more.
+            values: {min: 0, max: 10**6}
+        returns:
+          type: bool
+          description: >-
+            True if some value occurs at two different positions no more than `k` apart.
   examples:
     - input: |
         has_duplicate([1, 2, 3, 1], 3)

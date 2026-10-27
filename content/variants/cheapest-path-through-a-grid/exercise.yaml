@@ -36,9 +36,22 @@ kata:
   complexity:
     expected_time: "O(rows * columns)"
     expected_space: "O(columns)"
-  constraints:
+  signature:
+    functions:
+      - name: cheapest_path
+        summary: "Return the smallest total cost of a right-and-down path across the grid."
+        parameters:
+          - name: grid
+            type: list[list[int]]
+            description: "a rectangular grid of non-negative costs, with at least one cell."
+        returns:
+          type: int
+          description: >-
+            The least possible sum of the cells on a path from the top-left cell to the
+            bottom-right one that only ever moves right or down.
+  notes:
     - "1 <= rows <= 300 and 1 <= columns <= 300"
-    - "Every row is the same length."
+    - Every row is the same length.
     - "0 <= grid[r][c] <= 1000"
   examples:
     - input: |

@@ -37,10 +37,29 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(h)"
-  constraints:
-    - "The tree has between 0 and 10**4 nodes, and may be a single chain that deep."
-    - "-2**31 <= node.value <= 2**31 - 1, and no two nodes share a value."
-    - "Either the tree is a valid search tree, or it becomes one when exactly two values are exchanged."
+  signature:
+    functions:
+      - name: swapped_values
+        summary: Return the two values whose exchange broke a search tree.
+        parameters:
+          - name: root
+            type: TreeNode | None
+            description: >-
+              the root of a tree that is a valid search tree with distinct values, or
+              was one before two of its values were exchanged.
+            values: {min: -2**31, max: 2**31 - 1}
+            nodes: {min: 0, max: 10**4}
+        returns:
+          type: tuple[int, int] | None
+          description: >-
+            The two exchanged values, smaller first, or None if the tree is valid as it
+            stands.
+  notes:
+    - It may be a single chain that deep.
+    - No two nodes share a value.
+    - >-
+      Either the tree is a valid search tree, or it becomes one when exactly two values
+      are exchanged.
   examples:
     - input: |
         swapped_values(TreeNode(1, TreeNode(3, None, TreeNode(2))))

@@ -26,7 +26,7 @@ def sort_list(head: ListNode | None) -> ListNode | None:
         head: the first node of the list, or None for an empty list.
 
     Returns:
-        The head of the sorted list, made of the same nodes. Nodes with
-        equal values keep their original order.
+        The head of the sorted list, made of the same nodes. Nodes with equal
+        values keep their original order.
     """
     raise NotImplementedError

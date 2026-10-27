@@ -45,12 +45,47 @@ kata:
   complexity:
     expected_time: "O(total characters) across all calls"
     expected_space: "O(longest string still incomplete)"
-  constraints:
-    - "0 <= len(strings) <= 2000"
-    - "0 <= len(strings[i]) <= 2000"
-    - "A string may hold any Unicode character, including \"\\0\", line breaks and digits."
-    - "The chunks given to one Decoder, joined together, are always exactly what encode returned."
-    - "A chunk may be empty."
+  signature:
+    functions:
+      - name: encode
+        summary: Pack a list of strings into a single string.
+        parameters:
+          - name: strings
+            type: list[str]
+            description: >-
+              the strings to pack. Any contents, including empty strings and any
+              character at all.
+            length: {min: 0, max: 2000}
+            item_length: {min: 0, max: 2100}
+        returns:
+          type: str
+          description: >-
+            A single string that a `Decoder` can turn back into the list, however it is
+            cut into pieces on the way.
+    classes:
+      - name: Decoder
+        summary: Rebuilds strings from encoded text that arrives a piece at a time.
+        methods:
+          - name: __init__
+            summary: Create a decoder that has received nothing yet.
+          - name: feed
+            summary: Accept the next piece of encoded text.
+            parameters:
+              - name: chunk
+                type: str
+                description: >-
+                  the next characters of the output of `encode`. May be empty, and may
+                  end anywhere.
+            returns:
+              type: list[str]
+              description: The strings whose last character arrived in this chunk, in order.
+  notes:
+    - >-
+      A string may hold any Unicode character, including "\0", line breaks and digits.
+    - >-
+      The chunks given to one Decoder, joined together, are always exactly what encode
+      returned.
+    - A chunk may be empty.
   examples:
     - input: |
         decoder = Decoder()

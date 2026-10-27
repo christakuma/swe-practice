@@ -35,9 +35,22 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "1 <= len(jumps) <= 10**5"
-    - "0 <= jumps[i] <= 10**5"
+  signature:
+    functions:
+      - name: can_reach_the_end
+        summary: Whether the last position is reachable from the first.
+        details: |-
+          `jumps[i]` is the furthest you may move forward from position i. You start
+          at position 0.
+        parameters:
+          - name: jumps
+            type: list[int]
+            description: "non-negative maximum jump lengths. Never empty."
+            length: {min: 1, max: 10**5}
+            values: {min: 0, max: 10**5}
+        returns:
+          type: bool
+          description: True if the last position can be reached.
   examples:
     - input: |
         can_reach_the_end([2, 3, 1, 1, 4])

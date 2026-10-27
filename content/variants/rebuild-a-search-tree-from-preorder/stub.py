@@ -29,7 +29,7 @@ def rebuild(preorder: list[int]) -> TreeNode | None:
             All distinct. Must not be modified.
 
     Returns:
-        The root of the search tree whose pre-order traversal is `preorder`,
-        or None if the list is empty.
+        The root of the search tree whose pre-order traversal is `preorder`, or
+        None if the list is empty.
     """
     raise NotImplementedError

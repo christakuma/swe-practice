@@ -34,8 +34,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(text) <= 10**5"
+  signature:
+    functions:
+      - name: is_balanced
+        summary: Whether some reading of the stars leaves the brackets balanced.
+        parameters:
+          - name: text
+            type: str
+            description: >-
+              a string of `(`, `)` and `*`. Each `*` may stand for `(`, for `)`, or for
+              nothing.
+            length: {min: 0, max: 10**5 + 1}
+        returns:
+          type: bool
+          description: >-
+            True if the stars can be read so that every bracket is closed by a later
+            partner.
+  notes:
     - "Every character is one of ( ) *"
   examples:
     - input: |

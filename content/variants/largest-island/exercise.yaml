@@ -33,10 +33,27 @@ kata:
   complexity:
     expected_time: "O(rows * columns)"
     expected_space: "O(rows * columns) for the stack in the worst case"
-  constraints:
-    - "0 <= rows <= 300 and 0 <= columns <= 300"
-    - "Every row is the same length, and every cell is 0 or 1."
-    - "One island may cover the whole grid: 90,000 cells, far deeper than Python will recurse."
+  signature:
+    functions:
+      - name: largest_island
+        summary: Return the number of cells in the largest connected group of 1s.
+        details: |-
+          Cells are connected when they are directly above, below, left or right of
+          each other. Diagonals do not connect.
+        parameters:
+          - name: grid
+            type: list[list[int]]
+            description: a rectangular grid of 0s and 1s. May be empty. You may modify it.
+            length: {min: 0, max: 300}
+            item_length: {min: 0, max: 300}
+        returns:
+          type: int
+          description: The area of the largest island, or 0 if there is no land.
+  notes:
+    - Every row is the same length, and every cell is 0 or 1.
+    - >-
+      One island may cover the whole grid: 90,000 cells, far deeper than Python will
+      recurse.
   examples:
     - input: |
         grid = [

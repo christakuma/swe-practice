@@ -12,7 +12,7 @@ def longest_common_subsequence(first: str, second: str) -> str:
         second: the other.
 
     Returns:
-        A string that is a subsequence of both and as long as any such
-        string can be. Empty if they share no characters.
+        A string that is a subsequence of both and as long as any such string
+        can be. Empty if they share no characters.
     """
     raise NotImplementedError

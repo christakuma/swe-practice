@@ -43,10 +43,28 @@ kata:
   complexity:
     expected_time: "O(n + m)"
     expected_space: "O(k) for k distinct needed characters"
-  constraints:
-    - "0 <= len(text) <= 10**6"
-    - "0 <= len(needed) <= 10**4"
-    - "Characters are compared exactly."
+  signature:
+    functions:
+      - name: smallest_window
+        summary: >-
+          Return the shortest substring of `text` covering every character of `needed`,
+          earliest on a tie.
+        parameters:
+          - name: text
+            type: str
+            description: the string to search. May be empty.
+            length: {min: 0, max: 10**6}
+          - name: needed
+            type: str
+            description: >-
+              the characters that must all appear, with multiplicity. May be empty, in
+              which case there is nothing to cover and the answer is "".
+            length: {min: 0, max: 10**4}
+        returns:
+          type: str
+          description: "The shortest covering substring, or \"\" if there is none."
+  notes:
+    - Characters are compared exactly.
   examples:
     - input: |
         smallest_window("ADOBECODEBANC", "ABC")

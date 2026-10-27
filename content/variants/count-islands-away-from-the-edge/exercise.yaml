@@ -37,10 +37,28 @@ kata:
   complexity:
     expected_time: "O(rows * columns)"
     expected_space: "O(rows * columns) worst case for the search"
-  constraints:
-    - "0 <= rows <= 300 and 0 <= columns <= 300"
-    - "Every row is the same length, and every cell is 0 or 1."
-    - "One island may cover the whole grid: 90,000 cells, far deeper than Python will recurse."
+  signature:
+    functions:
+      - name: count_islands
+        summary: Count the islands that do not touch the edge of the grid.
+        parameters:
+          - name: grid
+            type: list[list[int]]
+            description: >-
+              a rectangular grid of 0s (water) and 1s (land). May be empty. May be
+              modified.
+            length: {min: 0, max: 300}
+            item_length: {min: 0, max: 300}
+        returns:
+          type: int
+          description: >-
+            The number of connected groups of 1s, joined up, down, left and right, that
+            have no cell in the first or last row or column.
+  notes:
+    - Every row is the same length, and every cell is 0 or 1.
+    - >-
+      One island may cover the whole grid: 90,000 cells, far deeper than Python will
+      recurse.
   examples:
     - input: |
         count_islands([

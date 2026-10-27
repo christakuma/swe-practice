@@ -33,9 +33,23 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(k) for k distinct characters"
-  constraints:
-    - "0 <= len(text) <= 10**6"
-    - "Any characters may appear, and they are compared exactly."
+  signature:
+    functions:
+      - name: smallest_window
+        summary: >-
+          Return the shortest substring holding every distinct character of `text`.
+        parameters:
+          - name: text
+            type: str
+            description: the string to search. May be empty.
+            length: {min: 0, max: 10**6 + 2}
+        returns:
+          type: str
+          description: >-
+            The shortest substring that contains each character of `text` at least once,
+            earliest on a tie. "" for an empty string.
+  notes:
+    - Any characters may appear, and they are compared exactly.
   examples:
     - input: |
         smallest_window("aabcbcdbca")

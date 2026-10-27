@@ -35,9 +35,20 @@ kata:
   complexity:
     expected_time: "O(m * n)"
     expected_space: "O(m + n)"
-  constraints:
-    - "0 <= m <= 200 and 0 <= n <= 200, for m rows of n values each."
-    - "-10**9 <= matrix[i][j] <= 10**9"
+  signature:
+    functions:
+      - name: set_zeroes
+        summary: Zero the row and column of every original zero, and count the changes.
+        parameters:
+          - name: matrix
+            type: list[list[int]]
+            description: "an `m x n` grid. Mutated directly. May be empty."
+            length: {min: 0, max: 200}
+            item_length: {min: 0, max: 200}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: int
+          description: "How many cells went from a non-zero value to zero."
   examples:
     - input: |
         matrix = [

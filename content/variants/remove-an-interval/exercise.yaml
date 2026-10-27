@@ -36,10 +36,28 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n) for the output"
-  constraints:
-    - "0 <= len(intervals) <= 10**5"
-    - "Every interval, gone included, is (start, end) with -10**9 <= start < end <= 10**9."
-    - "The given intervals are sorted by start and no two of them overlap."
+  signature:
+    functions:
+      - name: remove
+        summary: "Remove `gone` from a sorted list of non-overlapping half-open intervals."
+        parameters:
+          - name: intervals
+            type: list[tuple[int, int]]
+            description: >-
+              `(start, end)` pairs with `start < end`, ascending and non-overlapping.
+              May be empty. Not to be modified.
+            length: {min: 0, max: 10**5}
+          - name: gone
+            type: tuple[int, int]
+            description: "the stretch to remove, with `start < end`."
+        returns:
+          type: list[tuple[int, int]]
+          description: "What is left: ascending, non-overlapping, and with no empty interval."
+  notes:
+    - >-
+      Every interval, gone included, is (start, end) with -10**9 <= start < end <=
+      10**9.
+    - The given intervals are sorted by start and no two of them overlap.
   examples:
     - input: |
         remove([(0, 2), (3, 4), (5, 7)], (1, 6))

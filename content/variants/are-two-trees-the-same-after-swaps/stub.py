@@ -29,7 +29,7 @@ def is_same_tree(first: TreeNode | None, second: TreeNode | None) -> bool:
         second: the root of the other, or None.
 
     Returns:
-        True if `second` becomes identical to `first` after exchanging the
-        left and right subtrees of any number of its nodes.
+        True if `second` becomes identical to `first` after exchanging the left
+        and right subtrees of any number of its nodes.
     """
     raise NotImplementedError

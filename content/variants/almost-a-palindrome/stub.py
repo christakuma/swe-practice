@@ -9,8 +9,8 @@ def is_almost_palindrome(text: str) -> bool:
     character.
 
     Args:
-        text: the string to check. Every character counts, exactly as
-            written. May be empty.
+        text: the string to check. Every character counts, exactly as written.
+            May be empty.
 
     Returns:
         True if `text` reads the same both ways as it is, or would after

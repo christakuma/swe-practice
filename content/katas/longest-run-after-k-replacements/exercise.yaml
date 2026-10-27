@@ -39,10 +39,26 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(k) for k distinct characters"
-  constraints:
-    - "0 <= len(text) <= 10**6"
-    - "0 <= k <= 10**6"
-    - "The string may hold any characters, not only letters."
+  signature:
+    functions:
+      - name: longest_run
+        summary: "Return the longest uniform run obtainable with at most `k` changes."
+        parameters:
+          - name: text
+            type: str
+            description: the string to work on. May be empty.
+            length: {min: 0, max: 10**6}
+          - name: k
+            type: int
+            description: >-
+              how many characters may be replaced. Never negative; may exceed
+              `len(text)`.
+            values: {min: 0, max: 10**6}
+        returns:
+          type: int
+          description: The length of the longest run of one repeated character achievable.
+  notes:
+    - The string may hold any characters, not only letters.
   examples:
     - input: |
         longest_run("ABAB", 2)

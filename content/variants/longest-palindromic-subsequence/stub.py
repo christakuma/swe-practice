@@ -8,7 +8,7 @@ def longest_palindromic_subsequence(text: str) -> int:
         text: the string to search. May be empty.
 
     Returns:
-        The length of the longest palindrome obtainable by deleting
-        characters from `text` without reordering the rest.
+        The length of the longest palindrome obtainable by deleting characters
+        from `text` without reordering the rest.
     """
     raise NotImplementedError

@@ -37,9 +37,19 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(prices) <= 10**6"
-    - "-10**6 <= prices[i] <= 10**6"
+  signature:
+    functions:
+      - name: max_profit
+        summary: Return the largest profit from one buy followed by one later sell.
+        parameters:
+          - name: prices
+            type: list[int]
+            description: the price on each day, in order. May be empty.
+            length: {min: 0, max: 10**6}
+            values: {min: -10**6, max: 10**6}
+        returns:
+          type: int
+          description: The best profit available, or 0 if no profitable pair of days exists.
   examples:
     - input: |
         max_profit([7, 1, 5, 3, 6, 4])

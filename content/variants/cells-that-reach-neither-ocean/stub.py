@@ -8,7 +8,7 @@ def neither_ocean(heights: list[list[int]]) -> list[tuple[int, int]]:
         heights: an `m x n` grid of heights. May be empty or have empty rows.
 
     Returns:
-        Every `(row, column)` from which water can reach no edge of the
-        grid, sorted ascending.
+        Every `(row, column)` from which water can reach no edge of the grid,
+        sorted ascending.
     """
     raise NotImplementedError

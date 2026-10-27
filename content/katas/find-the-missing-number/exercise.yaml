@@ -36,11 +36,24 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= n <= 10**6, where n is len(numbers)"
+  signature:
+    functions:
+      - name: find_missing
+        summary: "Return the one value from 0..len(numbers) that is not in `numbers`."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: >-
+              `n` distinct integers drawn from `0..n`, in any order, where `n` is
+              `len(numbers)`. May be empty.
+            length: {min: 0, max: 10**6}
+        returns:
+          type: int
+          description: The single missing value. For an empty list that is 0.
+  notes:
     - "0 <= numbers[i] <= n"
-    - "All values are distinct, so exactly one value in 0..n is absent."
-    - "The list is in no particular order."
+    - All values are distinct, so exactly one value in 0..n is absent.
+    - The list is in no particular order.
   examples:
     - input: |
         find_missing([3, 0, 1])

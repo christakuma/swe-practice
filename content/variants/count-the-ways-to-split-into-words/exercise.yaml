@@ -34,11 +34,27 @@ kata:
   complexity:
     expected_time: "O(n * k) for a longest word of length k"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(text) <= 1000"
-    - "0 <= len(words) <= 1000"
-    - "1 <= len(words[i]) <= 20"
-    - "Characters are compared exactly."
+  signature:
+    functions:
+      - name: count_segmentations
+        summary: "Count the ways `text` splits into a sequence of words from `words`."
+        parameters:
+          - name: text
+            type: str
+            description: the string to split. May be empty.
+            length: {min: 0, max: 1000}
+          - name: words
+            type: list[str]
+            description: "the allowed words. May repeat; a repeat adds nothing."
+            length: {min: 0, max: 1000}
+            item_length: {min: 1, max: 20}
+        returns:
+          type: int
+          description: >-
+            The number of different sequences of words that concatenate to `text`. One
+            for the empty string.
+  notes:
+    - Characters are compared exactly.
   examples:
     - input: |
         count_segmentations("catsanddog", ["cat", "cats", "and", "sand", "dog"])

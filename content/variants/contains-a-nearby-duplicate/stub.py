@@ -9,7 +9,7 @@ def has_duplicate(numbers: list[int], k: int) -> bool:
         k: the furthest apart two equal values may be. Zero or more.
 
     Returns:
-        True if some value occurs at two different positions no more than
-        `k` apart.
+        True if some value occurs at two different positions no more than `k`
+        apart.
     """
     raise NotImplementedError

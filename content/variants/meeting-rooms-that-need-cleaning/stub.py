@@ -9,7 +9,7 @@ def rooms_needed(meetings: list[tuple[int, int]], gap: int) -> int:
         gap: how long a room must stand empty after a meeting. Zero or more.
 
     Returns:
-        The smallest number of rooms such that no room hosts two meetings
-        less than `gap` apart.
+        The smallest number of rooms such that no room hosts two meetings less
+        than `gap` apart.
     """
     raise NotImplementedError

@@ -37,8 +37,19 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(n) for the result"
-  constraints:
-    - "0 <= n <= 10**6"
+  signature:
+    functions:
+      - name: count_bits_up_to
+        summary: "Return the set-bit count of every integer from 0 to `n` inclusive."
+        parameters:
+          - name: n
+            type: int
+            description: "a non-negative integer."
+            values: {min: 0, max: 10**6}
+        returns:
+          type: list[int]
+          description: >-
+            A list of length `n + 1`, where entry `i` holds the number of 1 bits in `i`.
   examples:
     - input: |
         count_bits_up_to(2)

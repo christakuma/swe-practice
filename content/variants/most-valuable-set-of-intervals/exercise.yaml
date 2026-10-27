@@ -38,11 +38,28 @@ kata:
   complexity:
     expected_time: "O(n log n)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(intervals) <= 10**5"
-    - "Each interval is (start, end, value) with -10**9 <= start < end <= 10**9."
+  signature:
+    functions:
+      - name: most_valuable
+        summary: "Return the largest total value of a set of non-overlapping intervals."
+        parameters:
+          - name: intervals
+            type: list[tuple[int, int, int]]
+            description: >-
+              `(start, end, value)` triples in any order, with `start < end` and a
+              positive value. May be empty and may repeat. Touching intervals do not
+              overlap.
+            length: {min: 0, max: 10**5}
+        returns:
+          type: int
+          description: >-
+            The greatest sum of values over any selection in which no two intervals
+            overlap.
+  notes:
+    - >-
+      Each interval is (start, end, value) with -10**9 <= start < end <= 10**9.
     - "1 <= value <= 10**4"
-    - "Intervals arrive in no particular order and may repeat."
+    - Intervals arrive in no particular order and may repeat.
   examples:
     - input: |
         most_valuable([(0, 2, 1), (0, 3, 9)])

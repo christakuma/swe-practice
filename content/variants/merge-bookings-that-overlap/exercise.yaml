@@ -36,10 +36,26 @@ kata:
   complexity:
     expected_time: "O(n log n)"
     expected_space: "O(n) for the output"
-  constraints:
-    - "0 <= len(intervals) <= 10**5"
-    - "Each interval is (start, end) with -10**9 <= start < end <= 10**9."
-    - "Intervals arrive in no particular order and may repeat."
+  signature:
+    functions:
+      - name: merge_intervals
+        summary: "Merge the half-open intervals that overlap."
+        parameters:
+          - name: intervals
+            type: list[tuple[int, int]]
+            description: >-
+              `(start, end)` pairs with `start < end`, each covering `start` up to but
+              not including `end`. In any order.
+            length: {min: 0, max: 10**5}
+            values: {min: -10**9, max: 10**9}
+        returns:
+          type: list[tuple[int, int]]
+          description: >-
+            The merged intervals, sorted by start. Two intervals that only touch are not
+            merged.
+  notes:
+    - "Each interval is a pair (start, end) with start < end."
+    - Intervals arrive in no particular order and may repeat.
   examples:
     - input: |
         merge_intervals([(1, 3), (3, 5)])

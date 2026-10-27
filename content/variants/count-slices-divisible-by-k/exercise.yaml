@@ -34,10 +34,25 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(min(n, k))"
-  constraints:
-    - "0 <= len(numbers) <= 10**5"
-    - "-10**4 <= numbers[i] <= 10**4"
-    - "1 <= k <= 10**4"
+  signature:
+    functions:
+      - name: count_subarrays
+        summary: "Count the contiguous slices of `numbers` whose sum is divisible by `k`."
+        parameters:
+          - name: numbers
+            type: list[int]
+            description: the values. May contain zeros and negatives.
+            length: {min: 0, max: 10**5}
+            values: {min: -10**4, max: 10**4}
+          - name: k
+            type: int
+            description: the divisor. At least 1.
+            values: {min: 1, max: 10**5}
+        returns:
+          type: int
+          description: >-
+            How many contiguous, non-empty slices have a sum that is a multiple of `k`,
+            zero included.
   examples:
     - input: |
         count_subarrays([4, 5, 0, -2, -3, 1], 5)

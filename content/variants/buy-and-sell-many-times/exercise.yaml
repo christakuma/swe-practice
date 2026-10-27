@@ -34,9 +34,22 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(prices) <= 10**6"
-    - "0 <= prices[i] <= 10**6"
+  signature:
+    functions:
+      - name: max_profit
+        summary: Return the largest total profit from any number of trades.
+        details: |-
+          You may hold at most one share at a time, so each buy must be followed
+          by a sell before the next buy.
+        parameters:
+          - name: prices
+            type: list[int]
+            description: the price on each day, in order. May be empty.
+            length: {min: 0, max: 10**6 + 2}
+            values: {min: 0, max: 10**6}
+        returns:
+          type: int
+          description: The best total profit available, or 0 if no trade is profitable.
   examples:
     - input: |
         max_profit([7, 1, 5, 3, 6, 4])

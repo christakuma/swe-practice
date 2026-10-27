@@ -44,11 +44,28 @@ kata:
   complexity:
     expected_time: "O(n log n)"
     expected_space: "O(n) for the sorted copy"
-  constraints:
-    - "0 <= len(meetings) <= 10**4"
-    - "Each meeting is (start, end) with 0 <= start <= 1439, 0 <= end <= 1439 and start != end."
+  signature:
+    functions:
+      - name: can_attend_all
+        summary: Whether one person could attend every meeting, every day.
+        parameters:
+          - name: meetings
+            type: list[tuple[int, int]]
+            description: >-
+              `(start, end)` pairs in minutes after midnight, each from 0 to 1439 and
+              never equal. Half-open. An `end` smaller than its `start` means the
+              meeting runs through midnight. In any order, possibly repeated. Not to be
+              modified.
+            length: {min: 0, max: 10**4}
+        returns:
+          type: bool
+          description: True if no two meetings are ever in progress at the same minute.
+  notes:
+    - >-
+      Each meeting is (start, end) with 0 <= start <= 1439, 0 <= end <= 1439 and start
+      != end.
     - "end < start means the meeting runs through midnight into the next day."
-    - "Meetings arrive in no particular order and may repeat."
+    - Meetings arrive in no particular order and may repeat.
   examples:
     - input: |
         can_attend_all([(1320, 120), (180, 240)])

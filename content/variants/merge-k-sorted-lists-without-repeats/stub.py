@@ -23,11 +23,11 @@ def merge_k_lists(lists: list[ListNode | None]) -> ListNode | None:
     """Merge k sorted lists into one sorted list with no repeated value.
 
     Args:
-        lists: the heads of the sorted lists. The outer list may be empty,
-            and any entry may be None.
+        lists: the heads of the sorted lists. The outer list may be empty, and
+            any entry may be None.
 
     Returns:
-        The head of an ascending list holding each distinct value once,
-        reusing nodes passed in. None when there are no nodes at all.
+        The head of an ascending list holding each distinct value once, reusing
+        nodes passed in. None when there are no nodes at all.
     """
     raise NotImplementedError

@@ -8,7 +8,7 @@ def spiral_matrix(n: int) -> list[list[int]]:
         n: the side of the square. Zero or more.
 
     Returns:
-        A list of `n` rows of `n` integers, starting with 1 in the top-left
-        and spiralling clockwise inward.
+        A list of `n` rows of `n` integers, starting with 1 in the top-left and
+        spiralling clockwise inward.
     """
     raise NotImplementedError

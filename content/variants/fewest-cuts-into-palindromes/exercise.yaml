@@ -39,9 +39,22 @@ kata:
   complexity:
     expected_time: "O(n^2)"
     expected_space: "O(n)"
-  constraints:
-    - "0 <= len(text) <= 1000"
-    - "The string may hold any characters, and they are compared exactly."
+  signature:
+    functions:
+      - name: fewest_cuts
+        summary: "Return the fewest cuts that split `text` into palindromes."
+        parameters:
+          - name: text
+            type: str
+            description: any string, possibly empty. Characters are compared exactly.
+            length: {min: 0, max: 1000}
+        returns:
+          type: int
+          description: >-
+            The smallest number of cuts after which every piece reads the same forwards
+            and backwards. 0 for a palindrome and for the empty string.
+  notes:
+    - The string may hold any characters, and they are compared exactly.
   examples:
     - input: |
         fewest_cuts("aab")

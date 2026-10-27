@@ -5,7 +5,8 @@ The tests import `count_longest_increasing` from this module.
 
 
 def count_longest_increasing(numbers: list[int]) -> int:
-    """Return how many strictly increasing subsequences are of the greatest length.
+    """Return how many strictly increasing subsequences are of the greatest
+    length.
 
     Args:
         numbers: integers in any order. May be empty and may repeat.

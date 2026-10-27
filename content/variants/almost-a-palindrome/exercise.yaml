@@ -36,9 +36,25 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "0 <= len(text) <= 2 * 10**5"
-    - "Any characters may appear, and they are compared exactly."
+  signature:
+    functions:
+      - name: is_almost_palindrome
+        summary: >-
+          Return whether `text` is a palindrome after deleting at most one character.
+        parameters:
+          - name: text
+            type: str
+            description: >-
+              the string to check. Every character counts, exactly as written. May be
+              empty.
+            length: {min: 0, max: 2 * 10**5 + 6}
+        returns:
+          type: bool
+          description: >-
+            True if `text` reads the same both ways as it is, or would after removing a
+            single character.
+  notes:
+    - Any characters may appear, and they are compared exactly.
   examples:
     - input: |
         is_almost_palindrome("abca")

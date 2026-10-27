@@ -4,7 +4,8 @@
 def flood_fill(
     image: list[list[int]], row: int, column: int, colour: int
 ) -> list[list[int]]:
-    """Recolour the border of the region containing a pixel, and return the image.
+    """Recolour the border of the region containing a pixel, and return the
+    image.
 
     Two pixels are in the same region when they touch up, down, left or right
     and started with the same colour. A region pixel is on the border when it

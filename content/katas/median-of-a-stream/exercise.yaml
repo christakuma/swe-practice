@@ -44,8 +44,34 @@ kata:
   complexity:
     expected_time: "O(log n) per add, O(1) per median"
     expected_space: "O(n)"
-  constraints:
-    - "-10**6 <= value <= 10**6, and every value is an integer."
+  signature:
+    classes:
+      - name: MedianStream
+        summary: A running median over a stream of numbers.
+        methods:
+          - name: __init__
+            summary: Create an empty stream.
+          - name: add
+            summary: Take the next number.
+            parameters:
+              - name: value
+                type: int
+                description: the number to add to the stream.
+                values: {min: -10**6, max: 10**6}
+            returns:
+              type: None
+          - name: median
+            summary: Return the median of everything added so far.
+            returns:
+              type: float
+              description: >-
+                The middle value of everything added so far, or the mean of the two
+                middle values when there is an even number of them.
+            raises:
+              - type: ValueError
+                description: if nothing has been added.
+  notes:
+    - Every value is an integer.
     - "At most 10**5 values are added to one stream."
     - "median() may be called after every single add."
   examples:

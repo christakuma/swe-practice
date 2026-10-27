@@ -36,9 +36,22 @@ kata:
   complexity:
     expected_time: "O(n)"
     expected_space: "O(1)"
-  constraints:
-    - "1 <= len(jumps) <= 10**5"
-    - "0 <= jumps[i] <= 10**5"
+  signature:
+    functions:
+      - name: fewest_jumps
+        summary: Return the fewest jumps from the first position to the last.
+        details: "`jumps[i]` is the furthest you may move forward from position i."
+        parameters:
+          - name: jumps
+            type: list[int]
+            description: "non-negative maximum jump lengths. Never empty."
+            length: {min: 1, max: 10**5 + 1}
+            values: {min: 0, max: 10**5}
+        returns:
+          type: int
+          description: >-
+            The smallest number of jumps that reaches the last position, 0 if the list
+            has one position, or -1 if the last position cannot be reached.
   examples:
     - input: |
         fewest_jumps([2, 3, 1, 1, 4])

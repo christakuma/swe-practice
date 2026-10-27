@@ -43,7 +43,20 @@ kata:
   complexity:
     expected_time: "O(n log n)"
     expected_space: "O(log n)"
-  constraints:
+  signature:
+    functions:
+      - name: sort_list
+        summary: Sort the list into ascending order by relinking its nodes.
+        parameters:
+          - name: head
+            type: ListNode | None
+            description: the first node of the list, or None for an empty list.
+        returns:
+          type: ListNode | None
+          description: >-
+            The head of the sorted list, made of the same nodes. Nodes with equal values
+            keep their original order.
+  notes:
     - "The list has between 0 and 5 * 10**4 nodes; an empty list is None."
     - "-10**9 <= node.value <= 10**9"
     - "Values may repeat."
