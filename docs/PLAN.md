@@ -400,8 +400,17 @@ competence with git**. Local web app, no network, no accounts, no CDN.
 > found what no test could: on Windows Monaco's default line ending is CRLF, so
 > the document and the textarea under it disagreed.
 >
+> **Phase 28 gave every kata a declared signature and made its bounds
+> real.** Function, parameters, return value and input ranges are one
+> structure ([ADR 0035](adr/0035-a-kata-declares-its-signature-and-its-bounds-are-enforced.md)); the page's Input / Output
+> header, the constraints and the stub docstrings are derived from it, and the
+> reference solution runs with a footer that fails on an argument outside a
+> declared range. On the day it landed, 24 of the 162 variants' hidden suites
+> turned out to step outside their own stated constraints; none of the 83
+> standard katas did.
+>
 > **Owner:** Chris Sweet · **Plan written:** 2026-09-30 · **v1.0.0:** 2026-10-03
-> · **Last phase:** 27 (a real editor), 2026-10-26
+> · **Last phase:** 28 (a standard kata format), 2026-10-26
 > · **Last change:** Run, and trying again after a failure, 2026-10-16
 
 ---
@@ -3124,11 +3133,11 @@ format is revisited for them only if this one works.
 
 | Exit criterion | Met by |
 |---|---|
-| Every kata and variant declares a signature that matches its stub and reference | `tests/content/test_katas.py`, `test_variants.py` |
-| The page renders the same header for every kata | `tests/web/` |
-| No hidden suite passes a value outside its declared range | `tests/content/` bounds test |
-| `practice validate` rejects a kata with no signature | `tests/integration/test_cli_validate.py` |
-| The migration left no kata with a hand-edit flag | the script's own report, recorded in §16 |
+| Every kata and variant declares a signature that matches its stub and reference | `test_its_stub_and_reference_agree_with_the_declared_signature` and `test_its_stub_docstrings_are_generated_from_the_signature`, in `test_katas.py` and imported by both variant shards |
+| The page renders the same header for every kata | `tests/web/test_statement.py::test_a_kata_declared_the_same_way_is_laid_out_the_same_way` and its neighbours |
+| No hidden suite passes a value outside its declared range | `test_its_reference_solution_passes_every_check` (armed), with `tests/content/test_bounds_probe.py` proving the checker can fail |
+| `practice validate` rejects a kata with no signature | `tests/integration/test_cli_validate.py::test_a_kata_with_no_signature_fails_the_run` |
+| The migration left no kata with a hand-edit flag | `tools/migrate_katas.py` exited 0 after nine class katas' stubs were given the `Args:`/`Returns:` they lacked; recorded in §16 |
 
 ---
 
@@ -3175,6 +3184,7 @@ changed"* is worth more than any code sample.
 | [0032](adr/0032-a-quiz-grades-a-choice-and-a-fix-grades-code.md) | A quiz grades a choice from a closed set, and a fix question grades code | accepted |
 | [0033](adr/0033-review-scheduling-is-optional-and-deadlines-come-from-pace.md) | Review scheduling is optional, and a deadline is computed from pace | accepted |
 | [0034](adr/0034-monaco-over-codemirror.md) | Monaco, vendored and trimmed, replaces CodeMirror 5 | accepted |
+| [0035](adr/0035-a-kata-declares-its-signature-and-its-bounds-are-enforced.md) | A kata declares its signature, and the bounds it declares are enforced | accepted |
 
 ---
 
@@ -6971,3 +6981,64 @@ entry ended on 9,814 and 71. 100% statement and branch coverage over 3,917
 statements and 976 branches. `practice validate` and `practice fixtures
 --check` are unchanged. The gate took 13m47s, one run, which CLAUDE.md says is
 not a measurement.
+
+**2026-10-26 — Phase 28: a standard kata format
+([ADR 0035](adr/0035-a-kata-declares-its-signature-and-its-bounds-are-enforced.md)).** Every kata and variant declares a
+`signature:`; the page, the constraints list and the stub docstrings are
+derived from it; and the declared ranges are enforced against the hidden suites.
+
+**What the migration found.** The stubs were uniform enough to draft from: 245
+katas, every `Args:`/`Returns:` in one Google-style shape, 230 with exactly one
+function to implement, nine classes. Only nine class katas (forty-odd methods)
+lacked `Args:`/`Returns:` sections and were written by hand. Of 721 constraint
+lines, the anchored patterns mapped 463 to checked ranges and left 369 as
+`notes:`; a review pass then promoted a dozen more by hand (flood-fill's
+colour, the square matrices, `n` as `len(numbers)`).
+
+**What enforcing the bounds found — the point of the phase.** The first armed
+run failed 35 reference tests. Three were the probe's own bug and nine more were
+interference; **24 were genuine: variants whose hidden suites pass more than
+their stated constraints allow** (`10**5 + 1` characters, node values up to
+39,999 against a stated 10**4, `2**60` against `10**18`, a `10**4` height bound
+against 100,000-bar staircases). **None of the 83 standard katas did**: their
+constraints were probed in Phase 21, and the variants written afterwards were
+not. The bounds were widened to what the suites do, in the author's spelling,
+rather than the suites shortened, because each size was the point of its test.
+
+**Three things the first version of the probe got wrong**, each found by the
+suite itself. (1) **A wrapper changes how much stack an answer has**: it
+doubles frames per level of recursion, and `inverts-a-deep-tree` overflowed at
+half its depth. The outermost call now runs the raw function. (2) **A probe
+that reads a structure is charged to the solver** where the suite measures
+allocations (`uses-constant-extra-space`) and **trips** where the suite plants a
+node that raises when touched (`kth-smallest-in-a-bst`'s `Landmine`). The
+probe streams lists without copying; for four katas that instrument a tree or a
+list, the node bounds are notes, and the ADR says why. (3) **A per-call scan of
+a two-million-element list turned an O(log n) answer into an O(n) one** and two
+suites hit their time limit; the same object is now looked at once. Assigning
+to a class attribute also discards the interpreter's attribute cache, and
+`median-of-a-stream` paid five seconds for rebinding it on 2 * 10**5 calls, so
+methods are not rebound.
+
+**What the check costs.** Folded into the reference-passes test that already
+existed, so no extra subprocess. Timed directly, the 83 standard katas' hidden
+suites against their references, plain vs armed, alternating order, two rounds
+in one run: 147.6s vs 162.5s, **+10%** of subprocess time, worst single kata
++0.24s; the first version was +21.6% with two katas at +3 to +5s. One run, so
+not a measurement. The marked tier ADR 0022 and CLAUDE.md reserve was not
+needed.
+
+**What deviated from the plan.** `prompt:` was *not* rewritten to drop its
+restatement of the signature: that is 245 prose edits a machine cannot check
+and a person would read one at a time, so the generated header sits beside the
+story and the restatement is a follow-up that removes text. The measure
+vocabulary is four ranges (`length`, `item_length`, `values`, `nodes`), not a
+general expression, because that is what was measured. The page was driven in
+headless Chrome for a class kata; the header renders under the prompt and
+scrolls with it.
+
+**Final numbers.** 10,428 passing and 71 skipped in the gate (9,852 and 71
+before). 100% statement and branch coverage over 4,183 statements and 1,086
+branches. `practice validate`: 306 exercises, all valid; `practice fixtures
+--check` unchanged. The gate took 14m38s, one run, which CLAUDE.md says is not a
+measurement. No ADR number was reused.

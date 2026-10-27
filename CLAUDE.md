@@ -227,9 +227,34 @@ A phase ends with a `docs:` commit that:
   expression for its value; `-m content -k <slug>` executes both against the
   reference. Always write them as block scalars (`output: |`): `output: [0, 1]`
   is a YAML list and `output: 3` a YAML integer, and the schema rejects both.
-  `constraints:` are *not* enforced by anything. They were derived once, from a
-  probe of what each hidden suite passes, so a new test that steps outside a
-  stated bound fails nothing — check the bound when you add the test.
+  `constraints:` is **not a key any more**: what a kata takes and gives is its
+  `signature:`, and the ranges declared there *are* enforced (see the next
+  bullet).
+- **A kata declares its `signature:`, and its bounds are enforced**
+  ([ADR 0035](docs/adr/0035-a-kata-declares-its-signature-and-its-bounds-are-enforced.md)).
+  `functions:` and/or `classes:`, each callable with a `summary`, typed
+  `parameters` and a `returns`; a parameter may bound its `length`,
+  `item_length`, `values` and `nodes` as `{min, max}` where a bound is an
+  integer or arithmetic (`2 * 10**5`, spelled the way the page should show
+  it). The page's Input / Output header, the constraints list and the stub's
+  docstrings are all *derived* from it; `notes:` holds what a range cannot say
+  and is printed but **checked by nothing**. The reference solution is graded
+  with a footer (`tests/content/bounds_probe.py`) that raises on an argument
+  outside a declared range, so a new hidden test that steps out of a bound
+  fails `test_its_reference_solution_passes_every_check` and names the
+  argument — which is how 24 of the 162 variants' suites were found to step
+  outside their own constraints on the day it landed (none of the 83 standard
+  katas did). After editing a signature, regenerate the
+  stub with `uv run python tools/migrate_katas.py --stubs <slug>`;
+  `test_its_stub_docstrings_are_generated_from_the_signature` compares them
+  byte for byte. Two traps. **A suite that instruments a structure cannot be
+  probed**: `Landmine` nodes and `descended past the answer` counters raise on
+  being touched, and `tracemalloc` tests charge the probe's own allocations to
+  the solver, so declare no `values` or `nodes` bound on that parameter and
+  write it as a note (`kth-smallest-in-a-bst` is the example). And **a bound
+  the suite exceeds is widened, not the test shortened, when the size is the
+  point** — `10**5 + 1` characters is a deliberate off-by-one, and the range
+  should say so. A template is `docs/kata-template.md`.
 - **A variant is an exercise that is never listed**
   ([ADR 0028](docs/adr/0028-a-variant-is-a-whole-exercise-offered-under-its-base.md)).
   It lives in `content/variants/<slug>/` with a `variant: {of, twist}` block,

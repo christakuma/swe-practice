@@ -60,9 +60,13 @@ the real repository, and the repository's state beside it.
 - **144 exercises, every one of them graded**: 24 git scenarios, 83 Python
   katas, 8 SQL drills, 9 Docker exercises and 20 systems quizzes, in one
   hand-ordered curriculum.
-- **Problem statements you can check**: every kata lists its constraints and
-  has an Examples tab of inputs and outputs, each one run against the
-  reference solution.
+- **Problem statements you can check**: every kata declares its function,
+  parameters and return value in one structure and the page draws the same
+  Input / Output header for all of them. The ranges it declares are
+  *enforced*: the reference solution runs with a footer that fails on an
+  argument outside them, so a hidden test cannot quietly exceed a stated
+  constraint. An Examples tab of inputs and outputs is run against the
+  reference too.
 - **Variants of every kata, like an interviewer's follow-ups**: the list is
   sorted now, count the ways instead of finding the fewest, the houses are in a
   circle. Every kata has one and seventy-nine have two — 162 in all. Pick one, or
@@ -199,8 +203,10 @@ For a kata the workbench is the prompt beside a Monaco editor (the one VS Code u
 the exercise's stub. The prompt sits on the left in tabs and the editor fills the right, with a
 draggable divider whose position is remembered; below about 900px they stack.
 The tabs are **Prompt**, **Examples** and **Hints**. **Prompt** is the task and,
-under it, the constraints: how long the input can be, how large the values, and
-what is guaranteed. **Examples** is a list of inputs and the outputs they give.
+under it, the **Input** and **Output** of what you are to write and the
+constraints: how long the input can be, how large the values, and what is
+guaranteed. All three are generated from the kata's `signature:`
+([ADR 0035](docs/adr/0035-a-kata-declares-its-signature-and-its-bounds-are-enforced.md)). **Examples** is a list of inputs and the outputs they give.
 Each input is Python you could run against your own solution and the output is
 the value of its last line, so an in-place function's example ends by naming
 the list it changed. Every pair is executed against the reference solution by
