@@ -84,6 +84,16 @@ from practice.domain.exercise import (
 )
 from practice.domain.ids import ExerciseId, tag
 from practice.domain.quiz import FixSuite, Option, Question, QuestionFormat
+from practice.domain.signature import (
+    Bound,
+    ClassSignature,
+    Function,
+    Parameter,
+    Raises,
+    Range,
+    Returns,
+    Signature,
+)
 from practice.domain.verdict import Severity
 
 # `Mapping`, `ParamValue` and `ExerciseSpec` are imported at runtime rather than
@@ -111,6 +121,7 @@ __all__ = [
     "QuestionModel",
     "QuizFile",
     "QuizSpecModel",
+    "SignatureModel",
     "SqlDrillFile",
     "SqlDrillSpecModel",
     "VariantModel",
@@ -392,13 +403,156 @@ class ExampleModel(_Model):
         )
 
 
+class _Built[T](_Model):
+    """A model whose domain value is built *during* validation and kept.
+
+    `_SpecModel` and `_CheckModel` do this for the same reason: a domain
+    invariant -- a range that runs backwards, a bound that is not arithmetic, a
+    parameter named `class` -- is reported at the field that broke it
+    (`kata.signature.functions.0.parameters.1.length`) instead of at the whole
+    `kata` block. It is a generic base because the six models below would
+    otherwise each carry the same eight lines.
+    """
+
+    _domain: T = PrivateAttr()
+
+    @model_validator(mode="after")
+    def _construct(self) -> Self:
+        self._domain = self._build()
+        return self
+
+    def _build(self) -> T:
+        raise NotImplementedError
+
+    def to_domain(self) -> T:
+        return self._domain
+
+
+class RangeModel(_Built[Range]):
+    """`{min: 0, max: 2 * 10**5}`: an inclusive range, either end optional.
+
+    Each end is an integer or a string of integer arithmetic, and keeps the
+    author's spelling for the page (`domain.signature.Bound`).
+    """
+
+    minimum: int | str | None = Field(default=None, alias="min")
+    maximum: int | str | None = Field(default=None, alias="max")
+
+    def _build(self) -> Range:
+        return Range(
+            low=Bound.parse(self.minimum) if self.minimum is not None else None,
+            high=Bound.parse(self.maximum) if self.maximum is not None else None,
+        )
+
+
+def _range(model: RangeModel | None) -> Range | None:
+    return model.to_domain() if model is not None else None
+
+
+class ParameterModel(_Built[Parameter]):
+    """One argument, and the four things a suite's bounds can be about."""
+
+    name: _Text
+    type: _Text
+    description: _Text
+    length: RangeModel | None = None
+    item_length: RangeModel | None = None
+    values: RangeModel | None = None
+    nodes: RangeModel | None = None
+
+    def _build(self) -> Parameter:
+        return Parameter(
+            name=self.name,
+            type=self.type.strip(),
+            description=self.description.strip(),
+            length=_range(self.length),
+            item_length=_range(self.item_length),
+            values=_range(self.values),
+            nodes=_range(self.nodes),
+        )
+
+
+class ReturnsModel(_Built[Returns]):
+    type: _Text
+    description: _Text | None = None
+
+    def _build(self) -> Returns:
+        return Returns(
+            type=self.type.strip(),
+            description=self.description.strip() if self.description else None,
+        )
+
+
+class RaisesModel(_Built[Raises]):
+    type: _Text
+    description: _Text
+
+    def _build(self) -> Raises:
+        return Raises(type=self.type.strip(), description=self.description.strip())
+
+
+class FunctionModel(_Built[Function]):
+    """A function, or a method when it sits under a class."""
+
+    name: _Text
+    summary: _Text
+    details: _Text | None = None
+    parameters: tuple[ParameterModel, ...] = ()
+    returns: ReturnsModel | None = None
+    raises: tuple[RaisesModel, ...] = ()
+
+    def _build(self) -> Function:
+        return Function(
+            name=self.name,
+            summary=self.summary.strip(),
+            parameters=tuple(p.to_domain() for p in self.parameters),
+            returns=self.returns.to_domain() if self.returns else None,
+            details=self.details.strip("\n") if self.details else None,
+            raises=tuple(r.to_domain() for r in self.raises),
+        )
+
+
+class ClassModel(_Built[ClassSignature]):
+    name: _Text
+    summary: _Text
+    methods: tuple[FunctionModel, ...]
+
+    def _build(self) -> ClassSignature:
+        return ClassSignature(
+            name=self.name,
+            summary=self.summary.strip(),
+            methods=tuple(m.to_domain() for m in self.methods),
+        )
+
+
+class SignatureModel(_Model):
+    """The `signature:` block: what the tests import and what they may pass."""
+
+    functions: tuple[FunctionModel, ...] = ()
+    classes: tuple[ClassModel, ...] = ()
+
+    def to_domain(self, notes: tuple[str, ...] = ()) -> Signature:
+        return Signature(
+            functions=tuple(f.to_domain() for f in self.functions),
+            classes=tuple(c.to_domain() for c in self.classes),
+            notes=notes,
+        )
+
+
 class KataSpecModel(_SpecModel):
     """The `kata:` block. Filenames are relative to the exercise directory.
 
-    `constraints` and `examples` are optional here and required by
-    `tests/content/test_katas.py`, which is the line `domain/exercise.py` draws
-    between a representable exercise and a good one: a kata someone is halfway
-    through drafting loads, and does not ship.
+    **There is no `constraints:` key any more** (ADR 0035). The list the page
+    shows is derived: the ranges declared under `signature`, then `notes`, which
+    holds what a range cannot say. Naming `constraints:` is an unknown-key error
+    rather than a second way to write the same thing, because a kata with both
+    would have two lists to keep in step and nothing to say which was right.
+
+    `examples` is optional here and required by `tests/content/test_katas.py`,
+    which is the line `domain/exercise.py` draws between a representable
+    exercise and a good one: a kata someone is halfway through drafting loads,
+    and does not ship. `signature` is the exception, required here, because a
+    kata without one has nothing for the page's header to draw.
     """
 
     language: _Text
@@ -407,10 +561,14 @@ class KataSpecModel(_SpecModel):
     reference: _Text
     time_limit_seconds: Annotated[int, Field(ge=1)] = 10
     complexity: ComplexityModel | None = None
-    constraints: tuple[_Text, ...] = ()
+    signature: SignatureModel
+    notes: tuple[_Text, ...] = ()
     examples: tuple[ExampleModel, ...] = ()
 
     def to_domain(self) -> KataSpec:
+        signature = self.signature.to_domain(
+            notes=tuple(note.strip() for note in self.notes)
+        )
         return KataSpec(
             language=self.language,
             stub=self.stub,
@@ -418,8 +576,9 @@ class KataSpecModel(_SpecModel):
             reference=self.reference,
             time_limit_seconds=self.time_limit_seconds,
             complexity=self.complexity.to_domain() if self.complexity else None,
-            constraints=self.constraints,
+            constraints=signature.constraints(),
             examples=tuple(example.to_domain() for example in self.examples),
+            signature=signature,
         )
 
 

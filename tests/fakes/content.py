@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
     from practice.domain.exercise import ExerciseFilter
+    from practice.domain.signature import Signature
     from practice.domain.track import Track
 
 __all__ = [
@@ -62,6 +63,7 @@ def a_kata(
     tags: tuple[str, ...] = ("arrays", "hash-map"),
     constraints: tuple[str, ...] = (),
     examples: tuple[Example, ...] = (),
+    signature: Signature | None = None,
     title: str = "Two Sum",
     variant: Variant | None = None,
 ) -> Exercise:
@@ -91,6 +93,7 @@ def a_kata(
             complexity=complexity,
             constraints=constraints,
             examples=examples,
+            signature=signature,
         ),
         variant=variant,
     )

@@ -83,6 +83,25 @@ def a_kata(**overrides: Any) -> dict[str, Any]:
             "stub": "stub.py",
             "tests": "tests.py",
             "reference": "solution.py",
+            "signature": {
+                "functions": [
+                    {
+                        "name": "two_sum",
+                        "summary": "Return the two positions that reach the target.",
+                        "parameters": [
+                            {
+                                "name": "numbers",
+                                "type": "list[int]",
+                                "description": "the values to search.",
+                            }
+                        ],
+                        "returns": {
+                            "type": "tuple[int, int]",
+                            "description": "the two positions.",
+                        },
+                    }
+                ]
+            },
         },
     }
     document.update(overrides)

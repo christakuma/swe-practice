@@ -19,6 +19,15 @@ from typing import TYPE_CHECKING
 from practice.domain.attempt import AttemptMode
 from practice.domain.exercise import Example
 from practice.domain.ids import ExerciseId
+from practice.domain.signature import (
+    Bound,
+    ClassSignature,
+    Function,
+    Parameter,
+    Range,
+    Returns,
+    Signature,
+)
 from tests.fakes import a_kata
 
 if TYPE_CHECKING:
@@ -251,3 +260,124 @@ def test_a_kata_can_state_constraints_without_showing_examples(
     assert "<h2>Prompt</h2>" in body
     assert "<h3>Constraints</h3>" in body
     assert 'id="tab-examples"' not in body
+
+
+# --- the generated header ---------------------------------------------------
+
+TWO_SUM = Function(
+    name="two_sum",
+    summary="Return the two positions that reach the target.",
+    parameters=(
+        Parameter(
+            name="numbers",
+            type="list[int]",
+            description="the values to search.",
+            length=Range(low=Bound.parse(2), high=Bound.parse("10**5")),
+        ),
+        Parameter(name="target", type="int", description="the sum to reach."),
+    ),
+    returns=Returns(type="tuple[int, int]", description="the two positions."),
+)
+
+STORE = ClassSignature(
+    name="Store",
+    summary="A store.",
+    methods=(
+        Function(name="__init__", summary="Create it."),
+        Function(
+            name="add",
+            summary="Add a word.",
+            parameters=(
+                Parameter(name="word", type="str", description="the word to add."),
+            ),
+            returns=Returns(type="None"),
+        ),
+    ),
+)
+
+
+def _signed_kata(wiring: Wiring, signature: Signature) -> None:
+    wiring.content.replace_with(
+        a_kata(signature=signature, constraints=signature.constraints())
+    )
+
+
+def test_a_kata_page_draws_its_inputs_and_its_output_from_the_signature(
+    client: TestClient, wiring: Wiring
+) -> None:
+    _signed_kata(wiring, Signature(functions=(TWO_SUM,)))
+
+    body = _workbench(client, wiring, KATA)
+
+    assert '<section class="signature">' in body
+    assert "two_sum(numbers: list[int], target: int) -&gt; tuple[int, int]" in body
+    assert "<code>numbers</code> <span" in body
+    assert "the values to search." in body
+    assert "<h3>Input</h3>" in body
+    assert "<h3>Output</h3>" in body
+    assert "the two positions." in body
+
+
+def test_the_header_comes_before_the_constraints_it_shares_its_fields_with(
+    client: TestClient, wiring: Wiring
+) -> None:
+    _signed_kata(wiring, Signature(functions=(TWO_SUM,)))
+
+    body = _workbench(client, wiring, KATA)
+
+    assert body.index('class="signature"') < body.index('class="constraints"')
+    assert "2 &lt;= len(numbers) &lt;= 10**5" in body
+
+
+def test_a_class_is_drawn_method_by_method_and_a_bare_constructor_is_left_out(
+    client: TestClient, wiring: Wiring
+) -> None:
+    _signed_kata(wiring, Signature(classes=(STORE,)))
+
+    body = _workbench(client, wiring, KATA)
+
+    assert "Store.add(word: str) -&gt; None" in body
+    assert "__init__" not in body
+    # `-> None` has nothing to describe, so the Output line is the type alone.
+    assert '<span class="type">None</span></p>' in body
+
+
+def test_a_kata_declared_the_same_way_is_laid_out_the_same_way(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """The point of fields: two different katas, one skeleton."""
+    _signed_kata(wiring, Signature(functions=(TWO_SUM,)))
+    first = _workbench(client, wiring, KATA)
+    _signed_kata(wiring, Signature(classes=(STORE,)))
+    second = _workbench(client, wiring, KATA)
+
+    def skeleton(body: str) -> list[str]:
+        return [
+            line.strip().split(">")[0] + ">"
+            for line in body.splitlines()
+            if 'class="signature"' in line or 'class="call"' in line
+        ]
+
+    assert skeleton(first) == skeleton(second)
+
+
+def test_a_scenario_and_a_drill_get_no_header(
+    client: TestClient, wiring: Wiring
+) -> None:
+    for exercise in (SCENARIO, DRILL):
+        assert '<section class="signature">' not in _workbench(client, wiring, exercise)
+
+
+def test_the_terminal_statement_carries_the_same_header() -> None:
+    """`practice solve` and the tutor export print the same Input / Output."""
+    exercise = a_kata(
+        signature=Signature(functions=(TWO_SUM,)),
+        constraints=Signature(functions=(TWO_SUM,)).constraints(),
+    )
+
+    text = exercise.statement
+
+    assert "two_sum(numbers: list[int], target: int) -> tuple[int, int]" in text
+    assert "    numbers: list[int] -- the values to search." in text
+    assert "  Output: tuple[int, int] -- the two positions." in text
+    assert text.index("Input:") < text.index("Constraints:")

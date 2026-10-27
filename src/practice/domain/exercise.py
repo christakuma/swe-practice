@@ -48,6 +48,7 @@ if TYPE_CHECKING:
 
     from practice.domain.ids import ExerciseId, Tag
     from practice.domain.quiz.questions import Question
+    from practice.domain.signature import Signature
 
 __all__ = [
     "CONTAINER_FILES",
@@ -261,6 +262,14 @@ class KataSpec:
     neither has an input-and-output pair to show -- a field every kind carried
     and two kinds left empty would be the `references:` key §5.1 already
     declined.
+
+    **`signature` is where `constraints` comes from, as of Phase 28**
+    (ADR 0035). The content adapter derives the constraint lines from the
+    declared ranges plus the author's notes, so this field still holds the
+    finished text and every reader of it -- the page, the terminal, the tutor
+    export -- is unchanged. It is optional *here* because a fake or a draft
+    without one is representable; `KataSpecModel` requires it, which is the line
+    this module draws between a representable kata and a shippable one.
     """
 
     language: str
@@ -271,6 +280,7 @@ class KataSpec:
     complexity: ComplexityExpectation | None = None
     constraints: tuple[str, ...] = ()
     examples: tuple[Example, ...] = ()
+    signature: Signature | None = None
 
     def __post_init__(self) -> None:
         if not self.language.strip():
@@ -945,6 +955,8 @@ class Exercise:
         """
         sections = [self.prompt.strip()]
         spec = self.spec
+        if isinstance(spec, KataSpec) and spec.signature is not None:
+            sections.append(spec.signature.header_text())
         if isinstance(spec, KataSpec | QuizSpec) and spec.constraints:
             bullets = [f"- {constraint}" for constraint in spec.constraints]
             sections.append("\n".join(["Constraints:", *bullets]))

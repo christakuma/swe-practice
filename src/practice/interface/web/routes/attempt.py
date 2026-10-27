@@ -216,6 +216,9 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                     if opened.exercise.variant is not None
                     else None
                 ),
+                # The declared callables, for the Input / Output header; `None`
+                # for every kind that has no function signature (ADR 0035).
+                "signature": kata.signature if kata else None,
                 "constraints": (
                     kata.constraints if kata else quiz.constraints if quiz else ()
                 ),

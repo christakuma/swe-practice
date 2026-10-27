@@ -530,6 +530,56 @@ button[disabled] {
 
 /* --- constraints and examples ------------------------------------------- */
 
+.signature {
+  margin-top: 1rem;
+}
+
+.signature .callable + .callable {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.signature h3 {
+  margin: 0.7rem 0 0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+
+.signature .callable > h3:first-child {
+  margin-top: 0;
+}
+
+.signature .call,
+.signature .returns {
+  margin: 0;
+}
+
+.signature code,
+.signature .type {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.signature .type {
+  color: var(--ink-dim);
+}
+
+.signature dl.params {
+  margin: 0.3rem 0 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.25rem 0.9rem;
+}
+
+.signature dl.params dt,
+.signature dl.params dd {
+  margin: 0;
+}
+
 .constraints h3,
 .example h3 {
   margin: 0 0 0.4rem;

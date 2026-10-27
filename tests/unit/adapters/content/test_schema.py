@@ -106,8 +106,35 @@ def a_kata() -> dict[str, Any]:
             "reference": "solution.py",
             "time_limit_seconds": 10,
             "complexity": {"expected_time": "O(n)", "expected_space": "O(n)"},
+            "signature": {
+                "functions": [
+                    {
+                        "name": "two_sum",
+                        "summary": "Return the two positions that reach the target.",
+                        "parameters": [
+                            {
+                                "name": "numbers",
+                                "type": "list[int]",
+                                "description": "the values to search.",
+                            }
+                        ],
+                        "returns": {
+                            "type": "tuple[int, int]",
+                            "description": "the two positions.",
+                        },
+                    }
+                ]
+            },
         },
     }
+
+
+def _numbers(payload: dict[str, Any]) -> dict[str, Any]:
+    """The `numbers` parameter of the kata's one function, to be edited in place."""
+    parameter: dict[str, Any] = payload["kata"]["signature"]["functions"][0][
+        "parameters"
+    ][0]
+    return parameter
 
 
 def a_drill() -> dict[str, Any]:
@@ -594,7 +621,8 @@ def test_a_katas_constraints_and_examples_reach_the_domain() -> None:
     opens with indentation that is part of a drawing, and keeps it.
     """
     payload = a_kata()
-    payload["kata"]["constraints"] = ["2 <= len(numbers) <= 10**5"]
+    _numbers(payload)["length"] = {"min": 2, "max": "10**5"}
+    payload["kata"]["notes"] = ["Exactly one pair adds up."]
     payload["kata"]["examples"] = [
         {
             "input": "numbers = [3, 3]\ntwo_sum(numbers, 6)\n",
@@ -607,7 +635,10 @@ def test_a_katas_constraints_and_examples_reach_the_domain() -> None:
     spec = EXERCISE_FILE.validate_python(payload).to_exercise(notes="n").spec
 
     assert isinstance(spec, KataSpec)
-    assert spec.constraints == ("2 <= len(numbers) <= 10**5",)
+    assert spec.constraints == (
+        "2 <= len(numbers) <= 10**5",
+        "Exactly one pair adds up.",
+    )
     assert spec.examples == (
         Example(
             input="numbers = [3, 3]\ntwo_sum(numbers, 6)",
@@ -616,6 +647,98 @@ def test_a_katas_constraints_and_examples_reach_the_domain() -> None:
         ),
         Example(input="two_sum([2, 7], 9)", output="(0, 1)"),
     )
+
+
+def test_a_kata_without_a_signature_is_rejected() -> None:
+    """The header has nothing to draw from, so the kata does not load."""
+    payload = a_kata()
+    del payload["kata"]["signature"]
+
+    assert rejected(payload) == [("kata.signature", "Field required")]
+
+
+def test_a_free_text_constraints_list_is_no_longer_a_key() -> None:
+    """Two lists to keep in step, and nothing to say which is right."""
+    payload = a_kata()
+    payload["kata"]["constraints"] = ["2 <= len(numbers)"]
+
+    assert rejected(payload) == [("kata.constraints", "Extra inputs are not permitted")]
+
+
+def test_the_signature_reaches_the_domain_with_the_authors_spelling() -> None:
+    payload = a_kata()
+    parameter = _numbers(payload)
+    parameter["length"] = {"max": "2 * 10**5"}
+    parameter["values"] = {"min": "-10**9", "max": "10**9"}
+
+    spec = EXERCISE_FILE.validate_python(payload).to_exercise(notes="n").spec
+
+    assert isinstance(spec, KataSpec)
+    assert spec.signature is not None
+    assert spec.constraints == (
+        "len(numbers) <= 2 * 10**5",
+        "-10**9 <= numbers[i] <= 10**9",
+    )
+    function = spec.signature.functions[0]
+    assert function.call == "two_sum(numbers: list[int]) -> tuple[int, int]"
+    assert function.parameters[0].length is not None
+    assert function.parameters[0].length.high is not None
+    assert function.parameters[0].length.high.value == 200_000
+
+
+def test_a_bound_that_is_not_arithmetic_is_located_where_it_is_written() -> None:
+    payload = a_kata()
+    _numbers(payload)["length"] = {"min": 0, "max": "len(x)"}
+    _numbers(payload)["values"] = {"min": 5, "max": 1}
+
+    errors = rejected(payload)
+
+    assert [location for location, _ in errors] == [
+        "kata.signature.functions.0.parameters.0.length",
+        "kata.signature.functions.0.parameters.0.values",
+    ]
+    assert "integer arithmetic" in errors[0][1]
+    assert "down to" in errors[1][1]
+
+
+def test_a_class_signature_and_its_methods_reach_the_domain() -> None:
+    payload = a_kata()
+    payload["kata"]["signature"] = {
+        "classes": [
+            {
+                "name": "Store",
+                "summary": "A store.",
+                "methods": [
+                    {"name": "__init__", "summary": "Create it."},
+                    {
+                        "name": "add",
+                        "summary": "Add a word.",
+                        "details": "Twice is once.\n",
+                        "parameters": [
+                            {
+                                "name": "word",
+                                "type": "str",
+                                "description": "the word.",
+                                "length": {"min": 0, "max": 20},
+                            }
+                        ],
+                        "returns": {"type": "None"},
+                        "raises": [{"type": "ValueError", "description": "if odd."}],
+                    },
+                ],
+            }
+        ]
+    }
+
+    spec = EXERCISE_FILE.validate_python(payload).to_exercise(notes="n").spec
+
+    assert isinstance(spec, KataSpec)
+    assert spec.signature is not None
+    method = spec.signature.classes[0].methods[1]
+    assert method.details == "Twice is once."
+    assert method.returns is not None
+    assert method.returns.description is None
+    assert spec.constraints == ("0 <= len(word) <= 20",)
 
 
 def test_an_example_output_that_yaml_read_as_data_is_rejected() -> None:
@@ -640,13 +763,13 @@ def test_an_example_output_that_yaml_read_as_data_is_rejected() -> None:
 
 def test_a_blank_constraint_or_example_part_is_located_where_it_is_blank() -> None:
     payload = a_kata()
-    payload["kata"]["constraints"] = ["2 <= len(numbers)", "  "]
+    payload["kata"]["notes"] = ["2 <= len(numbers)", "  "]
     payload["kata"]["examples"] = [
         {"input": "two_sum([2, 7], 9)", "output": "(0, 1)", "explanation": ""}
     ]
 
     assert rejected(payload) == [
-        ("kata.constraints.1", "Value error, must not be blank"),
+        ("kata.notes.1", "Value error, must not be blank"),
         ("kata.examples.0.explanation", "Value error, must not be blank"),
     ]
 

@@ -113,6 +113,37 @@ def test_a_failure_is_located_down_to_the_field(
     )
 
 
+def test_a_kata_with_no_signature_fails_the_run(
+    library: Path, write_exercise: WriteExercise
+) -> None:
+    """Phase 28's exit criterion: the page's header has nothing to draw from."""
+    document = a_kata()
+    del document["kata"]["signature"]
+    write_exercise(document)
+
+    code, output = run("--content-root", str(library))
+
+    assert code == 1
+    assert "exercise.yaml: kata.signature: Field required" in output
+
+
+def test_a_bound_that_runs_backwards_is_located_at_the_parameter(
+    library: Path, write_exercise: WriteExercise
+) -> None:
+    document = a_kata()
+    parameter = document["kata"]["signature"]["functions"][0]["parameters"][0]
+    parameter["length"] = {"min": 10, "max": 1}
+    write_exercise(document)
+
+    code, output = run("--content-root", str(library))
+
+    assert code == 1
+    assert (
+        "kata.signature.functions.0.parameters.0.length: "
+        "a range cannot run from 10 down to 1" in output
+    )
+
+
 def test_a_good_exercise_is_still_reported_alongside_a_bad_one(
     library: Path, write_exercise: WriteExercise
 ) -> None:

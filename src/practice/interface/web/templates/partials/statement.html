@@ -13,6 +13,40 @@
 <pre>{{ exercise.prompt | trim }}</pre>
 
 {#
+  **The same header for every kata** (ADR 0035): what to call, what it takes and
+  what comes back, drawn from `kata.signature` and nothing else, so two katas
+  cannot be laid out differently by two authors. The same fields give the
+  constraints below and the stub's docstring, which is the point of having
+  fields. A class's constructor is left out when it takes nothing, because
+  "WordStore() -> nothing" is a line that tells nobody anything.
+#}
+{% if signature %}
+  <section class="signature">
+    {% for owner, function in signature.callables() %}
+      {% if function.name != "__init__" or function.parameters %}
+        <div class="callable">
+          <h3>{{ "Input" if function.parameters else "Call" }}</h3>
+          <p class="call"><code>{% if owner %}{{ owner }}.{% endif %}{{ function.call }}</code></p>
+          {% if function.parameters %}
+            <dl class="params">
+              {% for parameter in function.parameters %}
+                <dt><code>{{ parameter.name }}</code> <span class="type">{{ parameter.type }}</span></dt>
+                <dd>{{ parameter.description }}</dd>
+              {% endfor %}
+            </dl>
+          {% endif %}
+          {% if function.returns %}
+            <h3>Output</h3>
+            <p class="returns"><span class="type">{{ function.returns.type }}</span>
+              {%- if function.returns.description %} &mdash; {{ function.returns.description }}{% endif %}</p>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+  </section>
+{% endif %}
+
+{#
   A list rather than a last paragraph of the prompt, because a constraint is
   looked up rather than read: "how long can the list be" is a question asked
   halfway through choosing an approach, and the answer should be findable
