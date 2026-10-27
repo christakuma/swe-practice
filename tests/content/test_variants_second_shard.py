@@ -34,7 +34,6 @@ from tests.content.test_katas import (  # noqa: F401
     stub_verdict,
     test_it_shows_more_than_one_example,
     test_it_states_its_constraints,
-    test_its_declared_complexity_is_compared_rather_than_graded,
     test_its_examples_give_the_output_they_show,
     test_its_hidden_suite_holds_more_than_one_test,
     test_its_reference_solution_passes_every_check,

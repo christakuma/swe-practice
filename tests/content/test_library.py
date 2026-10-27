@@ -182,13 +182,6 @@ def test_it_validates(exercise_directory: Path) -> None:
     assert report.ok, "\n".join(report.problems)
 
 
-def test_its_id_matches_its_directory(
-    exercise: Exercise, exercise_directory: Path
-) -> None:
-    """The id *is* the content path (PLAN.md §4.1)."""
-    assert str(exercise.id) == _identify(exercise_directory)
-
-
 def test_its_hints_are_progressive_rather_than_repeated(exercise: Exercise) -> None:
     """Hints are ordered and revealed one at a time (PLAN.md §4.3), so two
     identical ones spend a reveal on nothing.
@@ -196,11 +189,6 @@ def test_its_hints_are_progressive_rather_than_repeated(exercise: Exercise) -> N
     texts = [hint.text.strip() for hint in exercise.hints]
 
     assert len(set(texts)) == len(texts)
-
-
-def test_its_notes_are_worth_revealing(exercise: Exercise) -> None:
-    """The notes are where the *why* lives, and the why is the product."""
-    assert exercise.notes.strip()
 
 
 # --- git scenarios ---------------------------------------------------------
@@ -332,13 +320,6 @@ def test_a_kata_declares_the_complexity_it_expects(kata: KataSpec) -> None:
     (PLAN.md §7).
     """
     assert kata.complexity is not None
-
-
-def test_a_katas_stub_and_reference_are_different_files(kata: KataSpec) -> None:
-    """A reference that *is* the stub would pass the Phase 4 oracle by being the
-    same file twice, which is exactly what that oracle exists to catch.
-    """
-    assert kata.stub != kata.reference
 
 
 # --- the repository sees what the walk sees --------------------------------

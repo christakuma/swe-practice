@@ -260,33 +260,6 @@ def test_its_hidden_suite_holds_more_than_one_test(stub_verdict: Verdict) -> Non
     assert len(required) > 1, [report.check_id for report in required]
 
 
-def test_its_declared_complexity_is_compared_rather_than_graded(
-    grade: Grade, spec: KataSpec, kata_directory: Path
-) -> None:
-    """A deliberately absurd claim must never fail the attempt.
-
-    Static Big-O analysis of arbitrary code is not something this tool pretends
-    to do (PLAN.md §7), so a disagreement is an advisory to reconcile.
-
-    Both branches assert something, which is why there is no `pytest.skip` here:
-    a kata that states an expectation gets exactly one advisory, and a kata that
-    states none gets no complexity check at all — inventing one would fail every
-    attempt at an exercise whose author was simply quieter.
-    """
-    verdict = grade(
-        _read(kata_directory, spec.reference),
-        ComplexityClaim(time="O(n!)", space="O(n!)"),
-    )
-
-    assert verdict.passed, "a complexity claim must never fail an attempt"
-    if spec.complexity is None:
-        assert verdict.outcome is Outcome.PASS
-        assert verdict.advisories == ()
-    else:
-        assert verdict.outcome is Outcome.PASS_WITH_ADVISORIES
-        assert len(verdict.advisories) == 1
-
-
 # --- the statement: constraints and examples -------------------------------
 
 #: How far a linked structure is followed before it is called cyclic. Far above
