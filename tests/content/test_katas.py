@@ -44,7 +44,9 @@ from practice.config import content_root
 from practice.domain.attempt import Attempt, AttemptPolicy, ComplexityClaim
 from practice.domain.exercise import KataSpec
 from practice.domain.ids import AttemptId
+from practice.domain.signature import docstring_of
 from practice.domain.verdict import Outcome
+from tests.content.bounds_probe import bounded_source
 from tests.fakes import FakeClock
 
 if TYPE_CHECKING:
@@ -53,6 +55,7 @@ if TYPE_CHECKING:
 
     from practice.adapters.sandbox import SubprocessWorkspace
     from practice.domain.exercise import Example, Exercise
+    from practice.domain.signature import Function
     from practice.domain.verdict import Verdict
 
 CONTENT_ROOT = content_root()
@@ -181,6 +184,15 @@ def test_its_reference_solution_passes_every_check(
     The complexity expectation, where there is one, is declared to match — so a
     failure here is about the solution and the suite rather than about an
     advisory the reference was never going to satisfy.
+
+    **The reference runs with its declared bounds armed** (ADR 0035): every
+    argument the hidden suite passes is checked against the ranges under
+    `signature:`, and one outside them fails the check with a message naming the
+    argument. It is this test and not a sibling because a sibling would grade
+    the reference a second time, and a subprocess per kata is what makes this
+    file the suite's critical path (CLAUDE.md). The wrapper only ever *raises*,
+    so a pass here is a pass of the plain reference on in-range inputs;
+    `test_bounds_probe.py` holds the proof that it can fail.
     """
     claim = (
         ComplexityClaim(
@@ -190,7 +202,10 @@ def test_its_reference_solution_passes_every_check(
         else None
     )
 
-    verdict = grade(_read(kata_directory, spec.reference), claim)
+    assert spec.signature is not None
+    verdict = grade(
+        bounded_source(_read(kata_directory, spec.reference), spec.signature), claim
+    )
 
     assert verdict.outcome is Outcome.PASS, "\n".join(
         f"{report.check_id}: {report.actual} -- {report.explanation}"
@@ -354,6 +369,139 @@ def test_it_states_its_constraints(spec: KataSpec) -> None:
 def test_it_shows_more_than_one_example(spec: KataSpec) -> None:
     """One example cannot tell a rule from a coincidence."""
     assert len(spec.examples) > 1
+
+
+def _normal(annotation: str) -> str:
+    """An annotation as `ast.unparse` spells it, so `list[int]` is `list[ int ]`."""
+    return ast.unparse(ast.parse(annotation, mode="eval").body)
+
+
+def _signature_problems(source: str, spec: KataSpec, *, annotated: bool) -> list[str]:
+    """Every way `source` disagrees with the callables `spec.signature` declares.
+
+    By AST rather than by importing, so a stub that raises on import and a
+    reference with side effects are read the same way. Parameter *names and
+    order* are always compared; annotations only where the file has them, and
+    for the stub always, because the stub is what the solver is shown.
+    """
+    assert spec.signature is not None
+    tree = ast.parse(source)
+    functions = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+    classes = {n.name: n for n in tree.body if isinstance(n, ast.ClassDef)}
+    problems: list[str] = []
+
+    def compare(node: ast.FunctionDef | None, declared: Function, where: str) -> None:
+        if node is None:
+            problems.append(f"{where} is declared and the file does not define it")
+            return
+        arguments = [a for a in node.args.args if a.arg != "self"]
+        if [a.arg for a in arguments] != [p.name for p in declared.parameters]:
+            took = ", ".join(a.arg for a in arguments)
+            declares = ", ".join(p.name for p in declared.parameters)
+            problems.append(
+                f"{where} takes ({took}), the signature declares ({declares})"
+            )
+            return
+        for argument, parameter in zip(arguments, declared.parameters, strict=True):
+            if argument.annotation is None:
+                if annotated:
+                    problems.append(f"{where}: {parameter.name} has no annotation")
+            elif ast.unparse(argument.annotation) != _normal(parameter.type):
+                problems.append(
+                    f"{where}: {parameter.name} is {ast.unparse(argument.annotation)}, "
+                    f"declared {parameter.type}"
+                )
+        if declared.returns is None:
+            return
+        if node.returns is None:
+            if annotated:
+                problems.append(f"{where} has no return annotation")
+        elif ast.unparse(node.returns) != _normal(declared.returns.type):
+            problems.append(
+                f"{where} returns {ast.unparse(node.returns)}, "
+                f"declared {declared.returns.type}"
+            )
+
+    for function in spec.signature.functions:
+        compare(functions.get(function.name), function, function.name)
+    for cls in spec.signature.classes:
+        found = classes.get(cls.name)
+        if found is None:
+            problems.append(
+                f"class {cls.name} is declared and the file does not define it"
+            )
+            continue
+        methods = {n.name: n for n in found.body if isinstance(n, ast.FunctionDef)}
+        for method in cls.methods:
+            compare(methods.get(method.name), method, f"{cls.name}.{method.name}")
+    return problems
+
+
+def test_its_stub_and_reference_agree_with_the_declared_signature(
+    spec: KataSpec, kata_directory: Path
+) -> None:
+    """The names a solver is told to implement are the ones the page declares.
+
+    Three places say what a kata's callable takes: the `signature:` block, the
+    stub and the reference. Before Phase 28 nothing tied them together, and the
+    page's description could drift from the code a solver was handed without any
+    test noticing. The stub must match annotation for annotation; the
+    reference only has to take the same arguments, in the same order, because
+    a reference is allowed to be less decorated than the file it answers.
+    """
+    stub = _signature_problems(_read(kata_directory, spec.stub), spec, annotated=True)
+    reference = _signature_problems(
+        _read(kata_directory, spec.reference), spec, annotated=False
+    )
+
+    assert stub == [], f"stub.py: {stub}"
+    assert reference == [], f"solution.py: {reference}"
+
+
+def _expected_docstrings(spec: KataSpec) -> dict[str, str]:
+    """Every generated docstring, keyed by where it sits in the stub."""
+    assert spec.signature is not None
+    expected = {
+        function.name: docstring_of(function.summary, function, indent=4)
+        for function in spec.signature.functions
+    }
+    for cls in spec.signature.classes:
+        expected[cls.name] = docstring_of(cls.summary, None, indent=4)
+        for method in cls.methods:
+            expected[f"{cls.name}.{method.name}"] = docstring_of(
+                method.summary, method, indent=8
+            )
+    return expected
+
+
+def test_its_stub_docstrings_are_generated_from_the_signature(
+    spec: KataSpec, kata_directory: Path
+) -> None:
+    """The docstring is derived, so it cannot be typed beside the fields.
+
+    The first 245 stubs each described their arguments twice -- once in the
+    docstring and once in a prose prompt -- and the two were free to disagree.
+    The docstring is now `docstring_of(...)` over the declared fields and this
+    compares them verbatim, so editing one without the other fails here, with
+    the text the stub should hold in the message. `tools/migrate_katas.py
+    --stubs` rewrites them.
+    """
+    tree = ast.parse(_read(kata_directory, spec.stub))
+    found: dict[str, str | None] = {}
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef):
+            found[node.name] = ast.get_docstring(node)
+        elif isinstance(node, ast.ClassDef):
+            found[node.name] = ast.get_docstring(node)
+            for method in node.body:
+                if isinstance(method, ast.FunctionDef):
+                    found[f"{node.name}.{method.name}"] = ast.get_docstring(method)
+
+    for where, expected in _expected_docstrings(spec).items():
+        assert found.get(where) == expected, (
+            f"{where}'s docstring is not the one the signature generates:\n"
+            f"{found.get(where)!r}\nshould be\n{expected!r}"
+        )
 
 
 def test_its_examples_give_the_output_they_show(

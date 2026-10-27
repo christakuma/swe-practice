@@ -67,6 +67,8 @@ from tests.content.test_katas import (  # noqa: F401
     test_its_examples_give_the_output_they_show,
     test_its_hidden_suite_holds_more_than_one_test,
     test_its_reference_solution_passes_every_check,
+    test_its_stub_and_reference_agree_with_the_declared_signature,
+    test_its_stub_docstrings_are_generated_from_the_signature,
     test_its_stub_fails,
 )
 
