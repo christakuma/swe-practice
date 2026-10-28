@@ -423,7 +423,10 @@ button[disabled] {
  * away with the prompt is the thing this layout exists to stop.
  */
 .workbench.editing {
-  grid-template-columns: minmax(16rem, var(--split, 30rem)) 0.9rem minmax(24rem, 1fr);
+  /* Named so `workbench.js` can read the width asked for: the width the grid
+     laid out is already squeezed in a window just past the breakpoint. */
+  --split-default: 30rem;
+  grid-template-columns: minmax(16rem, var(--split, var(--split-default))) 0.9rem minmax(24rem, 1fr);
   gap: 0;
   align-items: stretch;
   height: calc(100vh - 12rem);

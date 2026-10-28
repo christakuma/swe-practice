@@ -28,6 +28,11 @@
   var EDITOR_MIN = 384; // and neither can the editor
   var STEP = 24;
 
+  // What the user chose, kept apart from what the window currently allows: the
+  // clamp in `apply` is for this width of window, and reading it back would
+  // replace the choice with the clamp.
+  var wanted = null;
+
   function bounds() {
     return { min: MIN, max: Math.max(MIN, grid.clientWidth - EDITOR_MIN) };
   }
@@ -57,7 +62,7 @@
   try {
     var stored = parseInt(window.localStorage.getItem(KEY), 10);
     if (stored > 0) {
-      apply(stored);
+      wanted = stored;
     }
   } catch (error) {
     // no remembered position; the stylesheet's default stands
@@ -68,8 +73,28 @@
     return bar.offsetParent === null;
   }
 
+  // With nothing remembered, the stylesheet's default is the choice -- the
+  // width it asks for, not the width laid out. Read off the page, that is
+  // already squeezed in a window just past the breakpoint, or clamped after a
+  // narrow one, and widening the window would never undo it.
+  function stylesheetDefault() {
+    var value = getComputedStyle(grid).getPropertyValue("--split-default").trim();
+    var number = parseFloat(value);
+    if (/rem$/.test(value)) {
+      return number * parseFloat(getComputedStyle(document.documentElement).fontSize);
+    }
+    return /px$/.test(value) ? number : current();
+  }
+
+  function settle() {
+    if (wanted === null) {
+      wanted = stylesheetDefault();
+    }
+    apply(wanted);
+  }
+
   if (!stacked()) {
-    apply(current());
+    settle();
   }
 
   bar.addEventListener("pointerdown", function (event) {
@@ -93,7 +118,8 @@
     bar.releasePointerCapture(event.pointerId);
     bar.classList.remove("dragging");
     grid.classList.remove("is-dragging");
-    save(apply(current()));
+    wanted = apply(current());
+    save(wanted);
   }
 
   bar.addEventListener("pointerup", release);
@@ -105,13 +131,14 @@
       return;
     }
     event.preventDefault();
-    save(apply(current() + delta));
+    wanted = apply(current() + delta);
+    save(wanted);
   });
 
   // A window narrowed after a wide drag must not leave the editor a sliver.
   window.addEventListener("resize", function () {
     if (!stacked()) {
-      apply(current());
+      settle();
     }
   });
 })();
