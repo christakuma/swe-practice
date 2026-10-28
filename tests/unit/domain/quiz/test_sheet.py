@@ -46,6 +46,18 @@ def test_a_fix_is_the_first_block_under_its_heading() -> None:
     assert answers == {"fix-it": Answer(code="x = 1")}
 
 
+def test_ids_are_read_case_blind_on_answer_lines_and_headings_alike() -> None:
+    """Both or neither: a sheet that read `Which-Condition:` and ignored
+    `## Fix-It` graded the fix as unanswered, with nothing to say why.
+    """
+    sheet = "Which-Condition: circular-wait\n\n## Fix-It\n\n```\nx = 1\n```\n"
+    answers = parse_sheet(sheet, QUESTIONS)
+    assert answers == {
+        "which-condition": Answer(values=("circular-wait",)),
+        "fix-it": Answer(code="x = 1"),
+    }
+
+
 def test_a_heading_with_no_block_under_it_is_a_problem() -> None:
     answers = parse_sheet("## fix-it\n\nI ran out of time.\n", QUESTIONS)
     assert answers["fix-it"].problem is not None

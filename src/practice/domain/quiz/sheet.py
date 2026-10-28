@@ -52,7 +52,7 @@ __all__ = ["SHEET_FILE", "Answer", "parse_sheet", "render_sheet"]
 #: be named. One name, because the instructions a solver reads say it.
 SHEET_FILE: Final = "answers.md"
 
-_ANSWER_LINE: Final = re.compile(r"^([a-z0-9]+(?:-[a-z0-9]+)*)\s*:(.*)$")
+_ANSWER_LINE: Final = re.compile(r"^([a-z0-9]+(?:-[a-z0-9]+)*)\s*:(.*)$", re.IGNORECASE)
 _HEADING: Final = re.compile(r"^##\s+(\S+)\s*$")
 _FENCE: Final = re.compile(r"^(`{3,}|~{3,})")
 
@@ -111,14 +111,17 @@ def parse_sheet(text: str, questions: Sequence[Question]) -> dict[str, Answer]:
             continue
         index += 1
         if match := _HEADING.match(line):
-            heading = match.group(1) if match.group(1) in fixes else None
+            # Case-blind like an answer line, so `## Q3` and `Q1: b` on one
+            # sheet are both read, or neither -- never one of the two.
+            named = match.group(1).lower()
+            heading = named if named in fixes else None
             if heading is not None:
                 headed.add(heading)
             continue
         match = _ANSWER_LINE.match(line)
-        if match is None or match.group(1) not in keyed:
+        if match is None or match.group(1).lower() not in keyed:
             continue
-        question_id = match.group(1)
+        question_id = match.group(1).lower()
         if question_id in answers:
             answers[question_id] = Answer(
                 problem=f"`{question_id}` is answered on two lines, so neither is read."
