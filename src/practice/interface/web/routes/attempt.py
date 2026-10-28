@@ -279,11 +279,15 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # that posts to it is drawn is the template's question, and it
                 # asks the attempt's policy rather than anything decided here.
                 "tutor_url": TUTOR_URL.format(attempt_id=parsed),
-                # Only for a finished attempt, because `OfferReview` refuses one
-                # with no verdict -- there is nothing to read a grade off. The
-                # template asks the same question to decide which half of the
-                # page to draw, so the two cannot disagree.
-                "review": (None if opened.is_active else services.offer_review(parsed)),
+                # Only for an attempt that finished *with a verdict*, because
+                # `OfferReview` refuses one without -- there is nothing to read
+                # a grade off. Finished is not enough: an abandoned attempt is
+                # finished and has none, and asking anyway made its page a 500.
+                "review": (
+                    None
+                    if opened.is_active or opened.verdict is None
+                    else services.offer_review(parsed)
+                ),
                 # Posted back by both submit forms, so the verdict fragment
                 # can offer the step after this one on the same track.
                 "track_name": track_name,
@@ -293,7 +297,12 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 **(
                     {}
                     if opened.is_active
-                    else next_context(services, opened.exercise.id, track_name)
+                    else next_context(
+                        services,
+                        opened.exercise.id,
+                        track_name,
+                        interview=opened.attempt.policy.is_interview,
+                    )
                 ),
                 # Whole minutes, because the deadline is authored in minutes and
                 # a seconds figure on a page that does not tick is a precision

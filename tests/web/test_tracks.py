@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from practice.domain.attempt import AttemptMode
 from practice.domain.ids import ExerciseId
 from practice.domain.track import Track
 from tests.unit.application.helpers import RecordingGrader, a_failing_verdict
@@ -347,12 +348,17 @@ def test_reloading_a_finished_attempt_shows_the_same_next_step(
     assert '<input type="hidden" name="track" value="kata-first">' in page
 
 
-def test_a_passed_attempt_is_not_offered_a_retry(
+def test_a_passed_attempt_is_offered_a_quiet_retry_after_next(
     client: TestClient, wiring: Wiring
 ) -> None:
+    """Going again after a pass is practice too; it is just not the loud button."""
     attempt_id = solve(client, wiring)
 
-    assert "Try this one again" not in client.get(f"/attempt/{attempt_id}").text
+    page = client.get(f"/attempt/{attempt_id}?track=kata-first").text
+    actions = page[page.index('class="next-actions"') :]
+
+    assert actions.index("Next: Revert a pushed commit") < actions.index("Retry")
+    assert '<button type="submit" class="quiet">Retry this exercise</button>' in page
 
 
 def test_a_failed_attempt_is_offered_a_retry_and_the_step_after(
@@ -375,9 +381,13 @@ def test_a_failed_attempt_is_offered_a_retry_and_the_step_after(
     )
 
     assert "Next: Revert a pushed commit" in fragment
-    assert "Try this one again" in fragment
-    retry = fragment[fragment.index("Try this one again") - 400 :]
+    # First and loud after a failure, with the track carried for the next go.
+    assert '<button type="submit">Retry this exercise</button>' in fragment
+    retry = fragment[: fragment.index("Retry this exercise")]
+    retry = retry[retry.rindex("<form") :]
     assert f'name="exercise_id" value="{KATA}"' in retry
+    assert 'name="track" value="kata-first"' in retry
+    assert "Next: Revert" not in retry
     assert "0 done" in fragment
 
 
@@ -414,8 +424,8 @@ def test_a_next_step_with_an_attempt_already_open_is_a_resume_link(
     assert "Next:" not in fragment
 
 
-def test_a_library_with_no_tracks_has_no_next_block() -> None:
-    """No route to be on. The schedule block's own link is still the way out."""
+def test_a_library_with_no_tracks_still_offers_a_retry_and_nothing_else() -> None:
+    """No route to be on, so no Next -- but going again needs no track."""
     wiring = a_wiring()
     with client_for(wiring) as client:
         started = wiring.services.start_attempt(KATA)
@@ -424,9 +434,36 @@ def test_a_library_with_no_tracks_has_no_next_block() -> None:
         ).text
         page = client.get(f"/attempt/{started.attempt.id}").text
 
-    assert 'id="review"' in fragment
-    assert 'id="next"' not in fragment
-    assert 'id="next"' not in page
+    for body in (fragment, page):
+        assert 'id="review"' in body
+        assert "Retry this exercise" in body
+        assert f'name="exercise_id" value="{KATA}"' in body
+        assert "Next:" not in body
+        assert 'name="track"' not in body
+        assert "Pick another track" not in body
+
+
+def test_a_retry_of_an_interview_is_an_interview() -> None:
+    """The mode is fixed at the start (ADR 0020), so a retry has to ask for it."""
+    wiring = a_wiring()
+    with client_for(wiring) as client:
+        started = wiring.services.start_attempt(KATA, mode=AttemptMode.INTERVIEW)
+        fragment = client.post(
+            f"/api/attempt/{started.attempt.id}/submit", data={"source": SOLUTION}
+        ).text
+
+    assert '<input type="hidden" name="interview" value="1">' in fragment
+
+
+def test_a_retry_of_a_practice_attempt_asks_for_no_interview() -> None:
+    wiring = a_wiring()
+    with client_for(wiring) as client:
+        started = wiring.services.start_attempt(KATA)
+        fragment = client.post(
+            f"/api/attempt/{started.attempt.id}/submit", data={"source": SOLUTION}
+        ).text
+
+    assert 'name="interview"' not in fragment
 
 
 def test_an_open_attempt_has_no_next_block(client: TestClient, wiring: Wiring) -> None:
@@ -516,3 +553,21 @@ def test_the_dashboard_offers_each_track_with_a_way_into_it(
     assert 'href="/tracks/kata-first"' in page
     assert "1 of 2 done · next: Revert a pushed commit" in page
     assert '<input type="hidden" name="track" value="kata-first">' in page
+
+
+def test_an_abandoned_attempt_opens_with_a_loud_retry_and_no_schedule() -> None:
+    """It used to be a 500: the page asked for a review offer, and an attempt
+    with no verdict has nothing to schedule from. Giving up is short of a pass,
+    so Retry is the loud button.
+    """
+    wiring = a_wiring()
+    with client_for(wiring) as client:
+        started = wiring.services.start_attempt(KATA)
+        wiring.services.abandon_attempt(started.attempt.id)
+        response = client.get(f"/attempt/{started.attempt.id}")
+
+    assert response.status_code == 200
+    assert "This attempt has no verdict." in response.text
+    assert 'id="review"' not in response.text
+    assert '<a href="/">Back to the dashboard</a>' in response.text
+    assert '<button type="submit">Retry this exercise</button>' in response.text

@@ -1630,6 +1630,14 @@ a.button {
   padding: 0.35rem 0.9rem;
 }
 
+/* Quiet beside a loud Retry, after a failure, for the reason `button.quiet` is. */
+a.button.quiet {
+  background: var(--bg-sunken);
+  border-color: var(--line);
+  color: var(--ink);
+  font-weight: 500;
+}
+
 /* --- a quiz (Phase 25) --------------------------------------------------- */
 
 /*

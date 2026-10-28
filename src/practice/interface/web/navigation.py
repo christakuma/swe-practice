@@ -74,7 +74,11 @@ def workbench_url(attempt_id: AttemptId, track_name: str | None) -> str:
 
 
 def next_context(
-    services: Services, exercise_id: ExerciseId, track_name: str | None
+    services: Services,
+    exercise_id: ExerciseId,
+    track_name: str | None,
+    *,
+    interview: bool = False,
 ) -> dict[str, object]:
     """Everything `partials/next.html` reads, for whichever route is rendering it.
 
@@ -86,10 +90,18 @@ def next_context(
     the next step may be an exercise with an attempt already open, and starting
     a second one would provision a second workspace and split one piece of work
     across two attempts. The partial offers Resume instead.
+
+    `retry_track` and `retry_interview` are what the Retry button posts back,
+    so a second go is started under the conditions of the first: on the same
+    track, and timed if the first one was. The mode is fixed when an attempt
+    starts (ADR 0020), so a retry that quietly dropped it would be a different
+    exercise from the one that was failed.
     """
     return {
         "next_step": services.next_exercise(exercise_id, track_name),
         "finished_exercise_id": exercise_id,
+        "retry_track": track_name,
+        "retry_interview": interview,
         "open_by_exercise": {
             found.attempt.exercise_id: found
             for found in services.list_open_attempts()

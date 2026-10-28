@@ -109,6 +109,15 @@ from keystrokes.
   the suite. Held together by running five shipped references, one per shape
   of answer, through the harness in `tests/integration/kata/test_examples.py`.
 
+**Later (2026-10-27): the button under a finished verdict is *Retry this
+exercise*, and is always there.** *Try this one again*, named above, was
+drawn only after a failure and only on a track, so an attempt started from
+Browse had no way back in. It is now on every finished attempt -- loud after
+a fail, quiet after a pass -- and carries the track and the interview mode,
+since a mode is fixed when an attempt starts (ADR 0020). Nothing above
+changes: a failure is still not final, and a retry is still a new attempt
+from the stub, which is why it is offered only once one has ended.
+
 ## Alternatives considered
 
 **Keep completing on failure, and make *Try this one again* carry the code

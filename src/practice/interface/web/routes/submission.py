@@ -80,7 +80,12 @@ def render_submission(
             # exists for this exercise, and a submission has never heard of one.
             "review": services.offer_review(attempt_id),
             "review_url": REVIEW_URL.format(attempt_id=attempt_id),
-            **next_context(services, submission.attempt.exercise_id, track_name),
+            **next_context(
+                services,
+                submission.attempt.exercise_id,
+                track_name,
+                interview=submission.attempt.policy.is_interview,
+            ),
             # A finished quiz shows every answer and every explanation under
             # its verdict, which is where a quiz does its teaching: a failed
             # question only ever said why the chosen option was wrong.

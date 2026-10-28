@@ -28,10 +28,12 @@
 {% include "partials/verdict.html" %}
 {% if quiz_items %}{% include "partials/quiz-review.html" %}{% endif %}
 {#
-  Only while scheduling is on. The route still computes the offer, so the
-  guard has to be here: `review.html` reads `review.suggested`, and a switch
-  that hid the panel by passing nothing would fail to render instead.
+  Only while scheduling is on, and only with an offer to show. The route still
+  computes the offer whatever the switch says, so that guard has to be here:
+  `review.html` reads `review.suggested`. The offer is `None` for an abandoned
+  attempt, which has no verdict to schedule from -- and the page drawn for one
+  still has the way back to the dashboard and the Retry under it.
 #}
-{% if reviews_enabled() %}{% include "partials/review.html" %}
+{% if reviews_enabled() and review %}{% include "partials/review.html" %}
 {% else %}<p><a href="/">Back to the dashboard</a></p>{% endif %}
 {% include "partials/next.html" %}

@@ -18,40 +18,53 @@
   the reason the browse page gives: a second Start would provision a second
   workspace for what the solver thinks of as one piece of work.
 
-  **Try again is offered only on a failure.** After a pass it would be noise
-  beside the one button that matters; after a fail it is as likely to be what
-  somebody wants as moving on, and without it the only way back in is to find
-  the exercise in a list.
+  **Retry is offered on every finished attempt, track or not.** It used to
+  appear only after a failure and only on a track, which left an attempt
+  started from Browse with no way back in but finding the exercise in a list
+  again. After a fail it is the first button and the loud one, because it is
+  as likely as moving on; after a pass it is there and quiet, beside the one
+  button that matters. It posts the same exercise id -- a variant's own, so a
+  retry is the same version -- and the mode the first go was started in.
 
-  Absent entirely for a library that declares no tracks: there is no route to
-  be on, and "Back to the queue" in the schedule block is still the way out.
+  The track half is absent for a library that declares no tracks: there is no
+  route to be on, and "Back to the queue" in the schedule block is still the
+  way out.
 #}
 {% set verdict = verdict if verdict is defined else workbench.verdict %}
-{% if next_step %}
-  {% set progress = next_step.progress %}
-  {% set step = next_step.step %}
+{#
+  Anything short of a pass is a failure here, an abandoned attempt included:
+  it has no verdict at all, and giving up on an exercise is the case Retry is
+  loudest for.
+#}
+{% set failed = not (verdict and verdict.passed) %}
+{% macro retry_form(loud) %}
+  <form method="post" action="/attempt">
+    <input type="hidden" name="exercise_id" value="{{ finished_exercise_id }}">
+    {% if retry_track %}<input type="hidden" name="track" value="{{ retry_track }}">{% endif %}
+    {% if retry_interview %}<input type="hidden" name="interview" value="1">{% endif %}
+    <button type="submit"{% if not loud %} class="quiet"{% endif %}>Retry this exercise</button>
+  </form>
+{% endmacro %}
+{% if finished_exercise_id is defined %}
+  {% set progress = next_step.progress if next_step else none %}
+  {% set step = next_step.step if next_step else none %}
   <section class="panel next" id="next">
     <h2>Next</h2>
     <div class="next-actions">
+      {% if failed %}{{ retry_form(true) }}{% endif %}
       {% if step %}
         {% set open = open_by_exercise.get(step.exercise.id) %}
         {% if open %}
-          <a class="button" href="/attempt/{{ open.attempt.id }}?track={{ progress.track.name }}">Resume: {{ step.exercise.title }}</a>
+          <a class="button{% if failed %} quiet{% endif %}" href="/attempt/{{ open.attempt.id }}?track={{ progress.track.name }}">Resume: {{ step.exercise.title }}</a>
         {% else %}
           <form method="post" action="/attempt">
             <input type="hidden" name="exercise_id" value="{{ step.exercise.id }}">
             <input type="hidden" name="track" value="{{ progress.track.name }}">
-            <button type="submit">Next: {{ step.exercise.title }} →</button>
+            <button type="submit"{% if failed %} class="quiet"{% endif %}>Next: {{ step.exercise.title }} →</button>
           </form>
         {% endif %}
       {% endif %}
-      {% if verdict and not verdict.passed %}
-        <form method="post" action="/attempt">
-          <input type="hidden" name="exercise_id" value="{{ finished_exercise_id }}">
-          <input type="hidden" name="track" value="{{ progress.track.name }}">
-          <button type="submit" class="quiet">Try this one again</button>
-        </form>
-      {% endif %}
+      {% if not failed %}{{ retry_form(false) }}{% endif %}
     </div>
     {#
       Each sentence on one line, the way `partials/verdict.html` writes its
@@ -60,7 +73,7 @@
     #}
     {% if step %}
       <p class="meta">Step {{ step.number }} of {{ progress.total }} on <a href="/tracks/{{ progress.track.name }}">{{ progress.track.title }}</a> · {{ progress.done }} done · {{ step.exercise.difficulty.value }} · ~{{ step.exercise.estimated_minutes }} min</p>
-    {% else %}
+    {% elif progress %}
       <p class="scheduled">Nothing else is unfinished on <a href="/tracks/{{ progress.track.name }}">{{ progress.track.title }}</a>: {{ progress.done }} of {{ progress.total }} done.</p>
       <p class="meta"><a href="/tracks">Pick another track</a></p>
     {% endif %}
