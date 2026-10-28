@@ -229,6 +229,12 @@
         if (editor !== null) {
           editor.updateOptions({ fontSize: fontSize });
         }
+      },
+      dispose: function () {
+        if (editor !== null) {
+          editor.dispose();
+          editor = null;
+        }
       }
     };
 
@@ -243,6 +249,9 @@
     }
 
     loadMonaco().then(function (monaco) {
+      if (!area.isConnected) {
+        return; // swapped out while Monaco was loading
+      }
       var host = document.createElement("div");
       host.className = "code-editor-host";
       area.insertAdjacentElement("afterend", host);
@@ -312,7 +321,20 @@
     return handle;
   }
 
+  // A swap removes the textarea and its host but not the Monaco editor behind
+  // them, which stays reachable through `handles`; dispose what is detached.
+  function sweep() {
+    handles = handles.filter(function (handle) {
+      if (handle.textarea.isConnected) {
+        return true;
+      }
+      handle.dispose();
+      return false;
+    });
+  }
+
   function mountAll(root) {
+    sweep();
     root.querySelectorAll("textarea[data-code-editor]").forEach(function (area) {
       if (area.getAttribute("data-mounted") !== null) {
         return;

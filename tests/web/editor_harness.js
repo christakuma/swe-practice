@@ -31,6 +31,7 @@ const textarea = {
   value: "def f():\n    pass\n",
   hidden: false,
   readOnly: false,
+  isConnected: true, // in the page, as `mountAll` found it
   id: scenario === "other-id" ? "other" : "source",
   attrs: {
     "data-code-editor": scenario === "yaml" ? "yaml" : "python",

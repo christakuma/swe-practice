@@ -27,6 +27,7 @@
   </div>
   <textarea id="{{ id }}" name="{{ name }}" spellcheck="false" rows="{{ rows }}"
             data-code-editor="{{ language or 'plaintext' }}"
-            {%- if run %} data-run="{{ run }}"{% endif %}>{{ value }}</textarea>
+            {%- if run %} data-run="{{ run }}"{% endif %}>
+{{ value }}</textarea>
 </div>
 {% endmacro %}
