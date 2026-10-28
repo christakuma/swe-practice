@@ -301,3 +301,42 @@ def test_the_same_argument_is_looked_at_once() -> None:
     assert f(numbers) == 3
     with pytest.raises(AssertionError, match="value 1000000"):
         f([10**6, 2, 3])  # a new object is a new look
+
+
+def test_a_freed_list_s_address_does_not_excuse_the_next_one() -> None:
+    """`id()` is reused once a list is freed, and a same-length list reuses it.
+
+    The memo used to be keyed on `(id(argument), length)`, so a literal that
+    landed on its predecessor's address skipped the check; this called the
+    out-of-range list three times out of three and missed it every time.
+    """
+    signature = _signature(replace(NUMBERS, values=_range(0, 9)))
+    f = _armed(IDENTITY, signature)["f"]
+
+    for _ in range(3):
+        assert f([1, 2, 3]) == 3
+        with pytest.raises(AssertionError, match="value 99"):
+            f([1, 2, 99])
+
+
+@pytest.mark.parametrize("container", [tuple, set, frozenset])
+def test_children_held_in_any_builtin_container_are_reached(
+    container: type,
+) -> None:
+    signature = _signature(replace(NODE, nodes=_range(0, 2), values=_range(0, 9)))
+    source = NODES.replace(
+        "self.left = value, next, left",
+        "self.left = value, next, left; self.neighbours = ()",
+    )
+    namespace = _armed(source, signature)
+    node = namespace["Node"]
+
+    root = node(1)
+    root.neighbours = container([node(12)])
+    with pytest.raises(AssertionError, match=r"node.value 12 is outside 0..9"):
+        namespace["f"](root)
+
+    crowded = node(1)
+    crowded.neighbours = container([node(2), node(3)])
+    with pytest.raises(AssertionError, match=r"3 nodes is outside 0\.\.2"):
+        namespace["f"](crowded)

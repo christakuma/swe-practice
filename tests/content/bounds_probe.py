@@ -48,15 +48,18 @@ _SEQUENCES: tuple[type, ...] = (list, tuple, set, frozenset)
 #: Re-entrancy depth, shared by every wrapped callable.
 _depth = [0]
 
-#: The last argument each parameter was checked on, as `(id, length)`.
+#: The last argument each parameter was checked on, as `(object, length)`.
 #:
 #: A search function is called thousands of times on one two-million-element
 #: list, and a probe that scans the list per call turns an O(log n) answer into
 #: an O(n) one -- two suites hit their time limit before this existed. The same
-#: object is looked at once. Mutating it between calls into a violation would
-#: slip past, which no hidden suite does, and the failure it risks is a bound
-#: missed, never one invented.
-_looked_at: dict[tuple[str, str], tuple[int, int | None]] = {}
+#: object is looked at once -- held by reference, not by `id()`, because a freed
+#: list's address is reused by the next literal of the same length. Mutating
+#: it between calls into a violation would slip past, which no hidden suite
+#: does, and the failure it risks is a bound missed, never one invented.
+#: Holding it keeps one argument per parameter alive, and only for one
+#: suite: the footer lives in the graded subprocess, not the pytest worker.
+_looked_at: dict[tuple[str, str], tuple[object, int | None]] = {}
 
 
 def _length(value: object) -> int | None:  # noqa: PLR0911
@@ -141,7 +144,7 @@ def _reachable(roots: list[Any]) -> list[Any]:
         found.append(node)
         for name in _NODE_LINKS:
             target = getattr(node, name, None)
-            if isinstance(target, list):
+            if isinstance(target, _SEQUENCES):
                 stack.extend(_elements(target))
             elif target is not None:
                 stack.append(target)
@@ -313,12 +316,13 @@ def _guard(
                     argument = args[index]
                 else:
                     continue
-                stamp = (id(argument), _length(argument))
-                if _looked_at.get((label, name)) == stamp:
+                length = _length(argument)
+                seen = _looked_at.get((label, name))
+                if seen is not None and seen[0] is argument and seen[1] == length:
                     continue
                 found += problems(f"{label}({name})", argument, spec)
                 if not found:
-                    _looked_at[(label, name)] = stamp
+                    _looked_at[(label, name)] = (argument, length)
             if found:
                 raise AssertionError("DECLARED BOUND BROKEN: " + "; ".join(found))
             if rebind is None:

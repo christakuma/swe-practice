@@ -5,7 +5,7 @@ tied together -- the stub's docstring, the prose prompt and a free-text
 `constraints:` list. Per ADR 0022 the third was the dangerous one: a constraint
 is a promise about the inputs the hidden suite passes, and a new test that
 stepped outside a stated bound failed nothing. This module makes the promise a
-value that other code can hold a suite to (`tests/content/test_bounds.py`) and
+value that other code can hold a suite to (`tests/content/bounds_probe.py`) and
 the page can draw the same way every time.
 
 **One structure, three renderings.** The page's Input / Output header, the
@@ -172,7 +172,8 @@ class Range:
             return f"{self.low.text} <= {subject} <= {self.high.text}"
         if self.low is not None:
             return f"{subject} >= {self.low.text}"
-        return f"{subject} <= {self.high.text if self.high else ''}"
+        assert self.high is not None  # noqa: S101  (a range has at least one end)
+        return f"{subject} <= {self.high.text}"
 
 
 def _require_name(value: str, *, what: str) -> None:
