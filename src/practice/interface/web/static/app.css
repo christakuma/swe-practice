@@ -314,10 +314,31 @@ button[disabled] {
 .prompt pre {
   padding: 0.6rem 0.7rem;
   overflow-x: auto;
-  /* Prose wraps, the examples keep their own line breaks and leading spaces.
-     `pre` alone clips a paragraph off the right edge of the panel; `pre-wrap`
-     is the one value that does both halves of what a prompt needs. */
-  white-space: pre-wrap;
+  /* Only what is drawn is a `pre` now -- a fenced transcript, a query plan, a
+     tree -- because the prose around it is paragraphs (`prose.py`). A drawing
+     that wrapped would be a different drawing, so it scrolls instead. */
+  white-space: pre;
+}
+
+/* Reflowed prose: paragraphs and lists that fill the panel they are in. */
+.prose > p,
+.prose > ul,
+.prose > ol,
+.prose > pre {
+  margin: 0 0 0.75rem;
+}
+
+.prose > :last-child {
+  margin-bottom: 0;
+}
+
+.prose > ul,
+.prose > ol {
+  padding-left: 1.4rem;
+}
+
+.prose li + li {
+  margin-top: 0.25rem;
 }
 
 /*
@@ -642,21 +663,19 @@ button[disabled] {
 }
 
 .example dd pre {
+  /* Scrolls rather than wraps by `.prompt pre`: a wrapped line of Python is a
+     different line of Python. */
   margin: 0;
-  /* Unlike the prompt, this is code: a wrapped line of Python is a different
-     line of Python, so it scrolls instead. */
-  white-space: pre;
 }
 
 .example .explanation {
   margin: 0.6rem 0 0;
-  /* Mono and `pre-wrap`, like the prompt: an explanation may hold a drawing of
-     a tree, and a drawing in a proportional face is a pile of slashes. */
-  font-family: var(--mono);
-  font-size: 0.82rem;
+  /* Reflowed like the prompt. A drawing of a tree inside one is its own `pre`,
+     mono by the rule above, because a drawing in a proportional face is a
+     pile of slashes; the sentences around it need no such thing. */
+  font-size: 0.9rem;
   line-height: 1.5;
   color: var(--ink-dim);
-  white-space: pre-wrap;
 }
 
 .editor-actions {

@@ -50,6 +50,7 @@ from practice.application.preferences import reviews_enabled
 from practice.domain.review import Grade
 from practice.interface.web.charts import render_activity, render_mastery
 from practice.interface.web.commit_graph import render_graph
+from practice.interface.web.prose import render_inline, render_prose
 from practice.interface.web.routes import (
     attempt,
     browse,
@@ -124,6 +125,8 @@ def create_app(services: Services) -> FastAPI:
     )
     templates.env.filters["short_ref"] = short_ref
     templates.env.filters["commit_graph"] = render_graph
+    templates.env.filters["prose"] = render_prose
+    templates.env.filters["inline"] = render_inline
     templates.env.filters["activity_chart"] = render_activity
     templates.env.filters["mastery_chart"] = render_mastery
     app.include_router(dashboard.build_router(services, templates))

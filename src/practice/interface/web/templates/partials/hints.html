@@ -31,7 +31,7 @@
     {% for revealed in attempt.revealed_hints %}
       <li class="hint">
         <span class="meta">{{ revealed.index + 1 }} of {{ attempt.policy.hint_count }}</span>
-        {{ revealed.hint.text }}
+        {{ revealed.hint.text | inline }}
       </li>
     {% endfor %}
   </ol>

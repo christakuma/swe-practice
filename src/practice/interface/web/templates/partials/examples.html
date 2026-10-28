@@ -12,9 +12,10 @@
   input against the reference solution and compares what comes back with the
   output, so the page can say "checked" and mean it (ADR 0027).
 
-  The explanation is `pre-wrap` like the prompt, and for the same reason: a
+  The explanation is reflowed like the prompt, and keeps a drawing exactly: a
   tree is easier to read as a drawing than as nested constructors, and a
-  drawing only survives if its whitespace does.
+  drawing only survives if its whitespace does. `prose` keeps any block with
+  an indented line verbatim, which is how every tree in the library is drawn.
 #}
 <p class="meta examples-key">
   Each input is Python you could run against your solution; the output is the
@@ -31,7 +32,7 @@
       <dd><pre>{{ example.output }}</pre></dd>
     </dl>
     {% if example.explanation %}
-      <p class="explanation">{{ example.explanation }}</p>
+      <div class="explanation prose">{{ example.explanation | prose }}</div>
     {% endif %}
   </article>
 {% endfor %}

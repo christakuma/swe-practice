@@ -51,6 +51,7 @@ from practice.domain.exercise import (
     GitScenarioSpec,
     KataSpec,
 )
+from practice.interface.web.prose import unclosed_fences
 from practice.interface.web.routes.dashboard import QUEUE_LIMIT
 
 if TYPE_CHECKING:
@@ -189,6 +190,19 @@ def test_its_hints_are_progressive_rather_than_repeated(exercise: Exercise) -> N
     texts = [hint.text.strip() for hint in exercise.hints]
 
     assert len(set(texts)) == len(texts)
+
+
+def test_every_fence_it_opens_it_closes(exercise: Exercise) -> None:
+    """The page renders an unclosed fence as text rather than swallowing the
+    rest of the prompt into one block (`interface/web/prose.py`), which is the
+    right failure for a reader and the wrong one to ship. Prompts and example
+    explanations are the two fields drawn through it.
+    """
+    spec = exercise.spec
+    explanations = [example.explanation for example in getattr(spec, "examples", ())]
+
+    for text in (exercise.prompt, *explanations):
+        assert unclosed_fences(text) == 0, text
 
 
 # --- git scenarios ---------------------------------------------------------

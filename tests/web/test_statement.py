@@ -132,7 +132,7 @@ def test_an_example_without_an_explanation_draws_no_empty_paragraph(
 
     body = _workbench(client, wiring, KATA)
 
-    assert body.count('class="explanation"') == 1
+    assert body.count('class="explanation prose"') == 1
 
 
 def test_an_example_is_shown_as_text_and_never_as_markup(

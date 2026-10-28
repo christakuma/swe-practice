@@ -7,6 +7,6 @@
 #}
 <li class="hint">
   <span class="meta">{{ revealed.number }} of {{ attempt.policy.hint_count }}</span>
-  {{ revealed.hint.text }}
+  {{ revealed.hint.text | inline }}
 </li>
 {% include "partials/hint-status.html" %}
