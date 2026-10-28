@@ -240,6 +240,15 @@ class TestRun:
             "ad1:ad1 755",
         ]
 
+    def test_a_dot_in_an_account_name_is_not_a_separator_for_docker(self) -> None:
+        """Only `chown` spells `user.group`; `--chown` splits on `:` alone."""
+        body = "RUN useradd -m my.app\nCOPY --chown=my.app:my.app . /new/dest/\n"
+        assert owners(body, "/new/dest/app.py") == ["my.app:my.app 755"]
+
+    def test_chown_prefers_a_whole_name_match_over_the_dot_spelling(self) -> None:
+        body = "RUN useradd -m my.app && mkdir /c1 && chown my.app /c1\n"
+        assert owners(body, "/c1")[0].startswith("my.app:")
+
     @pytest.mark.parametrize(
         ("mode", "result"),
         [

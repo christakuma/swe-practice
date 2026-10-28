@@ -215,7 +215,11 @@ class _Accounts:
         Docker documents and as measured. `user:` and `user.` are `chown`'s
         spellings of *the user's own group*.
         """
-        name, colon, group = spec.replace(".", ":", 1).partition(":")
+        if not same_number and ":" not in spec and self._user(spec) is None:
+            # `chown`'s `.` separator; Docker splits only on `:`, and an
+            # account may be called `my.app`, so a whole-name match wins.
+            spec = spec.replace(".", ":", 1)
+        name, colon, group = spec.partition(":")
         uid = gid = -1
         if name:
             user = self._user(name)
