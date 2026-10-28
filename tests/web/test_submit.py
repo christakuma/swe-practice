@@ -11,7 +11,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from practice.domain.exercise import ComplexityExpectation
 from practice.domain.ids import ExerciseId
+from tests.fakes import a_kata
 from tests.unit.application.helpers import RecordingGrader, a_failing_verdict
 from tests.web.conftest import a_wiring, client_for
 
@@ -194,3 +196,34 @@ def test_a_finished_attempt_reloads_to_the_same_verdict_it_was_shown(
     page = client.get(f"/attempt/{started.attempt.id}").text
 
     assert fragment.strip() in page
+
+
+# --- the complexity warning ---------------------------------------------------
+
+
+def test_a_kata_that_expects_complexity_warns_before_a_blank_claim_is_sent() -> None:
+    """Asked before grading: a pass closes the attempt, and with it the chance."""
+    wiring = a_wiring()
+    wiring.content.replace_with(
+        a_kata(
+            complexity=ComplexityExpectation(
+                expected_time="O(n)", expected_space="O(n)"
+            )
+        )
+    )
+    with client_for(wiring) as client:
+        started = wiring.services.start_attempt(KATA)
+        page = client.get(f"/attempt/{started.attempt.id}").text
+
+    assert "Submit without a complexity claim?" in page
+
+
+def test_a_kata_that_expects_no_complexity_never_warns(
+    client: TestClient, wiring: Wiring
+) -> None:
+    """A warning about a field that grades nothing teaches clicking through."""
+    started = wiring.services.start_attempt(KATA)
+
+    page = client.get(f"/attempt/{started.attempt.id}").text
+
+    assert "Submit without a complexity claim?" not in page

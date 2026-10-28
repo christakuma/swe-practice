@@ -268,6 +268,23 @@
       var form = event.target;
       var button = form.querySelector("button[type=submit]");
 
+      // A blank time or space box is a claim not made, and the verdict then
+      // says nothing about complexity at all -- which reads like it passed.
+      // Asked here, before anything is graded, because a submission that
+      // passes closes the attempt and there is no adding the claim afterwards.
+      // Only drawn for a kata that grades a claim (`expects_complexity`).
+      {% if expects_complexity %}
+      var missing = [];
+      if (form.elements.time.value.trim() === "") { missing.push("time"); }
+      if (form.elements.space.value.trim() === "") { missing.push("space"); }
+      if (missing.length > 0 &&
+          !window.confirm("You have not stated the " + missing.join(" or ") +
+                          " complexity. Submit without a complexity claim?")) {
+        (missing[0] === "time" ? form.elements.time : form.elements.space).focus();
+        return;
+      }
+      {% endif %}
+
       // Grading starts a pytest subprocess and can take a second or two, which
       // is long enough that a button with no in-flight state reads as a button
       // that did nothing -- and the second click it invites would grade the

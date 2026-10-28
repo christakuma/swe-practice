@@ -223,6 +223,11 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                     kata.constraints if kata else quiz.constraints if quiz else ()
                 ),
                 "is_quiz": quiz is not None,
+                # Whether Submit should warn about a blank time or space box.
+                # Only where the kata declares an expectation: a drill takes no
+                # claim, and a warning about a field that grades nothing would
+                # teach the solver to click through warnings.
+                "expects_complexity": kata is not None and kata.complexity is not None,
                 # Every question with this attempt's answer to it, drawn from
                 # the last sheet the log holds -- `interface/web/quiz.py` says
                 # why not the workspace's copy. The attempt id seeds the option
