@@ -54,14 +54,23 @@ def test_handles_a_target_of_zero() -> None:
 def test_finds_the_pair_in_a_long_list() -> None:
     """Finds the pair in a list far too long to compare every pair.
 
-    Twenty thousand elements is four hundred million comparisons for the nested
-    loop, which is seconds; a dict does it in one pass. The time limit, not this
+    A hundred thousand elements, the most the signature allows, with the only
+    pair at the very end: about five billion pair checks for the nested loop,
+    which is minutes; a dict does it in one pass. The time limit, not this
     assertion, is what fails a quadratic solution -- the complexity claim you
     declare before submitting is never auto-graded (PLAN.md §7).
-    """
-    numbers = list(range(20_000))
 
-    assert two_sum(numbers, 39_997) == (19_998, 19_999)
+    It was twenty thousand, and a nested loop finished in 8.1 s against the
+    10 s limit and passed. The size is chosen so the slow answer is far over
+    the limit rather than near it: timed on a sample and extrapolated, the
+    nested loop needs ~200 s, and the quadratics that scan in C (`in` on a
+    slice, `list.index`) ~30 s.
+    """
+    n = 100_000
+    numbers = list(range(n))
+
+    # Only the last two positions can reach 2n - 3, so the pair is unique.
+    assert two_sum(numbers, 2 * n - 3) == (n - 2, n - 1)
 
 
 def test_finds_a_pair_separated_by_the_whole_list() -> None:
