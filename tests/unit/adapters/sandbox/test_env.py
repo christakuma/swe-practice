@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from practice.adapters.sandbox.env import (
+    ACCEPTING_EDITOR,
     FIXTURE_EPOCH,
     FIXTURE_STEP,
     GitIdentity,
@@ -111,13 +112,16 @@ def test_discovery_cannot_escape_the_workspace(environment: dict[str, str]) -> N
 
 
 def test_no_editor_can_be_launched(environment: dict[str, str]) -> None:
-    """`git commit` with no `-m` has to fail, not stall.
+    """No editor that wants a terminal may start, or the command stalls.
 
-    Without these it launches an editor, finds no terminal, and hangs until the
+    Without these git launches one, finds no terminal, and hangs until the
     command timeout expires — a ten second pause with no explanation, which
     PLAN.md §8.1 points out you would hit within five minutes of using the tool.
+    The commit editor accepts the message git prepared, as a person saving it
+    unchanged would; `false` refuses the rebase plan, which is the solver's
+    to write.
     """
-    assert environment["GIT_EDITOR"] == "false"
+    assert environment["GIT_EDITOR"] == ACCEPTING_EDITOR
     assert environment["GIT_SEQUENCE_EDITOR"] == "false"
 
 

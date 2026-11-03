@@ -27,6 +27,14 @@ rest earned their place while building this:
   symlinks; this makes the consequence of one a checkout difference rather than
   a silent hash divergence.
 
+* `log.decorate=short`. Git decorates `log` with branch names only when it is
+  writing to a terminal, and this output goes through a pipe, so plain `git log
+  --oneline` showed hashes and nothing else. Every reference grew `--decorate`
+  to compensate — a flag nobody has needed at a terminal since git 2.13 — and
+  the hints taught it. This makes the sandbox print what a terminal prints, so
+  the command taught is the command typed. Grading is untouched: `RepoQuery`
+  always passes its own `--format`, which no decoration setting reaches.
+
 Note what is deliberately *not* pinned: `advice.detachedHead`. That advice is
 the lesson in at least one exercise, and turning it off to reduce noise would be
 turning off the teaching.
@@ -104,6 +112,8 @@ _GITCONFIG: Final = """\
 \tgpgSign = false
 [color]
 \tui = false
+[log]
+\tdecorate = short
 [push]
 \tdefault = simple
 [pull]

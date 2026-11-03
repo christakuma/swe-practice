@@ -125,10 +125,11 @@ def test_a_commit_with_no_message_fails_instead_of_hanging(
 ) -> None:
     """The ten-second stall PLAN.md §8.1 says you would hit in five minutes.
 
-    Without `GIT_EDITOR=false`, `git commit` with no `-m` launches an editor,
-    finds no terminal, and waits until the timeout. This test would take ten
-    seconds and report a timeout rather than a failure, which is the signal that
-    the setting has gone.
+    Without a pinned `GIT_EDITOR`, `git commit` with no `-m` launches an
+    editor, finds no terminal, and waits until the timeout. This test would take
+    ten seconds and report a timeout rather than a failure, which is the signal
+    that the setting has gone. The sandbox's editor leaves git's empty
+    template as it is, and git refuses that itself.
     """
     workspace.run(["write", "notes.md", "something"], timeout=10)
     workspace.run(["git", "add", "notes.md"], timeout=10)
@@ -137,6 +138,51 @@ def test_a_commit_with_no_message_fails_instead_of_hanging(
 
     assert not result.succeeded
     assert result.exit_code != TIMEOUT_EXIT_CODE
+
+
+def test_a_merge_conflict_is_concluded_by_a_plain_commit(
+    workspace: SubprocessWorkspace,
+) -> None:
+    """The command `GIT_EDITOR=false` broke: git wants an editor for this one
+    even with no terminal, and Pro Git 3.2 finishes a merge with nothing else.
+    """
+    for argv in (
+        ["write", "f.txt", "base"],
+        ["git", "add", "f.txt"],
+        ["git", "commit", "-m", "base"],
+        ["git", "checkout", "-b", "side"],
+        ["write", "f.txt", "side"],
+        ["git", "commit", "-am", "side"],
+        ["git", "checkout", "main"],
+        ["write", "f.txt", "main"],
+        ["git", "commit", "-am", "main"],
+    ):
+        assert workspace.run(argv, timeout=10).succeeded, argv
+    assert not workspace.run(["git", "merge", "side"], timeout=10).succeeded
+    workspace.run(["write", "f.txt", "both"], timeout=10)
+    workspace.run(["git", "add", "f.txt"], timeout=10)
+
+    result = workspace.run(["git", "commit"], timeout=10)
+
+    assert result.succeeded, result.stderr
+    subject = workspace.run(["git", "log", "-1", "--format=%s"], timeout=10)
+    assert subject.stdout.strip() == "Merge branch 'side'"
+
+
+def test_an_amend_with_no_message_says_it_kept_the_old_one(
+    workspace: SubprocessWorkspace,
+) -> None:
+    """At a terminal this opens an editor; here it would succeed in silence."""
+    workspace.run(["write", "f.txt", "one"], timeout=10)
+    workspace.run(["git", "add", "f.txt"], timeout=10)
+    workspace.run(["git", "commit", "-m", "WIP median"], timeout=10)
+
+    result = workspace.run(["git", "commit", "--amend"], timeout=10)
+
+    assert result.succeeded
+    assert "there is no editor here" in result.stderr
+    subject = workspace.run(["git", "log", "-1", "--format=%s"], timeout=10)
+    assert subject.stdout.strip() == "WIP median"
 
 
 def test_output_has_no_carriage_returns(workspace: SubprocessWorkspace) -> None:

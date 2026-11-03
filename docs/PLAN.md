@@ -1086,6 +1086,7 @@ defaults:
 | `core.autocrlf=false`, `core.eol=lf` | The defaults happen to be safe once system config is excluded, but a reproducibility guarantee must not rest on a default that an installer can change. |
 | `init.defaultBranch=main` | With global and system config excluded, git falls back to `master` and warns. Without this, any fixture referring to `main` fails outright. |
 | `core.longpaths=true` | See §8.1 — Windows `MAX_PATH`. |
+| `log.decorate=short` | Not a hash: output goes through a pipe, and git decorates `log` only at a terminal. Without it the references needed `--decorate`, and the hints taught a flag no one types (§16, 2026-11-03). |
 
 With all of that pinned, identical content produces identical hashes on every
 run and every machine. Note the hashes are still tied to git's **default object
@@ -1427,11 +1428,14 @@ interview answer.
   than in CI. The full pinned set is in §6.1.
 - **No network.** `GIT_TERMINAL_PROMPT=0`, no credential helper, and every
   "remote" is a local bare repo inside the workspace.
-- **No interactive editors.** `GIT_EDITOR=false` and `GIT_SEQUENCE_EDITOR=false`.
-  Without these, `git commit` with no `-m` launches an editor, finds no TTY, and
-  **hangs until the timeout expires** — a confusing 10-second stall you would
-  otherwise hit within the first five minutes of using the tool. Failing fast
-  with a readable error is far better teaching.
+- **No interactive editors.** `GIT_SEQUENCE_EDITOR=false`, and a `GIT_EDITOR`
+  that keeps git's prepared message and says so on stderr. Without them,
+  `git commit` with no `-m` launches an editor, finds no TTY, and **hangs until
+  the timeout expires** — a confusing 10-second stall you would otherwise hit
+  within the first five minutes of using the tool. The commit editor was
+  `false` until 2026-11-03, which failed fast but also failed a plain `git
+  commit` concluding a merge and `git rebase --continue`, so the references
+  taught `--no-edit` (§16).
 - **Trust split** — the load-bearing idea: **fixtures are trusted code, user
   commands are untrusted input.** Fixtures run under Git Bash with a real shell.
   User commands are `shlex.split`, checked against a per-exercise allowlist, and
@@ -7042,3 +7046,28 @@ before). 100% statement and branch coverage over 4,183 statements and 1,086
 branches. `practice validate`: 306 exercises, all valid; `practice fixtures
 --check` unchanged. The gate took 14m38s, one run, which CLAUDE.md says is not a
 measurement. No ADR number was reused.
+
+**2026-11-03 — The git content audited for commands nobody types, and a
+console that behaves like a terminal.** The review question was whether the
+git scenarios teach commands people actually use. **Mostly they did, and where
+they did not, the sandbox was the cause.** The references had `git log
+--oneline --decorate --all` in every exercise and `git status --short --branch`
+in all 24, plus `git revert --no-edit HEAD`, `git commit --no-edit` after a
+merge, `git stash show --stat stash@{0}`, and a `git rev-parse` to compare two
+hashes the previous line had printed. Hints copied five of them. Two of those
+flags were forced. Output goes through a pipe, and `log.decorate=auto` only
+decorates at a terminal, so `git log` showed no branch names. And
+`GIT_EDITOR=false` failed the two commands that want an editor even without a
+terminal: a plain `git commit` concluding a merge, and `git rebase --continue`.
+(`--no-edit` on `revert` was never needed. Git opens no editor for revert or
+merge without a terminal; a review caught the first draft of this entry
+claiming otherwise.) **The fix went into the sandbox, not into the hints:**
+`log.decorate=short` in the pinned config, and a `GIT_EDITOR` that keeps the
+prepared message, as a person saving the editor unchanged does, and prints a
+one-line note. The note is for `git commit --amend` with no `-m`, which would
+otherwise keep the old message in silence. A commit with nothing prepared still
+fails at once. `GIT_SEQUENCE_EDITOR` stays
+`false` for §15 question 2's reason. Fixture hashes are unchanged, and every
+reference and counter-example grades as before. `resolve-a-conflict-during-a-rebase`
+lost its `git commit --no-edit` step, because `--continue` now commits the
+resolution itself, as it does at a terminal.

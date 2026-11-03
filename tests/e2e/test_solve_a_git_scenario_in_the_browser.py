@@ -88,9 +88,12 @@ def test_a_scenario_is_browsed_started_driven_and_graded(
     command_url = f"/api/attempt/{attempt_id}/command"
 
     # Look before leaping, which is one of the exercise's own advisory checks.
-    looked = client.post(command_url, data={"line": "git log --oneline --decorate"})
+    looked = client.post(command_url, data={"line": "git log --oneline"})
     assert looked.status_code == 200
     assert 'class="entry ok"' in looked.text
+    # Branch names with no --decorate, as a terminal prints them: the sandbox pins
+    # log.decorate, so the command a person types shows what it shows them.
+    assert "HEAD -&gt; main" in looked.text
     # One response, the appended output *and* the re-rendered panel: PLAN.md §8.4.
     assert 'id="repo-state"' in looked.text
     assert 'hx-swap-oob="true"' in looked.text
@@ -110,7 +113,9 @@ def test_a_scenario_is_browsed_started_driven_and_graded(
     assert "1 of 4" in hint.text
 
     # The fix: a new commit that undoes the bad one, leaving it reachable.
-    reverted = client.post(command_url, data={"line": "git revert --no-edit HEAD"})
+    # As typed at a terminal, with no --no-edit, which revert never needed:
+    # git opens no editor for it without a terminal.
+    reverted = client.post(command_url, data={"line": "git revert HEAD"})
     assert 'class="entry ok"' in reverted.text
     # The graph has grown a commit, and the panel came back with it.
     assert reverted.text.count('class="node commit"') >= 4

@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
 __all__ = [
+    "ACCEPTING_EDITOR",
     "FIXTURE_EPOCH",
     "FIXTURE_IDENTITY",
     "FIXTURE_STEP",
@@ -220,6 +221,14 @@ def sandbox_path_entries() -> tuple[str, ...]:
     return (*git_path_entries(), *system_path_entries())
 
 
+#: Run by git as `sh -c '<this> "$@"'`, so the file name lands on `true` and
+#: the note goes to stderr, where git's own hints go.
+ACCEPTING_EDITOR: Final = (
+    'echo "hint: there is no editor here, so the message git prepared was kept '
+    'as it is. Pass -m to write your own." >&2 || true'
+)
+
+
 def sandbox_environment(
     paths: SandboxPaths,
     *,
@@ -234,11 +243,23 @@ def sandbox_environment(
     * `HOME` and `USERPROFILE` point at the workspace, so nothing can reach the
       developer's real git config by a back door `GIT_CONFIG_GLOBAL` does not
       cover.
-    * `GIT_EDITOR=false` and `GIT_SEQUENCE_EDITOR=false` turn `git commit` with
-      no `-m` into an immediate, readable failure. Without them it launches an
-      editor, finds no terminal, and hangs until the timeout expires — a ten
-      second stall with no explanation, which PLAN.md §8.1 notes you would hit
-      within five minutes of using the tool.
+    * `GIT_EDITOR` accepts whatever message git prepared, which is what a
+      person does who saves the editor unchanged, and says so on stderr. Two
+      commands need an editor even with no terminal: a `git commit` that
+      concludes a merge, and `git rebase --continue`. It was `false` until the
+      content was audited for flags nobody types (PLAN.md §16), and `false`
+      made both fail, so the references reached for `--no-edit`. (`revert` and
+      `merge` never needed it: git only opens an editor for them when it has a
+      terminal, and these commands do not.) The note is there for `git commit
+      --amend` with no `-m`, which at a terminal opens an editor and here would
+      otherwise succeed in silence, leaving the old message in place. A commit
+      with nothing prepared still fails at once, with `Aborting commit due to
+      empty commit message`. Leaving it unset is not an option, because an
+      editor that finds no terminal hangs until the timeout: the stall PLAN.md
+      §8.1 says you would hit within five minutes.
+    * `GIT_SEQUENCE_EDITOR=false` stays, because the plan of an interactive
+      rebase is the solver's decision, and a stand-in that accepted it would
+      be making it for them (PLAN.md §15, question 2).
     * `GIT_CEILING_DIRECTORIES` stops repository discovery walking out of the
       workspace. A command run somewhere that is not a repository should say so,
       not quietly operate on whatever repository happens to be above it.
@@ -260,7 +281,7 @@ def sandbox_environment(
         # No network, ever: every remote is a bare repository inside the
         # workspace, so a credential prompt could only ever be a hang.
         "GIT_TERMINAL_PROMPT": "0",
-        "GIT_EDITOR": "false",
+        "GIT_EDITOR": ACCEPTING_EDITOR,
         "GIT_SEQUENCE_EDITOR": "false",
         "GIT_PAGER": "cat",
         "GIT_AUTHOR_NAME": identity.name,
