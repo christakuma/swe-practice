@@ -37,6 +37,19 @@ inside, which is the rule CommonMark gives for exactly this.
 is behaviour: it is the instruction that makes the difference between a tutor
 and an answer key, all three surfaces must send the same one, and it is short
 enough to read in the place it is used.
+
+**`render_cost_review` is the same bundle with a narrower question under it**,
+asked once a kata has been submitted: how could this be cheaper? It exists
+because the cost check a submission gets cannot answer that. It compares what
+the solver *declared* with what the author expects and never reads the code
+(PLAN.md §7), so "your declaration matches" says nothing about whether the code
+does. ADR 0036 would measure it; until then the request asks the model to cost
+the code itself and to say where it disagrees with the declaration. It is built
+on `render_markdown` rather than beside it so it keeps `TUTOR_PROMPT` and the
+spoiler boundary with it, and it adds one thing the verdict section does not
+print: both costs, even when the check passed. The verdict hides a passing
+check's expected value because the solver was never told it; a passing *cost*
+check means the solver declared exactly that value, so nothing is revealed.
 """
 
 from __future__ import annotations
@@ -45,20 +58,25 @@ import re
 from typing import TYPE_CHECKING, Final
 
 from practice.application.dto import short_ref
-from practice.domain.attempt import CommandRun, HintRevealed
-from practice.domain.exercise import ExerciseKind
+from practice.domain.attempt import CommandRun, HintRevealed, SubmissionFailed
+from practice.domain.exercise import COMPLEXITY_CHECK_ID, ExerciseKind
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from practice.application.dto import RepoView, TutorContext
     from practice.application.graph import GraphRow
-    from practice.domain.attempt import SubmissionFailed
     from practice.domain.ids import Sha
     from practice.domain.ports import WorktreeStatus
     from practice.domain.verdict import CheckReport, Verdict
 
-__all__ = ["TUTOR_PROMPT", "as_json", "render_markdown"]
+__all__ = [
+    "COST_REVIEW_REQUEST",
+    "TUTOR_PROMPT",
+    "as_json",
+    "render_cost_review",
+    "render_markdown",
+]
 
 #: What turns a model into a tutor rather than an answer key. The fourth rule is
 #: the one that matters and the one a solver will test: it has to hold when they
@@ -81,6 +99,48 @@ the nudge more specific instead.
 - If a verdict is included, the attempt is over: switch to a post-mortem. \
 Explain each check I failed in terms of what I actually did, and what a \
 different approach would have cost."""
+
+#: What `render_cost_review` asks, under the context. In the solver's voice like
+#: the rest of the bundle, and on top of `TUTOR_PROMPT` rather than instead of
+#: it. The first rule is the reason it exists: nothing in the tool has costed
+#: the code, so the model must, and a model handed "your declared cost matches"
+#: will otherwise take the declaration as the cost.
+COST_REVIEW_REQUEST: Final = """\
+I have submitted this, and I want to know how to make it cheaper in time or \
+space. The cost check above only compares what I *declared* with what the \
+exercise expects; nothing has read my code to see what it actually costs. So:
+
+- Work out what my solution as written costs, in time and in space, from the \
+code. Point at what dominates: the loop, the call or the copy. Count the costs \
+that do not look like costs: a slice copies, `in` on a list is a scan, \
+building a string with `+=` in a loop can be quadratic, and recursion uses the \
+stack.
+- Compare that with what I declared and with what the exercise expects. If my \
+declaration is wrong, say which half and why.
+- If there is a cheaper approach, name the idea it rests on, what it would \
+cost in time and in space, and what it trades away. If mine is already as \
+cheap as the problem allows, say so, and say what makes that the floor.
+- Constant factors come after the asymptotic cost, and say that they are \
+constant factors."""
+
+#: Appended to the request when the attempt is over. Without it the tutor
+#: prompt's rule against handing over a solution still reads as binding, and
+#: advice about a better approach that may not show the approach is useless.
+_COST_REVIEW_FINISHED: Final = (
+    "The attempt is over, so you may describe the better approach concretely. "
+    "Show the change at the place in my code where it happens rather than "
+    "rewriting the whole solution: I want to write it myself."
+)
+
+#: Appended instead while the attempt is still open, which after a failed
+#: submission it is (ADR 0029). The rules above still hold, and a failing test
+#: is usually a bigger problem than the cost.
+_COST_REVIEW_OPEN: Final = (
+    "The attempt is still open and my last submission did not pass, so the "
+    "rules above still apply: point me at where the cost goes and the kind of "
+    "structure that would remove it, not the code. If a failing check matters "
+    "more than the cost right now, say so first."
+)
 
 _BACKTICK_RUN: Final = re.compile(r"`+")
 
@@ -120,6 +180,64 @@ def render_markdown(context: TutorContext) -> str:
     if context.notes is not None:
         sections.append(_section("The author's notes", context.notes.strip()))
     return "\n\n".join(sections) + "\n"
+
+
+def render_cost_review(context: TutorContext) -> str:
+    """The bundle with a request for cheaper code under it, or why there is none.
+
+    **The verdict it reads is the latest one the solver has seen**: the
+    attempt's own once it is finished, otherwise the last failed submission's
+    (ADR 0029). With neither there is nothing to review yet, and only a kata
+    has a cost to review. In both cases it says so *instead* of handing over
+    the context: a request for a cheaper solution to code nobody has submitted
+    is a request for the answer, which `TUTOR_PROMPT` exists to refuse, and the
+    `tutor` prompt is the one for that conversation.
+    """
+    if context.kind is not ExerciseKind.KATA:
+        kind = context.kind.value.replace("_", " ")
+        return _no_cost_review(
+            f"Only a kata has a cost to review, and this attempt is a {kind}."
+        )
+    verdict = _latest_verdict(context)
+    if verdict is None:
+        return _no_cost_review(
+            "I have not submitted this kata yet, so there is no review to build "
+            "on. Its cost is part of what I am meant to work out before I submit."
+        )
+    cost = next((r for r in verdict.reports if r.check_id == COMPLEXITY_CHECK_ID), None)
+    if cost is None:
+        stated = "This exercise states no expected cost, so nothing compared mine."
+    else:
+        # The grader sets both on this report, passed or not, and "not
+        # declared" is an `actual` like any other.
+        stated = f"- I declared: {cost.actual}\n- The exercise expects: {cost.expected}"
+    after = _COST_REVIEW_FINISHED if context.is_finished else _COST_REVIEW_OPEN
+    return (
+        render_markdown(context)
+        + "\n"
+        + _section("The cost, as reviewed", stated)
+        + "\n\n"
+        + _section("My question", f"{COST_REVIEW_REQUEST}\n\n{after}")
+        + "\n"
+    )
+
+
+def _latest_verdict(context: TutorContext) -> Verdict | None:
+    if context.verdict is not None:
+        return context.verdict
+    failed = [e for e in context.events if isinstance(e, SubmissionFailed)]
+    return failed[-1].verdict if failed else None
+
+
+def _no_cost_review(reason: str) -> str:
+    """Addressed to the model, in the solver's voice, like `_unavailable` in
+    the MCP server: a prompt cannot fail, so the refusal is the prompt."""
+    return (
+        "I asked for advice on making my solution cheaper, but there is nothing "
+        f"to review yet:\n\n{reason}\n\n"
+        "Tell me that plainly. Do not suggest a cheaper approach to code I have "
+        "not submitted: if I want help before submitting, I will ask for it.\n"
+    )
 
 
 def as_json(context: TutorContext) -> dict[str, object]:

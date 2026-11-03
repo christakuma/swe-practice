@@ -32,7 +32,7 @@ from mcp.types import CallToolResult, TextContent
 from practice.application.tutor import TUTOR_PROMPT
 from practice.composition import Services, build_services
 from practice.config import content_root
-from practice.domain.attempt import AttemptMode
+from practice.domain.attempt import AttemptMode, ComplexityClaim
 from practice.domain.ids import ExerciseId
 from practice.interface.mcp import SERVER_INSTRUCTIONS, SERVER_NAME, build_server
 
@@ -46,6 +46,9 @@ TWO_SUM = ExerciseId("katas/two-sum")
 STAIRS = ExerciseId("katas/climbing-stairs")
 
 TOOLS = {"get_context", "list_attempts", "read_file"}
+
+#: What is typed after each slash command arrives as its one argument.
+PROMPTS = {"improve": [("focus", False)], "tutor": [("question", False)]}
 
 
 def services_in(root: Path) -> Services:
@@ -155,15 +158,18 @@ def test_no_tool_takes_anything_that_could_be_a_command(shared: Shared) -> None:
     assert anyio.run(go) == {"attempt_id", "path", "rev"}
 
 
-def ask(services: Services, question: str | None = None) -> str:
-    """The `tutor` prompt, fetched the way a client's slash command fetches it:
-    whatever was typed after the command arrives as the first argument.
+def ask(
+    services: Services, question: str | None = None, *, prompt: str = "tutor"
+) -> str:
+    """A prompt, fetched the way a client's slash command fetches it: whatever
+    was typed after the command arrives as the first argument.
     """
 
     async def go() -> str:
         async with Client(build_server(services)) as client:
-            arguments = {} if question is None else {"question": question}
-            got = await client.get_prompt("tutor", arguments)
+            ((name, _),) = PROMPTS[prompt]
+            arguments = {} if question is None else {name: question}
+            got = await client.get_prompt(prompt, arguments)
             (message,) = got.messages
             assert isinstance(message.content, TextContent)
             return message.content.text
@@ -171,7 +177,7 @@ def ask(services: Services, question: str | None = None) -> str:
     return anyio.run(go)
 
 
-def test_the_tutor_prompts_one_argument_is_the_question(shared: Shared) -> None:
+def test_each_prompts_one_argument_is_what_is_typed_after_it(shared: Shared) -> None:
     """Found by a person typing `/swe-practice:tutor hows the repo looking?`.
 
     A client passes the text after a slash command as the prompt's first
@@ -179,14 +185,15 @@ def test_the_tutor_prompts_one_argument_is_the_question(shared: Shared) -> None:
     sentence was parsed as a uuid and the command died.
     """
 
-    async def go() -> list[tuple[str, bool | None]]:
+    async def go() -> dict[str, list[tuple[str, bool | None]]]:
         async with Client(build_server(shared.services)) as client:
             listed = await client.list_prompts()
-            (prompt,) = listed.prompts
-            assert prompt.name == "tutor"
-            return [(a.name, a.required) for a in prompt.arguments or []]
+            return {
+                prompt.name: [(a.name, a.required) for a in prompt.arguments or []]
+                for prompt in listed.prompts
+            }
 
-    assert anyio.run(go) == [("question", False)]
+    assert anyio.run(go) == PROMPTS
 
 
 def test_the_tutor_prompt_is_the_context_with_the_question_under_it(
@@ -485,6 +492,58 @@ def test_the_attempt_just_submitted_is_the_one_a_tutor_is_shown(
     # The listing is of what is open, so it says where the current one went.
     assert f"{stale}  Ways to Climb the Stairs (0 commands run" in listing
     assert f"{worked}  finished, and the last one the user had in front" in listing
+
+
+# --- the improve prompt ------------------------------------------------------
+
+
+def test_after_a_kata_passes_improve_hands_over_the_code_and_both_costs(
+    tmp_path: Path,
+) -> None:
+    """The case it is for, over the real grader: a correct solution whose
+    declared space is wrong. The verdict prints the cost check as a label
+    only when it passes and as a mismatch here; either way the request needs
+    the two values and the code side by side.
+    """
+    services = services_in(tmp_path)
+    attempt = services.start_attempt(TWO_SUM).attempt.id
+    # As the workbench does: submitting does not move the mark (ADR 0026).
+    services.mark_current_attempt(attempt)
+    source = (content_root() / "katas" / "two-sum" / "solution.py").read_text()
+    services.submit_solution(
+        attempt, source=source, complexity=ComplexityClaim(time="O(n)", space="O(1)")
+    )
+
+    text = ask(services, "is the dict really needed?", prompt="improve")
+
+    assert text.startswith(TUTOR_PROMPT)
+    assert "## The verdict\n\nOutcome: pass" in text
+    assert "seen: dict[int, int] = {}" in text
+    assert (
+        "- I declared: time O(n), space O(1)\n"
+        "- The exercise expects: time O(n), space O(n)"
+    ) in text
+    assert "you may describe the better approach concretely" in text
+    assert text.endswith("\nIn particular: is the dict really needed?\n")
+
+
+def test_before_anything_is_submitted_improve_declines(tmp_path: Path) -> None:
+    services = services_in(tmp_path)
+    services.start_attempt(TWO_SUM)
+
+    text = ask(services, prompt="improve")
+
+    assert "I have not submitted this kata yet" in text
+    assert TUTOR_PROMPT not in text
+
+
+def test_with_nothing_open_improve_says_so_instead_of_failing(
+    tmp_path: Path,
+) -> None:
+    text = ask(services_in(tmp_path), prompt="improve")
+
+    assert "could not hand one over" in text
+    assert "no attempt is open" in text
 
 
 # --- the three states the shared attempt is not in -------------------------

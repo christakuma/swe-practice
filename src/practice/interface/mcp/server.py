@@ -37,6 +37,12 @@ hidden suite inside the use case. An open interview is refused by both, through
 the attempt's own policy. A fourth surface that re-implemented any of that
 would be the one that got it wrong.
 
+**Two prompts, which a client offers as slash commands.** `tutor` hands over
+the context with a question under it. `improve` is for after a kata has been
+submitted: the same context, plus both the declared and the expected cost and
+a request to cost the code itself and say how it could be cheaper -- because
+the check a submission gets compares declarations and never reads the code.
+
 **A refusal is a sentence the model can read.** The application and domain
 errors are written to be read -- "interview mode withholds the tutor until this
 attempt is finished" -- so they are re-raised as `ToolError`, which the SDK
@@ -63,7 +69,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from practice.application.errors import ApplicationError
-from practice.application.tutor import render_markdown
+from practice.application.tutor import render_cost_review, render_markdown
 from practice.domain.errors import DomainError
 from practice.domain.ids import AttemptId
 
@@ -238,6 +244,24 @@ def build_server(services: Services) -> MCPServer:
             text = _unavailable(str(exc))
         if question is not None and question.strip():
             text += f"\n## My question\n\n{question.strip()}\n"
+        return text
+
+    @server.prompt()
+    def improve(focus: str | None = None) -> str:
+        """After submitting a kata: ask how your code could cost less time or space."""
+        # A second prompt rather than a tool or an argument to `tutor`: it is
+        # something the *person* asks for, after reading a verdict, which is
+        # what a slash command is; and `tutor`'s one argument is free text, so
+        # a mode switch there would be a word a question could contain. What it
+        # asks, and when it declines, is `render_cost_review`'s, under the
+        # coverage gate. Same shape as `tutor` otherwise: the text after the
+        # command is the first argument, and a refusal is returned.
+        try:
+            text = render_cost_review(services.export_tutor_context(resolve(None)))
+        except (ApplicationError, DomainError, ToolError) as exc:
+            return _unavailable(str(exc))
+        if focus is not None and focus.strip():
+            text += f"\nIn particular: {focus.strip()}\n"
         return text
 
     return server

@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from practice.domain.signature import Signature
 
 __all__ = [
+    "COMPLEXITY_CHECK_ID",
     "CONTAINER_FILES",
     "CheckSpec",
     "ComplexityExpectation",
@@ -130,6 +131,15 @@ class ComplexityExpectation:
     def __post_init__(self) -> None:
         if not self.expected_time.strip() or not self.expected_space.strip():
             raise InvalidValueError("complexity expectations cannot be empty")
+
+
+#: The id of the advisory check that compares a solver's declared cost with a
+#: `ComplexityExpectation`. Defined here rather than beside the grader that
+#: builds the report because two layers need it: the kata grader writes a report
+#: under it, and `application/tutor.py` reads that report back out of a verdict
+#: to hand a tutor the two costs, and the application layer may not import an
+#: adapter to learn a string.
+COMPLEXITY_CHECK_ID: Final = "declared-complexity"
 
 
 # The `with:` mapping in YAML. Recursive because a handful of assertions take a

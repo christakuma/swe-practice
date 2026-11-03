@@ -683,6 +683,16 @@ Code, with the prompt the server offers as a slash command:
 /swe-practice:tutor what did that reset just do?
 ```
 
+After submitting a kata, a second prompt asks how the solution could be
+cheaper. It hands over your code with the cost you declared and the cost the
+exercise expects, and asks the model to work out what the code really costs.
+The check a submission gets only compares the two declarations and never reads
+the code:
+
+```
+/swe-practice:improve could this use less memory?
+```
+
 The client has three tools:
 
 | Tool | What it returns |

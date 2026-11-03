@@ -17,7 +17,13 @@ from dataclasses import replace
 from datetime import UTC, datetime
 
 from practice.application.dto import RepoView, TutorContext
-from practice.application.tutor import TUTOR_PROMPT, as_json, render_markdown
+from practice.application.tutor import (
+    COST_REVIEW_REQUEST,
+    TUTOR_PROMPT,
+    as_json,
+    render_cost_review,
+    render_markdown,
+)
 from practice.application.use_cases.inspect_repository import view_of
 from practice.domain.attempt import (
     AttemptMode,
@@ -27,7 +33,12 @@ from practice.domain.attempt import (
     HintRevealed,
     SubmissionFailed,
 )
-from practice.domain.exercise import Difficulty, ExerciseKind, Hint
+from practice.domain.exercise import (
+    COMPLEXITY_CHECK_ID,
+    Difficulty,
+    ExerciseKind,
+    Hint,
+)
 from practice.domain.ids import ExerciseId
 from practice.domain.verdict import CheckReport, Severity, Verdict
 from tests.fakes import RepoBuilder, a_repo
@@ -688,3 +699,166 @@ def test_the_json_verdict_withholds_a_passing_checks_explanation_too() -> None:
             },
         ],
     }
+
+
+# --- the cost review ---------------------------------------------------------
+
+
+def a_cost_report(*, declared: str, passed: bool) -> CheckReport:
+    """The advisory check as the kata grader writes it: both values set,
+    whether or not it passed."""
+    return CheckReport(
+        check_id=COMPLEXITY_CHECK_ID,
+        label="Your declared cost matches what this exercise expects.",
+        severity=Severity.ADVISORY,
+        passed=passed,
+        expected="time O(n), space O(n)",
+        actual=declared,
+        explanation="Never auto-graded.",
+    )
+
+
+def a_graded_kata(*reports: CheckReport) -> TutorContext:
+    return replace(
+        a_kata_context(),
+        status=AttemptStatus.COMPLETED,
+        source="def two_sum(values, target): ...",
+        language="python",
+        verdict=Verdict(reports),
+    )
+
+
+def test_a_cost_review_is_the_whole_context_with_the_request_under_it() -> None:
+    context = a_graded_kata(
+        a_cost_report(declared="time O(n), space O(n)", passed=True)
+    )
+
+    text = render_cost_review(context)
+
+    assert text.startswith(render_markdown(context))
+    assert COST_REVIEW_REQUEST in text
+    assert text.endswith("I want to write it myself.\n")
+
+
+def test_a_cost_review_shows_both_costs_even_when_the_check_passed() -> None:
+    """The verdict section prints a passing check as its label alone, so
+    without this the model would know the declaration matched and not what
+    it was. Passing means the solver declared exactly the expected value, so
+    showing it tells them nothing they had not written themselves.
+    """
+    context = a_graded_kata(
+        a_cost_report(declared="time O(n), space O(n)", passed=True)
+    )
+
+    text = render_cost_review(context)
+
+    assert "Expected time O(n)" not in render_markdown(context)
+    assert (
+        "## The cost, as reviewed\n\n"
+        "- I declared: time O(n), space O(n)\n"
+        "- The exercise expects: time O(n), space O(n)"
+    ) in text
+
+
+def test_a_cost_review_asks_for_the_code_to_be_costed_not_the_declaration() -> None:
+    """The reason the prompt exists: the check compares declarations and
+    never reads the code, so "it matches" is not evidence about the code."""
+    assert "nothing has read my code" in COST_REVIEW_REQUEST
+    assert "from the code" in COST_REVIEW_REQUEST
+
+
+def test_an_undeclared_cost_is_reviewed_as_not_declared() -> None:
+    context = a_graded_kata(a_cost_report(declared="not declared", passed=False))
+
+    assert "- I declared: not declared\n" in render_cost_review(context)
+
+
+def test_a_kata_that_states_no_cost_is_still_reviewed() -> None:
+    context = a_graded_kata(
+        CheckReport(
+            check_id="finds-a-pair",
+            label="Finds a pair.",
+            severity=Severity.REQUIRED,
+            passed=True,
+        )
+    )
+
+    text = render_cost_review(context)
+
+    assert "This exercise states no expected cost, so nothing compared mine." in text
+    assert COST_REVIEW_REQUEST in text
+
+
+def test_an_open_attempt_is_reviewed_from_its_last_failed_submission() -> None:
+    """ADR 0029: a failure leaves the attempt open, with the verdict in its
+    history rather than on it. The latest one is what the solver last saw."""
+    earlier, latest = (
+        SubmissionFailed(
+            at=AT,
+            verdict=Verdict(
+                (
+                    a_cost_report(declared=declared, passed=False),
+                    CheckReport(
+                        check_id="finds-a-pair",
+                        label="Finds a pair.",
+                        severity=Severity.REQUIRED,
+                        passed=False,
+                    ),
+                )
+            ),
+        )
+        for declared in ("time O(n^2), space O(1)", "time O(n log n), space O(1)")
+    )
+    context = replace(a_kata_context(), events=(earlier, latest))
+
+    text = render_cost_review(context)
+
+    assert "- I declared: time O(n log n), space O(1)\n" in text
+    assert "- I declared: time O(n^2)" not in text
+
+
+def test_an_open_attempt_keeps_the_tutors_rules_and_a_finished_one_lifts_them() -> None:
+    report = a_cost_report(declared="time O(n), space O(n)", passed=True)
+    failing = CheckReport(
+        check_id="finds-a-pair",
+        label="Finds a pair.",
+        severity=Severity.REQUIRED,
+        passed=False,
+    )
+    open_context = replace(
+        a_kata_context(),
+        events=(SubmissionFailed(at=AT, verdict=Verdict((report, failing))),),
+    )
+
+    still_open = render_cost_review(open_context)
+    finished = render_cost_review(a_graded_kata(report))
+
+    assert "the rules above still apply" in still_open
+    assert "you may describe the better approach concretely" not in still_open
+    assert "you may describe the better approach concretely" in finished
+    assert "the rules above still apply" not in finished
+
+
+def test_a_kata_not_yet_submitted_is_declined_and_shows_no_code() -> None:
+    """A cheaper version of code nobody submitted is the answer, which the
+    tutor prompt refuses; the decline says so rather than handing it over."""
+    context = replace(a_kata_context(), source="def two_sum(values, target): ...")
+
+    text = render_cost_review(context)
+
+    assert "I have not submitted this kata yet" in text
+    assert "def two_sum" not in text
+    assert TUTOR_PROMPT not in text
+
+
+def test_only_a_kata_has_a_cost_to_review() -> None:
+    context = replace(
+        a_context(), status=AttemptStatus.COMPLETED, verdict=a_mixed_verdict()
+    )
+
+    text = render_cost_review(context)
+
+    assert "Only a kata has a cost to review, and this attempt is a git scenario." in (
+        text
+    )
+    assert TUTOR_PROMPT not in text

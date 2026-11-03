@@ -33,7 +33,7 @@ import re
 from typing import TYPE_CHECKING, Final, Protocol
 
 from practice.domain.attempt import SolutionSaved
-from practice.domain.exercise import KataSpec
+from practice.domain.exercise import COMPLEXITY_CHECK_ID, KataSpec
 from practice.domain.verdict import CheckReport, Severity, Verdict
 
 if TYPE_CHECKING:
@@ -57,9 +57,6 @@ __all__ = [
 
 #: The synthesised check that stands in for a suite that never ran.
 SUITE_CHECK_ID: Final = "suite-ran"
-
-#: The advisory check carrying the complexity comparison.
-COMPLEXITY_CHECK_ID: Final = "declared-complexity"
 
 #: Anything that is not a letter, a digit or a hyphen, for deriving a check id.
 _NOT_SLUG: Final = re.compile(r"[^a-z0-9]+")
