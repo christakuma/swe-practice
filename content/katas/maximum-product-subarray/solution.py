@@ -1,5 +1,7 @@
 """Reference solution. CI asserts this passes every test in `tests.py`."""
 
+from itertools import islice
+
 
 def max_product(numbers: list[int]) -> int:
     """Return the largest product of any contiguous non-empty run.
@@ -33,9 +35,13 @@ def max_product(numbers: list[int]) -> int:
     rather than with 0 or 1 is what keeps the run non-empty: a list of a single
     negative has to return that negative, and an identity of 1 would wrongly
     beat it.
+
+    The loop starts at the second element with `islice` rather than
+    `numbers[1:]`, because a slice copies the list, and three running values
+    are O(1) space only if nothing else is allocated beside them.
     """
     best = worst = answer = numbers[0]
-    for value in numbers[1:]:
+    for value in islice(numbers, 1, None):
         candidates = (value, value * best, value * worst)
         best, worst = max(candidates), min(candidates)
         answer = max(answer, best)

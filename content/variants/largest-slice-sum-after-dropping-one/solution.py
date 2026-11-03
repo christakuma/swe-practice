@@ -1,5 +1,7 @@
 """Reference solution. CI asserts this passes every test in `tests.py`."""
 
+from itertools import islice
+
 
 def max_slice_sum(numbers: list[int]) -> int:
     """Return the largest sum of a slice with at most one element left out.
@@ -16,10 +18,13 @@ def max_slice_sum(numbers: list[int]) -> int:
 
     `dropped` starts at minus infinity, meaning "not possible yet": before the
     second element nothing can have been dropped from a non-empty slice.
+
+    `islice` rather than `numbers[1:]`, which would copy the list and make
+    three running values cost O(n) space.
     """
     whole = best = numbers[0]
     dropped = float("-inf")
-    for value in numbers[1:]:
+    for value in islice(numbers, 1, None):
         dropped = max(dropped + value, whole)
         whole = max(whole + value, value)
         best = max(best, whole, dropped)

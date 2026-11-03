@@ -38,14 +38,15 @@ here or extends the previous one:
 
 ```python
 best = worst = answer = numbers[0]
-for value in numbers[1:]:
+for value in islice(numbers, 1, None):
     candidates = (value, value * best, value * worst)
     best, worst = max(candidates), min(candidates)
     answer = max(answer, best)
 return answer
 ```
 
-`O(n)` time, `O(1)` space.
+`O(n)` time, `O(1)` space, and the `islice` is part of the second claim:
+`numbers[1:]` reads the same and copies the list.
 
 Including bare `value` is what lets a run start fresh — and it is also how
 **zeros** are handled with no branch at all. After a zero both running values

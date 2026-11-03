@@ -1,5 +1,7 @@
 """Reference solution. CI asserts this passes every test in `tests.py`."""
 
+from itertools import islice
+
 
 def max_slice_sum(numbers: list[int]) -> int:
     """Return the largest sum of any non-empty contiguous slice.
@@ -20,9 +22,14 @@ def max_slice_sum(numbers: list[int]) -> int:
     element and `best_anywhere` is the best seen so far. That is the whole state,
     which is why this is O(1) space while the obvious prefix-sum approach is
     O(n).
+
+    The loop has to keep that promise too. `for value in numbers[1:]` reads
+    the same, but a slice is a copy: n - 1 references allocated before the
+    first step, which is O(n) space in a function whose whole point is not
+    needing it. `islice` walks the same elements of the original list.
     """
     best_here = best_anywhere = numbers[0]
-    for value in numbers[1:]:
+    for value in islice(numbers, 1, None):
         best_here = max(value, best_here + value)
         best_anywhere = max(best_anywhere, best_here)
     return best_anywhere

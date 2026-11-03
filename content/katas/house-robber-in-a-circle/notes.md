@@ -30,11 +30,17 @@ Those two cases are exhaustive, and each one is a **straight line** — the
 problem you already solved:
 
 ```python
-return max(_straight_line(houses[1:]), _straight_line(houses[:-1]))
+without_first = islice(houses, 1, None)
+without_last = islice(houses, len(houses) - 1)
+return max(_straight_line(without_first), _straight_line(without_last))
 ```
 
 Two linear passes instead of one: a constant factor, in exchange for reusing a
 function you already trust instead of writing one you do not.
+
+`houses[1:]` and `houses[:-1]` say the same thing more briefly, and each one
+copies the row. Two O(1)-space passes over two copies is an O(n)-space answer,
+so the cases are described with `islice` rather than built.
 
 The general shape is worth keeping. A constraint that relates only the two
 *ends* of a structure is usually better handled by enumerating the few ways it
@@ -56,9 +62,9 @@ where the two cases must be disjoint.
 
 ## The single house
 
-The one input where both slices are empty, so the split reports `0` instead of
+The one input where both rows are empty, so the split reports `0` instead of
 the house's value. Guarded before the split, which is cheaper than making the
-slices clever.
+rows clever.
 
 Same category as the seeds in `count-the-decodings`: **the base case of the
 reduction and the answer for the smallest input can disagree**, and when they

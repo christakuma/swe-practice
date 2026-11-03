@@ -1,13 +1,19 @@
 """Reference solution. CI asserts this passes every test in `tests.py`."""
 
+from collections.abc import Iterable
+from itertools import islice
 
-def _straight_line(houses: list[int]) -> int:
+
+def _straight_line(houses: Iterable[int]) -> int:
     """`house-robber` on a straight row: the most takeable with no two adjacent.
 
     Two rolling values. `taken` is the best total for the row so far *ending
     with this house used*; `skipped` is the best *without* it. Each house is
     either taken -- adding to the best that excluded its predecessor -- or
     skipped, keeping the better of the two.
+
+    It reads each house once and never looks back, so it takes any iterable,
+    and that is what lets the caller hand it a view of the row, not a copy.
     """
     taken = skipped = 0
     for amount in houses:
@@ -41,12 +47,19 @@ def best_haul(houses: list[int]) -> int:
     "exhaustive but overlapping" is fine for a maximum and fatal for a count --
     the same split would be wrong in `count-the-decodings`.
 
-    A single house is the one input where both slices are empty, so it would
+    The two rows are `islice` views rather than `houses[1:]` and
+    `houses[:-1]`. Those slices read better and are copies: two lists of
+    n - 1 references, which turns two O(1)-space passes into an O(n)-space
+    answer. The split is free only if the cases are described, not built.
+
+    A single house is the one input where both rows are empty, so it would
     report 0. It is handled before the split, which is cheaper than making the
-    slices clever.
+    rows clever.
     """
     if not houses:
         return 0
     if len(houses) == 1:
         return houses[0]
-    return max(_straight_line(houses[1:]), _straight_line(houses[:-1]))
+    without_first = islice(houses, 1, None)
+    without_last = islice(houses, len(houses) - 1)
+    return max(_straight_line(without_first), _straight_line(without_last))
