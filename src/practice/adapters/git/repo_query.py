@@ -294,6 +294,19 @@ class GitRepoQuery:
             )
         return self._blobs[key]
 
+    def worktree_paths(self) -> frozenset[str]:
+        """`ls-files --cached --others`, so untracked and ignored files are in it.
+
+        `-z` because git quotes a path with unusual characters in it otherwise,
+        and a completion would then offer the quotes. A set because an unmerged
+        path is listed once per stage, and a conflict is exactly when someone
+        is typing `cat` at it.
+        """
+        result = self._git(["ls-files", "-z", "--cached", "--others"])
+        if not result.succeeded:
+            return frozenset()
+        return frozenset(path for path in result.stdout.split("\0") if path)
+
     # --- what the fixture left behind ---------------------------------------
 
     def aliases(self) -> Mapping[str, Sha]:

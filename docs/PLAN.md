@@ -7082,3 +7082,12 @@ for each form.** It found `git log --oneline --all` nowhere. Man pages describe
 options; they are not a record of usage. Counter-examples and `notes.md` are
 out of scope, for reasons the module states. The test was run against the
 pre-audit content and failed on every scenario, naming the line.
+
+**The console gained history and completion.** Up and Down walk the transcript
+the page already shows, so history needs no store and survives a reload. Tab
+asks `CompleteCommandLine`, which reads branches, tags, stashes and files
+through `RepoQuery`, the grader's port, which gained `worktree_paths()`
+(`ls-files --cached --others`). The rules are a pure function in
+`application/completion.py`. Flags are deliberately not completed: a Tab key
+teaches whatever it offers. Tab on an empty line still moves focus, so the
+console is not a keyboard trap.

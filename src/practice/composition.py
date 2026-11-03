@@ -93,6 +93,7 @@ from practice.application.use_cases import (
     AbandonAttempt,
     ChooseVersion,
     CollectWorkspaces,
+    CompleteCommandLine,
     ConcedeAttempt,
     ExportTutorContext,
     FindCurrentAttempt,
@@ -348,6 +349,16 @@ class Services:
         grader and the panel have to share for the two of them to agree.
         """
         return InspectRepository(
+            content=self.content,
+            attempts=self.attempts,
+            provisioner=self.provisioner,
+            repo_query=self.repo_query,
+        )
+
+    @property
+    def complete_command_line(self) -> CompleteCommandLine:
+        """The four ports of `inspect_repository`, so a Tab offers what it draws."""
+        return CompleteCommandLine(
             content=self.content,
             attempts=self.attempts,
             provisioner=self.provisioner,

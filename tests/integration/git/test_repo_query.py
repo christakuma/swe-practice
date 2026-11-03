@@ -120,6 +120,44 @@ def test_it_reads_a_working_tree_file_including_an_untracked_one(
     assert repo.worktree_file("no-such-file.txt") is None
 
 
+def test_it_lists_tracked_untracked_and_ignored_files_and_not_git_itself(
+    flagship: SubprocessWorkspace,
+) -> None:
+    """What a shell would complete: everything on disk except `.git`."""
+    replay(
+        flagship,
+        'write .gitignore ".env"\n'
+        'write .env "TOKEN=1"\n'
+        "mkdir tools\n"
+        'write tools/check.sh "make"\n',
+    )
+    paths = query(flagship).worktree_paths()
+
+    assert {"README.md", "parser.py", ".env", ".gitignore", "tools/check.sh"} <= paths
+    assert not any(path.startswith(".git/") for path in paths)
+
+
+def test_a_conflicted_path_is_still_listed(flagship: SubprocessWorkspace) -> None:
+    """Mid-conflict is when `cat` gets typed at it most.
+
+    `ls-files --cached` prints an unmerged path once per stage, which the set
+    collapses; what is worth holding here is that it is there at all.
+    """
+    replay(
+        flagship,
+        "git checkout -b side HEAD~1\n"
+        'write parser.py "the side branch version"\n'
+        "git add parser.py\n"
+        "git commit -m side-change\n"
+        "git checkout main\n"
+        "git merge side\n",
+    )
+    paths = query(flagship).worktree_paths()
+
+    assert "parser.py" in paths
+    assert query(flagship).status().unmerged == {"parser.py"}
+
+
 def test_a_path_that_escapes_the_repository_reads_as_absent(
     flagship: SubprocessWorkspace,
 ) -> None:

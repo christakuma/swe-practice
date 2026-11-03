@@ -432,3 +432,55 @@ def test_the_placeholder_is_gone_once_something_has_run(
     body = client.get(f"/attempt/{attempt_id}").text
 
     assert 'class="entry empty"' not in body
+
+
+# --- the keyboard ------------------------------------------------------------
+
+
+def complete(client: TestClient, attempt_id: AttemptId, line: str) -> object:
+    return client.get(
+        f"/api/attempt/{attempt_id}/complete", params={"line": line}
+    ).json()
+
+
+def test_the_console_loads_its_keyboard_script_with_this_attempts_endpoint(
+    client: TestClient, wiring: Wiring
+) -> None:
+    attempt_id = a_scenario_attempt(wiring)
+
+    body = client.get(f"/attempt/{attempt_id}").text
+
+    assert "/console.js" in body
+    assert f'data-complete-url="/api/attempt/{attempt_id}/complete"' in body
+    assert 'id="console-completions"' in body
+
+
+def test_a_kata_page_does_not_load_the_console_script(
+    client: TestClient, wiring: Wiring
+) -> None:
+    attempt_id = wiring.services.start_attempt(KATA).attempt.id
+
+    assert "/console.js" not in client.get(f"/attempt/{attempt_id}").text
+
+
+def test_tab_completes_against_the_attempts_repository(
+    client: TestClient, wiring: Wiring
+) -> None:
+    attempt_id = a_scenario_attempt(wiring)
+    tip = wiring.repo.chain("skeleton")[0]
+    wiring.repo.branch("feature/webhooks", tip)
+
+    assert complete(client, attempt_id, "git checkout feat") == {
+        "line": "git checkout feature/webhooks ",
+        "matches": ["feature/webhooks"],
+    }
+
+
+def test_a_refused_completion_completes_nothing_rather_than_erroring(
+    client: TestClient,
+) -> None:
+    """A Tab key is not where to learn that an attempt is gone."""
+    response = client.get("/api/attempt/not-an-id/complete", params={"line": "git che"})
+
+    assert response.status_code == 200
+    assert response.json() == {"line": "git che", "matches": []}

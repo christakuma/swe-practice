@@ -492,6 +492,9 @@ class FakeRepoQuery:
     def worktree_file(self, path: str) -> str | None:
         return self._state.worktree.get(path)
 
+    def worktree_paths(self) -> frozenset[str]:
+        return frozenset(self._state.worktree)
+
     # --- history ------------------------------------------------------------
 
     def log(self, rev: str) -> Sequence[CommitInfo]:

@@ -891,6 +891,18 @@ class RepoQuery(Protocol):
         """
         ...
 
+    def worktree_paths(self) -> frozenset[str]:
+        """Every file in the working tree, tracked or not, ignored or not.
+
+        Added for the console's Tab completion, which completes the files a
+        shell would: so ignored files are in it (`.env` is still on disk, and
+        still something you `cat`) and `.git` is not. Here rather than read off
+        the filesystem by the use case, so completion lists the repository the
+        panel draws and the grader reads, through the one port the three share.
+        Nothing grades on it.
+        """
+        ...
+
     def aliases(self) -> Mapping[str, Sha]:
         """The fixture's `@c1`-style symbolic names, resolved before git sees them."""
         ...

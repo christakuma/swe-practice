@@ -152,3 +152,22 @@ def test_a_scenario_is_browsed_started_driven_and_graded(
     assert list((tmp_path / "ws").iterdir()) == []
     assert (tmp_path / "practice.db").is_file()
     assert "Nothing open" in client.get("/").text
+
+
+def test_tab_completes_against_the_repository_on_disk(client: TestClient) -> None:
+    """Its own test, because it is its own claim: the words a Tab offers come
+    from the provisioned repository, read by real git, and not from a fake.
+    """
+    started = client.post(
+        "/attempt", data={"exercise_id": REVERT}, follow_redirects=False
+    )
+    attempt_id = started.headers["location"].removeprefix("/attempt/")
+    complete_url = f"/api/attempt/{attempt_id}/complete"
+
+    def completed(line: str) -> str:
+        answer: str = client.get(complete_url, params={"line": line}).json()["line"]
+        return answer
+
+    assert completed("git show origin/ma") == "git show origin/main "
+    assert completed("cat pars") == "cat parser.py "
+    assert completed("git push ori") == "git push origin "

@@ -1850,3 +1850,25 @@ a.button.quiet {
 .goal {
   margin: 1rem 0;
 }
+
+/* --- console completion -------------------------------------------------- */
+
+/* What a Tab press could not decide between, laid out the way a shell prints
+   them: in a row, wrapping, in the console's own type. */
+.completions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.2rem;
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0 0 0 1.1rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+}
+
+/* Emptied rather than hidden, so the live region is rendered when it fills;
+   an empty list takes no room. */
+.completions:empty {
+  margin: 0;
+}

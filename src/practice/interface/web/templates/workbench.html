@@ -403,6 +403,9 @@
 #}
 {% if editing %}
   <script src="{{ static }}/workbench.js"></script>
+{% else %}
+  {# History and completion for the console; the URL rides on the tag, as below. #}
+  <script src="{{ static }}/console.js" data-complete-url="{{ complete_url }}"></script>
 {% endif %}
 
 {% if workbench.is_active %}

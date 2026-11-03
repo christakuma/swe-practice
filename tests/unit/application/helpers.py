@@ -25,6 +25,7 @@ from practice.application.registry import GraderRegistry
 from practice.application.use_cases import (
     AbandonAttempt,
     CollectWorkspaces,
+    CompleteCommandLine,
     ConcedeAttempt,
     ExportTutorContext,
     FindCurrentAttempt,
@@ -442,6 +443,16 @@ def an_inspect_repository(world: World) -> InspectRepository:
     the one that makes the panel and the grader read the same repository.
     """
     return InspectRepository(
+        content=world.content,
+        attempts=world.attempts,
+        provisioner=world.provisioner,
+        repo_query=BuilderRepoQueryFactory(world.repo),
+    )
+
+
+def a_complete_command_line(world: World) -> CompleteCommandLine:
+    """The same four collaborators as `an_inspect_repository`, on purpose."""
+    return CompleteCommandLine(
         content=world.content,
         attempts=world.attempts,
         provisioner=world.provisioner,

@@ -101,7 +101,11 @@ from practice.interface.web.quiz import (
     quiz_items,
     sheet_from_form,
 )
-from practice.interface.web.routes.console import COMMAND_URL, SCENARIO_SUBMIT_URL
+from practice.interface.web.routes.console import (
+    COMMAND_URL,
+    COMPLETE_URL,
+    SCENARIO_SUBMIT_URL,
+)
 from practice.interface.web.routes.editor import EDITOR_URL, WATCH_URL
 from practice.interface.web.routes.review import REVIEW_URL
 from practice.interface.web.routes.submission import CONCEDE_URL, render_submission
@@ -265,6 +269,7 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 # kata's is: the page builds every URL it posts to from the
                 # constant the route is declared with, so the two cannot drift.
                 "command_url": COMMAND_URL.format(attempt_id=parsed),
+                "complete_url": COMPLETE_URL.format(attempt_id=parsed),
                 "scenario_submit_url": SCENARIO_SUBMIT_URL.format(attempt_id=parsed),
                 # Only for a scenario, and not because it is wasted on a kata:
                 # `InspectRepository` *refuses* a kata, because a directory with a

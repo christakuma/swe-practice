@@ -57,6 +57,9 @@ entirely about what to leave out: the hints not yet revealed, the author's
 notes, and the check list that names the answer. It shares `view_of` with
 `InspectRepository` for the reason that one exists.
 
+`CompleteCommandLine` is the console's Tab key, and the same kind of read again:
+the branches it offers are the panel's, through the grader's port.
+
 **One for a reader that chooses its own arguments.** `ReadAttemptFile` is
 Phase 19's, and the first use case here no person invokes: an MCP client
 calls it mid-conversation with a path and a revision a model picked. It reads
@@ -119,6 +122,7 @@ decision in the composition root about which of them owns the repositories.
 from practice.application.use_cases.abandon_attempt import AbandonAttempt
 from practice.application.use_cases.choose_version import RANDOM, ChooseVersion
 from practice.application.use_cases.collect_workspaces import CollectWorkspaces
+from practice.application.use_cases.complete_command_line import CompleteCommandLine
 from practice.application.use_cases.concede_attempt import ConcedeAttempt
 from practice.application.use_cases.export_tutor_context import ExportTutorContext
 from practice.application.use_cases.find_current_attempt import FindCurrentAttempt
@@ -149,6 +153,7 @@ __all__ = [
     "AbandonAttempt",
     "ChooseVersion",
     "CollectWorkspaces",
+    "CompleteCommandLine",
     "ConcedeAttempt",
     "ExportTutorContext",
     "FindCurrentAttempt",

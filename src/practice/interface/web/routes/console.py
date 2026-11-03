@@ -48,7 +48,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Form
 from starlette.requests import Request  # noqa: TC002  (FastAPI reads this at runtime)
-from starlette.responses import HTMLResponse, Response
+from starlette.responses import HTMLResponse, JSONResponse, Response
 
 from practice.application.errors import ApplicationError
 from practice.domain.errors import DomainError
@@ -60,12 +60,13 @@ if TYPE_CHECKING:
 
     from practice.composition import Services
 
-__all__ = ["COMMAND_URL", "SCENARIO_SUBMIT_URL", "build_router"]
+__all__ = ["COMMAND_URL", "COMPLETE_URL", "SCENARIO_SUBMIT_URL", "build_router"]
 
 #: Where the console posts a typed line, and where it posts a submission. The
 #: templates build both from these, so a route and the page that drives it cannot
 #: disagree about the path -- the same reason `SUBMIT_URL` is a constant.
 COMMAND_URL = "/api/attempt/{attempt_id}/command"
+COMPLETE_URL = "/api/attempt/{attempt_id}/complete"
 SCENARIO_SUBMIT_URL = "/api/attempt/{attempt_id}/submit-scenario"
 
 
@@ -107,6 +108,23 @@ def build_router(services: Services, templates: Jinja2Templates) -> APIRouter:
                 "oob": True,
             },
         )
+
+    @router.get(COMPLETE_URL)
+    def complete(attempt_id: str, line: str = "") -> Response:
+        """What a Tab press does to `line`, as JSON for the console's script.
+
+        JSON rather than a fragment, the one endpoint here that is: the answer
+        is not markup to swap but a new value for the input and a list to show
+        only on a second press, which is a decision the script makes about
+        keystrokes the server never sees. A refusal completes nothing, at 200,
+        because a Tab key is not the place to report that an attempt is gone;
+        the next command will say so properly.
+        """
+        try:
+            done = services.complete_command_line(AttemptId.parse(attempt_id), line)
+        except (ApplicationError, DomainError, ValueError):
+            return JSONResponse({"line": line, "matches": []})
+        return JSONResponse({"line": done.line, "matches": list(done.matches)})
 
     @router.post(SCENARIO_SUBMIT_URL, response_class=HTMLResponse)
     def submit(

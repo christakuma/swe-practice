@@ -16,6 +16,11 @@
   does what an `afterRequest` listener would, and the listener that is here is the
   one it has no modifier for: clearing the input, but only on a request that
   actually reached the server, so a failed POST leaves the line to retry.
+
+  **Up, Down and Tab are `static/console.js`**, which has the argument for each.
+  The one decision visible here is that history needs no markup of its own:
+  the script reads it back out of this transcript, so the list below is only
+  for completion.
 #}
 <h2>Console</h2>
 
@@ -24,6 +29,7 @@
   <code>&gt;</code> and <code>|</code> are refused with a pointer to the virtual
   <code>write</code>. Allowed here:
   {% for program in attempt.policy.allowed_commands|sort %}<code>{{ program }}</code>{% if not loop.last %} {% endif %}{% endfor %}.
+  <span id="console-keys"><kbd>↑</kbd> <kbd>↓</kbd> for earlier commands, <kbd>Tab</kbd> to complete.</span>
 </p>
 
 {#
@@ -60,9 +66,12 @@
       hx-disabled-elt="find button"
       hx-on::after-request="if (event.detail.successful) this.reset()">
   <span class="sigil">$</span>
-  <input name="line" autocomplete="off" spellcheck="false" placeholder="git status">
+  <input name="line" autocomplete="off" spellcheck="false" placeholder="git status"
+         aria-describedby="console-keys">
   <button type="submit">Run</button>
 </form>
+{# What a Tab could not decide between. Announced, since it appears unasked. #}
+<ul class="completions" id="console-completions" aria-live="polite"></ul>
 
 {% include "partials/console-status.html" %}
 
