@@ -3189,6 +3189,7 @@ changed"* is worth more than any code sample.
 | [0033](adr/0033-review-scheduling-is-optional-and-deadlines-come-from-pace.md) | Review scheduling is optional, and a deadline is computed from pace | accepted |
 | [0034](adr/0034-monaco-over-codemirror.md) | Monaco, vendored and trimmed, replaces CodeMirror 5 | accepted |
 | [0035](adr/0035-a-kata-declares-its-signature-and-its-bounds-are-enforced.md) | A kata declares its signature, and the bounds it declares are enforced | accepted |
+| [0036](adr/0036-a-solutions-cost-is-measured-by-degree-on-an-authored-worst-case.md) | A solution's cost is measured, by degree, on a worst case the author writes | proposed |
 
 ---
 
