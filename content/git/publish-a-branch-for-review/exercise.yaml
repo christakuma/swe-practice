@@ -29,7 +29,7 @@ hints:
   - "`git push -u origin <branch>` — `-u` is short for `--set-upstream`. Watch
      that you name the branch you are *on*, not the one you were thinking
      about."
-  - "`git push --set-upstream origin feature/csv-upload`, then `git branch -vv`
+  - "`git push -u origin feature/csv-upload`, then `git branch -vv`
      to see the tracking recorded."
 
 scenario:

@@ -20,7 +20,7 @@ prompt: |
   commit, so the whole job is done with pointers.
 
 hints:
-  - "`git log --oneline --decorate --all` shows one line of history with two
+  - "`git log --oneline --all` shows one line of history with two
      labels on it: `main` at the tip and `origin/main` two commits down. You
      need a third label, and then you need to move one of the first two."
   - "`git branch <name>` creates a branch at the current commit *without*
@@ -105,5 +105,5 @@ scenario:
       with: {pattern: '^git (log|show|status|diff|branch)\b'}
       explanation: |
         Both commands in this answer move a pointer, and which pointer they
-        move depends on where you are standing. `git log --oneline --decorate
-        --all` and `git status --short --branch` each answer that in one line.
+        move depends on where you are standing. `git status` says so in its
+        first line, and `git log --oneline --all` shows where everything else is.

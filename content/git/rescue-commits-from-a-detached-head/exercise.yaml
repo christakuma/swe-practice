@@ -18,7 +18,7 @@ prompt: |
   the two commits, with both of them reachable from it. `main` must not move.
 
 hints:
-  - "`git log --oneline --decorate --all` shows every commit reachable from
+  - "`git log --oneline --all` shows every commit reachable from
      every ref — and the two you want are reachable from no ref at all, which
      is why they are not in that listing."
   - "`git reflog` records every position `HEAD` has held, detached ones

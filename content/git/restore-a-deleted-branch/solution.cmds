@@ -1,7 +1,7 @@
 # Reference solution. Deleting a branch deletes a pointer, not the commits.
 
-git status --short --branch
-git log --oneline --decorate --all
+git status
+git log --oneline --all
 git branch -a
 
 # HEAD's own history: every position it has held, newest first. The branch's
@@ -17,6 +17,6 @@ git branch feature/webhooks HEAD@{2}
 git checkout feature/webhooks
 
 # Verify: both commits back, main untouched, tree clean.
-git log --oneline --decorate --all
+git log --oneline --all
 cat webhook.py
-git status --short --branch
+git status

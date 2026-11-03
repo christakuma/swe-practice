@@ -16,10 +16,10 @@ git show main~3:tools/healthcheck.sh
 # Restore the file from that commit into the working tree and the index.
 git checkout main~3 -- tools/healthcheck.sh
 
-git status --short
+git status
 cat tools/healthcheck.sh
 
 git commit -m "Restore the deploy healthcheck"
 
-git log --oneline --decorate
-git status --short --branch
+git log --oneline
+git status

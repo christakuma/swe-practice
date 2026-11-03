@@ -76,6 +76,6 @@ unrecoverable. If you have just destroyed work, look now.
 ## The habit worth building
 
 Before any command that moves a branch pointer or touches the working tree,
-know where you are: `git status --short --branch`. And when you are about to
+know where you are: `git status`. And when you are about to
 do something you are unsure of, `git branch backup/wip` costs nothing. The
 reflog is a safety net, not a plan.

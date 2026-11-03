@@ -118,6 +118,6 @@ scenario:
       assert: command_used
       with: {pattern: '^git (log|show|status|diff)\b'}
       explanation: |
-        `git show --stat HEAD` names the two files, and `git status --short`
+        `git show --stat HEAD` names the two files, and `git status`
         after the reset confirms they are both still there. Resetting without
         looking is how `--hard` gets typed by mistake.

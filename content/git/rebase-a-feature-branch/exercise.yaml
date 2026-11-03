@@ -19,7 +19,7 @@ prompt: |
   The two sides touch different files, so nothing will conflict.
 
 hints:
-  - "`git log --oneline --decorate --all` shows the fork. `git log --oneline
+  - "`git log --oneline --all` shows the fork. `git log --oneline
      main..feature/report` lists exactly the two commits that are yours."
   - "There are two ways to get `main`'s work into your branch. One records that
      the two histories met; the other rewrites your commits as if you had

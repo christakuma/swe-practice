@@ -1,8 +1,8 @@
 # Reference solution. Look first, then take the scratch file out and fix the
 # message together, in the commit that is already there.
 
-git log --oneline --decorate --all
-git status --short --branch
+git log --oneline --all
+git status
 git show --stat HEAD
 cat scratch.py
 
@@ -12,5 +12,5 @@ git rm scratch.py
 git commit --amend -m "Add median"
 
 # Verify: still three commits, origin still one behind, one file in the tip.
-git log --oneline --decorate --all
+git log --oneline --all
 git show --stat HEAD

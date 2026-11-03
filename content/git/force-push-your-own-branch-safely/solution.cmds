@@ -1,8 +1,8 @@
 # Reference solution. Two rejections, each telling you something different,
 # and the second one is the lease doing its job.
 
-git log --oneline --decorate --all
-git status --short --branch
+git log --oneline --all
+git status
 
 # Rejected: non-fast-forward. Expected -- the squash rewrote the branch.
 git push origin feature/search-ui
@@ -14,7 +14,7 @@ git push --force-with-lease origin feature/search-ui
 
 # Find out what.
 git fetch origin
-git log --oneline --graph --decorate --all
+git log --oneline --graph --all
 git log --oneline feature/search-ui..origin/feature/search-ui
 git show --stat origin/feature/search-ui
 
@@ -22,9 +22,9 @@ git show --stat origin/feature/search-ui
 # Copying it across is the only option: the commits it sat on no longer exist.
 git cherry-pick origin/feature/search-ui
 
-git log --oneline --decorate --all
+git log --oneline --all
 ls
 
 # Now the lease passes: the remote is where the fetch said it was.
 git push --force-with-lease origin feature/search-ui
-git status --short --branch
+git status

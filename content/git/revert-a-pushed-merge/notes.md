@@ -22,11 +22,11 @@ side, and "the inverse" is undefined until you pick one.
 `-m 1` means "the first parent is the line of history I am keeping", so undo
 everything the *other* parent brought in. For a merge made while standing on
 `main`, the first parent is `main`. That is the one you want almost always, and
-`git log --format=%p` on the merge will show you both parents in order if you
-want to be sure.
+the `Merge:` line of `git show` lists both parents in order if you want to be
+sure.
 
 ```
-git revert --no-edit -m 1 HEAD
+git revert -m 1 HEAD
 ```
 
 ## Why not reset past it

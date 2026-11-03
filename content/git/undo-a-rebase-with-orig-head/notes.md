@@ -35,7 +35,8 @@ noticing that they agree:
 | `HEAD@{1}` | the previous position of `HEAD` in the reflog |
 | `origin/feature/mfa` | what the remote still holds, because you have not pushed |
 
-`git rev-parse ORIG_HEAD origin/feature/mfa` prints two hashes. When they match,
+`git log --oneline -1 ORIG_HEAD` and `git log --oneline -1 origin/feature/mfa`
+each print one commit, hash first. When the hashes match,
 the recovery is unambiguous — and when they do *not*, that is the far more
 interesting situation: it means someone else has pushed since you last fetched,
 and you need to work out what before you reset anything.
@@ -85,7 +86,7 @@ Whenever a single command has moved a branch somewhere you did not want:
 
 1. **Do not push anything.** While the remote still holds the old state, you
    have a second copy and nobody else is affected yet.
-2. `git log --oneline --decorate --all` to see where everything is now.
+2. `git log --oneline --all` to see where everything is now.
 3. `git show ORIG_HEAD` to confirm the previous position is what you want.
 4. `git reset --hard ORIG_HEAD`.
 

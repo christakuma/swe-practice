@@ -84,5 +84,5 @@ blast radius grows the moment anything else points at the commit.
 - a commit further back, published → `git revert`
 
 The habit the advisory check rewards is the one that chooses between those: read
-`git log --oneline --decorate --all` first, because where your commit sits
+`git log --oneline --all` first, because where your commit sits
 relative to `origin/main` decides the answer.

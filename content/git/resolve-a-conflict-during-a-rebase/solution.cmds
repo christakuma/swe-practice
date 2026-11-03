@@ -1,7 +1,7 @@
 # Reference solution. A rebase replays commits one at a time and stops at the
 # first one that will not apply. Resolve, commit, continue.
 
-git log --oneline --graph --decorate --all
+git log --oneline --graph --all
 cat retry.py
 
 git checkout feature/backoff
@@ -9,7 +9,7 @@ git checkout feature/backoff
 # Stops on f1, which touched the same block main did. Exits non-zero.
 git rebase main
 
-git status --short
+git status
 cat retry.py
 
 # Keep the branch's five attempts and its backoff, and main's gateway-error
@@ -18,12 +18,11 @@ write retry.py 'MAX_ATTEMPTS = 5' 'RETRY_ON = (500, 502, 503, 504)' '' 'def back
 
 git add retry.py
 
-# Commit the resolution with the original message, then let the rebase carry
+# Continue commits the resolution under the original message, then carries
 # on to f2 -- which applies cleanly, because it touches a different file.
-git commit --no-edit
 git rebase --continue
 
-git log --oneline --graph --decorate --all
+git log --oneline --graph --all
 cat retry.py
 cat jitter.py
-git status --short --branch
+git status

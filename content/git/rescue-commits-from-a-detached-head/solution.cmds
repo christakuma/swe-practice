@@ -1,8 +1,8 @@
 # Reference solution. The commits exist; nothing points at them. Give them a
 # branch.
 
-git status --short --branch
-git log --oneline --decorate --all
+git status
+git log --oneline --all
 ls
 
 # HEAD's reflog holds every position it has had, including the detached ones.
@@ -16,6 +16,6 @@ git branch feature/cache HEAD@{1}
 git checkout feature/cache
 
 # Verify: both commits reachable, the file is here, main untouched.
-git log --oneline --decorate --all
+git log --oneline --all
 cat cache.py
-git status --short --branch
+git status

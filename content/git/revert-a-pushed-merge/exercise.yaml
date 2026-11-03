@@ -29,7 +29,7 @@ hints:
   - "`-m <parent number>` picks the mainline. `-m 1` is the first parent, which
      for a merge made while standing on `main` is `main` itself — so it undoes
      everything the branch brought in."
-  - "`git revert --no-edit -m 1 HEAD`, then `git push origin main`. No force is
+  - "`git revert -m 1 HEAD`, then `git push origin main`. No force is
      needed: the revert is a new commit on top, so the push fast-forwards."
 
 scenario:
@@ -122,4 +122,4 @@ scenario:
       explanation: |
         Everything about this answer follows from the merge having two parents
         and from it being published. One `git show --stat HEAD` and one
-        `git log --oneline --decorate --all` establish both.
+        `git log --oneline --all` establish both.

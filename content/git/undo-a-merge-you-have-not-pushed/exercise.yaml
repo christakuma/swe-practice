@@ -15,7 +15,7 @@ prompt: |
   Put `main` back to what `origin` has, leave `feature/search` exactly as it
   is, and leave no trace of the merge in `main`'s history.
 
-  `git log --oneline --graph --decorate --all` draws the shape you are undoing.
+  `git log --oneline --graph --all` draws the shape you are undoing.
 
 hints:
   - "There are two ways to undo a merge, and which one is right depends

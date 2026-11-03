@@ -1,8 +1,8 @@
 # Reference solution. Their rewrite is published and mine is one unpushed
 # commit, so mine is the one that moves.
 
-git log --oneline --graph --decorate --all
-git status --short --branch
+git log --oneline --graph --all
+git status
 
 # What each side has. Mine has three commits they do not; two of those are
 # their own old commits, which their squash replaced.
@@ -17,10 +17,10 @@ git show --stat origin/feature/webhooks
 # the commit my work starts from rather than the branch it ends at.
 git rebase --onto origin/feature/webhooks HEAD~1
 
-git log --oneline --graph --decorate --all
+git log --oneline --graph --all
 ls
 cat webhook.py
 
 # A fast-forward now, so no force is needed.
 git push origin feature/webhooks
-git status --short --branch
+git status

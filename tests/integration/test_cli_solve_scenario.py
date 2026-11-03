@@ -118,7 +118,7 @@ def test_it_echoes_each_command_as_it_runs(workspaces: Path) -> None:
     """
     _, output = solve(workspaces, REVERT, "--reference")
 
-    assert "$ git revert --no-edit HEAD" in output
+    assert "$ git revert HEAD" in output
     assert "$ git push origin main" in output
 
 

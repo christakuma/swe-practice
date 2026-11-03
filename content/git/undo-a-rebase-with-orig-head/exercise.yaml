@@ -16,7 +16,7 @@ prompt: |
   Put `feature/mfa` back on the commits `origin` has. Do not force-push, and do
   not move `main`.
 
-  Start with `git log --oneline --decorate --all`: your branch and
+  Start with `git log --oneline --all`: your branch and
   `origin/feature/mfa` have diverged, and the shape of that divergence is the
   whole problem.
 
@@ -32,7 +32,7 @@ hints:
      look up."
   - "`git reset --hard ORIG_HEAD`. `git reset --hard origin/feature/mfa` works
      too and says the same thing a different way — the two are the same commit
-     here, which is worth verifying with `git rev-parse` before you trust it."
+     here, which is worth checking in `git log` before you trust it."
 
 scenario:
   fixture: fixture.sh

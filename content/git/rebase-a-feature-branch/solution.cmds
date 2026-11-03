@@ -1,8 +1,8 @@
 # Reference solution. Replay the branch's own commits on top of the new main,
 # which is what makes the eventual merge a fast-forward.
 
-git log --oneline --decorate --all
-git status --short --branch
+git log --oneline --all
+git status
 
 # Exactly which commits are mine and not on main yet.
 git log --oneline main..feature/report
@@ -11,6 +11,6 @@ git log --oneline main..feature/report
 git checkout feature/report
 git rebase main
 
-git log --oneline --decorate --all
-git status --short --branch
+git log --oneline --all
+git status
 cat report.py

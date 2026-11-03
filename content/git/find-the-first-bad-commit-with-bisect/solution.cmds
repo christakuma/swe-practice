@@ -35,5 +35,5 @@ git tag first-bad
 # in the middle of a bisect.
 git bisect reset
 
-git log --oneline --decorate
-git status --short --branch
+git log --oneline
+git status

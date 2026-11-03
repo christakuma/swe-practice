@@ -2,8 +2,8 @@
 # the commit that contained it -- in that order, so the amend picks all three
 # changes up at once.
 
-git log --oneline --decorate --all
-git status --short --branch
+git log --oneline --all
+git status
 git show --stat HEAD
 cat .env
 
@@ -19,5 +19,5 @@ git add .gitignore
 git commit --amend --no-edit
 
 git show --stat HEAD
-git status --short --branch
+git status
 ls -a

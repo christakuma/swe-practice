@@ -11,7 +11,7 @@ prompt: |
   and force-pushed. You had already added a commit of your own on top of the
   originals, and have not pushed it.
 
-  You have fetched, so `git log --decorate --all` shows the two histories side
+  You have fetched, so `git log --oneline --all` shows the two histories side
   by side.
 
   Get your signing commit on top of **their** squashed commit, with no trace of

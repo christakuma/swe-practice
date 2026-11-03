@@ -7071,3 +7071,14 @@ fails at once. `GIT_SEQUENCE_EDITOR` stays
 reference and counter-example grades as before. `resolve-a-conflict-during-a-rebase`
 lost its `git commit --no-edit` step, because `--continue` now commits the
 resolution itself, as it does at a terminal.
+
+**How "human" is decided.** `tests/content/test_git_commands_people_type.py`
+holds the prompt, the hints and the reference to three tiers: no flag that
+restates a default or only helped the sandbox, no plumbing, and every flagged
+form that remains listed with where a person meets it (git's own advice output,
+Pro Git, or a man page's examples), each checked against the book or the
+git 2.46 docs when written down. **The rejected method was grepping git's docs
+for each form.** It found `git log --oneline --all` nowhere. Man pages describe
+options; they are not a record of usage. Counter-examples and `notes.md` are
+out of scope, for reasons the module states. The test was run against the
+pre-audit content and failed on every scenario, naming the line.

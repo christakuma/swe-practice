@@ -30,8 +30,11 @@ nobody was arguing about.
 ## The three states of a conflicted file
 
 ```
-git status --short
-UU settings.ini      # both sides modified it
+git status
+...
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   settings.ini
 ```
 
 The index holds three entries for that path — the ancestor, ours, theirs —
@@ -40,8 +43,10 @@ collapses them to one:
 
 ```
 git add settings.ini     # "resolved"
-git status --short
-M  settings.ini
+git status
+...
+Changes to be committed:
+	modified:   settings.ini
 ```
 
 `git add` is a claim, not a check. Git does not read the file to see whether you
@@ -72,13 +77,14 @@ replayed is "theirs". That is covered in
 
 ```
 git add <each resolved path>
-git commit --no-edit        # accept the prepared merge message
+git commit                  # the prepared merge message
 ```
 
 `git commit` refuses while any path is unmerged, which is the one guard rail
-here. `--no-edit` takes the message git prepared (`Merge branch
-'feature/tune'`); without it, git opens an editor — and in this sandbox the
-editor is pinned to `false`, so the commit fails immediately rather than hanging.
+here. Once nothing is, it uses the message git prepared (`Merge branch
+'feature/tune'`). At a terminal it opens your editor on that message first, and
+saving it unchanged is what nearly everyone does; this sandbox has no editor,
+so it does that for you.
 
 And the escape hatch:
 

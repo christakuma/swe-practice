@@ -21,7 +21,7 @@ hints:
   - "A stash is not a patch file in a temp directory. It is a commit (two, in
      fact) that nothing points at except a ref called `refs/stash` — which is
      why `git log` cannot see it and `git stash list` can."
-  - "`git stash show --stat stash@{0}` tells you what is in it before you touch
+  - "`git stash show` tells you what is in it before you touch
      your working tree. Worth doing when the stash is older than you are sure
      about."
   - "`git stash apply` applies the change and leaves the entry in the list.
@@ -94,6 +94,6 @@ scenario:
       with: {pattern: '^git stash (list|show)\b'}
       explanation: |
         A two-day-old stash may not contain what you remember, and it may not
-        be the only entry. `git stash list` and `git stash show --stat` are the
+        be the only entry. `git stash list` and `git stash show` are the
         two commands that cost nothing and tell you which `stash@{n}` you
         actually want.

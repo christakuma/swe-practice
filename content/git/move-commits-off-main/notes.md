@@ -38,7 +38,7 @@ git reset --hard origin/main        # ... and resets THAT branch
 
 Both branches end up at the skeleton commit. The commands are individually
 right, and `-b` quietly changed which branch the second one applies to. This is
-why `git status --short --branch` is worth the keystroke before any `reset`: it
+why `git status` is worth the keystroke before any `reset`: it
 prints the branch you are about to move.
 
 `git switch -c` and `git checkout -b` behave identically here. `git switch` is

@@ -27,9 +27,9 @@ hints:
   - "Resolve it the same way as a merge conflict: write the file you want, then
      `git add` it. The difference is what comes next — the rebase has more
      commits to apply."
-  - "`git commit --no-edit` commits the resolution keeping the original commit's
-     message, and then `git rebase --continue` carries on to the second commit.
-     Be careful with `git rebase --skip`: it drops the commit entirely."
+  - "`git rebase --continue` commits the resolution under the original
+     commit's message and carries on to the second commit. Be careful with
+     `git rebase --skip`: it drops the commit entirely."
   - "Beware `--ours` and `--theirs` here. A rebase checks out the *upstream* and
      replays your commits onto it, so `--ours` is `main` and `--theirs` is the
      commit being applied — the opposite way round from a merge."
@@ -162,5 +162,5 @@ scenario:
       with: {pattern: '^(git (status|diff|log)\b|cat\b)'}
       explanation: |
         Four things have to survive this rebase and they come from two different
-        places. `git status --short` and `cat retry.py` are what turn the
+        places. `git status` and `cat retry.py` are what turn the
         conflict into a list of decisions rather than a choice of flag.

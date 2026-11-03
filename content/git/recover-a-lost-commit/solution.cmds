@@ -1,8 +1,8 @@
 # Reference solution. Every line is legal user input under the command policy.
 
 # Orient first. Which branch am I on, and what does it think it contains?
-git status --short --branch
-git log --oneline --decorate --all
+git status
+git log --oneline --all
 ls
 
 # The files are gone and the branch only has the skeleton commit -- but
@@ -19,6 +19,6 @@ git show --stat HEAD@{3}
 git reset --hard HEAD@{3}
 
 # Verify: two commits back, files back, tree clean, main untouched.
-git log --oneline --decorate --all
+git log --oneline --all
 ls
-git status --short --branch
+git status

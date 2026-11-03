@@ -22,8 +22,8 @@ prompt: |
 
 hints:
   - "`git merge feature/tune` exits non-zero and stops. That is not a failure
-     to recover from; it is the start of the exercise. `git status --short`
-     shows the file as `UU`, meaning unmerged on both sides."
+     to recover from; it is the start of the exercise. `git status`
+     lists the file under `Unmerged paths` as `both modified`."
   - "`cat settings.ini` shows both versions separated by `<<<<<<<`, `=======`
      and `>>>>>>>`. Above the `=======` is HEAD — your side, `main`. Below it
      is the branch being merged in."
@@ -32,7 +32,7 @@ hints:
      lines plus one value from each side."
   - "Write the file with the content you want, markers and all removed, then
      `git add settings.ini` — staging is how you tell git it is resolved — then
-     `git commit --no-edit` to accept the prepared merge message."
+     `git commit`, which uses the merge message git has already prepared."
 
 scenario:
   fixture: fixture.sh
@@ -123,6 +123,6 @@ scenario:
       with: {pattern: '^(git (status|diff|log)\b|cat\b)'}
       explanation: |
         The whole skill here is reading a conflict rather than picking a side to
-        make it go away. `git status --short`, `cat`, and `git diff` are the
-        three commands that turn `UU settings.ini` into a decision you can make
-        on purpose.
+        make it go away. `git status`, `cat`, and `git diff` are the three
+        commands that turn `both modified: settings.ini` into a decision you
+        can make on purpose.

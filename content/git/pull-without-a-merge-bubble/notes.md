@@ -18,7 +18,7 @@ Everything after that is about how you want the two lines of work joined.
 
 `refs/remotes/origin/main` is a local file recording where `origin/main` was the
 last time you fetched. In this exercise it says c2 and the remote says r1, so
-`git log --decorate --all` shows you a picture that was true yesterday.
+`git log --oneline --all` shows you a picture that was true yesterday.
 
 ```
 git fetch origin      # update the remote-tracking refs. Changes nothing else.

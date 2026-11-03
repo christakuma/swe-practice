@@ -16,7 +16,7 @@ isolation, which is exactly why it got pushed.
 ## The two routes, and how they differ
 
 ```
-git revert --no-edit HEAD        git reset --hard HEAD~1
+git revert HEAD                 git reset --hard HEAD~1
 git push origin main            git push --force origin main
 
 d2261fe c1                      d2261fe c1
@@ -63,8 +63,8 @@ The rule is about *published* history, not about rewriting as such:
 
 ## The thing worth remembering
 
-Before you change a repository, know where every ref points. `git log --oneline
---decorate --all` and `git status --short --branch` take three seconds and tell
-you whether you are about to do something recoverable. The advisory check on
-this exercise exists because reading first is the habit that separates a bad
-afternoon from an incident.
+Before you change a repository, know where every ref points. `git log
+--oneline --all` and `git status` take three seconds and tell you whether you
+are about to do something recoverable. The advisory check on this exercise
+exists because reading first is the habit that separates a bad afternoon from
+an incident.

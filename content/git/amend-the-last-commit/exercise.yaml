@@ -21,8 +21,8 @@ prompt: |
   you type.
 
 hints:
-  - "`git log --oneline --decorate --all` shows where `main` is and where
-     `origin/main` is. The gap between them is what makes this exercise safe."
+  - "`git log --oneline --all` shows where `main` is and where `origin/main`
+     is. The gap between them is what makes this exercise safe."
   - "A new commit that removes the scratch file would get you the right files
      and leave `WIP median` in the history forever. There is a way to change
      the commit that is already there instead."
@@ -124,5 +124,5 @@ scenario:
       with: {pattern: '^git (log|show|status|diff)\b'}
       explanation: |
         What makes amending safe is knowing whether the commit is published, and
-        the only way to know is to look. One `git log --oneline --decorate
-        --all` answers it.
+        the only way to know is to look. One `git log --oneline --all` answers
+        it.

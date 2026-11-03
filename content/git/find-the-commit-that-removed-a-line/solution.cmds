@@ -16,5 +16,5 @@ git show main~3
 
 git tag culprit main~3
 
-git log --oneline --decorate
-git status --short --branch
+git log --oneline
+git status

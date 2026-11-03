@@ -18,17 +18,17 @@ exactly like one that is done.
 ## Finishing a stop
 
 ```
-git status --short          # UU retry.py
+git status                  # both modified:   retry.py
 write retry.py ...          # the file you want
 git add retry.py            # "resolved"
-git commit --no-edit        # keep f1's original message
-git rebase --continue       # on to f2
+git rebase --continue       # commit it as f1, then on to f2
 ```
 
-`git commit --no-edit` is worth knowing in this sandbox and out of it: `git
-rebase --continue` on its own opens an editor for the commit message, and
-committing first with `--no-edit` reuses the message git already prepared. Then
-`--continue` has nothing to commit and simply proceeds.
+`--continue` commits the resolution itself, under f1's original message — at a
+terminal it opens your editor on that message first, and saving it unchanged is
+the usual answer. A `git commit` of your own before it works too, and is the
+way to reword the commit on the way through; `--continue` then has nothing left
+to commit and simply proceeds.
 
 Three ways out, and they are not equivalent:
 

@@ -12,7 +12,7 @@ one is a line in `.git/config`:
 `git push -u origin feature/csv-upload` does both: it sends the commits, and it
 writes those three lines. Without `-u` the commits still arrive and the config
 is not written — so the branch is published and untracked, which looks identical
-in `git log --decorate --all` and different in every command that compares you to
+in `git log --oneline --all` and different in every command that compares you to
 the remote.
 
 ```
@@ -50,7 +50,7 @@ reason not to turn it on.
 an operation that did not do what you wanted — and the reason the second
 counter-example here exists.
 
-`git status --short --branch` before pushing prints the branch you are on. One
+`git status` before pushing prints the branch you are on. One
 line, and it is the same habit that prevents the equivalent mistake with
 `reset` and `rebase`.
 

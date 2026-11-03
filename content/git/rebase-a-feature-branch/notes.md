@@ -64,7 +64,7 @@ the branch they are thinking about. It replays `main`'s commits onto
 looks tidy. The next `git push` is rejected as non-fast-forward, and that
 rejection is the first sign anything is wrong.
 
-`git status --short --branch` before any rebase prints the branch that is about
+`git status` before any rebase prints the branch that is about
 to be rewritten. It is the cheapest habit in this whole track.
 
 ## What a conflict does to the picture

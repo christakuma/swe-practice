@@ -15,7 +15,7 @@ prompt: |
   **no merge commit** in `main`'s history, and without losing anything either
   of you wrote.
 
-  Start by running the push and reading what git says. `git log --decorate
+  Start by running the push and reading what git says. `git log --oneline
   --all` is showing you a remote-tracking ref that is out of date.
 
 hints:
@@ -128,6 +128,6 @@ scenario:
       assert: command_used
       with: {pattern: '^git (fetch|pull)\b'}
       explanation: |
-        Everything `git log --decorate` tells you about `origin` is a cache from
+        Everything `git log` tells you about `origin` is a cache from
         the last fetch. Reasoning about a divergence from a stale cache is how
         people conclude the remote is in a state it is not.
